@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="192" height="192" viewBox="0 0 192 192">
+  <rect width="192" height="192" rx="32" fill="#1A1A2E"/>
+  <text x="96" y="110" text-anchor="middle" font-family="sans-serif" font-weight="bold" font-size="64" fill="#C9A84C">BrBr</text>
+  <path d="M60 50 L75 35 L70 55 L85 40 L80 60" stroke="#C9A84C" stroke-width="3" fill="none" stroke-linecap="round"/>
+</svg>

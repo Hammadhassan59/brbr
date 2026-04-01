@@ -1,0 +1,379 @@
+import type { Salon, Branch, Staff, SalonPartner } from '@/types/database';
+
+// ═══════════════════════════════════════
+// SALON 1: Glamour Studio (Ladies, Lahore)
+// ═══════════════════════════════════════
+
+export const DEMO_SALON: Salon = {
+  id: '11111111-1111-1111-1111-111111111111',
+  name: 'Glamour Studio',
+  slug: 'glamour-studio',
+  logo_url: null,
+  address: 'Plot 23, Main Boulevard, Gulberg III',
+  city: 'Lahore',
+  phone: '0321-4567890',
+  whatsapp: '0321-4567890',
+  type: 'ladies',
+  language: 'en',
+  gst_enabled: false,
+  gst_number: null,
+  gst_rate: 0,
+  prayer_block_enabled: true,
+  setup_complete: true,
+  owner_id: null,
+  created_at: '2025-01-01T00:00:00Z',
+};
+
+export const DEMO_BRANCH: Branch = {
+  id: '22222222-2222-2222-2222-222222222222',
+  salon_id: '11111111-1111-1111-1111-111111111111',
+  name: 'Gulberg Branch',
+  address: 'Plot 23, Main Boulevard, Gulberg III, Lahore',
+  phone: '0321-4567890',
+  is_main: true,
+  working_hours: {
+    mon: { open: '10:00', close: '20:00', off: false },
+    tue: { open: '10:00', close: '20:00', off: false },
+    wed: { open: '10:00', close: '20:00', off: false },
+    thu: { open: '10:00', close: '20:00', off: false },
+    fri: { open: '10:00', close: '20:00', off: false },
+    sat: { open: '10:00', close: '20:00', off: false },
+    sun: { open: '12:00', close: '18:00', off: false },
+  },
+  prayer_blocks: { fajr: false, zuhr: true, asr: false, maghrib: true, isha: false },
+  created_at: '2025-01-01T00:00:00Z',
+};
+
+// Glamour Studio Staff
+export const DEMO_STAFF_OWNER: Staff = {
+  id: '33333333-3333-3333-3333-333333333301',
+  salon_id: '11111111-1111-1111-1111-111111111111',
+  branch_id: '22222222-2222-2222-2222-222222222222',
+  name: 'Fatima Khan',
+  phone: '0300-1234567',
+  role: 'manager',
+  photo_url: null,
+  pin_code: '1234',
+  base_salary: 25000,
+  commission_type: 'percentage',
+  commission_rate: 10,
+  join_date: '2024-06-01',
+  is_active: true,
+  created_at: '2024-06-01T00:00:00Z',
+};
+
+export const DEMO_STAFF_STYLIST: Staff = {
+  id: '33333333-3333-3333-3333-333333333302',
+  salon_id: '11111111-1111-1111-1111-111111111111',
+  branch_id: '22222222-2222-2222-2222-222222222222',
+  name: 'Sadia Ahmed',
+  phone: '0312-9876543',
+  role: 'senior_stylist',
+  photo_url: null,
+  pin_code: '2345',
+  base_salary: 18000,
+  commission_type: 'percentage',
+  commission_rate: 30,
+  join_date: '2024-07-15',
+  is_active: true,
+  created_at: '2024-07-15T00:00:00Z',
+};
+
+export const DEMO_STAFF_RECEPTIONIST: Staff = {
+  id: '33333333-3333-3333-3333-333333333305',
+  salon_id: '11111111-1111-1111-1111-111111111111',
+  branch_id: '22222222-2222-2222-2222-222222222222',
+  name: 'Zainab Bibi',
+  phone: '0301-2345678',
+  role: 'receptionist',
+  photo_url: null,
+  pin_code: '5678',
+  base_salary: 15000,
+  commission_type: 'percentage',
+  commission_rate: 0,
+  join_date: '2024-08-01',
+  is_active: true,
+  created_at: '2024-08-01T00:00:00Z',
+};
+
+// ═══════════════════════════════════════
+// SALON 2: Royal Barbers (Gents, Islamabad)
+// ═══════════════════════════════════════
+
+export const DEMO_SALON_GENTS: Salon = {
+  id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+  name: 'Royal Barbers',
+  slug: 'royal-barbers',
+  logo_url: null,
+  address: 'Shop 14, F-7 Markaz, Jinnah Super',
+  city: 'Islamabad',
+  phone: '0333-1112233',
+  whatsapp: '0333-1112233',
+  type: 'gents',
+  language: 'en',
+  gst_enabled: false,
+  gst_number: null,
+  gst_rate: 0,
+  prayer_block_enabled: true,
+  setup_complete: true,
+  owner_id: null,
+  created_at: '2025-02-10T00:00:00Z',
+};
+
+export const DEMO_BRANCH_GENTS: Branch = {
+  id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaab',
+  salon_id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+  name: 'F-7 Markaz',
+  address: 'Shop 14, F-7 Markaz, Jinnah Super, Islamabad',
+  phone: '0333-1112233',
+  is_main: true,
+  working_hours: {
+    mon: { open: '09:00', close: '22:00', off: false },
+    tue: { open: '09:00', close: '22:00', off: false },
+    wed: { open: '09:00', close: '22:00', off: false },
+    thu: { open: '09:00', close: '22:00', off: false },
+    fri: { open: '09:00', close: '22:00', off: false },
+    sat: { open: '09:00', close: '22:00', off: false },
+    sun: { open: '09:00', close: '22:00', off: true },
+  },
+  prayer_blocks: { fajr: false, zuhr: true, asr: true, maghrib: true, isha: false },
+  created_at: '2025-02-10T00:00:00Z',
+};
+
+// Royal Barbers Staff
+export const DEMO_GENTS_OWNER: Staff = {
+  id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaa001',
+  salon_id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+  branch_id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaab',
+  name: 'Ahmed Raza',
+  phone: '0333-1112233',
+  role: 'owner',
+  photo_url: null,
+  pin_code: '0000',
+  base_salary: 0,
+  commission_type: 'percentage',
+  commission_rate: 0,
+  join_date: '2025-02-10',
+  is_active: true,
+  created_at: '2025-02-10T00:00:00Z',
+};
+
+export const DEMO_GENTS_BARBER_SENIOR: Staff = {
+  id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaa002',
+  salon_id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+  branch_id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaab',
+  name: 'Usman Ghani',
+  phone: '0345-5551234',
+  role: 'senior_stylist',
+  photo_url: null,
+  pin_code: '1111',
+  base_salary: 20000,
+  commission_type: 'percentage',
+  commission_rate: 25,
+  join_date: '2025-02-15',
+  is_active: true,
+  created_at: '2025-02-15T00:00:00Z',
+};
+
+export const DEMO_GENTS_BARBER_JUNIOR: Staff = {
+  id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaa003',
+  salon_id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+  branch_id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaab',
+  name: 'Bilal Saeed',
+  phone: '0300-7778899',
+  role: 'junior_stylist',
+  photo_url: null,
+  pin_code: '2222',
+  base_salary: 12000,
+  commission_type: 'flat',
+  commission_rate: 50,
+  join_date: '2025-03-01',
+  is_active: true,
+  created_at: '2025-03-01T00:00:00Z',
+};
+
+export const DEMO_GENTS_HELPER: Staff = {
+  id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaa004',
+  salon_id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+  branch_id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaab',
+  name: 'Hamza Ali',
+  phone: '0301-4445566',
+  role: 'helper',
+  photo_url: null,
+  pin_code: '3333',
+  base_salary: 8000,
+  commission_type: 'percentage',
+  commission_rate: 0,
+  join_date: '2025-03-01',
+  is_active: true,
+  created_at: '2025-03-01T00:00:00Z',
+};
+
+// ═══════════════════════════════════════
+// ROYAL BARBERS — Second Branch (Blue Area)
+// ═══════════════════════════════════════
+
+export const DEMO_BRANCH_GENTS_2: Branch = {
+  id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaac',
+  salon_id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+  name: 'Blue Area',
+  address: 'Shop 7, Blue Area, Islamabad',
+  phone: '0333-4445566',
+  is_main: false,
+  working_hours: {
+    mon: { open: '09:00', close: '22:00', off: false },
+    tue: { open: '09:00', close: '22:00', off: false },
+    wed: { open: '09:00', close: '22:00', off: false },
+    thu: { open: '09:00', close: '22:00', off: false },
+    fri: { open: '09:00', close: '22:00', off: false },
+    sat: { open: '09:00', close: '22:00', off: false },
+    sun: { open: '09:00', close: '22:00', off: true },
+  },
+  prayer_blocks: { fajr: false, zuhr: true, asr: true, maghrib: true, isha: false },
+  created_at: '2025-06-01T00:00:00Z',
+};
+
+// Staff for second branch
+export const DEMO_GENTS_BRANCH2_SENIOR: Staff = {
+  id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaa005',
+  salon_id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+  branch_id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaac',
+  name: 'Nadeem Khan',
+  phone: '0345-7771234',
+  role: 'senior_stylist',
+  photo_url: null,
+  pin_code: '4444',
+  base_salary: 18000,
+  commission_type: 'percentage',
+  commission_rate: 25,
+  join_date: '2025-06-01',
+  is_active: true,
+  created_at: '2025-06-01T00:00:00Z',
+};
+
+export const DEMO_GENTS_BRANCH2_JUNIOR: Staff = {
+  id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaa006',
+  salon_id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+  branch_id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaac',
+  name: 'Waqar Ahmed',
+  phone: '0300-7775678',
+  role: 'junior_stylist',
+  photo_url: null,
+  pin_code: '5555',
+  base_salary: 10000,
+  commission_type: 'flat',
+  commission_rate: 50,
+  join_date: '2025-06-15',
+  is_active: true,
+  created_at: '2025-06-15T00:00:00Z',
+};
+
+// ═══════════════════════════════════════
+// ROYAL BARBERS — Partner
+// ═══════════════════════════════════════
+
+export const DEMO_PARTNER_ROYAL: SalonPartner = {
+  id: 'aaaaaaaa-aaaa-aaaa-aaaa-pppppppppp01',
+  salon_id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+  name: 'Imran Malik',
+  phone: '0333-9998877',
+  pin_code: '9999',
+  is_active: true,
+  created_at: '2025-03-01T00:00:00Z',
+};
+
+// ═══════════════════════════════════════
+// SUPER ADMIN
+// ═══════════════════════════════════════
+
+export const DEMO_STAFF_SUPERADMIN: Staff = {
+  id: '00000000-0000-0000-0000-000000000000',
+  salon_id: '',
+  branch_id: null,
+  name: 'BrBr Super Admin',
+  phone: '0300-BRBR-PK',
+  role: 'owner',
+  photo_url: null,
+  pin_code: '0000',
+  base_salary: 0,
+  commission_type: 'percentage',
+  commission_rate: 0,
+  join_date: '2024-01-01',
+  is_active: true,
+  created_at: '2024-01-01T00:00:00Z',
+};
+
+// ═══════════════════════════════════════
+// All salons for super admin
+// ═══════════════════════════════════════
+
+export const DEMO_ALL_SALONS: Salon[] = [
+  DEMO_SALON,
+  DEMO_SALON_GENTS,
+  {
+    id: 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
+    name: 'Noor Beauty Lounge',
+    slug: 'noor-beauty-lounge',
+    logo_url: null,
+    address: 'Clifton Block 5',
+    city: 'Karachi',
+    phone: '0312-5556677',
+    whatsapp: '0312-5556677',
+    type: 'ladies',
+    language: 'en',
+    gst_enabled: true,
+    gst_number: 'GST-12345',
+    gst_rate: 16,
+    prayer_block_enabled: false,
+    setup_complete: true,
+    owner_id: null,
+    created_at: '2025-03-01T00:00:00Z',
+  },
+  {
+    id: 'cccccccc-cccc-cccc-cccc-cccccccccccc',
+    name: 'Style Hub',
+    slug: 'style-hub',
+    logo_url: null,
+    address: 'Bahria Town Phase 4',
+    city: 'Rawalpindi',
+    phone: '0345-9998877',
+    whatsapp: '0345-9998877',
+    type: 'unisex',
+    language: 'ur',
+    gst_enabled: false,
+    gst_number: null,
+    gst_rate: 0,
+    prayer_block_enabled: true,
+    setup_complete: false,
+    owner_id: null,
+    created_at: '2025-03-15T00:00:00Z',
+  },
+];
+
+// ═══════════════════════════════════════
+// Role-based nav access
+// ═══════════════════════════════════════
+// owner/manager:     ALL pages
+// receptionist:      dashboard, appointments, clients, pos
+// senior_stylist:    dashboard (stylist view), appointments (own only)
+// junior_stylist:    dashboard (stylist view), appointments (own only)
+// helper:            dashboard only (minimal)
+
+export type StaffRoleAccess = 'full' | 'front_desk' | 'stylist' | 'minimal';
+
+export function getRoleAccess(role: string): StaffRoleAccess {
+  switch (role) {
+    case 'owner':
+    case 'manager':
+      return 'full';
+    case 'receptionist':
+      return 'front_desk';
+    case 'senior_stylist':
+    case 'junior_stylist':
+      return 'stylist';
+    case 'helper':
+      return 'minimal';
+    default:
+      return 'minimal';
+  }
+}

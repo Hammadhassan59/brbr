@@ -1,0 +1,541 @@
+'use client';
+
+import { Suspense, useEffect, useState, useCallback } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
+import { ArrowLeft, Search, UserPlus, X } from 'lucide-react';
+import { supabase } from '@/lib/supabase';
+import { useAppStore } from '@/store/app-store';
+import { formatPKR } from '@/lib/utils/currency';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import { BillBuilder, type BillLineItem } from './components/bill-builder';
+import { PaymentPanel, type SplitPaymentEntry } from './components/payment-panel';
+import { CheckoutConfirmation } from './components/checkout-confirmation';
+import toast from 'react-hot-toast';
+import type { Client, Staff, Service, Product, PaymentMethod, AppointmentWithDetails, Package as PkgType } from '@/types/database';
+
+export default function POSPage() {
+  return (
+    <Suspense>
+      <POSContent />
+    </Suspense>
+  );
+}
+
+function POSContent() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const { salon, currentBranch, currentStaff } = useAppStore();
+
+  // Data
+  const [services, setServices] = useState<Service[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [packages, setPackages] = useState<PkgType[]>([]);
+  const [stylists, setStylists] = useState<Staff[]>([]);
+
+  // Client selection
+  const [clientSearch, setClientSearch] = useState('');
+  const [clientResults, setClientResults] = useState<Client[]>([]);
+  const [selectedClient, setSelectedClient] = useState<Client | null>(null);
+
+  // Stylist selection
+  const [selectedStaffId, setSelectedStaffId] = useState('');
+
+  // Bill
+  const [billNumber, setBillNumber] = useState('');
+  const [items, setItems] = useState<BillLineItem[]>([]);
+  const [appointmentId, setAppointmentId] = useState<string | null>(null);
+
+  // Discounts
+  const [discountType, setDiscountType] = useState<'flat' | 'percentage' | null>(null);
+  const [discountValue, setDiscountValue] = useState(0);
+  const [promoCode, setPromoCode] = useState('');
+  const [promoDiscount, setPromoDiscount] = useState(0);
+  const [loyaltyPointsUsed, setLoyaltyPointsUsed] = useState(0);
+
+  // Payment
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | null>(null);
+  const [cashReceived, setCashReceived] = useState(0);
+  const [reference, setReference] = useState('');
+  const [isSplit, setIsSplit] = useState(false);
+  const [splitPayments, setSplitPayments] = useState<SplitPaymentEntry[]>([]);
+  const [tipAmount, setTipAmount] = useState(0);
+  const [tipStaffId, setTipStaffId] = useState('');
+
+  // Checkout
+  const [showCheckout, setShowCheckout] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  // Calculations
+  const subtotal = items.reduce((sum, i) => sum + i.totalPrice, 0);
+  const manualDiscount = discountType === 'flat'
+    ? discountValue
+    : discountType === 'percentage'
+      ? subtotal * discountValue / 100
+      : 0;
+  const loyaltyDiscount = loyaltyPointsUsed * 0.5;
+  const totalDiscount = manualDiscount + promoDiscount + loyaltyDiscount;
+  const gstRate = salon?.gst_enabled ? (salon.gst_rate || 0) : 0;
+  const taxAmount = (subtotal - totalDiscount) * gstRate / 100;
+  const total = Math.max(0, subtotal - totalDiscount + taxAmount);
+
+  // Load data
+  useEffect(() => {
+    if (!salon || !currentBranch) return;
+    async function load() {
+      const [svcRes, prodRes, pkgRes, staffRes] = await Promise.all([
+        supabase.from('services').select('*').eq('salon_id', salon!.id).eq('is_active', true).order('sort_order'),
+        supabase.from('products').select('*').eq('salon_id', salon!.id).eq('is_active', true).order('name'),
+        supabase.from('packages').select('*').eq('salon_id', salon!.id).eq('is_active', true).order('name'),
+        supabase.from('staff').select('*').eq('branch_id', currentBranch!.id).eq('is_active', true).in('role', ['senior_stylist', 'junior_stylist']).order('name'),
+      ]);
+      if (svcRes.data) setServices(svcRes.data as Service[]);
+      if (prodRes.data) setProducts(prodRes.data as Product[]);
+      if (pkgRes.data) setPackages(pkgRes.data as PkgType[]);
+      if (staffRes.data) setStylists(staffRes.data as Staff[]);
+    }
+    load();
+  }, [salon, currentBranch]);
+
+  // Generate bill number
+  useEffect(() => {
+    if (!currentBranch) return;
+    const today = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+    setBillNumber(`BB-${today}-${String(Math.floor(Math.random() * 900) + 100)}`);
+  }, [currentBranch]);
+
+  // Pre-fill from appointment
+  useEffect(() => {
+    const aptId = searchParams.get('appointment');
+    if (!aptId) return;
+    setAppointmentId(aptId);
+
+    async function loadAppointment() {
+      const { data } = await supabase
+        .from('appointments')
+        .select('*, client:clients(*), staff:staff(*), services:appointment_services(*)')
+        .eq('id', aptId)
+        .single();
+      if (!data) return;
+      const apt = data as AppointmentWithDetails;
+
+      if (apt.client) setSelectedClient(apt.client);
+      if (apt.staff_id) { setSelectedStaffId(apt.staff_id); setTipStaffId(apt.staff_id); }
+
+      if (apt.services && apt.services.length > 0) {
+        setItems(apt.services.map((s) => ({
+          id: crypto.randomUUID(),
+          type: 'service' as const,
+          serviceId: s.service_id || undefined,
+          name: s.service_name,
+          stylistName: apt.staff?.name,
+          quantity: 1,
+          unitPrice: s.price,
+          totalPrice: s.price,
+        })));
+      }
+    }
+    loadAppointment();
+  }, [searchParams]);
+
+  // Client search
+  const searchClients = useCallback(async (query: string) => {
+    if (!salon || query.length < 2) { setClientResults([]); return; }
+    const { data } = await supabase
+      .from('clients')
+      .select('*')
+      .eq('salon_id', salon.id)
+      .or(`name.ilike.%${query}%,phone.ilike.%${query}%`)
+      .limit(10);
+    if (data) setClientResults(data as Client[]);
+  }, [salon]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => searchClients(clientSearch), 300);
+    return () => clearTimeout(timer);
+  }, [clientSearch, searchClients]);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      switch (e.key.toLowerCase()) {
+        case 'c': setPaymentMethod('cash'); break;
+        case 'j': setPaymentMethod('jazzcash'); break;
+        case 'escape': router.push('/dashboard'); break;
+        case 'enter': if (total > 0 && paymentMethod) setShowCheckout(true); break;
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [total, paymentMethod, router]);
+
+  // Add service to bill
+  function addService(svc: Service) {
+    const stylist = stylists.find((s) => s.id === selectedStaffId);
+    setItems([...items, {
+      id: crypto.randomUUID(),
+      type: 'service',
+      serviceId: svc.id,
+      name: svc.name,
+      stylistName: stylist?.name,
+      quantity: 1,
+      unitPrice: svc.base_price,
+      totalPrice: svc.base_price,
+    }]);
+  }
+
+  function addPackage(pkg: PkgType) {
+    const stylist = stylists.find((s) => s.id === selectedStaffId);
+    const svcList = (pkg.services as unknown as { serviceName: string; quantity: number }[]) || [];
+    const desc = svcList.map(s => `${s.quantity}x ${s.serviceName}`).join(', ');
+    setItems([...items, {
+      id: crypto.randomUUID(),
+      type: 'service',
+      name: `${pkg.name}`,
+      stylistName: stylist?.name ? `${stylist.name} — ${desc}` : desc,
+      quantity: 1,
+      unitPrice: pkg.price,
+      totalPrice: pkg.price,
+    }]);
+  }
+
+  function addProduct(prod: Product) {
+    const existing = items.find((i) => i.productId === prod.id);
+    if (existing) {
+      updateItemQty(existing.id, existing.quantity + 1);
+      return;
+    }
+    setItems([...items, {
+      id: crypto.randomUUID(),
+      type: 'product',
+      productId: prod.id,
+      name: prod.name,
+      quantity: 1,
+      unitPrice: prod.retail_price,
+      totalPrice: prod.retail_price,
+    }]);
+  }
+
+  function removeItem(id: string) { setItems(items.filter((i) => i.id !== id)); }
+
+  function updateItemPrice(id: string, price: number) {
+    setItems(items.map((i) => i.id === id ? { ...i, unitPrice: price, totalPrice: price * i.quantity } : i));
+  }
+
+  function updateItemQty(id: string, qty: number) {
+    setItems(items.map((i) => i.id === id ? { ...i, quantity: qty, totalPrice: i.unitPrice * qty } : i));
+  }
+
+  async function applyPromo(code: string) {
+    if (!salon || !code) return;
+    const { data } = await supabase
+      .from('promo_codes')
+      .select('*')
+      .eq('salon_id', salon.id)
+      .eq('code', code)
+      .eq('is_active', true)
+      .single();
+
+    if (!data) { toast.error('Invalid promo code'); return; }
+    if (data.expiry_date && new Date(data.expiry_date) < new Date()) { toast.error('Promo expired'); return; }
+    if (data.max_uses && data.used_count >= data.max_uses) { toast.error('Promo exhausted'); return; }
+    if (data.min_bill_amount && subtotal < data.min_bill_amount) { toast.error(`Min bill: ${formatPKR(data.min_bill_amount)}`); return; }
+
+    setPromoCode(code);
+    const disc = data.discount_type === 'flat' ? data.discount_value : subtotal * data.discount_value / 100;
+    setPromoDiscount(disc);
+    toast.success(`Promo applied: -${formatPKR(disc)}`);
+  }
+
+  async function handleConfirm() {
+    if (!salon || !currentBranch) return;
+    setSaving(true);
+
+    try {
+      const actualMethod = isSplit ? 'split' : paymentMethod;
+      const pointsEarned = Math.floor(total / 100) * 10; // 10 pts per Rs100
+
+      // Create bill
+      const { data: bill, error: billErr } = await supabase
+        .from('bills')
+        .insert({
+          bill_number: billNumber,
+          branch_id: currentBranch.id,
+          salon_id: salon.id,
+          appointment_id: appointmentId,
+          client_id: selectedClient?.id || null,
+          staff_id: selectedStaffId || null,
+          subtotal,
+          discount_amount: totalDiscount,
+          discount_type: discountType,
+          tax_amount: taxAmount,
+          tip_amount: tipAmount,
+          total_amount: total,
+          paid_amount: total,
+          payment_method: actualMethod,
+          payment_details: isSplit ? JSON.parse(JSON.stringify(splitPayments)) : reference ? { reference } : null,
+          udhaar_added: actualMethod === 'udhaar' ? total : 0,
+          loyalty_points_used: loyaltyPointsUsed,
+          loyalty_points_earned: pointsEarned,
+          promo_code: promoCode || null,
+          status: 'paid',
+        })
+        .select()
+        .single();
+      if (billErr) throw billErr;
+
+      // Create bill items
+      const { error: itemsErr } = await supabase.from('bill_items').insert(
+        items.map((i) => ({
+          bill_id: bill.id,
+          item_type: i.type,
+          service_id: i.serviceId || null,
+          product_id: i.productId || null,
+          name: i.name,
+          quantity: i.quantity,
+          unit_price: i.unitPrice,
+          total_price: i.totalPrice,
+        }))
+      );
+      if (itemsErr) throw itemsErr;
+
+      // Update client stats
+      if (selectedClient) {
+        await supabase.from('clients').update({
+          loyalty_points: selectedClient.loyalty_points - loyaltyPointsUsed + pointsEarned,
+          total_visits: selectedClient.total_visits + 1,
+          total_spent: selectedClient.total_spent + total,
+          udhaar_balance: actualMethod === 'udhaar'
+            ? selectedClient.udhaar_balance + total
+            : selectedClient.udhaar_balance,
+        }).eq('id', selectedClient.id);
+      }
+
+      // Record tip
+      if (tipAmount > 0 && tipStaffId) {
+        await supabase.from('tips').insert({
+          staff_id: tipStaffId,
+          bill_id: bill.id,
+          amount: tipAmount,
+        });
+      }
+
+      // Update cash drawer
+      if (actualMethod === 'cash' || (isSplit && splitPayments.some((s) => s.method === 'cash'))) {
+        const cashAmount = isSplit
+          ? splitPayments.filter((s) => s.method === 'cash').reduce((sum, s) => sum + s.amount, 0)
+          : total;
+        const today = new Date().toISOString().slice(0, 10);
+        const { data: drawer } = await supabase
+          .from('cash_drawers')
+          .select('*')
+          .eq('branch_id', currentBranch.id)
+          .eq('date', today)
+          .single();
+        if (drawer) {
+          await supabase.from('cash_drawers').update({
+            total_cash_sales: (drawer.total_cash_sales || 0) + cashAmount,
+          }).eq('id', drawer.id);
+        }
+      }
+
+      // Update appointment status
+      if (appointmentId) {
+        await supabase.from('appointments').update({ status: 'done' }).eq('id', appointmentId);
+      }
+
+      // Update promo used_count
+      if (promoCode) {
+        try {
+          const { data: promo } = await supabase
+            .from('promo_codes')
+            .select('used_count')
+            .eq('code', promoCode)
+            .single();
+          if (promo) {
+            await supabase.from('promo_codes')
+              .update({ used_count: (promo.used_count || 0) + 1 })
+              .eq('code', promoCode);
+          }
+        } catch { /* promo update is non-critical */ }
+      }
+
+      toast.success(`Bill paid — ${formatPKR(total)}`);
+      setShowCheckout(false);
+
+      // Reset
+      setItems([]);
+      setSelectedClient(null);
+      setSelectedStaffId('');
+      setDiscountType(null);
+      setDiscountValue(0);
+      setPromoCode('');
+      setPromoDiscount(0);
+      setLoyaltyPointsUsed(0);
+      setPaymentMethod(null);
+      setCashReceived(0);
+      setReference('');
+      setIsSplit(false);
+      setSplitPayments([]);
+      setTipAmount(0);
+      setAppointmentId(null);
+      // Generate new bill number
+      const today2 = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+      setBillNumber(`BB-${today2}-${String(Math.floor(Math.random() * 900) + 100)}`);
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Checkout failed');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const pointsEarned = Math.floor(total / 100) * 10;
+
+  return (
+    <div className="h-[calc(100vh-3.5rem)] flex flex-col lg:flex-row gap-0 -m-4 lg:-m-6">
+      {/* Left panel: Bill Builder */}
+      <div className="flex-1 lg:w-[60%] flex flex-col border-r p-4 overflow-hidden">
+        {/* Header */}
+        <div className="flex items-center gap-2 mb-3">
+          <Button variant="ghost" size="sm" onClick={() => router.push('/dashboard')}>
+            <ArrowLeft className="w-4 h-4" />
+          </Button>
+
+          {/* Client */}
+          {selectedClient ? (
+            <div className="flex items-center gap-2 flex-1 min-w-0">
+              <div className="w-7 h-7 rounded-full bg-gold/20 text-gold text-xs font-bold flex items-center justify-center shrink-0">
+                {selectedClient.name.charAt(0)}
+              </div>
+              <span className="text-sm font-medium truncate">{selectedClient.name}</span>
+              {selectedClient.is_vip && <Badge variant="outline" className="text-[10px] text-gold border-gold">VIP</Badge>}
+              <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setSelectedClient(null)}>
+                <X className="w-3 h-3" />
+              </Button>
+            </div>
+          ) : (
+            <div className="relative flex-1">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+              <Input
+                value={clientSearch}
+                onChange={(e) => setClientSearch(e.target.value)}
+                placeholder="Search client..."
+                className="pl-8 h-8 text-sm"
+              />
+              {clientSearch.length >= 2 && (
+                <div className="absolute z-20 top-full left-0 right-0 mt-1 bg-card border rounded-lg shadow-lg max-h-40 overflow-y-auto">
+                  {clientResults.map((c) => (
+                    <button key={c.id} onClick={() => { setSelectedClient(c); setClientSearch(''); setClientResults([]); }}
+                      className="w-full text-left px-3 py-1.5 hover:bg-secondary text-sm"
+                    >
+                      {c.name} <span className="text-muted-foreground">{c.phone}</span>
+                    </button>
+                  ))}
+                  <button
+                    onClick={() => { setClientSearch(''); setClientResults([]); }}
+                    className="w-full text-left px-3 py-1.5 hover:bg-secondary text-sm text-gold border-t"
+                  >
+                    <UserPlus className="w-3 h-3 inline mr-1" /> Walk-in Guest
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Stylist */}
+          <select
+            value={selectedStaffId}
+            onChange={(e) => { setSelectedStaffId(e.target.value); if (!tipStaffId) setTipStaffId(e.target.value); }}
+            className="h-8 rounded-md border bg-background px-2 text-xs w-[130px]"
+          >
+            <option value="">Stylist</option>
+            {stylists.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+          </select>
+
+          <span className="text-[10px] text-muted-foreground font-mono hidden sm:block">{billNumber}</span>
+        </div>
+
+        {/* Bill builder */}
+        <div className="flex-1 overflow-hidden">
+          <BillBuilder
+            services={services}
+            products={products}
+            packages={packages}
+            items={items}
+            onAddService={addService}
+            onAddProduct={addProduct}
+            onAddPackage={addPackage}
+            onRemoveItem={removeItem}
+            onUpdateItemPrice={updateItemPrice}
+            onUpdateItemQty={updateItemQty}
+            discountType={discountType}
+            discountValue={discountValue}
+            onSetDiscount={(type, val) => { setDiscountType(type); setDiscountValue(val); }}
+            promoCode={promoCode}
+            promoDiscount={promoDiscount}
+            onApplyPromo={applyPromo}
+            loyaltyPointsAvailable={selectedClient?.loyalty_points || 0}
+            loyaltyPointsUsed={loyaltyPointsUsed}
+            onSetLoyaltyPoints={setLoyaltyPointsUsed}
+            subtotal={subtotal}
+            totalDiscount={totalDiscount}
+            taxAmount={taxAmount}
+            total={total}
+          />
+        </div>
+      </div>
+
+      {/* Right panel: Payment */}
+      <div className="lg:w-[40%] p-4 bg-card flex flex-col overflow-y-auto">
+        <PaymentPanel
+          total={total}
+          clientUdhaarBalance={selectedClient?.udhaar_balance || 0}
+          clientUdhaarLimit={selectedClient?.udhaar_limit || 5000}
+          hasClient={!!selectedClient}
+          stylists={stylists}
+          selectedPaymentMethod={paymentMethod}
+          onSelectMethod={setPaymentMethod}
+          cashReceived={cashReceived}
+          onCashReceived={setCashReceived}
+          reference={reference}
+          onReferenceChange={setReference}
+          isSplit={isSplit}
+          onSplitToggle={setIsSplit}
+          splitPayments={splitPayments}
+          onSplitPaymentsChange={setSplitPayments}
+          tipAmount={tipAmount}
+          onTipChange={setTipAmount}
+          tipStaffId={tipStaffId}
+          onTipStaffChange={setTipStaffId}
+          onCheckout={() => setShowCheckout(true)}
+          saving={saving}
+        />
+      </div>
+
+      {/* Checkout confirmation */}
+      <CheckoutConfirmation
+        open={showCheckout}
+        onClose={() => setShowCheckout(false)}
+        onConfirm={handleConfirm}
+        saving={saving}
+        billNumber={billNumber}
+        clientName={selectedClient?.name || 'Walk-in Guest'}
+        clientPhone={selectedClient?.phone || ''}
+        salonName={salon?.name || 'BrBr'}
+        salonAddress={currentBranch?.address || ''}
+        items={items}
+        subtotal={subtotal}
+        discountAmount={totalDiscount}
+        taxAmount={taxAmount}
+        total={total}
+        paymentMethod={(isSplit ? 'split' : paymentMethod) || ''}
+        cashReceived={cashReceived}
+        change={paymentMethod === 'cash' ? Math.max(0, cashReceived - total) : 0}
+        pointsEarned={pointsEarned}
+        tipAmount={tipAmount}
+      />
+    </div>
+  );
+}

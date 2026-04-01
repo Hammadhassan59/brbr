@@ -1,0 +1,32 @@
+{
+  "date": "2026-04-01",
+  "url": "http://localhost:3001",
+  "designScore": "C+",
+  "aiSlopScore": "D+",
+  "categoryGrades": {
+    "visualHierarchy": "B",
+    "typography": "B-",
+    "spacingLayout": "B",
+    "colorContrast": "B",
+    "interactionStates": "C",
+    "responsive": "C-",
+    "contentQuality": "C+",
+    "aiSlop": "D+",
+    "motion": "D",
+    "performance": "A"
+  },
+  "findings": [
+    {"id": "FINDING-001", "title": "AI Slop: 3-Column Feature Grid on landing", "impact": "high", "category": "aiSlop"},
+    {"id": "FINDING-002", "title": "AI Slop: Cookie-Cutter Section Rhythm", "impact": "high", "category": "aiSlop"},
+    {"id": "FINDING-003", "title": "AI Slop: Generic 3-Step Onboarding", "impact": "high", "category": "aiSlop"},
+    {"id": "FINDING-012", "title": "Session Loss on Direct URL Navigation", "impact": "high", "category": "responsive"},
+    {"id": "FINDING-024", "title": "POS Rs 0 Dominant Empty State", "impact": "high", "category": "contentQuality"},
+    {"id": "FINDING-035", "title": "AI Slop: Reports Icon-in-Circle Grid", "impact": "high", "category": "aiSlop"},
+    {"id": "FINDING-046", "title": "Admin vs Salon Color Clash", "impact": "high", "category": "colorContrast"}
+  ],
+  "totalFindings": 52,
+  "highImpact": 6,
+  "mediumImpact": 30,
+  "polishImpact": 16,
+  "pagesAudited": 18
+}

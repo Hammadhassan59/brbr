@@ -1,0 +1,469 @@
+'use client';
+
+import { useEffect, useState, useCallback } from 'react';
+import { Plus, X } from 'lucide-react';
+import { supabase } from '@/lib/supabase';
+import { useAppStore } from '@/store/app-store';
+import { useLanguage } from '@/components/providers/language-provider';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Separator } from '@/components/ui/separator';
+import toast from 'react-hot-toast';
+import type { Salon, Branch, WorkingHours, DayHours, Service, ServiceCategory } from '@/types/database';
+
+const SERVICE_CATEGORIES: { value: ServiceCategory; label: string }[] = [
+  { value: 'haircut', label: 'Haircut' },
+  { value: 'color', label: 'Color' },
+  { value: 'treatment', label: 'Treatment' },
+  { value: 'facial', label: 'Facial' },
+  { value: 'waxing', label: 'Waxing' },
+  { value: 'bridal', label: 'Bridal' },
+  { value: 'nails', label: 'Nails' },
+  { value: 'massage', label: 'Massage' },
+  { value: 'beard', label: 'Beard' },
+  { value: 'other', label: 'Other' },
+];
+
+const DAYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as const;
+const DAY_LABELS: Record<string, string> = { mon: 'Monday', tue: 'Tuesday', wed: 'Wednesday', thu: 'Thursday', fri: 'Friday', sat: 'Saturday', sun: 'Sunday' };
+
+export default function SettingsPage() {
+  const { salon, setSalon, currentBranch, setCurrentBranch } = useAppStore();
+  const { language, setLanguage } = useLanguage();
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [services, setServices] = useState<Service[]>([]);
+  const [branches, setBranches] = useState<Branch[]>([]);
+
+  // Salon profile
+  const [salonName, setSalonName] = useState('');
+  const [salonType, setSalonType] = useState('');
+  const [city, setCity] = useState('');
+  const [address, setAddress] = useState('');
+  const [phone, setPhone] = useState('');
+  const [whatsapp, setWhatsapp] = useState('');
+
+  // Working hours
+  const [hours, setHours] = useState<Record<string, { open: string; close: string; off: boolean }>>({});
+  const [jummahBreak, setJummahBreak] = useState(true);
+  const [prayerBlockEnabled, setPrayerBlockEnabled] = useState(false);
+
+  // Tax & billing
+  const [gstEnabled, setGstEnabled] = useState(false);
+  const [gstNumber, setGstNumber] = useState('');
+  const [gstRate, setGstRate] = useState('');
+
+  // Payment methods
+  const [jazzcashNumber, setJazzcashNumber] = useState('');
+  const [easypaisaNumber, setEasypaisaNumber] = useState('');
+  const [bankName, setBankName] = useState('');
+  const [bankAccount, setBankAccount] = useState('');
+  const [bankTitle, setBankTitle] = useState('');
+
+  // Privacy / Ladies
+  const [privacyMode, setPrivacyMode] = useState(false);
+
+  // Dark mode
+  const [darkMode, setDarkMode] = useState(false);
+
+  // Screen wake lock
+  const [keepAwake, setKeepAwake] = useState(false);
+
+  const fetchData = useCallback(async () => {
+    if (!salon) return;
+    setLoading(true);
+    const [branchRes, svcRes] = await Promise.all([
+      supabase.from('branches').select('*').eq('salon_id', salon.id).order('is_main', { ascending: false }),
+      supabase.from('services').select('*').eq('salon_id', salon.id).order('sort_order'),
+    ]);
+
+    setSalonName(salon.name);
+    setSalonType(salon.type);
+    setCity(salon.city || '');
+    setAddress(salon.address || '');
+    setPhone(salon.phone || '');
+    setWhatsapp(salon.whatsapp || '');
+    setGstEnabled(salon.gst_enabled);
+    setGstNumber(salon.gst_number || '');
+    setGstRate(String(salon.gst_rate || ''));
+    setPrayerBlockEnabled(salon.prayer_block_enabled);
+
+    if (branchRes.data) {
+      setBranches(branchRes.data as Branch[]);
+      const main = branchRes.data[0] as Branch;
+      if (main?.working_hours) {
+        const wh = main.working_hours as WorkingHours;
+        const h: Record<string, { open: string; close: string; off: boolean }> = {};
+        DAYS.forEach((d) => { h[d] = { open: wh[d].open, close: wh[d].close, off: wh[d].off }; });
+        setHours(h);
+        setJummahBreak(!!(wh.fri as DayHours & { jummah_break?: boolean }).jummah_break);
+      }
+    }
+    if (svcRes.data) setServices(svcRes.data as Service[]);
+    setLoading(false);
+  }, [salon]);
+
+  useEffect(() => { fetchData(); }, [fetchData]);
+
+  // Dark mode toggle
+  useEffect(() => {
+    if (darkMode) document.documentElement.classList.add('dark');
+    else document.documentElement.classList.remove('dark');
+  }, [darkMode]);
+
+  // Screen wake lock
+  useEffect(() => {
+    let wakeLock: WakeLockSentinel | null = null;
+    if (keepAwake && 'wakeLock' in navigator) {
+      (navigator as Navigator & { wakeLock: { request: (type: string) => Promise<WakeLockSentinel> } }).wakeLock.request('screen').then((wl) => { wakeLock = wl; }).catch(() => {});
+    }
+    return () => { wakeLock?.release(); };
+  }, [keepAwake]);
+
+  async function saveSalonProfile() {
+    if (!salon) return;
+    setSaving(true);
+    try {
+      const { data, error } = await supabase.from('salons').update({
+        name: salonName, type: salonType, city, address, phone, whatsapp,
+        gst_enabled: gstEnabled, gst_number: gstNumber || null, gst_rate: Number(gstRate) || 0,
+        prayer_block_enabled: prayerBlockEnabled,
+      }).eq('id', salon.id).select().single();
+      if (error) throw error;
+      setSalon(data as Salon);
+      toast.success('Salon profile saved');
+    } catch (err: unknown) { toast.error(err instanceof Error ? err.message : 'Failed'); }
+    finally { setSaving(false); }
+  }
+
+  async function saveWorkingHours() {
+    if (!currentBranch) return;
+    setSaving(true);
+    try {
+      const wh: Record<string, unknown> = {};
+      DAYS.forEach((d) => {
+        wh[d] = { open: hours[d]?.open || '09:00', close: hours[d]?.close || '21:00', off: hours[d]?.off || false, ...(d === 'fri' ? { jummah_break: jummahBreak } : {}) };
+      });
+      const { data, error } = await supabase.from('branches').update({ working_hours: wh }).eq('id', currentBranch.id).select().single();
+      if (error) throw error;
+      setCurrentBranch(data as Branch);
+      toast.success('Working hours saved');
+    } catch (err: unknown) { toast.error(err instanceof Error ? err.message : 'Failed'); }
+    finally { setSaving(false); }
+  }
+
+  async function toggleServiceActive(id: string, active: boolean) {
+    await supabase.from('services').update({ is_active: active }).eq('id', id);
+    setServices(services.map((s) => s.id === id ? { ...s, is_active: active } : s));
+    toast.success(active ? 'Service activated' : 'Service deactivated');
+  }
+
+  async function updateServicePrice(id: string, price: number) {
+    await supabase.from('services').update({ base_price: price }).eq('id', id);
+    setServices(services.map((s) => s.id === id ? { ...s, base_price: price } : s));
+  }
+
+  if (loading) return <div className="space-y-4"><div className="h-12 bg-muted rounded animate-pulse" /><div className="h-64 bg-muted rounded animate-pulse" /></div>;
+
+  return (
+    <div className="space-y-4">
+      <h2 className="font-heading text-xl font-bold">Settings</h2>
+
+      <Tabs defaultValue="profile">
+        <TabsList className="flex-wrap h-auto gap-1">
+          <TabsTrigger value="profile" className="text-xs">Salon Profile</TabsTrigger>
+          <TabsTrigger value="hours" className="text-xs">Working Hours</TabsTrigger>
+          <TabsTrigger value="services" className="text-xs">Services</TabsTrigger>
+          <TabsTrigger value="payment" className="text-xs">Payments</TabsTrigger>
+          <TabsTrigger value="tax" className="text-xs">Tax & Billing</TabsTrigger>
+          <TabsTrigger value="display" className="text-xs">Display</TabsTrigger>
+        </TabsList>
+
+        {/* Salon Profile */}
+        <TabsContent value="profile" className="mt-4 space-y-4 max-w-2xl">
+          <div><Label>Salon Name</Label><Input value={salonName} onChange={(e) => setSalonName(e.target.value)} className="mt-1" /></div>
+          <div>
+            <Label>Salon Type</Label>
+            <div className="flex gap-2 mt-1">
+              {['gents', 'ladies', 'unisex'].map((t) => (
+                <button key={t} onClick={() => setSalonType(t)} className={`flex-1 py-2 rounded-lg border text-sm font-medium ${salonType === t ? 'border-gold bg-gold/10' : 'border-border'}`}>
+                  {t === 'gents' ? '✂️ Gents' : t === 'ladies' ? '💄 Ladies' : '🌟 Unisex'}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div><Label>City</Label><Input value={city} onChange={(e) => setCity(e.target.value)} className="mt-1" /></div>
+          <div><Label>Address</Label><Input value={address} onChange={(e) => setAddress(e.target.value)} className="mt-1" /></div>
+          <div className="grid grid-cols-2 gap-4">
+            <div><Label>Phone</Label><Input value={phone} onChange={(e) => setPhone(e.target.value)} className="mt-1" /></div>
+            <div><Label>WhatsApp</Label><Input value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)} className="mt-1" /></div>
+          </div>
+          <div>
+            <Label>Language</Label>
+            <div className="flex gap-2 mt-1">
+              <button onClick={() => setLanguage('en')} className={`px-4 py-2 rounded-lg border text-sm ${language === 'en' ? 'border-gold bg-gold/10' : 'border-border'}`}>English</button>
+              <button onClick={() => setLanguage('ur')} className={`px-4 py-2 rounded-lg border text-sm ${language === 'ur' ? 'border-gold bg-gold/10' : 'border-border'}`}>اردو</button>
+            </div>
+          </div>
+
+          {salonType === 'ladies' && (
+            <div className="flex items-center justify-between p-3 border rounded-lg">
+              <div><p className="text-sm font-medium">Privacy Mode</p><p className="text-xs text-muted-foreground">Hide client photos & last names for non-owner staff</p></div>
+              <Switch checked={privacyMode} onCheckedChange={setPrivacyMode} />
+            </div>
+          )}
+
+          <Button onClick={saveSalonProfile} disabled={saving} className="bg-gold text-black border border-gold">{saving ? 'Saving...' : 'Save Profile'}</Button>
+        </TabsContent>
+
+        {/* Working Hours */}
+        <TabsContent value="hours" className="mt-4 space-y-4 max-w-2xl">
+          {DAYS.map((day) => (
+            <div key={day} className="flex items-center gap-3 p-3 bg-card rounded-lg border">
+              <span className="w-24 text-sm font-medium">{DAY_LABELS[day]}</span>
+              {hours[day]?.off ? <span className="flex-1 text-sm text-muted-foreground">Day Off</span> : (
+                <div className="flex items-center gap-2 flex-1">
+                  <Input type="time" value={hours[day]?.open || '09:00'} onChange={(e) => setHours({ ...hours, [day]: { ...hours[day], open: e.target.value } })} className="w-32" />
+                  <span className="text-muted-foreground">to</span>
+                  <Input type="time" value={hours[day]?.close || '21:00'} onChange={(e) => setHours({ ...hours, [day]: { ...hours[day], close: e.target.value } })} className="w-32" />
+                </div>
+              )}
+              <label className="flex items-center gap-2 text-sm">
+                <Switch checked={hours[day]?.off || false} onCheckedChange={(checked) => setHours({ ...hours, [day]: { ...hours[day], off: checked } })} />
+                <span className="text-muted-foreground text-xs">Off</span>
+              </label>
+            </div>
+          ))}
+          <div className="space-y-3 pt-4 border-t">
+            <label className="flex items-center gap-3 cursor-pointer"><Switch checked={jummahBreak} onCheckedChange={setJummahBreak} /><span className="text-sm">Jummah Break (12:30 - 2:00 PM)</span></label>
+            <label className="flex items-center gap-3 cursor-pointer"><Switch checked={prayerBlockEnabled} onCheckedChange={setPrayerBlockEnabled} /><span className="text-sm">Auto-block prayer times on calendar</span></label>
+          </div>
+          <Button onClick={saveWorkingHours} disabled={saving} className="bg-gold text-black border border-gold">{saving ? 'Saving...' : 'Save Hours'}</Button>
+        </TabsContent>
+
+        {/* Services */}
+        <TabsContent value="services" className="mt-4 space-y-3">
+          <ServiceManager
+            services={services}
+            salonId={salon?.id || ''}
+            onToggle={toggleServiceActive}
+            onPriceChange={updateServicePrice}
+            onAdded={(svc) => setServices([...services, svc])}
+            onUpdated={(svc) => setServices(services.map((s) => s.id === svc.id ? svc : s))}
+            onRemoved={(id) => setServices(services.filter((s) => s.id !== id))}
+          />
+        </TabsContent>
+
+        {/* Payment Methods */}
+        <TabsContent value="payment" className="mt-4 space-y-4 max-w-2xl">
+          <Card><CardContent className="p-4 space-y-3">
+            <p className="text-sm font-medium">Cash</p>
+            <p className="text-xs text-muted-foreground">Always enabled</p>
+          </CardContent></Card>
+          <Card><CardContent className="p-4 space-y-3">
+            <p className="text-sm font-medium">JazzCash</p>
+            <div><Label className="text-xs">Account Number</Label><Input value={jazzcashNumber} onChange={(e) => setJazzcashNumber(e.target.value)} placeholder="03XX-XXXXXXX" className="mt-1" /></div>
+          </CardContent></Card>
+          <Card><CardContent className="p-4 space-y-3">
+            <p className="text-sm font-medium">EasyPaisa</p>
+            <div><Label className="text-xs">Account Number</Label><Input value={easypaisaNumber} onChange={(e) => setEasypaisaNumber(e.target.value)} placeholder="03XX-XXXXXXX" className="mt-1" /></div>
+          </CardContent></Card>
+          <Card><CardContent className="p-4 space-y-3">
+            <p className="text-sm font-medium">Bank Transfer (IBFT)</p>
+            <div className="grid grid-cols-3 gap-3">
+              <div><Label className="text-xs">Bank Name</Label><Input value={bankName} onChange={(e) => setBankName(e.target.value)} placeholder="HBL" className="mt-1" /></div>
+              <div><Label className="text-xs">Account #</Label><Input value={bankAccount} onChange={(e) => setBankAccount(e.target.value)} className="mt-1" /></div>
+              <div><Label className="text-xs">Account Title</Label><Input value={bankTitle} onChange={(e) => setBankTitle(e.target.value)} className="mt-1" /></div>
+            </div>
+          </CardContent></Card>
+          <Button onClick={() => toast.success('Payment settings saved')} className="bg-gold text-black border border-gold">Save Payment Settings</Button>
+        </TabsContent>
+
+        {/* Tax & Billing */}
+        <TabsContent value="tax" className="mt-4 space-y-4 max-w-2xl">
+          <div className="flex items-center justify-between p-3 border rounded-lg">
+            <div><p className="text-sm font-medium">GST / Sales Tax</p><p className="text-xs text-muted-foreground">Enable tax on bills</p></div>
+            <Switch checked={gstEnabled} onCheckedChange={setGstEnabled} />
+          </div>
+          {gstEnabled && (
+            <div className="grid grid-cols-2 gap-4">
+              <div><Label className="text-xs">GST Number</Label><Input value={gstNumber} onChange={(e) => setGstNumber(e.target.value)} className="mt-1" /></div>
+              <div><Label className="text-xs">GST Rate (%)</Label><Input type="number" value={gstRate} onChange={(e) => setGstRate(e.target.value)} className="mt-1" /></div>
+            </div>
+          )}
+          <Button onClick={saveSalonProfile} disabled={saving} className="bg-gold text-black border border-gold">{saving ? 'Saving...' : 'Save Tax Settings'}</Button>
+        </TabsContent>
+
+        {/* Display */}
+        <TabsContent value="display" className="mt-4 space-y-4 max-w-2xl">
+          <div className="flex items-center justify-between p-3 border rounded-lg">
+            <div><p className="text-sm font-medium">Dark Mode</p><p className="text-xs text-muted-foreground">Switch to dark theme</p></div>
+            <Switch checked={darkMode} onCheckedChange={setDarkMode} />
+          </div>
+          <div className="flex items-center justify-between p-3 border rounded-lg">
+            <div><p className="text-sm font-medium">Keep Screen Awake</p><p className="text-xs text-muted-foreground">Prevent tablet from sleeping (front desk mode)</p></div>
+            <Switch checked={keepAwake} onCheckedChange={setKeepAwake} />
+          </div>
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+}
+
+
+// ───────────────────────────────────────
+// Service Manager sub-component
+// ───────────────────────────────────────
+
+function ServiceManager({
+  services, salonId, onToggle, onPriceChange, onAdded, onUpdated, onRemoved,
+}: {
+  services: Service[];
+  salonId: string;
+  onToggle: (id: string, active: boolean) => void;
+  onPriceChange: (id: string, price: number) => void;
+  onAdded: (svc: Service) => void;
+  onUpdated: (svc: Service) => void;
+  onRemoved: (id: string) => void;
+}) {
+  const [showForm, setShowForm] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [name, setName] = useState('');
+  const [category, setCategory] = useState<ServiceCategory>('haircut');
+  const [duration, setDuration] = useState('30');
+  const [price, setPrice] = useState('');
+
+  function resetForm() {
+    setName(''); setPrice(''); setDuration('30'); setCategory('haircut');
+    setEditingId(null); setShowForm(false);
+  }
+
+  function startEdit(svc: Service) {
+    setEditingId(svc.id);
+    setName(svc.name);
+    setCategory(svc.category);
+    setDuration(String(svc.duration_minutes));
+    setPrice(String(svc.base_price));
+    setShowForm(true);
+  }
+
+  async function saveService() {
+    if (!name.trim()) { toast.error('Service name is required'); return; }
+    if (!price || Number(price) <= 0) { toast.error('Enter a valid price'); return; }
+
+    setSaving(true);
+    try {
+      if (editingId) {
+        const { data, error } = await supabase.from('services').update({
+          name: name.trim(),
+          category,
+          duration_minutes: Number(duration) || 30,
+          base_price: Number(price),
+        }).eq('id', editingId).select().single();
+        if (error) throw error;
+        onUpdated(data as Service);
+        toast.success(`"${name.trim()}" updated`);
+      } else {
+        const { data, error } = await supabase.from('services').insert({
+          salon_id: salonId,
+          name: name.trim(),
+          category,
+          duration_minutes: Number(duration) || 30,
+          base_price: Number(price),
+          is_active: true,
+          sort_order: services.length + 1,
+        }).select().single();
+        if (error) throw error;
+        onAdded(data as Service);
+        toast.success(`"${name.trim()}" added`);
+      }
+      resetForm();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Failed to save service');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function removeService(svc: Service) {
+    if (!confirm(`Remove "${svc.name}"? This cannot be undone.`)) return;
+    try {
+      const { error } = await supabase.from('services').delete().eq('id', svc.id);
+      if (error) throw error;
+      onRemoved(svc.id);
+      toast.success(`"${svc.name}" removed`);
+      if (editingId === svc.id) resetForm();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Failed to remove');
+    }
+  }
+
+  return (
+    <>
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-muted-foreground">{services.length} services</p>
+        <Button size="sm" onClick={() => { if (showForm) resetForm(); else setShowForm(true); }} variant={showForm ? 'outline' : 'default'} className={showForm ? '' : 'bg-gold text-black border border-gold'}>
+          {showForm ? <><X className="w-4 h-4 mr-1" /> Cancel</> : <><Plus className="w-4 h-4 mr-1" /> Add Service</>}
+        </Button>
+      </div>
+
+      {showForm && (
+        <Card className="border-gold/30 bg-gold/5">
+          <CardContent className="p-4 space-y-3">
+            <p className="text-sm font-medium">{editingId ? 'Edit Service' : 'New Service'}</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <Label className="text-xs">Service Name *</Label>
+                <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Haircut, Facial, Waxing" className="mt-1" />
+              </div>
+              <div>
+                <Label className="text-xs">Category</Label>
+                <Select value={category} onValueChange={(v) => { if (v) setCategory(v as ServiceCategory); }}>
+                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {SERVICE_CATEGORIES.map((c) => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label className="text-xs">Duration (minutes)</Label>
+                <Input type="number" value={duration} onChange={(e) => setDuration(e.target.value)} className="mt-1" inputMode="numeric" />
+              </div>
+              <div>
+                <Label className="text-xs">Price (Rs) *</Label>
+                <Input type="number" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="0" className="mt-1" inputMode="numeric" />
+              </div>
+            </div>
+            <Button onClick={saveService} disabled={saving} size="sm" className="bg-gold text-black border border-gold">
+              {saving ? 'Saving...' : editingId ? 'Save Changes' : 'Add Service'}
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
+      {services.map((svc) => (
+        <div key={svc.id} className={`flex items-center gap-3 p-3 bg-card rounded-lg border ${editingId === svc.id ? 'ring-2 ring-gold/40' : ''}`}>
+          <Switch checked={svc.is_active} onCheckedChange={(v) => onToggle(svc.id, v)} />
+          <div className="flex-1 min-w-0">
+            <span className={`text-sm font-medium ${!svc.is_active ? 'line-through text-muted-foreground' : ''}`}>{svc.name}</span>
+            <div className="flex items-center gap-2 mt-0.5">
+              <span className="text-xs text-muted-foreground capitalize">{svc.category}</span>
+              <span className="text-xs text-muted-foreground">{svc.duration_minutes}min</span>
+            </div>
+          </div>
+          <Input type="number" value={svc.base_price} onChange={(e) => onPriceChange(svc.id, Number(e.target.value))} className="w-24 h-8 text-xs text-right" inputMode="numeric" />
+          <Button variant="ghost" size="sm" className="h-8 text-xs px-2" onClick={() => startEdit(svc)}>Edit</Button>
+          <Button variant="ghost" size="sm" className="h-8 text-xs px-2 text-destructive hover:text-destructive" onClick={() => removeService(svc)}>Remove</Button>
+        </div>
+      ))}
+    </>
+  );
+}
