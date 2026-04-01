@@ -39,7 +39,7 @@ export default function LandingPage() {
           </div>
           <div className="ml-auto flex items-center gap-4">
             <Link href="/login" className="text-sm py-3 px-2 text-white/60 hover:text-white transition-colors hidden sm:block">Login</Link>
-            <Link href="/login" className="bg-gold text-black px-5 py-2.5 text-sm font-semibold hover:bg-gold/90 transition-colors border border-gold">
+            <Link href="/login" className="bg-gold text-black px-5 py-3 text-sm font-semibold hover:bg-gold/90 transition-colors border border-gold">
               Try Free — 14 Days
             </Link>
           </div>
