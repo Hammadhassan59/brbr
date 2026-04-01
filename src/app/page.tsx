@@ -32,13 +32,13 @@ export default function LandingPage() {
             <Scissors className="w-5 h-5 text-gold" />
             BRBR
           </Link>
-          <div className="hidden md:flex items-center gap-8 ml-12 text-sm">
-            <a href="#features" className="py-2 px-1 text-white/60 hover:text-white transition-colors">Features</a>
-            <a href="#pricing" className="py-2 px-1 text-white/60 hover:text-white transition-colors">Pricing</a>
-            <a href="#faq" className="py-2 px-1 text-white/60 hover:text-white transition-colors">FAQ</a>
+          <div className="hidden md:flex items-center gap-6 ml-12 text-sm">
+            <a href="#features" className="py-3 px-2 text-white/60 hover:text-white transition-colors">Features</a>
+            <a href="#pricing" className="py-3 px-2 text-white/60 hover:text-white transition-colors">Pricing</a>
+            <a href="#faq" className="py-3 px-2 text-white/60 hover:text-white transition-colors">FAQ</a>
           </div>
           <div className="ml-auto flex items-center gap-4">
-            <Link href="/login" className="text-sm text-white/60 hover:text-white transition-colors hidden sm:block">Login</Link>
+            <Link href="/login" className="text-sm py-3 px-2 text-white/60 hover:text-white transition-colors hidden sm:block">Login</Link>
             <Link href="/login" className="bg-gold text-black px-5 py-2.5 text-sm font-semibold hover:bg-gold/90 transition-colors border border-gold">
               Try Free — 14 Days
             </Link>
@@ -437,11 +437,11 @@ export default function LandingPage() {
               <Scissors className="w-4 h-4 text-gold" />
               <span className="font-heading font-bold text-sm tracking-tight text-white">BRBR</span>
             </div>
-            <div className="flex items-center gap-6 text-xs">
-              <a href="#features" className="hover:text-gold transition-colors">Features</a>
-              <a href="#pricing" className="hover:text-gold transition-colors">Pricing</a>
-              <a href="#faq" className="hover:text-gold transition-colors">FAQ</a>
-              <Link href="/login" className="hover:text-gold transition-colors">Login</Link>
+            <div className="flex items-center gap-4 text-xs">
+              <a href="#features" className="py-2 px-1 hover:text-gold transition-colors">Features</a>
+              <a href="#pricing" className="py-2 px-1 hover:text-gold transition-colors">Pricing</a>
+              <a href="#faq" className="py-2 px-1 hover:text-gold transition-colors">FAQ</a>
+              <Link href="/login" className="py-2 px-1 hover:text-gold transition-colors">Login</Link>
             </div>
             <p className="text-[11px]">© 2025 BrBr — brbr.pk</p>
           </div>
