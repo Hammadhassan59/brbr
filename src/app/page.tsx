@@ -179,7 +179,7 @@ export default function LandingPage() {
                 <CalendarDays className="w-4 h-4 text-gold" />
                 <span className="text-[10px] font-semibold tracking-[0.2em] text-gold uppercase">Bookings</span>
               </div>
-              <h3 className="font-heading text-2xl md:text-3xl font-bold mb-4">
+              <h3 className="font-heading text-xl md:text-2xl font-bold mb-4">
                 One screen. Every stylist. The whole day.
               </h3>
               <p className="text-white/60 text-sm mb-6 leading-relaxed max-w-lg">
@@ -244,7 +244,7 @@ export default function LandingPage() {
                 <Banknote className="w-4 h-4 text-gold" />
                 <span className="text-[10px] font-semibold tracking-[0.2em] text-gold uppercase">Billing & Payments</span>
               </div>
-              <h3 className="font-heading text-2xl md:text-3xl font-bold mb-4">
+              <h3 className="font-heading text-xl md:text-2xl font-bold mb-4">
                 Cash, JazzCash, EasyPaisa, udhaar — all tracked
               </h3>
               <p className="text-[#1A1A1A]/60 text-sm mb-6 leading-relaxed max-w-lg">
@@ -271,7 +271,7 @@ export default function LandingPage() {
                 <UserCog className="w-4 h-4 text-gold" />
                 <span className="text-[10px] font-semibold tracking-[0.2em] text-gold uppercase">Staff & Payroll</span>
               </div>
-              <h3 className="font-heading text-2xl md:text-3xl font-bold mb-4">
+              <h3 className="font-heading text-xl md:text-2xl font-bold mb-4">
                 No more month-end calculator sessions
               </h3>
               <p className="text-white/60 text-sm mb-6 leading-relaxed max-w-lg">
@@ -318,7 +318,7 @@ export default function LandingPage() {
                   <f.icon className="w-4 h-4 text-gold" />
                 </div>
                 <div>
-                  <h4 className="font-heading font-semibold text-sm mb-1.5">{f.title}</h4>
+                  <h4 className="font-heading font-semibold text-base mb-1.5">{f.title}</h4>
                   <p className="text-xs text-[#1A1A1A]/50 leading-relaxed">{f.desc}</p>
                 </div>
               </div>
