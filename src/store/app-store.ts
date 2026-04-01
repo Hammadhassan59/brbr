@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 import type { Branch, Staff, Salon, SalonPartner } from '@/types/database';
 
 interface AppState {
@@ -19,20 +20,27 @@ interface AppState {
   reset: () => void;
 }
 
-export const useAppStore = create<AppState>((set) => ({
-  salon: null,
-  branches: [],
-  currentBranch: null,
-  currentStaff: null,
-  currentPartner: null,
-  isPartner: false,
-  isSuperAdmin: false,
-  setSalon: (salon) => set({ salon }),
-  setBranches: (branches) => set({ branches }),
-  setCurrentBranch: (branch) => set({ currentBranch: branch }),
-  setCurrentStaff: (staff) => set({ currentStaff: staff }),
-  setCurrentPartner: (partner) => set({ currentPartner: partner }),
-  setIsPartner: (v) => set({ isPartner: v }),
-  setIsSuperAdmin: (v) => set({ isSuperAdmin: v }),
-  reset: () => set({ salon: null, branches: [], currentBranch: null, currentStaff: null, currentPartner: null, isPartner: false, isSuperAdmin: false }),
-}));
+export const useAppStore = create<AppState>()(
+  persist(
+    (set) => ({
+      salon: null,
+      branches: [],
+      currentBranch: null,
+      currentStaff: null,
+      currentPartner: null,
+      isPartner: false,
+      isSuperAdmin: false,
+      setSalon: (salon) => set({ salon }),
+      setBranches: (branches) => set({ branches }),
+      setCurrentBranch: (branch) => set({ currentBranch: branch }),
+      setCurrentStaff: (staff) => set({ currentStaff: staff }),
+      setCurrentPartner: (partner) => set({ currentPartner: partner }),
+      setIsPartner: (v) => set({ isPartner: v }),
+      setIsSuperAdmin: (v) => set({ isSuperAdmin: v }),
+      reset: () => set({ salon: null, branches: [], currentBranch: null, currentStaff: null, currentPartner: null, isPartner: false, isSuperAdmin: false }),
+    }),
+    {
+      name: 'brbr-session',
+    }
+  )
+);
