@@ -34,6 +34,7 @@ export default function ExpensesPage() {
   const [showAdd, setShowAdd] = useState(false);
   const [saving, setSaving] = useState(false);
   const [tab, setTab] = useState<'today' | 'week' | 'month'>('today');
+  const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
 
   // Form state
   const [category, setCategory] = useState('');
@@ -72,44 +73,89 @@ export default function ExpensesPage() {
 
   useEffect(() => { fetchExpenses(); }, [fetchExpenses]);
 
-  async function addExpense() {
+  function openEditExpense(expense: Expense) {
+    setEditingExpense(expense);
+    const cat = CATEGORIES.includes(expense.category || '') ? expense.category! : (expense.category ? '__custom' : '');
+    setCategory(cat);
+    if (cat === '__custom') setCustomCategory(expense.category || '');
+    else setCustomCategory('');
+    setAmount(String(expense.amount));
+    setDescription(expense.description || '');
+    setShowAdd(true);
+  }
+
+  async function saveExpense() {
     if (!currentBranch) return;
-    const finalCategory = category === '__custom' ? customCategory : category;
+    const finalCategory = category === '__custom' ? customCategory.trim() : category;
+    if (category === '__custom' && !finalCategory) { toast.error('Enter a category name'); return; }
     if (!amount || Number(amount) <= 0) { toast.error('Enter a valid amount'); return; }
 
     setSaving(true);
     try {
-      const createdBy = isPartner ? currentPartner?.id : currentStaff?.id;
-      await supabase.from('expenses').insert({
-        branch_id: currentBranch.id,
-        category: finalCategory || null,
-        amount: Number(amount),
-        description: description || null,
-        date: today,
-        created_by: createdBy || null,
-      });
+      if (editingExpense) {
+        // Update existing expense
+        const oldAmount = editingExpense.amount;
+        const newAmount = Number(amount);
+        await supabase.from('expenses').update({
+          category: finalCategory || null,
+          amount: newAmount,
+          description: description || null,
+        }).eq('id', editingExpense.id);
 
-      // Update today's cash drawer if open
-      const { data: drawer } = await supabase
-        .from('cash_drawers')
-        .select('*')
-        .eq('branch_id', currentBranch.id)
-        .eq('date', today)
-        .eq('status', 'open')
-        .single();
+        // Adjust cash drawer if amount changed
+        if (oldAmount !== newAmount) {
+          const { data: drawer } = await supabase
+            .from('cash_drawers')
+            .select('*')
+            .eq('branch_id', currentBranch.id)
+            .eq('date', editingExpense.date)
+            .eq('status', 'open')
+            .single();
 
-      if (drawer) {
-        await supabase.from('cash_drawers').update({
-          total_expenses: (drawer.total_expenses || 0) + Number(amount),
-        }).eq('id', drawer.id);
+          if (drawer) {
+            await supabase.from('cash_drawers').update({
+              total_expenses: (drawer.total_expenses || 0) - oldAmount + newAmount,
+            }).eq('id', drawer.id);
+          }
+        }
+
+        toast.success('Expense updated');
+      } else {
+        // Insert new expense
+        const createdBy = isPartner ? currentPartner?.id : currentStaff?.id;
+        await supabase.from('expenses').insert({
+          branch_id: currentBranch.id,
+          category: finalCategory || null,
+          amount: Number(amount),
+          description: description || null,
+          date: today,
+          created_by: createdBy || null,
+        });
+
+        // Update today's cash drawer if open
+        const { data: drawer } = await supabase
+          .from('cash_drawers')
+          .select('*')
+          .eq('branch_id', currentBranch.id)
+          .eq('date', today)
+          .eq('status', 'open')
+          .single();
+
+        if (drawer) {
+          await supabase.from('cash_drawers').update({
+            total_expenses: (drawer.total_expenses || 0) + Number(amount),
+          }).eq('id', drawer.id);
+        }
+
+        toast.success('Expense recorded');
       }
 
-      toast.success('Expense recorded');
       setShowAdd(false);
+      setEditingExpense(null);
       setCategory(''); setCustomCategory(''); setAmount(''); setDescription('');
       fetchExpenses();
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : 'Failed to add expense');
+      toast.error(err instanceof Error ? err.message : 'Failed to save expense');
     } finally {
       setSaving(false);
     }
@@ -148,7 +194,7 @@ export default function ExpensesPage() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="font-heading text-xl font-bold">Expenses</h2>
-        <Button onClick={() => setShowAdd(true)} className="bg-gold text-black border border-gold" size="sm">
+        <Button onClick={() => { setEditingExpense(null); setCategory(''); setCustomCategory(''); setAmount(''); setDescription(''); setShowAdd(true); }} className="bg-gold text-black border border-gold" size="sm">
           <Plus className="w-4 h-4 mr-1" /> Record Expense
         </Button>
       </div>
@@ -228,7 +274,7 @@ export default function ExpensesPage() {
           <CardContent className="p-8 text-center">
             <Wallet className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
             <p className="text-muted-foreground">No expenses recorded for this period.</p>
-            <Button onClick={() => setShowAdd(true)} variant="outline" size="sm" className="mt-3">
+            <Button onClick={() => { setEditingExpense(null); setCategory(''); setCustomCategory(''); setAmount(''); setDescription(''); setShowAdd(true); }} variant="outline" size="sm" className="mt-3">
               <Plus className="w-4 h-4 mr-1" /> Record First Expense
             </Button>
           </CardContent>
@@ -246,7 +292,7 @@ export default function ExpensesPage() {
               <Table>
                 <TableBody>
                   {dayExpenses.map((e) => (
-                    <TableRow key={e.id}>
+                    <TableRow key={e.id} className="cursor-pointer" onClick={() => openEditExpense(e)}>
                       <TableCell className="pl-4">
                         <p className="text-sm font-medium">{e.description || e.category || 'Expense'}</p>
                         {e.category && e.description && <p className="text-xs text-muted-foreground">{e.category}</p>}
@@ -267,9 +313,9 @@ export default function ExpensesPage() {
       )}
 
       {/* Add Expense Dialog */}
-      <Dialog open={showAdd} onOpenChange={setShowAdd}>
+      <Dialog open={showAdd} onOpenChange={(open) => { setShowAdd(open); if (!open) setEditingExpense(null); }}>
         <DialogContent className="max-w-sm">
-          <DialogHeader><DialogTitle>Record Expense</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{editingExpense ? 'Edit Expense' : 'Record Expense'}</DialogTitle></DialogHeader>
           <div className="space-y-4">
             <div>
               <Label className="text-xs">Category</Label>
@@ -294,8 +340,8 @@ export default function ExpensesPage() {
               <Label className="text-xs">Description</Label>
               <Input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="e.g. Chai for customers, cleaning supplies" className="mt-1" />
             </div>
-            <Button onClick={addExpense} disabled={saving} className="w-full bg-gold text-black border border-gold">
-              {saving ? 'Recording...' : 'Record Expense'}
+            <Button onClick={saveExpense} disabled={saving} className="w-full bg-gold text-black border border-gold">
+              {saving ? 'Saving...' : editingExpense ? 'Update Expense' : 'Record Expense'}
             </Button>
           </div>
         </DialogContent>

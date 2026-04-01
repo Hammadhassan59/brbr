@@ -1,12 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
   Store, Users, TrendingUp, DollarSign, AlertTriangle,
-  CheckCircle, Clock, Eye, Scissors, ExternalLink,
+  CheckCircle, Clock, Eye, Scissors, ExternalLink, Loader2,
 } from 'lucide-react';
+import { supabase } from '@/lib/supabase';
 import { useAppStore } from '@/store/app-store';
 import { formatPKR, formatPKRShort } from '@/lib/utils/currency';
 import { formatPKDate } from '@/lib/utils/dates';
@@ -17,8 +18,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { DEMO_ALL_SALONS, DEMO_BRANCH } from '@/lib/demo-data';
 import type { Salon } from '@/types/database';
 
-// Mock platform-level stats
-const PLATFORM_STATS = {
+// Fallback platform-level stats (demo mode)
+const DEMO_PLATFORM_STATS = {
   totalSalons: 4,
   activeSalons: 3,
   pendingSetup: 1,
@@ -42,6 +43,81 @@ export default function AdminDashboard() {
   const router = useRouter();
   const { setSalon, setCurrentBranch, setCurrentStaff, setIsSuperAdmin } = useAppStore();
 
+  const [salons, setSalons] = useState<Salon[]>(DEMO_ALL_SALONS);
+  const [loading, setLoading] = useState(true);
+  const [platformStats, setPlatformStats] = useState(DEMO_PLATFORM_STATS);
+
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        // Fetch salons
+        const { data: salonData, error: salonErr } = await supabase
+          .from('salons')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        if (salonErr) throw salonErr;
+
+        const liveSalons = (salonData && salonData.length > 0) ? salonData as Salon[] : DEMO_ALL_SALONS;
+        setSalons(liveSalons);
+
+        // Calculate stats from real data
+        const activeSalons = liveSalons.filter((s) => s.setup_complete).length;
+        const pendingSetup = liveSalons.length - activeSalons;
+
+        // Fetch monthly revenue from bills
+        const monthStart = new Date();
+        monthStart.setDate(1);
+        monthStart.setHours(0, 0, 0, 0);
+        const { data: billData } = await supabase
+          .from('bills')
+          .select('total_amount')
+          .gte('created_at', monthStart.toISOString());
+
+        const monthlyRevenue = billData && billData.length > 0
+          ? billData.reduce((sum: number, b: { total_amount: number }) => sum + (b.total_amount || 0), 0)
+          : DEMO_PLATFORM_STATS.monthlyRevenue;
+        const monthlyBills = billData && billData.length > 0 ? billData.length : DEMO_PLATFORM_STATS.monthlyBills;
+
+        // Fetch staff count
+        const { count: staffCount } = await supabase
+          .from('staff')
+          .select('*', { count: 'exact', head: true });
+
+        // Fetch client count
+        const { count: clientCount } = await supabase
+          .from('clients')
+          .select('*', { count: 'exact', head: true });
+
+        // Find top city
+        const cityCounts: Record<string, number> = {};
+        liveSalons.forEach((s) => { const city = s.city || 'Unknown'; cityCounts[city] = (cityCounts[city] || 0) + 1; });
+        const topCity = Object.entries(cityCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || DEMO_PLATFORM_STATS.topCity;
+
+        setPlatformStats({
+          totalSalons: liveSalons.length,
+          activeSalons,
+          pendingSetup,
+          totalStaff: staffCount ?? DEMO_PLATFORM_STATS.totalStaff,
+          totalClients: clientCount ?? DEMO_PLATFORM_STATS.totalClients,
+          monthlyRevenue,
+          monthlyBills,
+          trialSalons: pendingSetup, // approximate: pending ~ trial
+          paidSalons: activeSalons,
+          churnedSalons: 0,
+          topCity,
+        });
+      } catch {
+        // Fall back to demo data on any error
+        setSalons(DEMO_ALL_SALONS);
+        setPlatformStats(DEMO_PLATFORM_STATS);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchData();
+  }, []);
+
   function enterSalon(salon: Salon) {
     setSalon(salon);
     setCurrentBranch(DEMO_BRANCH); // In real app, fetch the salon's main branch
@@ -49,15 +125,23 @@ export default function AdminDashboard() {
     router.push('/dashboard');
   }
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Platform KPIs */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {[
-          { label: 'Total Salons', value: String(PLATFORM_STATS.totalSalons), sub: `${PLATFORM_STATS.activeSalons} active`, icon: Store, color: 'text-blue-600', bg: 'bg-blue-500/10' },
-          { label: 'Platform Revenue', value: formatPKRShort(PLATFORM_STATS.monthlyRevenue), sub: `${PLATFORM_STATS.monthlyBills} bills this month`, icon: DollarSign, color: 'text-green-600', bg: 'bg-green-500/10' },
-          { label: 'Total Clients', value: String(PLATFORM_STATS.totalClients), sub: 'Across all salons', icon: Users, color: 'text-purple-600', bg: 'bg-purple-500/10' },
-          { label: 'Total Staff', value: String(PLATFORM_STATS.totalStaff), sub: `Top city: ${PLATFORM_STATS.topCity}`, icon: TrendingUp, color: 'text-amber-600', bg: 'bg-amber-500/10' },
+          { label: 'Total Salons', value: String(platformStats.totalSalons), sub: `${platformStats.activeSalons} active`, icon: Store, color: 'text-blue-600', bg: 'bg-blue-500/10' },
+          { label: 'Platform Revenue', value: formatPKRShort(platformStats.monthlyRevenue), sub: `${platformStats.monthlyBills} bills this month`, icon: DollarSign, color: 'text-green-600', bg: 'bg-green-500/10' },
+          { label: 'Total Clients', value: String(platformStats.totalClients), sub: 'Across all salons', icon: Users, color: 'text-purple-600', bg: 'bg-purple-500/10' },
+          { label: 'Total Staff', value: String(platformStats.totalStaff), sub: `Top city: ${platformStats.topCity}`, icon: TrendingUp, color: 'text-amber-600', bg: 'bg-amber-500/10' },
         ].map((c) => (
           <Card key={c.label}>
             <CardContent className="p-4">
@@ -79,21 +163,21 @@ export default function AdminDashboard() {
         <Card className="border-green-500/20 bg-green-500/10">
           <CardContent className="p-4 text-center">
             <CheckCircle className="w-5 h-5 text-green-600 mx-auto mb-1" />
-            <p className="text-2xl font-bold text-green-600">{PLATFORM_STATS.paidSalons}</p>
+            <p className="text-2xl font-bold text-green-600">{platformStats.paidSalons}</p>
             <p className="text-xs text-green-600">Paid Subscriptions</p>
           </CardContent>
         </Card>
         <Card className="border-amber-500/20 bg-amber-500/10">
           <CardContent className="p-4 text-center">
             <Clock className="w-5 h-5 text-amber-600 mx-auto mb-1" />
-            <p className="text-2xl font-bold text-amber-600">{PLATFORM_STATS.trialSalons}</p>
+            <p className="text-2xl font-bold text-amber-600">{platformStats.trialSalons}</p>
             <p className="text-xs text-amber-600">On Trial</p>
           </CardContent>
         </Card>
         <Card className="border-orange-500/20 bg-orange-500/10">
           <CardContent className="p-4 text-center">
             <AlertTriangle className="w-5 h-5 text-orange-600 mx-auto mb-1" />
-            <p className="text-2xl font-bold text-orange-600">{PLATFORM_STATS.pendingSetup}</p>
+            <p className="text-2xl font-bold text-orange-600">{platformStats.pendingSetup}</p>
             <p className="text-xs text-orange-600">Pending Setup</p>
           </CardContent>
         </Card>
@@ -103,7 +187,7 @@ export default function AdminDashboard() {
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-sm flex items-center gap-2">
-            <Store className="w-4 h-4" /> All Salons ({DEMO_ALL_SALONS.length})
+            <Store className="w-4 h-4" /> All Salons ({salons.length})
           </CardTitle>
         </CardHeader>
         <CardContent className="px-0">
@@ -119,11 +203,10 @@ export default function AdminDashboard() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {DEMO_ALL_SALONS.map((salon) => {
+              {salons.map((salon) => {
                 const type = TYPE_BADGE[salon.type] || TYPE_BADGE.unisex;
                 const isComplete = salon.setup_complete;
-                // Mock revenue per salon
-                const revenue = salon.name === 'Glamour Studio' ? 524000 : salon.name === 'Royal Barbers' ? 412000 : salon.name === 'Noor Beauty Lounge' ? 348500 : 0;
+                const revenue = 0; // Revenue per salon requires per-salon aggregation — shown in analytics
                 return (
                   <TableRow key={salon.id}>
                     <TableCell className="pl-4">

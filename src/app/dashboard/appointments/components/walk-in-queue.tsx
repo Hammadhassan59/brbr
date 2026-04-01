@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import toast from 'react-hot-toast';
 
 interface WalkInEntry {
   id: string;
@@ -32,6 +33,10 @@ export function WalkInQueue({ queue, onAddWalkIn, onAssign, onRemove }: WalkInQu
   const [stylist, setStylist] = useState('');
 
   function handleAdd() {
+    if (!services.trim()) {
+      toast.error('Please enter at least one service');
+      return;
+    }
     onAddWalkIn({ clientName: name || 'Guest', services, preferredStylist: stylist });
     setName('');
     setServices('');

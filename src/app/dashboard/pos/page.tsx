@@ -9,9 +9,11 @@ import { formatPKR } from '@/lib/utils/currency';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { BillBuilder, type BillLineItem } from './components/bill-builder';
 import { PaymentPanel, type SplitPaymentEntry } from './components/payment-panel';
 import { CheckoutConfirmation } from './components/checkout-confirmation';
+import { generateBillNumber } from '@/lib/db';
 import toast from 'react-hot-toast';
 import type { Client, Staff, Service, Product, PaymentMethod, AppointmentWithDetails, Package as PkgType } from '@/types/database';
 
@@ -38,6 +40,9 @@ function POSContent() {
   const [clientSearch, setClientSearch] = useState('');
   const [clientResults, setClientResults] = useState<Client[]>([]);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
+  const [showNewClient, setShowNewClient] = useState(false);
+  const [newClientName, setNewClientName] = useState('');
+  const [newClientPhone, setNewClientPhone] = useState('');
 
   // Stylist selection
   const [selectedStaffId, setSelectedStaffId] = useState('');
@@ -66,6 +71,7 @@ function POSContent() {
   // Checkout
   const [showCheckout, setShowCheckout] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   // Calculations
   const subtotal = items.reduce((sum, i) => sum + i.totalPrice, 0);
@@ -94,6 +100,7 @@ function POSContent() {
       if (prodRes.data) setProducts(prodRes.data as Product[]);
       if (pkgRes.data) setPackages(pkgRes.data as PkgType[]);
       if (staffRes.data) setStylists(staffRes.data as Staff[]);
+      setLoading(false);
     }
     load();
   }, [salon, currentBranch]);
@@ -101,8 +108,10 @@ function POSContent() {
   // Generate bill number
   useEffect(() => {
     if (!currentBranch) return;
-    const today = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-    setBillNumber(`BB-${today}-${String(Math.floor(Math.random() * 900) + 100)}`);
+    generateBillNumber(currentBranch.id).then(setBillNumber).catch(() => {
+      const today = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+      setBillNumber(`BB-${today}-001`);
+    });
   }, [currentBranch]);
 
   // Pre-fill from appointment
@@ -146,10 +155,31 @@ function POSContent() {
       .from('clients')
       .select('*')
       .eq('salon_id', salon.id)
-      .or(`name.ilike.%${query}%,phone.ilike.%${query}%`)
+      .or(`name.ilike.%${query.replace(/[%_.,()]/g, '').trim().slice(0, 100)}%,phone.ilike.%${query.replace(/[%_.,()]/g, '').trim().slice(0, 100)}%`)
       .limit(10);
     if (data) setClientResults(data as Client[]);
   }, [salon]);
+
+  async function createNewClient() {
+    if (!salon || !newClientName.trim()) { toast.error('Client name is required'); return; }
+    try {
+      const { data, error } = await supabase.from('clients').insert({
+        salon_id: salon.id,
+        name: newClientName.trim(),
+        phone: newClientPhone.trim() || null,
+      }).select().single();
+      if (error) throw error;
+      setSelectedClient(data as Client);
+      setClientSearch('');
+      setClientResults([]);
+      setShowNewClient(false);
+      setNewClientName('');
+      setNewClientPhone('');
+      toast.success(`Client "${data.name}" created`);
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Failed to create client');
+    }
+  }
 
   useEffect(() => {
     const timer = setTimeout(() => searchClients(clientSearch), 300);
@@ -253,6 +283,8 @@ function POSContent() {
     if (!salon || !currentBranch) return;
     setSaving(true);
 
+    let createdBillId: string | null = null;
+
     try {
       const actualMethod = isSplit ? 'split' : paymentMethod;
       const pointsEarned = Math.floor(total / 100) * 10; // 10 pts per Rs100
@@ -286,80 +318,98 @@ function POSContent() {
         .single();
       if (billErr) throw billErr;
 
-      // Create bill items
-      const { error: itemsErr } = await supabase.from('bill_items').insert(
-        items.map((i) => ({
-          bill_id: bill.id,
-          item_type: i.type,
-          service_id: i.serviceId || null,
-          product_id: i.productId || null,
-          name: i.name,
-          quantity: i.quantity,
-          unit_price: i.unitPrice,
-          total_price: i.totalPrice,
-        }))
-      );
-      if (itemsErr) throw itemsErr;
+      createdBillId = bill.id;
 
-      // Update client stats
-      if (selectedClient) {
-        await supabase.from('clients').update({
-          loyalty_points: selectedClient.loyalty_points - loyaltyPointsUsed + pointsEarned,
-          total_visits: selectedClient.total_visits + 1,
-          total_spent: selectedClient.total_spent + total,
-          udhaar_balance: actualMethod === 'udhaar'
-            ? selectedClient.udhaar_balance + total
-            : selectedClient.udhaar_balance,
-        }).eq('id', selectedClient.id);
-      }
+      try {
+        // Create bill items
+        const { error: itemsErr } = await supabase.from('bill_items').insert(
+          items.map((i) => ({
+            bill_id: bill.id,
+            item_type: i.type,
+            service_id: i.serviceId || null,
+            product_id: i.productId || null,
+            name: i.name,
+            quantity: i.quantity,
+            unit_price: i.unitPrice,
+            total_price: i.totalPrice,
+          }))
+        );
+        if (itemsErr) throw itemsErr;
 
-      // Record tip
-      if (tipAmount > 0 && tipStaffId) {
-        await supabase.from('tips').insert({
-          staff_id: tipStaffId,
-          bill_id: bill.id,
-          amount: tipAmount,
-        });
-      }
-
-      // Update cash drawer
-      if (actualMethod === 'cash' || (isSplit && splitPayments.some((s) => s.method === 'cash'))) {
-        const cashAmount = isSplit
-          ? splitPayments.filter((s) => s.method === 'cash').reduce((sum, s) => sum + s.amount, 0)
-          : total;
-        const today = new Date().toISOString().slice(0, 10);
-        const { data: drawer } = await supabase
-          .from('cash_drawers')
-          .select('*')
-          .eq('branch_id', currentBranch.id)
-          .eq('date', today)
-          .single();
-        if (drawer) {
-          await supabase.from('cash_drawers').update({
-            total_cash_sales: (drawer.total_cash_sales || 0) + cashAmount,
-          }).eq('id', drawer.id);
+        // Update client stats
+        if (selectedClient) {
+          await supabase.from('clients').update({
+            loyalty_points: selectedClient.loyalty_points - loyaltyPointsUsed + pointsEarned,
+            total_visits: selectedClient.total_visits + 1,
+            total_spent: selectedClient.total_spent + total,
+            udhaar_balance: actualMethod === 'udhaar'
+              ? selectedClient.udhaar_balance + total
+              : selectedClient.udhaar_balance,
+          }).eq('id', selectedClient.id);
         }
-      }
 
-      // Update appointment status
-      if (appointmentId) {
-        await supabase.from('appointments').update({ status: 'done' }).eq('id', appointmentId);
-      }
+        // Record tip
+        if (tipAmount > 0 && tipStaffId) {
+          await supabase.from('tips').insert({
+            staff_id: tipStaffId,
+            bill_id: bill.id,
+            amount: tipAmount,
+          });
+        }
 
-      // Update promo used_count
-      if (promoCode) {
-        try {
-          const { data: promo } = await supabase
-            .from('promo_codes')
-            .select('used_count')
-            .eq('code', promoCode)
+        // Update cash drawer
+        if (actualMethod === 'cash' || (isSplit && splitPayments.some((s) => s.method === 'cash'))) {
+          const cashAmount = isSplit
+            ? splitPayments.filter((s) => s.method === 'cash').reduce((sum, s) => sum + s.amount, 0)
+            : total;
+          const today = new Date().toISOString().slice(0, 10);
+          const { data: drawer } = await supabase
+            .from('cash_drawers')
+            .select('*')
+            .eq('branch_id', currentBranch.id)
+            .eq('date', today)
             .single();
-          if (promo) {
-            await supabase.from('promo_codes')
-              .update({ used_count: (promo.used_count || 0) + 1 })
-              .eq('code', promoCode);
+          if (drawer) {
+            await supabase.from('cash_drawers').update({
+              total_cash_sales: (drawer.total_cash_sales || 0) + cashAmount,
+            }).eq('id', drawer.id);
           }
-        } catch { /* promo update is non-critical */ }
+        }
+
+        // Update appointment status
+        if (appointmentId) {
+          await supabase.from('appointments').update({ status: 'done' }).eq('id', appointmentId);
+        }
+
+        // Update promo used_count
+        if (promoCode) {
+          try {
+            const { data: promo } = await supabase
+              .from('promo_codes')
+              .select('used_count')
+              .eq('code', promoCode)
+              .single();
+            if (promo) {
+              await supabase.from('promo_codes')
+                .update({ used_count: (promo.used_count || 0) + 1 })
+                .eq('code', promoCode);
+            }
+          } catch { /* promo update is non-critical */ }
+        }
+      } catch (postBillErr: unknown) {
+        // A step after bill creation failed — attempt cleanup
+        console.error('Post-bill operation failed, attempting cleanup:', postBillErr);
+        try {
+          await supabase.from('bill_items').delete().eq('bill_id', bill.id);
+          await supabase.from('tips').delete().eq('bill_id', bill.id);
+          await supabase.from('bills').delete().eq('id', bill.id);
+        } catch (cleanupErr) {
+          console.error('Bill cleanup failed — manual review needed:', cleanupErr);
+        }
+        throw new Error(
+          `Checkout partially failed — bill ${billNumber} may need manual review. ` +
+          (postBillErr instanceof Error ? postBillErr.message : 'Unknown error')
+        );
       }
 
       toast.success(`Bill paid — ${formatPKR(total)}`);
@@ -382,8 +432,10 @@ function POSContent() {
       setTipAmount(0);
       setAppointmentId(null);
       // Generate new bill number
-      const today2 = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-      setBillNumber(`BB-${today2}-${String(Math.floor(Math.random() * 900) + 100)}`);
+      generateBillNumber(currentBranch.id).then(setBillNumber).catch(() => {
+        const today2 = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+        setBillNumber(`BB-${today2}-001`);
+      });
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Checkout failed');
     } finally {
@@ -395,10 +447,21 @@ function POSContent() {
 
   return (
     <div className="h-[calc(100vh-3.5rem)] flex flex-col lg:flex-row gap-0 -m-4 lg:-m-6">
-      {/* Left panel: Bill Builder */}
-      <div className="flex-1 lg:w-[60%] flex flex-col border-r p-4 overflow-hidden">
+      {loading && (
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center">
+            <div className="w-12 h-12 rounded-full bg-gold/10 flex items-center justify-center mx-auto mb-3 shimmer">
+              <span className="text-gold font-bold">POS</span>
+            </div>
+            <p className="text-sm text-muted-foreground">Loading services...</p>
+          </div>
+        </div>
+      )}
+      {!loading && (<>
+      {/* Left + Center: Catalog + Bill */}
+      <div className="flex-1 flex flex-col overflow-hidden">
         {/* Header */}
-        <div className="flex items-center gap-2 mb-3">
+        <div className="flex items-center gap-2 px-3 py-2 border-b shrink-0">
           <Button variant="ghost" size="sm" onClick={() => router.push('/dashboard')}>
             <ArrowLeft className="w-4 h-4" />
           </Button>
@@ -433,32 +496,75 @@ function POSContent() {
                       {c.name} <span className="text-muted-foreground">{c.phone}</span>
                     </button>
                   ))}
-                  <button
-                    onClick={() => { setClientSearch(''); setClientResults([]); }}
-                    className="w-full text-left px-3 py-1.5 hover:bg-secondary text-sm text-gold border-t"
-                  >
-                    <UserPlus className="w-3 h-3 inline mr-1" /> Walk-in Guest
-                  </button>
+                  <div className="border-t">
+                    {!showNewClient ? (
+                      <div className="flex">
+                        <button
+                          onClick={() => { setClientSearch(''); setClientResults([]); }}
+                          className="flex-1 text-left px-3 py-1.5 hover:bg-secondary text-sm text-muted-foreground"
+                        >
+                          Walk-in Guest
+                        </button>
+                        <button
+                          onClick={() => { setShowNewClient(true); setNewClientName(clientSearch); }}
+                          className="px-3 py-1.5 hover:bg-secondary text-sm text-gold font-medium"
+                        >
+                          <UserPlus className="w-3 h-3 inline mr-1" /> New Client
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="p-2 space-y-1.5">
+                        <Input
+                          value={newClientName}
+                          onChange={(e) => setNewClientName(e.target.value)}
+                          placeholder="Client name *"
+                          className="h-7 text-xs"
+                          autoFocus
+                        />
+                        <Input
+                          value={newClientPhone}
+                          onChange={(e) => setNewClientPhone(e.target.value)}
+                          placeholder="Phone (optional)"
+                          className="h-7 text-xs"
+                        />
+                        <div className="flex gap-1.5">
+                          <Button variant="outline" size="sm" className="flex-1 h-7 text-xs" onClick={() => setShowNewClient(false)}>
+                            Cancel
+                          </Button>
+                          <Button size="sm" className="flex-1 h-7 text-xs bg-gold text-black border border-gold" onClick={createNewClient}>
+                            Save
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
           )}
 
           {/* Stylist */}
-          <select
-            value={selectedStaffId}
-            onChange={(e) => { setSelectedStaffId(e.target.value); if (!tipStaffId) setTipStaffId(e.target.value); }}
-            className="h-8 rounded-md border bg-background px-2 text-xs w-[130px]"
-          >
-            <option value="">Stylist</option>
-            {stylists.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-          </select>
+          <Select value={selectedStaffId} onValueChange={(v) => { if (v) { setSelectedStaffId(v); if (!tipStaffId) setTipStaffId(v); } }}>
+            <SelectTrigger className="h-8 text-xs w-[140px]">
+              <SelectValue placeholder="Stylist" />
+            </SelectTrigger>
+            <SelectContent>
+              {stylists.map((s) => (
+                <SelectItem key={s.id} value={s.id}>
+                  <span className="flex items-center gap-1.5">
+                    <span className="w-5 h-5 rounded-full bg-gold/20 text-gold text-[10px] font-bold flex items-center justify-center shrink-0">{s.name.charAt(0)}</span>
+                    {s.name}
+                  </span>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
           <span className="text-[10px] text-muted-foreground font-mono hidden sm:block">{billNumber}</span>
         </div>
 
-        {/* Bill builder */}
-        <div className="flex-1 overflow-hidden">
+        {/* Bill builder — two-column: catalog | bill */}
+        <div className="flex-1 overflow-hidden border-r">
           <BillBuilder
             services={services}
             products={products}
@@ -488,7 +594,7 @@ function POSContent() {
       </div>
 
       {/* Right panel: Payment */}
-      <div className="lg:w-[40%] p-4 bg-card flex flex-col overflow-y-auto">
+      <div className="w-[320px] shrink-0 p-4 bg-card flex flex-col overflow-y-auto border-l">
         <PaymentPanel
           total={total}
           clientUdhaarBalance={selectedClient?.udhaar_balance || 0}
@@ -513,6 +619,7 @@ function POSContent() {
           saving={saving}
         />
       </div>
+      </>)}
 
       {/* Checkout confirmation */}
       <CheckoutConfirmation

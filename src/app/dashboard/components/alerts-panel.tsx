@@ -40,7 +40,7 @@ export function AlertsPanel({ alerts, loading }: AlertsPanelProps) {
         {loading ? (
           <div className="space-y-3">
             {[1, 2].map((i) => (
-              <div key={i} className="h-12 bg-muted rounded animate-pulse" />
+              <div key={i} className="h-12 shimmer" />
             ))}
           </div>
         ) : alerts.length === 0 ? (
@@ -48,13 +48,13 @@ export function AlertsPanel({ alerts, loading }: AlertsPanelProps) {
             No alerts today
           </p>
         ) : (
-          <div className="space-y-2">
+          <div className="space-y-2 stagger-children">
             {alerts.map((alert, i) => {
               const style = ALERT_ICONS[alert.type];
               return (
                 <div
                   key={i}
-                  className={`flex items-center gap-3 p-3 rounded-lg ${style.bg}`}
+                  className={`flex items-center gap-3 p-3 rounded-lg ${style.bg} animate-fade-up`}
                 >
                   <div className={`w-8 h-8 rounded-full bg-white/10 flex items-center justify-center shrink-0`}>
                     <style.icon className={`w-4 h-4 ${style.color}`} />

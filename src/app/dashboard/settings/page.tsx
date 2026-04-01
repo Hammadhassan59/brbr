@@ -69,10 +69,20 @@ export default function SettingsPage() {
   const [privacyMode, setPrivacyMode] = useState(false);
 
   // Dark mode
-  const [darkMode, setDarkMode] = useState(false);
+  const [darkMode, setDarkMode] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('brbr-dark-mode') === 'true';
+    }
+    return false;
+  });
 
   // Screen wake lock
-  const [keepAwake, setKeepAwake] = useState(false);
+  const [keepAwake, setKeepAwake] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('brbr-keep-awake') === 'true';
+    }
+    return false;
+  });
 
   const fetchData = useCallback(async () => {
     if (!salon) return;
@@ -92,6 +102,12 @@ export default function SettingsPage() {
     setGstNumber(salon.gst_number || '');
     setGstRate(String(salon.gst_rate || ''));
     setPrayerBlockEnabled(salon.prayer_block_enabled);
+    setJazzcashNumber(salon.jazzcash_number || '');
+    setEasypaisaNumber(salon.easypaisa_number || '');
+    setBankName(salon.bank_name || '');
+    setBankAccount(salon.bank_account || '');
+    setBankTitle(salon.bank_title || '');
+    setPrivacyMode(salon.privacy_mode || false);
 
     if (branchRes.data) {
       setBranches(branchRes.data as Branch[]);
@@ -114,10 +130,12 @@ export default function SettingsPage() {
   useEffect(() => {
     if (darkMode) document.documentElement.classList.add('dark');
     else document.documentElement.classList.remove('dark');
+    localStorage.setItem('brbr-dark-mode', String(darkMode));
   }, [darkMode]);
 
-  // Screen wake lock
+  // Screen wake lock — persist to localStorage
   useEffect(() => {
+    localStorage.setItem('brbr-keep-awake', String(keepAwake));
     let wakeLock: WakeLockSentinel | null = null;
     if (keepAwake && 'wakeLock' in navigator) {
       (navigator as Navigator & { wakeLock: { request: (type: string) => Promise<WakeLockSentinel> } }).wakeLock.request('screen').then((wl) => { wakeLock = wl; }).catch(() => {});
@@ -127,12 +145,14 @@ export default function SettingsPage() {
 
   async function saveSalonProfile() {
     if (!salon) return;
+    if (!salonName.trim()) { toast.error('Salon name is required'); return; }
     setSaving(true);
     try {
       const { data, error } = await supabase.from('salons').update({
-        name: salonName, type: salonType, city, address, phone, whatsapp,
+        name: salonName.trim(), type: salonType, city, address, phone, whatsapp,
         gst_enabled: gstEnabled, gst_number: gstNumber || null, gst_rate: Number(gstRate) || 0,
         prayer_block_enabled: prayerBlockEnabled,
+        privacy_mode: privacyMode,
       }).eq('id', salon.id).select().single();
       if (error) throw error;
       setSalon(data as Salon);
@@ -149,10 +169,34 @@ export default function SettingsPage() {
       DAYS.forEach((d) => {
         wh[d] = { open: hours[d]?.open || '09:00', close: hours[d]?.close || '21:00', off: hours[d]?.off || false, ...(d === 'fri' ? { jummah_break: jummahBreak } : {}) };
       });
-      const { data, error } = await supabase.from('branches').update({ working_hours: wh }).eq('id', currentBranch.id).select().single();
-      if (error) throw error;
-      setCurrentBranch(data as Branch);
+      // Save branch working hours + salon-level prayer block setting in parallel
+      const [branchRes, salonRes] = await Promise.all([
+        supabase.from('branches').update({ working_hours: wh }).eq('id', currentBranch.id).select().single(),
+        salon ? supabase.from('salons').update({ prayer_block_enabled: prayerBlockEnabled }).eq('id', salon.id).select().single() : Promise.resolve({ data: null, error: null }),
+      ]);
+      if (branchRes.error) throw branchRes.error;
+      if (salonRes.error) throw salonRes.error;
+      setCurrentBranch(branchRes.data as Branch);
+      if (salonRes.data) setSalon(salonRes.data as Salon);
       toast.success('Working hours saved');
+    } catch (err: unknown) { toast.error(err instanceof Error ? err.message : 'Failed'); }
+    finally { setSaving(false); }
+  }
+
+  async function savePaymentSettings() {
+    if (!salon) return;
+    setSaving(true);
+    try {
+      const { data, error } = await supabase.from('salons').update({
+        jazzcash_number: jazzcashNumber || null,
+        easypaisa_number: easypaisaNumber || null,
+        bank_name: bankName || null,
+        bank_account: bankAccount || null,
+        bank_title: bankTitle || null,
+      }).eq('id', salon.id).select().single();
+      if (error) throw error;
+      setSalon(data as Salon);
+      toast.success('Payment settings saved');
     } catch (err: unknown) { toast.error(err instanceof Error ? err.message : 'Failed'); }
     finally { setSaving(false); }
   }
@@ -281,7 +325,7 @@ export default function SettingsPage() {
               <div><Label className="text-xs">Account Title</Label><Input value={bankTitle} onChange={(e) => setBankTitle(e.target.value)} className="mt-1" /></div>
             </div>
           </CardContent></Card>
-          <Button onClick={() => toast.success('Payment settings saved')} className="bg-gold text-black border border-gold">Save Payment Settings</Button>
+          <Button onClick={savePaymentSettings} disabled={saving} className="bg-gold text-black border border-gold">{saving ? 'Saving...' : 'Save Payment Settings'}</Button>
         </TabsContent>
 
         {/* Tax & Billing */}

@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Search, Plus, Download, MessageCircle, Tag } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { supabase } from '@/lib/supabase';
 import { useAppStore } from '@/store/app-store';
 import { Button } from '@/components/ui/button';
@@ -67,8 +68,8 @@ function ClientsContent() {
       case 'vip': return c.is_vip;
       case 'regular': return !c.is_vip && !c.is_blacklisted && c.total_visits > 0;
       case 'lapsed': {
-        // Would need last visit date; approximate with total_visits > 0
-        return c.total_visits > 0;
+        // TODO: filter by last_visit_date when available
+        return c.total_visits > 0 && c.total_spent > 0;
       }
       case 'udhaar': return c.udhaar_balance > 0;
       case 'blacklisted': return c.is_blacklisted;
@@ -165,10 +166,10 @@ function ClientsContent() {
           <Button variant="outline" size="sm" className="text-xs gap-1" onClick={exportCSV}>
             <Download className="w-3 h-3" /> Export CSV
           </Button>
-          <Button variant="outline" size="sm" className="text-xs gap-1">
+          <Button variant="outline" size="sm" className="text-xs gap-1" onClick={() => toast('Tag management coming soon')}>
             <Tag className="w-3 h-3" /> Add Tag
           </Button>
-          <Button variant="outline" size="sm" className="text-xs gap-1">
+          <Button variant="outline" size="sm" className="text-xs gap-1" onClick={() => router.push('/dashboard/whatsapp/campaigns')}>
             <MessageCircle className="w-3 h-3" /> WhatsApp
           </Button>
           <Button variant="ghost" size="sm" className="text-xs ml-auto" onClick={() => setSelectedIds(new Set())}>

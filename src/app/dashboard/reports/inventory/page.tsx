@@ -7,6 +7,7 @@ import { supabase } from '@/lib/supabase';
 import { useAppStore } from '@/store/app-store';
 import { formatPKR } from '@/lib/utils/currency';
 import { formatDateTime } from '@/lib/utils/dates';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
@@ -30,6 +31,7 @@ export default function InventoryReportPage() {
   const [dateTo, setDateTo] = useState(new Date().toISOString().slice(0, 10));
   const [movements, setMovements] = useState<(StockMovement & { product?: Product })[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
+  const [movementLimit, setMovementLimit] = useState(50);
   const [discrepancies, setDiscrepancies] = useState<Array<{
     productName: string; contentUnit: string; packagingUnit: string; contentPerUnit: number;
     expectedUsage: number; actualUsage: number; variance: number; variancePercent: number;
@@ -44,7 +46,7 @@ export default function InventoryReportPage() {
       supabase.from('stock_movements').select('*, product:products(*)').gte('created_at', `${dateFrom}T00:00:00`).lte('created_at', `${dateTo}T23:59:59`).order('created_at', { ascending: false }).limit(200),
       supabase.from('products').select('*').eq('salon_id', salon.id).eq('is_active', true),
       supabase.from('product_service_links').select('*'),
-      supabase.from('bill_items').select('*').eq('item_type', 'service'),
+      supabase.from('bill_items').select('*, bill:bills!inner(created_at)').eq('item_type', 'service').gte('bill.created_at', `${dateFrom}T00:00:00`).lte('bill.created_at', `${dateTo}T23:59:59`),
     ]);
     if (movRes.data) setMovements(movRes.data as (StockMovement & { product?: Product })[]);
     if (prodRes.data) setProducts(prodRes.data as Product[]);
@@ -266,25 +268,46 @@ export default function InventoryReportPage() {
 
       {/* Full movement log */}
       <Card>
-        <CardHeader className="pb-2"><CardTitle className="text-sm">Stock Movements Log ({movements.length})</CardTitle></CardHeader>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm">
+            Stock Movements Log ({movements.length})
+            {movements.length > movementLimit && (
+              <span className="text-muted-foreground font-normal ml-1">(showing {Math.min(movementLimit, movements.length)} of {movements.length})</span>
+            )}
+          </CardTitle>
+        </CardHeader>
         <CardContent className="px-0">
           {loading ? <div className="h-20 bg-muted rounded animate-pulse mx-4" /> : movements.length === 0 ? (
             <p className="text-center text-muted-foreground text-sm py-6">No movements in this period</p>
           ) : (
-            <Table><TableHeader><TableRow><TableHead className="pl-4">Product</TableHead><TableHead>Type</TableHead><TableHead className="text-center">Qty</TableHead><TableHead>Notes</TableHead><TableHead className="text-right pr-4">Date</TableHead></TableRow></TableHeader>
-              <TableBody>{movements.slice(0, 50).map((m) => {
-                const style = MOVE_LABELS[m.movement_type] || { label: m.movement_type, color: '' };
-                return (
-                  <TableRow key={m.id}>
-                    <TableCell className="pl-4 text-sm">{m.product?.name || '?'}</TableCell>
-                    <TableCell><Badge variant="outline" className={`text-[10px] ${style.color}`}>{style.label}</Badge></TableCell>
-                    <TableCell className="text-center text-sm">{m.quantity > 0 ? `+${m.quantity}` : m.quantity}</TableCell>
-                    <TableCell className="text-xs text-muted-foreground truncate max-w-[120px]">{m.notes || '—'}</TableCell>
-                    <TableCell className="text-right pr-4 text-xs">{formatDateTime(m.created_at)}</TableCell>
-                  </TableRow>
-                );
-              })}</TableBody>
-            </Table>
+            <>
+              <Table><TableHeader><TableRow><TableHead className="pl-4">Product</TableHead><TableHead>Type</TableHead><TableHead className="text-center">Qty</TableHead><TableHead>Notes</TableHead><TableHead className="text-right pr-4">Date</TableHead></TableRow></TableHeader>
+                <TableBody>{movements.slice(0, movementLimit).map((m) => {
+                  const style = MOVE_LABELS[m.movement_type] || { label: m.movement_type, color: '' };
+                  return (
+                    <TableRow key={m.id}>
+                      <TableCell className="pl-4 text-sm">{m.product?.name || '?'}</TableCell>
+                      <TableCell><Badge variant="outline" className={`text-[10px] ${style.color}`}>{style.label}</Badge></TableCell>
+                      <TableCell className="text-center text-sm">{m.quantity > 0 ? `+${m.quantity}` : m.quantity}</TableCell>
+                      <TableCell className="text-xs text-muted-foreground truncate max-w-[120px]">{m.notes || '—'}</TableCell>
+                      <TableCell className="text-right pr-4 text-xs">{formatDateTime(m.created_at)}</TableCell>
+                    </TableRow>
+                  );
+                })}</TableBody>
+              </Table>
+              {movements.length > movementLimit && (
+                <div className="flex justify-center py-3 border-t">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-xs"
+                    onClick={() => setMovementLimit((prev) => prev + 50)}
+                  >
+                    Show more ({movements.length - movementLimit} remaining)
+                  </Button>
+                </div>
+              )}
+            </>
           )}
         </CardContent>
       </Card>

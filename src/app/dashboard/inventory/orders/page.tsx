@@ -54,8 +54,8 @@ export default function OrdersPage() {
     if (!currentBranch || !formSupplierId || !formTotal) { toast.error('Fill required fields'); return; }
     setSaving(true);
     try {
-      const items = formItems.split('\n').filter(Boolean).map((line) => {
-        const parts = line.split(',').map((s) => s.trim());
+      const items = formItems.split('\n').filter((line) => line.trim()).map((line) => {
+        const parts = line.split('-').map((s) => s.trim());
         return { name: parts[0] || 'Item', qty: Number(parts[1]) || 1, price: Number(parts[2]) || 0 };
       });
       await supabase.from('purchase_orders').insert({
@@ -126,8 +126,8 @@ export default function OrdersPage() {
               </Select>
             </div>
             <div>
-              <Label className="text-xs">Items (one per line: name, qty, price)</Label>
-              <textarea value={formItems} onChange={(e) => setFormItems(e.target.value)} rows={4} placeholder="Keune Color, 10, 800&#10;Wella Shampoo, 5, 450"
+              <Label className="text-xs">Items (one per line: Name - Qty - Price)</Label>
+              <textarea value={formItems} onChange={(e) => setFormItems(e.target.value)} rows={4} placeholder={"Keune Color - 10 - 800\nWella Shampoo - 5 - 450\nOPI Nail Polish - 12 - 350"}
                 className="mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm" />
             </div>
             <div><Label className="text-xs">Total Amount (Rs) *</Label><Input type="number" value={formTotal} onChange={(e) => setFormTotal(e.target.value)} className="mt-1" inputMode="numeric" /></div>

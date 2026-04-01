@@ -158,13 +158,13 @@ export default function DailyReportPage() {
 
   return (
     <div className="space-y-4">
-      <Link href="/dashboard/reports" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+      <Link href="/dashboard/reports" className="no-print inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
         <ArrowLeft className="w-4 h-4" /> Back to Reports
       </Link>
 
       {/* Branch scope selector */}
       {canSeeAllBranches && (
-        <div className="flex flex-wrap gap-1.5">
+        <div className="no-print flex flex-wrap gap-1.5">
           <button
             onClick={() => setBranchScope('current')}
             className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${branchScope === 'current' ? 'bg-gold text-black' : 'bg-secondary text-muted-foreground hover:bg-secondary/80'}`}
@@ -190,7 +190,7 @@ export default function DailyReportPage() {
       )}
 
       {/* Date nav */}
-      <div className="flex items-center gap-2">
+      <div className="no-print flex items-center gap-2">
         <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => navDate(-1)}><ChevronLeft className="w-4 h-4" /></Button>
         <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="w-40 h-8" />
         <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => navDate(1)}><ChevronRight className="w-4 h-4" /></Button>
@@ -217,7 +217,7 @@ export default function DailyReportPage() {
                 <div><p className="text-xs text-muted-foreground">= Balance</p><p className="text-lg font-bold">{formatPKR((drawer.opening_balance || 0) + (drawer.total_cash_sales || 0) - totalExpenses)}</p></div>
               </div>
               {drawer.status === 'open' && isToday && (
-                <div className="flex gap-2">
+                <div className="no-print flex gap-2">
                   <Button size="sm" variant="outline" onClick={() => setShowAddExpense(true)} className="text-xs gap-1"><Plus className="w-3 h-3" /> Add Expense</Button>
                   <Button size="sm" variant="outline" onClick={closeDay} className="text-xs gap-1 ml-auto"><Lock className="w-3 h-3" /> Close Day</Button>
                 </div>

@@ -58,6 +58,17 @@
      Grey #F2F2F2 — content background
      Real Madrid Gold #FEBE10 — accent, CTAs
      Night Black #1A1A1A — text, sidebar chrome */
+
+  /* Motion tokens — POS context: snappy */
+  --ease-snappy: cubic-bezier(0.2, 0, 0, 1);
+  --ease-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-spring: cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  --duration-instant: 100ms;
+  --duration-fast: 150ms;
+  --duration-normal: 200ms;
+  --duration-slow: 300ms;
+  --duration-dramatic: 600ms;
+  --duration-landing: 800ms;
   --background: #F2F2F2;
   --foreground: #1A1A1A;
   --card: #FFFFFF;
@@ -121,6 +132,14 @@
   .rounded-full {
     border-radius: 9999px !important;
   }
+
+  /* Exception: buttons get subtle rounding */
+  button,
+  [role="button"],
+  a[class*="bg-gold"],
+  .btn {
+    border-radius: 6px !important;
+  }
 }
 
 /* Touch-friendly tap targets */
@@ -129,21 +148,117 @@
     min-width: 44px;
     min-height: 44px;
   }
+
+  /* Shimmer loading skeleton — replaces animate-pulse */
+  .shimmer {
+    background: linear-gradient(90deg, var(--muted) 25%, var(--secondary) 50%, var(--muted) 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s ease-in-out infinite;
+  }
+
+  /* Stagger children — 50ms steps (dashboard) */
+  .stagger-children > * {
+    animation-fill-mode: both;
+  }
+  .stagger-children > :nth-child(1) { animation-delay: 0ms; }
+  .stagger-children > :nth-child(2) { animation-delay: 50ms; }
+  .stagger-children > :nth-child(3) { animation-delay: 100ms; }
+  .stagger-children > :nth-child(4) { animation-delay: 150ms; }
+  .stagger-children > :nth-child(5) { animation-delay: 200ms; }
+  .stagger-children > :nth-child(6) { animation-delay: 250ms; }
+  .stagger-children > :nth-child(7) { animation-delay: 300ms; }
+  .stagger-children > :nth-child(8) { animation-delay: 350ms; }
+
+  /* Wider stagger — 100ms steps (landing page) */
+  .stagger-wide > * {
+    animation-fill-mode: both;
+  }
+  .stagger-wide > :nth-child(1) { animation-delay: 0ms; }
+  .stagger-wide > :nth-child(2) { animation-delay: 100ms; }
+  .stagger-wide > :nth-child(3) { animation-delay: 200ms; }
+  .stagger-wide > :nth-child(4) { animation-delay: 300ms; }
+  .stagger-wide > :nth-child(5) { animation-delay: 400ms; }
+  .stagger-wide > :nth-child(6) { animation-delay: 500ms; }
+
+  /* Entrance animation helper */
+  .animate-fade-up {
+    animation: fade-up var(--duration-normal) var(--ease-snappy) both;
+  }
+
+  /* Scroll-triggered reveal (progressive enhancement) */
+  .scroll-reveal {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  @supports (animation-timeline: view()) {
+    .scroll-reveal {
+      animation: fade-up var(--duration-landing) var(--ease-snappy) both;
+      animation-timeline: view();
+      animation-range: entry 5% entry 40%;
+    }
+  }
+}
+
+/* Custom keyframes */
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pin-dot-fill {
+  0% { transform: scale(0); }
+  60% { transform: scale(1.2); }
+  100% { transform: scale(1); }
+}
+
+@keyframes pulse-gold {
+  0% {
+    box-shadow: 0 0 0 0 rgba(254, 190, 16, 0.5);
+  }
+  70% {
+    box-shadow: 0 0 0 8px rgba(254, 190, 16, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(254, 190, 16, 0);
+  }
+}
+
+/* Accessibility: reduce-motion kill-switch */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 html {
   touch-action: manipulation;
 }
 
+/* ── Print styles ── */
 @media print {
   .no-print {
     display: none !important;
   }
-  .print-receipt {
-    width: 58mm;
-    margin: 0;
-    padding: 4px;
-    font-family: monospace;
-    font-size: 12px;
+  html, body {
+    margin: 0 !important;
+    padding: 0 !important;
+    background: white !important;
+  }
+  @page {
+    margin: 10mm;
   }
 }

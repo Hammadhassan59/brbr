@@ -17,6 +17,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import toast from 'react-hot-toast';
@@ -39,6 +40,30 @@ export default function ClientProfilePage() {
   const [paymentAmount, setPaymentAmount] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('cash');
   const [savingPayment, setSavingPayment] = useState(false);
+
+  // Inline notes editing
+  const [editingNotes, setEditingNotes] = useState<'notes' | 'hair_notes' | 'allergy_notes' | null>(null);
+  const [editingNotesValue, setEditingNotesValue] = useState('');
+  const [savingNotes, setSavingNotes] = useState(false);
+
+  async function saveNotes(field: 'notes' | 'hair_notes' | 'allergy_notes') {
+    if (!client) return;
+    setSavingNotes(true);
+    try {
+      const { error } = await supabase
+        .from('clients')
+        .update({ [field]: editingNotesValue })
+        .eq('id', client.id);
+      if (error) throw error;
+      setClient({ ...client, [field]: editingNotesValue });
+      setEditingNotes(null);
+      toast.success('Notes updated');
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Failed to save');
+    } finally {
+      setSavingNotes(false);
+    }
+  }
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -68,7 +93,13 @@ export default function ClientProfilePage() {
       if (billsRes.data) setBills(billsRes.data as (Bill & { items?: BillItem[]; staff_name?: string })[]);
       if (udhaarRes.data) setUdhaarPayments(udhaarRes.data as UdhaarPayment[]);
       if (pkgRes.data) setClientPackages(pkgRes.data as (ClientPackage & { package?: PkgType })[]);
-      if (statsRes.data) setStats(statsRes.data as { favourite_service: string | null; favourite_stylist: string | null; last_visit_date: string | null });
+      if (statsRes.error) {
+        console.error('get_client_stats RPC failed:', statsRes.error);
+        toast.error('Could not load client stats');
+        setStats({ favourite_service: null, favourite_stylist: null, last_visit_date: null });
+      } else if (statsRes.data) {
+        setStats(statsRes.data as { favourite_service: string | null; favourite_stylist: string | null; last_visit_date: string | null });
+      }
     } catch (err) {
       console.error('Failed to load client:', err);
     } finally {
@@ -307,24 +338,109 @@ export default function ClientProfilePage() {
 
         {/* TAB 4: Notes */}
         <TabsContent value="notes" className="mt-4 space-y-4">
-          {client.allergy_notes && (
-            <Card className="border-red-500/20 bg-red-500/10">
-              <CardContent className="p-4">
-                <h4 className="text-sm font-medium text-red-600 mb-1">Allergy / Sensitivity</h4>
-                <p className="text-sm text-red-600">{client.allergy_notes}</p>
-              </CardContent>
-            </Card>
-          )}
-          <Card>
+          <Card className={client.allergy_notes ? 'border-red-500/20 bg-red-500/10' : ''}>
             <CardContent className="p-4">
-              <h4 className="text-sm font-medium mb-1">General Notes</h4>
-              <p className="text-sm text-muted-foreground">{client.notes || 'No notes'}</p>
+              <div className="flex items-center justify-between mb-1">
+                <h4 className={`text-sm font-medium ${client.allergy_notes ? 'text-red-600' : ''}`}>Allergy / Sensitivity</h4>
+                <button
+                  onClick={() => { setEditingNotes('allergy_notes'); setEditingNotesValue(client.allergy_notes || ''); }}
+                  className="text-muted-foreground hover:text-foreground transition-colors"
+                  aria-label="Edit allergy notes"
+                >
+                  <Edit className="w-3.5 h-3.5" />
+                </button>
+              </div>
+              {editingNotes === 'allergy_notes' ? (
+                <div className="space-y-2">
+                  <Textarea
+                    value={editingNotesValue}
+                    onChange={(e) => setEditingNotesValue(e.target.value)}
+                    rows={3}
+                    className="text-sm"
+                    placeholder="e.g. Allergic to ammonia-based dyes"
+                  />
+                  <div className="flex gap-2">
+                    <Button size="sm" onClick={() => saveNotes('allergy_notes')} disabled={savingNotes} className="bg-gold text-black border border-gold text-xs h-7">
+                      {savingNotes ? 'Saving...' : 'Save'}
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => setEditingNotes(null)} className="text-xs h-7">
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <p className={`text-sm ${client.allergy_notes ? 'text-red-600' : 'text-muted-foreground'}`}>{client.allergy_notes || 'None recorded'}</p>
+              )}
             </CardContent>
           </Card>
           <Card>
             <CardContent className="p-4">
-              <h4 className="text-sm font-medium mb-1">Hair Notes</h4>
-              <p className="text-sm text-muted-foreground">{client.hair_notes || 'No hair notes'}</p>
+              <div className="flex items-center justify-between mb-1">
+                <h4 className="text-sm font-medium">General Notes</h4>
+                <button
+                  onClick={() => { setEditingNotes('notes'); setEditingNotesValue(client.notes || ''); }}
+                  className="text-muted-foreground hover:text-foreground transition-colors"
+                  aria-label="Edit general notes"
+                >
+                  <Edit className="w-3.5 h-3.5" />
+                </button>
+              </div>
+              {editingNotes === 'notes' ? (
+                <div className="space-y-2">
+                  <Textarea
+                    value={editingNotesValue}
+                    onChange={(e) => setEditingNotesValue(e.target.value)}
+                    rows={3}
+                    className="text-sm"
+                    placeholder="General notes about this client"
+                  />
+                  <div className="flex gap-2">
+                    <Button size="sm" onClick={() => saveNotes('notes')} disabled={savingNotes} className="bg-gold text-black border border-gold text-xs h-7">
+                      {savingNotes ? 'Saving...' : 'Save'}
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => setEditingNotes(null)} className="text-xs h-7">
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">{client.notes || 'No notes'}</p>
+              )}
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between mb-1">
+                <h4 className="text-sm font-medium">Hair Notes</h4>
+                <button
+                  onClick={() => { setEditingNotes('hair_notes'); setEditingNotesValue(client.hair_notes || ''); }}
+                  className="text-muted-foreground hover:text-foreground transition-colors"
+                  aria-label="Edit hair notes"
+                >
+                  <Edit className="w-3.5 h-3.5" />
+                </button>
+              </div>
+              {editingNotes === 'hair_notes' ? (
+                <div className="space-y-2">
+                  <Textarea
+                    value={editingNotesValue}
+                    onChange={(e) => setEditingNotesValue(e.target.value)}
+                    rows={3}
+                    className="text-sm"
+                    placeholder="Hair type, preferred styles, etc."
+                  />
+                  <div className="flex gap-2">
+                    <Button size="sm" onClick={() => saveNotes('hair_notes')} disabled={savingNotes} className="bg-gold text-black border border-gold text-xs h-7">
+                      {savingNotes ? 'Saving...' : 'Save'}
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => setEditingNotes(null)} className="text-xs h-7">
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">{client.hair_notes || 'No hair notes'}</p>
+              )}
             </CardContent>
           </Card>
           {stats && (

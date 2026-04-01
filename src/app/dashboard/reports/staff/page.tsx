@@ -24,8 +24,8 @@ export default function StaffReportPage() {
 
   useEffect(() => {
     if (!salon) return;
-    supabase.from('staff').select('*').eq('salon_id', salon.id).eq('is_active', true).order('name').then(({ data }) => {
-      if (data) { setStaffList(data as Staff[]); if (data.length > 0) setSelectedStaffId(data[0].id); }
+    supabase.from('staff').select('*').eq('salon_id', salon.id).eq('is_active', true).order('name').then(({ data }: { data: Staff[] | null }) => {
+      if (data) { setStaffList(data); if (data.length > 0) setSelectedStaffId(data[0].id); }
     });
   }, [salon]);
 

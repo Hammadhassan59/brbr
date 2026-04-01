@@ -8,8 +8,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import toast from 'react-hot-toast';
+import { isValidPKPhone } from '@/lib/utils/phone';
 import type { Staff, StaffRole, CommissionType } from '@/types/database';
 
 interface StaffFormProps {
@@ -39,13 +41,19 @@ export function StaffForm({ staff, onSaved }: StaffFormProps) {
   const [baseSalary, setBaseSalary] = useState(String(staff?.base_salary ?? 0));
   const [commissionType, setCommissionType] = useState<CommissionType>(staff?.commission_type || 'percentage');
   const [commissionRate, setCommissionRate] = useState(String(staff?.commission_rate ?? 0));
+  const [isActive, setIsActive] = useState(staff?.is_active ?? true);
   const [saving, setSaving] = useState(false);
 
   async function handleSave() {
     if (!salon || !currentBranch) return;
     if (!name.trim()) { toast.error('Name is required'); return; }
+    if (phone && !isValidPKPhone(phone)) { toast.error('Invalid phone format — expected 03XX-XXXXXXX'); return; }
     if (!isEditing && pin.length !== 4) { toast.error('PIN must be 4 digits'); return; }
     if (!isEditing && pin !== confirmPin) { toast.error('PINs do not match'); return; }
+    if (isEditing && pin) {
+      if (pin.length !== 4 || !/^\d{4}$/.test(pin)) { toast.error('PIN must be exactly 4 digits'); return; }
+      if (pin !== confirmPin) { toast.error('PINs do not match'); return; }
+    }
 
     setSaving(true);
     try {
@@ -60,6 +68,7 @@ export function StaffForm({ staff, onSaved }: StaffFormProps) {
         commission_type: commissionType,
         commission_rate: Number(commissionRate) || 0,
       };
+      if (isEditing) data.is_active = isActive;
       if (pin) data.pin_code = pin;
 
       if (isEditing && staff) {
@@ -148,6 +157,28 @@ export function StaffForm({ staff, onSaved }: StaffFormProps) {
           </div>
         </div>
       </section>
+
+      {isEditing && (
+        <section className="space-y-3 pt-4 border-t">
+          <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Status</h3>
+          <div className="flex items-center justify-between p-3 border rounded-lg">
+            <div>
+              <p className="text-sm font-medium">Active</p>
+              <p className="text-xs text-muted-foreground">
+                {isActive
+                  ? 'This staff member is active and visible in booking and POS.'
+                  : 'Deactivated staff won\u2019t appear in booking or POS.'}
+              </p>
+            </div>
+            <Switch checked={isActive} onCheckedChange={setIsActive} />
+          </div>
+          {!isActive && (
+            <p className="text-xs text-destructive font-medium">
+              Warning: Deactivated staff won&apos;t appear in booking or POS.
+            </p>
+          )}
+        </section>
+      )}
 
       <div className="flex gap-3 pt-4 border-t">
         <Button variant="outline" onClick={() => router.back()}>Cancel</Button>

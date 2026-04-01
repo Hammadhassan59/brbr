@@ -34,7 +34,7 @@ export function StaffPerformanceTable({ data, loading }: StaffPerformanceTablePr
         {loading ? (
           <div className="space-y-3 px-6">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="h-10 bg-muted rounded animate-pulse" />
+              <div key={i} className="h-10 shimmer" />
             ))}
           </div>
         ) : data.length === 0 ? (
@@ -49,11 +49,11 @@ export function StaffPerformanceTable({ data, loading }: StaffPerformanceTablePr
                 <TableHead className="text-right pr-6">Commission</TableHead>
               </TableRow>
             </TableHeader>
-            <TableBody>
+            <TableBody className="stagger-children">
               {data.map((staff, i) => (
                 <TableRow
                   key={staff.name}
-                  className={i === 0 ? 'bg-gold/5' : ''}
+                  className={`${i === 0 ? 'bg-gold/5' : ''} animate-fade-up`}
                 >
                   <TableCell className="pl-6 font-medium">
                     <span className="flex items-center gap-2">

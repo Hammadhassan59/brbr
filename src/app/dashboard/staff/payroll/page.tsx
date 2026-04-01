@@ -12,6 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
+import toast from 'react-hot-toast';
 import type { Staff } from '@/types/database';
 
 interface PayrollRow {
@@ -28,12 +29,13 @@ interface PayrollRow {
 }
 
 export default function PayrollPage() {
-  const { salon } = useAppStore();
+  const { salon, currentBranch, currentStaff } = useAppStore();
   const now = new Date();
   const [month, setMonth] = useState(now.getMonth() + 1);
   const [year, setYear] = useState(now.getFullYear());
   const [rows, setRows] = useState<PayrollRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [markingPaid, setMarkingPaid] = useState(false);
 
   const fetchPayroll = useCallback(async () => {
     if (!salon) return;
@@ -47,26 +49,46 @@ export default function PayrollPage() {
         .order('name');
       if (!staffData) { setLoading(false); return; }
 
-      const payrollRows: PayrollRow[] = [];
-      for (const s of staffData as Staff[]) {
-        const { data: commData } = await supabase.rpc('get_staff_monthly_commission', {
-          p_staff_id: s.id, p_month: month, p_year: year,
-        });
+      const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
+      const endDate = `${year}-${String(month).padStart(2, '0')}-${String(new Date(year, month, 0).getDate()).padStart(2, '0')}`;
+      const monthLabel = new Date(year, month - 1).toLocaleString('default', { month: 'long' });
+
+      // Fetch commission + attendance for all staff in parallel (fixes N+1)
+      const staffList = staffData as Staff[];
+      const results = await Promise.all(
+        staffList.map(async (s) => {
+          const [commRes, attRes] = await Promise.all([
+            supabase.rpc('get_staff_monthly_commission', {
+              p_staff_id: s.id, p_month: month, p_year: year,
+            }),
+            supabase
+              .from('attendance')
+              .select('status')
+              .eq('staff_id', s.id)
+              .gte('date', startDate)
+              .lte('date', endDate)
+              .in('status', ['present', 'late', 'half_day']),
+          ]);
+          return { staff: s, commData: commRes.data, attData: attRes.data };
+        })
+      );
+
+      // Check which staff already have a salary expense for this month
+      const { data: existingExpenses } = await supabase
+        .from('expenses')
+        .select('description')
+        .eq('category', 'salary')
+        .gte('date', startDate)
+        .lte('date', endDate);
+      const paidDescriptions = new Set(
+        (existingExpenses || []).map((e: { description: string | null }) => e.description)
+      );
+
+      const payrollRows: PayrollRow[] = results.map(({ staff: s, commData, attData }) => {
         const comm = commData as {
           services_count: number; total_revenue: number; commission_earned: number;
           tips_total: number; advances_total: number; late_deductions: number; net_payable: number;
         } | null;
-
-        // Count present days
-        const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
-        const endDate = `${year}-${String(month).padStart(2, '0')}-${String(new Date(year, month, 0).getDate()).padStart(2, '0')}`;
-        const { data: attData } = await supabase
-          .from('attendance')
-          .select('status')
-          .eq('staff_id', s.id)
-          .gte('date', startDate)
-          .lte('date', endDate)
-          .in('status', ['present', 'late', 'half_day']);
 
         const daysPresent = attData?.length || 0;
         const commission = comm?.commission_earned || 0;
@@ -75,12 +97,14 @@ export default function PayrollPage() {
         const advances = comm?.advances_total || 0;
         const lateDeductions = comm?.late_deductions || 0;
         const netPayable = earned - advances - lateDeductions;
+        const salaryDesc = `Salary: ${s.name} — ${monthLabel} ${year}`;
+        const paid = paidDescriptions.has(salaryDesc);
 
-        payrollRows.push({
+        return {
           staff: s, daysPresent, baseSalary: s.base_salary,
-          commission, tips, earned, advances, lateDeductions, netPayable, paid: false,
-        });
-      }
+          commission, tips, earned, advances, lateDeductions, netPayable, paid,
+        };
+      });
       setRows(payrollRows);
     } catch (err) { console.error(err); }
     finally { setLoading(false); }
@@ -90,10 +114,71 @@ export default function PayrollPage() {
 
   const totalNet = rows.reduce((sum, r) => sum + r.netPayable, 0);
 
-  function togglePaid(index: number) {
+  async function togglePaid(index: number) {
+    const row = rows[index];
+    const monthLabel = new Date(year, month - 1).toLocaleString('default', { month: 'long' });
+    const salaryDesc = `Salary: ${row.staff.name} — ${monthLabel} ${year}`;
+    const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
+    const endDate = `${year}-${String(month).padStart(2, '0')}-${String(new Date(year, month, 0).getDate()).padStart(2, '0')}`;
+
+    if (!row.paid) {
+      // Mark as paid — insert expense record
+      const { error } = await supabase.from('expenses').insert({
+        branch_id: currentBranch?.id || null,
+        category: 'salary',
+        amount: row.netPayable,
+        description: salaryDesc,
+        date: new Date().toISOString().split('T')[0],
+        created_by: currentStaff?.id || null,
+      });
+      if (error) { toast.error('Failed to save payment'); return; }
+      toast.success(`${row.staff.name} marked as paid`);
+    } else {
+      // Unmark — delete the expense record
+      const { error } = await supabase
+        .from('expenses')
+        .delete()
+        .eq('category', 'salary')
+        .eq('description', salaryDesc)
+        .gte('date', startDate)
+        .lte('date', endDate);
+      if (error) { toast.error('Failed to undo payment'); return; }
+      toast.success(`${row.staff.name} unmarked as paid`);
+    }
+
     const updated = [...rows];
     updated[index] = { ...updated[index], paid: !updated[index].paid };
     setRows(updated);
+  }
+
+  async function markAllPaid() {
+    const unpaid = rows.filter((r) => !r.paid && r.netPayable > 0);
+    if (unpaid.length === 0) { toast.success('All staff already marked as paid'); return; }
+
+    setMarkingPaid(true);
+    try {
+      const monthLabel = new Date(year, month - 1).toLocaleString('default', { month: 'long' });
+      const today = new Date().toISOString().split('T')[0];
+
+      const inserts = unpaid.map((row) => ({
+        branch_id: currentBranch?.id || null,
+        category: 'salary',
+        amount: row.netPayable,
+        description: `Salary: ${row.staff.name} — ${monthLabel} ${year}`,
+        date: today,
+        created_by: currentStaff?.id || null,
+      }));
+
+      const { error } = await supabase.from('expenses').insert(inserts);
+      if (error) throw error;
+
+      setRows(rows.map((r) => ({ ...r, paid: r.paid || r.netPayable > 0 })));
+      toast.success(`${unpaid.length} staff marked as paid`);
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Failed to mark all paid');
+    } finally {
+      setMarkingPaid(false);
+    }
   }
 
   function sendSalarySlip(row: PayrollRow) {
@@ -144,9 +229,14 @@ Thank you 🙏 — BrBr Management`;
           <SelectTrigger className="w-[90px] h-8 text-xs"><SelectValue /></SelectTrigger>
           <SelectContent>{[2024, 2025, 2026].map((y) => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}</SelectContent>
         </Select>
-        <Button variant="outline" size="sm" className="ml-auto gap-1 text-xs" onClick={exportCSV}>
-          <Download className="w-3 h-3" /> Export CSV
-        </Button>
+        <div className="ml-auto flex gap-2">
+          <Button variant="outline" size="sm" className="gap-1 text-xs" onClick={markAllPaid} disabled={markingPaid || loading}>
+            {markingPaid ? 'Saving...' : 'Mark All Paid'}
+          </Button>
+          <Button variant="outline" size="sm" className="gap-1 text-xs" onClick={exportCSV}>
+            <Download className="w-3 h-3" /> Export CSV
+          </Button>
+        </div>
       </div>
 
       {loading ? (

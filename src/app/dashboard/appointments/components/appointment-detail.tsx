@@ -1,5 +1,6 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
 import { Phone, AlertTriangle, CreditCard, MessageCircle } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { formatPKR } from '@/lib/utils/currency';
@@ -29,6 +30,7 @@ interface AppointmentDetailProps {
 }
 
 export function AppointmentDetail({ appointment, open, onClose, onUpdated }: AppointmentDetailProps) {
+  const router = useRouter();
   if (!appointment) return null;
 
   const apt = appointment;
@@ -48,7 +50,7 @@ export function AppointmentDetail({ appointment, open, onClose, onUpdated }: App
 
       if (status === 'done') {
         // Redirect to POS for checkout
-        window.location.href = `/dashboard/pos?appointment=${apt.id}`;
+        router.push(`/dashboard/pos?appointment=${apt.id}`);
       }
     } catch {
       toast.error('Failed to update status');
@@ -188,10 +190,10 @@ export function AppointmentDetail({ appointment, open, onClose, onUpdated }: App
             )}
             {apt.status !== 'done' && apt.status !== 'cancelled' && apt.status !== 'no_show' && (
               <>
-                <Button onClick={() => updateStatus('no_show')} variant="outline" className="w-full text-red-600 border-red-500/20 hover:bg-red-500/10">
+                <Button onClick={() => { if (window.confirm('Mark this appointment as no-show?')) updateStatus('no_show'); }} variant="outline" className="w-full text-red-600 border-red-500/20 hover:bg-red-500/10">
                   No Show
                 </Button>
-                <Button onClick={() => updateStatus('cancelled')} variant="outline" className="w-full text-muted-foreground">
+                <Button onClick={() => { if (window.confirm('Cancel this appointment? This cannot be undone.')) updateStatus('cancelled'); }} variant="outline" className="w-full text-muted-foreground">
                   Cancel Appointment
                 </Button>
               </>

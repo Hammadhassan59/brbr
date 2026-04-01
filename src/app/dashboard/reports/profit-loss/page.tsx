@@ -12,7 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Separator } from '@/components/ui/separator';
-import type { Bill, Expense, Staff } from '@/types/database';
+import type { Bill, BillItem, Expense, Staff } from '@/types/database';
 
 export default function ProfitLossPage() {
   const { salon, branches, currentBranch, currentStaff, isPartner } = useAppStore();
@@ -21,6 +21,7 @@ export default function ProfitLossPage() {
   const [year, setYear] = useState(now.getFullYear());
   const [loading, setLoading] = useState(true);
   const [bills, setBills] = useState<Bill[]>([]);
+  const [billItems, setBillItems] = useState<BillItem[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [staff, setStaff] = useState<Staff[]>([]);
   const [branchScope, setBranchScope] = useState<string>('all');
@@ -56,7 +57,21 @@ export default function ProfitLossPage() {
       supabase.from('staff').select('*').eq('salon_id', salon.id),
     ]);
 
-    if (billRes.data) setBills(billRes.data as Bill[]);
+    if (billRes.data) {
+      setBills(billRes.data as Bill[]);
+      // Fetch bill_items for service count (needed for flat commission calculation)
+      const billIds = (billRes.data as Bill[]).map(b => b.id);
+      if (billIds.length > 0) {
+        const { data: itemsData } = await supabase
+          .from('bill_items')
+          .select('*')
+          .in('bill_id', billIds)
+          .eq('item_type', 'service');
+        setBillItems((itemsData || []) as BillItem[]);
+      } else {
+        setBillItems([]);
+      }
+    }
     if (expRes.data) {
       if (branchScope === 'all') {
         const branchIds = new Set(branches.map(b => b.id));
@@ -97,7 +112,7 @@ export default function ProfitLossPage() {
     : staff.filter(s => s.branch_id === (branchScope === 'current' ? currentBranch?.id : branchScope));
   const totalSalaries = relevantStaff.reduce((s, st) => s + st.base_salary, 0);
 
-  // Commissions (estimate from bills)
+  // Commissions (estimate from bills, matching dashboard logic)
   let totalCommissions = 0;
   bills.forEach(b => {
     if (!b.staff_id) return;
@@ -105,8 +120,10 @@ export default function ProfitLossPage() {
     if (!st) return;
     if (st.commission_type === 'percentage') {
       totalCommissions += b.total_amount * st.commission_rate / 100;
-    } else {
-      totalCommissions += st.commission_rate;
+    } else if (st.commission_type === 'flat') {
+      // Flat commission is per-service, not per-bill
+      const servicesDone = billItems.filter(bi => bi.bill_id === b.id).length;
+      totalCommissions += servicesDone * st.commission_rate;
     }
   });
 

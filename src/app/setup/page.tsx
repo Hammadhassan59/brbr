@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { isValidPKPhone } from '@/lib/utils/phone';
 import type { SalonType, StaffRole } from '@/types/database';
 
 const CITIES = ['Lahore', 'Karachi', 'Islamabad', 'Rawalpindi', 'Faisalabad', 'Other'];
@@ -173,12 +174,19 @@ export default function SetupPage() {
 
   function handleNext() {
     if (step === 2 && !salonName) { toast.error('Salon name required'); return; }
+    if (step === 2 && phone && !isValidPKPhone(phone)) { toast.error('Invalid phone format — expected 03XX-XXXXXXX'); return; }
     if (step === 3 && ownershipType === 'multiple' && validPartners.length === 0) { toast.error('Add at least one partner with name, phone, and PIN'); return; }
-    if (step === 4) { /* hours are pre-filled */ }
-    if (step === 5) initServices();
+    if (step === 4) {
+      const invalidDay = DAYS.find(d => !hours[d].off && hours[d].close <= hours[d].open);
+      if (invalidDay) {
+        toast.error(`${DAY_LABELS[invalidDay]}: closing time must be after opening time`);
+        return;
+      }
+    }
     if (step === 6 && validStaff.length === 0) { toast.error('Add at least 1 staff member'); return; }
-    setStep(step + 1);
-    if (step === 4) initServices();
+    const nextStep = step + 1;
+    setStep(nextStep);
+    if (nextStep === 5) initServices();
   }
 
   async function handleFinish() {
@@ -296,6 +304,17 @@ export default function SetupPage() {
             <Scissors className="w-5 h-5 text-gold" />
             <span className="font-heading font-bold text-lg">BrBr</span>
             <span className="text-sm text-muted-foreground ml-auto">Step {step} of 7</span>
+            <button
+              onClick={() => {
+                if (window.confirm('Exit setup? Your progress will be lost.')) {
+                  router.push('/login');
+                }
+              }}
+              className="ml-3 text-muted-foreground hover:text-destructive transition-colors"
+              aria-label="Exit setup"
+            >
+              <X className="w-4 h-4" />
+            </button>
           </div>
           <div className="w-full bg-secondary rounded-full h-2">
             <div

@@ -29,8 +29,43 @@ const INITIAL_RULES: AutomationRule[] = [
   { id: '8', name: 'Daily Summary', trigger: 'End of day', timing: '10:00 PM', templateId: 'daily_summary', enabled: true, channels: ['whatsapp', 'email'] },
 ];
 
+const STORAGE_KEY = 'brbr_automation_rules';
+
+function loadSavedRules(): AutomationRule[] {
+  if (typeof window === 'undefined') return INITIAL_RULES;
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      const parsed = JSON.parse(saved) as Record<string, boolean>;
+      return INITIAL_RULES.map((rule) => ({
+        ...rule,
+        enabled: parsed[rule.id] !== undefined ? parsed[rule.id] : rule.enabled,
+      }));
+    }
+  } catch { /* ignore */ }
+  return INITIAL_RULES;
+}
+
+function saveRules(rules: AutomationRule[]) {
+  try {
+    const enabledMap: Record<string, boolean> = {};
+    rules.forEach((r) => { enabledMap[r.id] = r.enabled; });
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(enabledMap));
+  } catch { /* ignore */ }
+}
+
 export default function AutomationPage() {
-  const [rules] = useState<AutomationRule[]>(INITIAL_RULES);
+  const [rules, setRules] = useState<AutomationRule[]>(loadSavedRules);
+
+  function toggleRule(id: string) {
+    setRules((prev) => {
+      const updated = prev.map((r) => r.id === id ? { ...r, enabled: !r.enabled } : r);
+      saveRules(updated);
+      const rule = updated.find((r) => r.id === id);
+      toast.success(`${rule?.name} ${rule?.enabled ? 'enabled' : 'disabled'} — automation settings updated`);
+      return updated;
+    });
+  }
 
   function testRule(rule: AutomationRule) {
     const tpl = DEFAULT_TEMPLATES.find((t) => t.id === rule.templateId);
@@ -51,13 +86,17 @@ export default function AutomationPage() {
         Email automations (SendGrid) are configured by the platform admin.
       </p>
 
+      <div className="rounded-lg border border-gold/20 bg-gold/5 p-3 text-xs text-muted-foreground">
+        Automations will run when WhatsApp Business API is connected. Toggle rules on/off to configure your preferences now.
+      </div>
+
       <div className="space-y-2">
         {rules.map((rule) => {
           const tpl = DEFAULT_TEMPLATES.find((t) => t.id === rule.templateId);
           return (
             <Card key={rule.id}>
               <CardContent className="p-4 flex items-center gap-4">
-                <Switch checked={rule.enabled} disabled />
+                <Switch checked={rule.enabled} onCheckedChange={() => toggleRule(rule.id)} />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <p className="font-medium text-sm">{rule.name}</p>

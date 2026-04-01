@@ -67,6 +67,12 @@ export interface Salon {
   gst_number: string | null;
   gst_rate: number;
   prayer_block_enabled: boolean;
+  jazzcash_number: string | null;
+  easypaisa_number: string | null;
+  bank_name: string | null;
+  bank_account: string | null;
+  bank_title: string | null;
+  privacy_mode: boolean;
   setup_complete: boolean;
   owner_id: string | null;
   created_at: string;

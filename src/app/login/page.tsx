@@ -371,7 +371,7 @@ export default function LoginPage() {
 
           {/* Owner Login Form */}
           {mode === 'owner' && (
-            <form onSubmit={handleOwnerLogin} className="space-y-4">
+            <form onSubmit={handleOwnerLogin} className="space-y-4 animate-fade-up">
               <div>
                 <Label htmlFor="email">{t('email')}</Label>
                 <Input
@@ -387,7 +387,23 @@ export default function LoginPage() {
               <div>
                 <div className="flex items-center justify-between">
                   <Label htmlFor="password">{t('password')}</Label>
-                  <button type="button" className="text-xs text-gold hover:underline">
+                  <button
+                    type="button"
+                    className="text-xs text-gold hover:underline"
+                    onClick={async () => {
+                      if (!email.trim()) {
+                        toast.error('Enter your email first');
+                        return;
+                      }
+                      try {
+                        const { error } = await supabase.auth.resetPasswordForEmail(email);
+                        if (error) throw error;
+                        toast.success('Password reset email sent');
+                      } catch (err: unknown) {
+                        toast.error(err instanceof Error ? err.message : 'Failed to send reset email');
+                      }
+                    }}
+                  >
                     {t('forgotPassword')}
                   </button>
                 </div>
@@ -408,7 +424,7 @@ export default function LoginPage() {
 
           {/* Staff Login — Phone Step */}
           {mode === 'staff' && staffStep === 'phone' && (
-            <form onSubmit={handlePhoneLookup} className="space-y-4">
+            <form onSubmit={handlePhoneLookup} className="space-y-4 animate-fade-up">
               <div>
                 <Label htmlFor="phone">{t('phoneNumber')}</Label>
                 <Input
@@ -430,7 +446,7 @@ export default function LoginPage() {
 
           {/* Staff/Partner Login — PIN Step */}
           {mode === 'staff' && staffStep === 'pin' && matchedPerson && (
-            <div className="space-y-6">
+            <div className="space-y-6 animate-fade-up">
               {/* Person info */}
               <div className="text-center">
                 <div className="w-16 h-16 rounded-full flex items-center justify-center text-2xl font-bold mx-auto mb-3 bg-gold/20 text-gold">
@@ -451,9 +467,10 @@ export default function LoginPage() {
                 {[0, 1, 2, 3].map((i) => (
                   <div
                     key={i}
-                    className={`w-4 h-4 rounded-full transition-all ${
-                      pin.length > i ? 'bg-gold scale-110' : 'bg-border'
+                    className={`w-4 h-4 rounded-full ${
+                      pin.length > i ? 'bg-gold' : 'bg-border'
                     }`}
+                    style={pin.length > i ? { animation: 'pin-dot-fill 200ms cubic-bezier(0.34, 1.56, 0.64, 1) both' } : undefined}
                   />
                 ))}
               </div>
@@ -469,12 +486,12 @@ export default function LoginPage() {
                       if (key === 'del') setPin(pin.slice(0, -1));
                       else if (key) handlePinInput(key);
                     }}
-                    className={`h-16 rounded-xl text-xl font-semibold transition-all touch-target ${
+                    className={`h-16 rounded-xl text-xl font-semibold transition-all duration-100 touch-target ${
                       !key
                         ? 'invisible'
                         : key === 'del'
-                          ? 'bg-secondary text-muted-foreground hover:bg-secondary/80 text-base'
-                          : 'bg-card border border-border hover:bg-secondary active:scale-95 shadow-sm'
+                          ? 'bg-secondary text-muted-foreground hover:bg-secondary/80 active:scale-[0.92] text-base'
+                          : 'bg-card border border-border hover:bg-secondary active:scale-[0.92] active:bg-gold/10 shadow-sm'
                     }`}
                   >
                     {key === 'del' ? '←' : key}

@@ -19,7 +19,7 @@ const NAV_ITEMS = [
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { currentStaff, reset } = useAppStore();
+  const { salon, currentStaff, reset } = useAppStore();
 
   function handleLogout() {
     reset();
@@ -65,11 +65,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         {/* Quick switch to salon view */}
         <div className="px-3 py-3 border-t border-sidebar-border">
           <Link
-            href="/dashboard"
+            href={salon ? '/dashboard' : '/admin/salons'}
             className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-sidebar-foreground/50 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground transition-colors"
           >
             <Scissors className="w-4 h-4" />
-            <span>Switch to Salon View</span>
+            <span>{salon ? 'Switch to Salon View' : 'Select a Salon'}</span>
           </Link>
         </div>
 

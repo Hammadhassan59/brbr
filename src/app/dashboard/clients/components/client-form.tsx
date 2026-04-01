@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import toast from 'react-hot-toast';
+import { isValidPKPhone } from '@/lib/utils/phone';
 import type { Client } from '@/types/database';
 
 interface ClientFormProps {
@@ -38,6 +39,7 @@ export function ClientForm({ client, onSaved }: ClientFormProps) {
   async function handleSave() {
     if (!salon) return;
     if (!name.trim()) { toast.error('Name is required'); return; }
+    if (phone && !isValidPKPhone(phone)) { toast.error('Invalid phone format — expected 03XX-XXXXXXX'); return; }
 
     setSaving(true);
     try {
@@ -52,7 +54,7 @@ export function ClientForm({ client, onSaved }: ClientFormProps) {
         allergy_notes: allergyNotes || null,
         is_vip: isVip,
         is_blacklisted: isBlacklisted,
-        udhaar_limit: Number(udhaarLimit) || 5000,
+        udhaar_limit: udhaarLimit === '' ? 5000 : Number(udhaarLimit),
       };
 
       if (isEditing && client) {

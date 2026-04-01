@@ -27,12 +27,13 @@ export default function ReportsPage() {
     const today = getTodayPKT();
 
     try {
-      const [billsRes, staffRes, productsRes, clientsRes, expensesRes] = await Promise.all([
+      const [billsRes, staffRes, productsRes, clientsRes, expensesRes, staffBillsRes] = await Promise.all([
         supabase.from('bills').select('total_amount, created_at, status').eq('branch_id', currentBranch.id).eq('status', 'paid'),
         supabase.from('staff').select('name, id').eq('branch_id', currentBranch.id).eq('is_active', true),
         supabase.from('products').select('current_stock, low_stock_threshold').eq('salon_id', salon.id).eq('is_active', true),
         supabase.from('clients').select('udhaar_balance').eq('salon_id', salon.id),
         supabase.from('expenses').select('amount').eq('branch_id', currentBranch.id),
+        supabase.from('bills').select('staff_id, total_amount').eq('branch_id', currentBranch.id).eq('status', 'paid'),
       ]);
 
       const bills = (billsRes.data || []) as { total_amount: number; created_at: string; status: string }[];
@@ -50,10 +51,28 @@ export default function ReportsPage() {
       const expenses = (expensesRes.data || []) as { amount: number }[];
       const totalExpenses = expenses.reduce((s, e) => s + e.amount, 0);
 
+      // Find actual top earner by aggregating revenue per staff
+      const staffBills = (staffBillsRes.data || []) as { staff_id: string; total_amount: number }[];
+      const revenueByStaff: Record<string, number> = {};
+      staffBills.forEach((b) => {
+        if (b.staff_id) {
+          revenueByStaff[b.staff_id] = (revenueByStaff[b.staff_id] || 0) + b.total_amount;
+        }
+      });
+      let topEarner = '—';
+      let topRevenue = 0;
+      staffList.forEach((s) => {
+        const rev = revenueByStaff[s.id] || 0;
+        if (rev > topRevenue) {
+          topRevenue = rev;
+          topEarner = s.name;
+        }
+      });
+
       setData({
         daily: { revenue: todayRevenue, bills: todayBills.length },
         monthly: { revenue: totalRevenue, trend: 12 },
-        staff: { activeCount: staffList.length, topEarner: staffList[0]?.name || '—' },
+        staff: { activeCount: staffList.length, topEarner },
         inventory: { lowStock, totalProducts: products.length },
         clients: { total: clients.length, udhaarTotal },
         profitLoss: { revenue: totalRevenue, expenses: totalExpenses },

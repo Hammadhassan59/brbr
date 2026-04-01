@@ -1,11 +1,13 @@
 'use client';
 
 import Link from 'next/link';
-import { Star, AlertTriangle, Ban } from 'lucide-react';
+import { Star, AlertTriangle, Ban, MessageCircle, Pencil } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { formatPKR } from '@/lib/utils/currency';
 import { formatPKDate } from '@/lib/utils/dates';
+import { generateWhatsAppLink } from '@/lib/utils/whatsapp';
 import type { Client } from '@/types/database';
 
 interface ClientCardProps {
@@ -33,7 +35,7 @@ export function ClientCard({ client, selected, onSelect }: ClientCardProps) {
   const colorIndex = client.name.charCodeAt(0) % colors.length;
 
   return (
-    <Card className={`hover:shadow-md transition-shadow ${selected ? 'ring-2 ring-gold' : ''}`}>
+    <Card className={`group/card hover:shadow-md transition-shadow ${selected ? 'ring-2 ring-gold' : ''}`}>
       <CardContent className="p-4">
         <div className="flex items-start gap-3">
           {onSelect && (
@@ -86,6 +88,38 @@ export function ClientCard({ client, selected, onSelect }: ClientCardProps) {
               </div>
             </div>
           </Link>
+
+          {/* Quick actions — visible on hover */}
+          <div className="flex flex-col gap-1 shrink-0 opacity-0 group-hover/card:opacity-100 transition-opacity">
+            {client.phone && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  window.open(generateWhatsAppLink(client.phone!, `Hi ${client.name}!`), '_blank');
+                }}
+                title="WhatsApp"
+              >
+                <MessageCircle className="w-3.5 h-3.5 text-green-600" />
+              </Button>
+            )}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                window.location.href = `/dashboard/clients/${client.id}`;
+              }}
+              title="Edit"
+            >
+              <Pencil className="w-3.5 h-3.5 text-muted-foreground" />
+            </Button>
+          </div>
         </div>
       </CardContent>
     </Card>

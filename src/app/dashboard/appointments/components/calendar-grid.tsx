@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
-import { formatTime } from '@/lib/utils/dates';
+import { formatTime, getPrayerBlocks as getPrayerBlockTimes } from '@/lib/utils/dates';
 import { formatPKR } from '@/lib/utils/currency';
 import type { AppointmentWithDetails, Staff, AppointmentStatus, PrayerBlocks, WorkingHours } from '@/types/database';
 
@@ -45,18 +45,24 @@ function isPrayerBlock(time: string, prayerBlocks: PrayerBlocks | null, enabled:
   const [h, m] = time.split(':').map(Number);
   const mins = h * 60 + m;
 
-  // Approximate prayer times
-  const blocks: { name: string; key: keyof PrayerBlocks; start: number; end: number }[] = [
-    { name: 'Fajr', key: 'fajr', start: 300, end: 330 },
-    { name: 'Zuhr', key: 'zuhr', start: 750, end: 780 },
-    { name: 'Asr', key: 'asr', start: 930, end: 960 },
-    { name: 'Maghrib', key: 'maghrib', start: 1080, end: 1110 },
-    { name: 'Isha', key: 'isha', start: 1170, end: 1200 },
-  ];
+  // Use centralized prayer times from the dates utility
+  const prayerTimes = getPrayerBlockTimes();
+  const keyMap: Record<string, keyof PrayerBlocks> = {
+    Fajr: 'fajr', Zuhr: 'zuhr', Asr: 'asr', Maghrib: 'maghrib', Isha: 'isha',
+  };
 
-  for (const block of blocks) {
-    if (prayerBlocks[block.key] && mins >= block.start && mins < block.end) {
-      return block.name;
+  for (const prayer of prayerTimes) {
+    const key = keyMap[prayer.name];
+    // Only block prayers enabled in the branch's prayer_blocks settings
+    if (!key || !prayerBlocks[key]) continue;
+
+    const [sH, sM] = prayer.start.split(':').map(Number);
+    const [eH, eM] = prayer.end.split(':').map(Number);
+    const startMins = sH * 60 + sM;
+    const endMins = eH * 60 + eM;
+
+    if (mins >= startMins && mins < endMins) {
+      return prayer.name;
     }
   }
   return null;
@@ -231,7 +237,7 @@ export function CalendarGrid({
                     <div key={key} className="flex-1 min-w-[140px] border-r last:border-r-0">
                       <button
                         onClick={() => onSlotClick(stylist.id, time)}
-                        className="w-full h-full min-h-[48px] hover:bg-gold/5 transition-colors"
+                        className="w-full h-full min-h-[48px] hover:bg-gold/5 cursor-pointer transition-colors"
                         aria-label={`Book ${stylist.name} at ${time}`}
                       />
                     </div>

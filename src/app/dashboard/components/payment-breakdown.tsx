@@ -40,7 +40,7 @@ export function PaymentBreakdown({ summary, loading }: PaymentBreakdownProps) {
       <CardContent>
         {loading ? (
           <div className="h-[250px] flex items-center justify-center">
-            <div className="animate-pulse text-muted-foreground text-sm">Loading...</div>
+            <div className="shimmer h-full w-full" />
           </div>
         ) : data.length === 0 ? (
           <div className="h-[250px] flex items-center justify-center text-muted-foreground text-sm">
@@ -57,6 +57,9 @@ export function PaymentBreakdown({ summary, loading }: PaymentBreakdownProps) {
                 outerRadius={85}
                 paddingAngle={3}
                 dataKey="value"
+                isAnimationActive={true}
+                animationDuration={800}
+                animationBegin={300}
               >
                 {data.map((entry) => (
                   <Cell key={entry.name} fill={COLORS[entry.name] || '#555555'} />

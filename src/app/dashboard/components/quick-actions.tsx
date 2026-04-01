@@ -19,10 +19,13 @@ export function QuickActions() {
     <div className="fixed bottom-20 right-4 lg:bottom-6 lg:right-6 z-20 no-print">
       {/* Action buttons */}
       {open && (
-        <div className="flex flex-col gap-2 mb-3">
-          {actions.map((action) => (
+        <div className="flex flex-col gap-2 mb-3 stagger-children">
+          {actions.map((action, i) => (
             <Link key={action.label} href={action.href} onClick={() => setOpen(false)}>
-              <div className="flex items-center gap-2 justify-end">
+              <div
+                className="flex items-center gap-2 justify-end animate-fade-up"
+                style={{ animationDelay: `${i * 60}ms` }}
+              >
                 <span className="bg-card shadow-lg text-sm font-medium px-3 py-1.5 rounded-lg border">
                   {action.label}
                 </span>
@@ -38,7 +41,7 @@ export function QuickActions() {
       {/* FAB */}
       <Button
         onClick={() => setOpen(!open)}
-        className={`w-14 h-14 rounded-full shadow-xl transition-all ${
+        className={`w-14 h-14 rounded-full shadow-xl transition-all duration-200 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${
           open ? 'bg-foreground rotate-45' : 'bg-gold hover:bg-gold/90'
         }`}
       >

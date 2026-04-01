@@ -3,13 +3,15 @@
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Plus } from 'lucide-react';
+import { Plus, Search } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAppStore } from '@/store/app-store';
 import { formatPKR } from '@/lib/utils/currency';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { Staff, Attendance } from '@/types/database';
 
 const ROLE_COLORS: Record<string, string> = {
@@ -26,6 +28,8 @@ export default function StaffListPage() {
   const { salon, currentBranch } = useAppStore();
   const [staff, setStaff] = useState<(Staff & { todayAttendance?: Attendance; todayServices?: number; todayRevenue?: number })[]>([]);
   const [loading, setLoading] = useState(true);
+  const [roleFilter, setRoleFilter] = useState<string>('all');
+  const [searchQuery, setSearchQuery] = useState('');
 
   const fetchStaff = useCallback(async () => {
     if (!salon) return;
@@ -94,6 +98,21 @@ export default function StaffListPage() {
     return <Badge variant="secondary" className={`text-[10px] ${s.cls}`}>{s.label}</Badge>;
   }
 
+  const filteredStaff = staff.filter((s) => {
+    if (roleFilter !== 'all') {
+      if (roleFilter === 'stylists') {
+        if (s.role !== 'senior_stylist' && s.role !== 'junior_stylist') return false;
+      } else if (s.role !== roleFilter) {
+        return false;
+      }
+    }
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      if (!s.name.toLowerCase().includes(q) && !s.role.replace('_', ' ').toLowerCase().includes(q)) return false;
+    }
+    return true;
+  });
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -108,15 +127,38 @@ export default function StaffListPage() {
         </div>
       </div>
 
+      {/* Role filter + search */}
+      <div className="flex flex-wrap items-center gap-3">
+        <Tabs value={roleFilter} onValueChange={setRoleFilter}>
+          <TabsList className="h-auto gap-1">
+            <TabsTrigger value="all" className="text-xs">All</TabsTrigger>
+            <TabsTrigger value="stylists" className="text-xs">Stylists</TabsTrigger>
+            <TabsTrigger value="receptionist" className="text-xs">Receptionist</TabsTrigger>
+            <TabsTrigger value="helper" className="text-xs">Helper</TabsTrigger>
+          </TabsList>
+        </Tabs>
+        <div className="relative ml-auto">
+          <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            placeholder="Search staff..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="h-8 w-48 pl-8 text-sm"
+          />
+        </div>
+      </div>
+
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
           {[1, 2, 3, 4].map((i) => <div key={i} className="h-32 bg-muted rounded-lg animate-pulse" />)}
         </div>
-      ) : staff.length === 0 ? (
-        <p className="text-center text-muted-foreground py-16">No staff members yet</p>
+      ) : filteredStaff.length === 0 ? (
+        <p className="text-center text-muted-foreground py-16">
+          {staff.length === 0 ? 'No staff members yet' : 'No staff match your filters'}
+        </p>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-          {staff.map((s) => (
+          {filteredStaff.map((s) => (
             <Link key={s.id} href={`/dashboard/staff/${s.id}`}>
               <Card className="hover:shadow-md transition-shadow">
                 <CardContent className="p-4">

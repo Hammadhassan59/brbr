@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { ErrorBoundary } from '@/components/error-boundary';
 import {
   LayoutDashboard, CalendarDays, Users, Receipt, UserCog,
@@ -48,6 +48,7 @@ const ALL_MOBILE_NAV: NavItem[] = [
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
   const { t } = useLanguage();
   const { salon, branches, currentBranch, currentStaff, currentPartner, isPartner, isSuperAdmin, setCurrentBranch } = useAppStore();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -93,14 +94,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     <div className="h-screen flex overflow-hidden bg-background">
       {/* Mobile sidebar overlay */}
       {sidebarOpen && (
-        <div className="fixed inset-0 z-40 lg:hidden" onClick={() => setSidebarOpen(false)}>
+        <div className="fixed inset-0 z-40 lg:hidden animate-in fade-in duration-200" onClick={() => setSidebarOpen(false)}>
           <div className="absolute inset-0 bg-black/50" />
         </div>
       )}
 
       {/* Sidebar */}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 w-64 bg-sidebar text-sidebar-foreground flex flex-col transition-transform duration-300 lg:relative lg:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-50 w-64 bg-sidebar text-sidebar-foreground flex flex-col transition-transform duration-300 ease-[cubic-bezier(0.2,0,0,1)] lg:relative lg:translate-x-0 ${
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
@@ -179,12 +180,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 key={item.href}
                 href={item.href}
                 onClick={() => setSidebarOpen(false)}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors ${
+                className={`relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all duration-200 ${
                   isActive
                     ? 'bg-sidebar-accent text-sidebar-primary font-medium'
                     : 'text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground'
                 }`}
               >
+                {isActive && (
+                  <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 bg-sidebar-primary rounded-full animate-in fade-in zoom-in-50 duration-200" />
+                )}
                 <item.icon className="w-5 h-5 shrink-0" />
                 <span>{t(item.labelKey)}</span>
               </Link>
@@ -233,7 +237,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <span className="hidden sm:block text-xs text-muted-foreground">{formatPKDate(getTodayPKT())}</span>
 
             {roleAccess === 'full' && (
-              <Button variant="ghost" size="icon" className="relative touch-target">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="relative touch-target"
+                style={{ animation: 'pulse-gold 2s ease-in-out infinite' }}
+                title="View today's alerts"
+                onClick={() => router.push('/dashboard/reports/daily')}
+              >
                 <Bell className="w-5 h-5" />
               </Button>
             )}
@@ -265,12 +276,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <Link
               key={item.href}
               href={item.href}
-              className={`flex-1 flex flex-col items-center py-2 text-xs touch-target ${
-                isActive ? 'text-gold' : 'text-muted-foreground'
+              className={`relative flex-1 flex flex-col items-center py-2 text-xs touch-target transition-all duration-150 ${
+                isActive ? 'text-gold scale-105' : 'text-muted-foreground'
               }`}
             >
               <item.icon className="w-5 h-5 mb-0.5" />
               <span>{t(item.labelKey)}</span>
+              {isActive && (
+                <span className="absolute bottom-1 w-1 h-1 rounded-full bg-gold animate-in zoom-in duration-200" />
+              )}
             </Link>
           );
         })}

@@ -270,10 +270,38 @@ export default function StaffProfilePage() {
         </TabsContent>
 
         {/* Performance */}
-        <TabsContent value="performance" className="mt-4">
-          <Card><CardContent className="p-4">
-            <p className="text-center text-muted-foreground text-sm py-8">Performance metrics will be available when more data is collected.</p>
-          </CardContent></Card>
+        <TabsContent value="performance" className="mt-4 space-y-4">
+          {commissionData ? (
+            <>
+              <div className="grid grid-cols-3 gap-3">
+                <Card><CardContent className="p-3 text-center"><p className="text-lg font-bold">{commissionData.services_count}</p><p className="text-[10px] text-muted-foreground">Services</p></CardContent></Card>
+                <Card><CardContent className="p-3 text-center"><p className="text-lg font-bold">{formatPKR(commissionData.total_revenue)}</p><p className="text-[10px] text-muted-foreground">Revenue</p></CardContent></Card>
+                <Card><CardContent className="p-3 text-center"><p className="text-lg font-bold">{formatPKR(commissionData.commission_earned)}</p><p className="text-[10px] text-muted-foreground">Commission</p></CardContent></Card>
+              </div>
+              <Card><CardContent className="p-4 space-y-3">
+                <h3 className="text-sm font-medium">Monthly Summary</h3>
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <div className="flex justify-between p-2 bg-secondary/50 rounded"><span className="text-muted-foreground">Tips</span><span className="font-medium">{formatPKR(commissionData.tips_total)}</span></div>
+                  <div className="flex justify-between p-2 bg-secondary/50 rounded"><span className="text-muted-foreground">Advances</span><span className="font-medium text-red-600">{formatPKR(commissionData.advances_total)}</span></div>
+                  <div className="flex justify-between p-2 bg-secondary/50 rounded"><span className="text-muted-foreground">Late Deductions</span><span className="font-medium text-red-600">{formatPKR(commissionData.late_deductions)}</span></div>
+                  <div className="flex justify-between p-2 bg-gold/10 border border-gold/20 rounded"><span className="text-muted-foreground">Net Payable</span><span className="font-bold">{formatPKR(commissionData.net_payable)}</span></div>
+                </div>
+              </CardContent></Card>
+              <Card><CardContent className="p-4 space-y-2">
+                <h3 className="text-sm font-medium">Attendance This Month</h3>
+                <div className="grid grid-cols-4 gap-2 text-center text-sm">
+                  <div><p className="text-lg font-bold text-green-600">{attPresent}</p><p className="text-[10px] text-muted-foreground">Present</p></div>
+                  <div><p className="text-lg font-bold text-red-600">{attAbsent}</p><p className="text-[10px] text-muted-foreground">Absent</p></div>
+                  <div><p className="text-lg font-bold text-yellow-600">{attLate}</p><p className="text-[10px] text-muted-foreground">Late</p></div>
+                  <div><p className="text-lg font-bold text-blue-600">{attLeave}</p><p className="text-[10px] text-muted-foreground">Leave</p></div>
+                </div>
+              </CardContent></Card>
+            </>
+          ) : (
+            <Card><CardContent className="p-4">
+              <p className="text-center text-muted-foreground text-sm py-8">No performance data available for this month.</p>
+            </CardContent></Card>
+          )}
         </TabsContent>
       </Tabs>
 

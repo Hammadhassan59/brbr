@@ -88,13 +88,20 @@ export function PaymentPanel({
       {/* Empty state when no items */}
       {!hasItems ? (
         <div className="flex-1 flex flex-col items-center justify-center text-center px-4">
-          <div className="w-16 h-16 rounded-full bg-secondary flex items-center justify-center mb-4">
-            <Banknote className="w-7 h-7 text-muted-foreground" />
+          <div className="w-16 h-16 rounded-full bg-gold/10 flex items-center justify-center mb-4">
+            <Banknote className="w-7 h-7 text-gold" />
           </div>
-          <p className="font-heading font-semibold text-sm mb-1">No items yet</p>
-          <p className="text-xs text-muted-foreground max-w-[200px]">
-            Add services or products from the left panel to start building the bill
+          <p className="font-heading font-semibold text-sm mb-1">Ready for checkout</p>
+          <p className="text-xs text-muted-foreground max-w-[220px] mb-6">
+            Select services from the left panel to start building the bill
           </p>
+          <div className="w-full max-w-[200px] space-y-2 text-[11px] text-muted-foreground">
+            <p className="font-semibold text-foreground text-xs mb-1">Keyboard shortcuts</p>
+            <div className="flex justify-between"><span>Cash payment</span><kbd className="px-1.5 py-0.5 bg-secondary border text-[10px] font-mono">C</kbd></div>
+            <div className="flex justify-between"><span>JazzCash</span><kbd className="px-1.5 py-0.5 bg-secondary border text-[10px] font-mono">J</kbd></div>
+            <div className="flex justify-between"><span>Checkout</span><kbd className="px-1.5 py-0.5 bg-secondary border text-[10px] font-mono">Enter</kbd></div>
+            <div className="flex justify-between"><span>Back to dashboard</span><kbd className="px-1.5 py-0.5 bg-secondary border text-[10px] font-mono">Esc</kbd></div>
+          </div>
         </div>
       ) : (
       <>
@@ -183,6 +190,16 @@ export function PaymentPanel({
                   inputMode="numeric"
                   autoFocus
                 />
+                <div className="flex gap-1.5 mt-2">
+                  {[500, 1000, 2000, 5000].map((v) => (
+                    <Button key={v} variant="outline" size="sm" className="flex-1 text-xs h-8" onClick={() => onCashReceived(v)}>
+                      Rs {v.toLocaleString()}
+                    </Button>
+                  ))}
+                  <Button variant="outline" size="sm" className="flex-1 text-xs h-8 border-gold text-gold" onClick={() => onCashReceived(total)}>
+                    Exact
+                  </Button>
+                </div>
                 {cashReceived > 0 && change > 0 && (
                   <p className="text-lg font-bold text-green-600 mt-2">
                     Change: {formatPKR(change)}

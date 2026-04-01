@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { Plus, Users, Send, ExternalLink } from 'lucide-react';
+import { Plus, Users, Send, ExternalLink, Copy, Loader2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAppStore } from '@/store/app-store';
 import { generateWhatsAppLink, encodeMessage } from '@/lib/utils/whatsapp';
@@ -33,6 +33,8 @@ export default function CampaignsPage() {
   const [filteredClients, setFilteredClients] = useState<Client[]>([]);
   const [loadingClients, setLoadingClients] = useState(false);
   const [sentSet, setSentSet] = useState<Set<string>>(new Set());
+  const [isBulkSending, setIsBulkSending] = useState(false);
+  const [bulkSendIndex, setBulkSendIndex] = useState(0);
 
   const fetchAudience = useCallback(async () => {
     if (!salon) return;
@@ -86,7 +88,53 @@ export default function CampaignsPage() {
     if (filteredClients.length === 0) { toast.error('No clients in audience'); return; }
     if (!customMessage && !templateId) { toast.error('Select a template or write a message'); return; }
     setSentSet(new Set());
+    setIsBulkSending(false);
+    setBulkSendIndex(0);
     setShowSendList(true);
+  }
+
+  function sendAllSequentially() {
+    const clientsWithPhone = filteredClients.filter((c) => c.phone);
+    if (clientsWithPhone.length === 0) { toast.error('No clients have phone numbers'); return; }
+
+    if (clientsWithPhone.length > 5) {
+      const confirmed = window.confirm(
+        `This will open ${clientsWithPhone.length} browser tabs one at a time with a 2-second delay between each. Continue?`
+      );
+      if (!confirmed) return;
+    }
+
+    setIsBulkSending(true);
+    setBulkSendIndex(0);
+
+    clientsWithPhone.forEach((client, index) => {
+      setTimeout(() => {
+        const msg = getMessage(client);
+        window.open(generateWhatsAppLink(client.phone!, msg), '_blank');
+        setSentSet((prev) => new Set([...prev, client.id]));
+        setBulkSendIndex(index + 1);
+        if (index === clientsWithPhone.length - 1) {
+          setIsBulkSending(false);
+          toast.success(`Opened ${clientsWithPhone.length} WhatsApp windows`);
+        }
+      }, index * 2000);
+    });
+  }
+
+  function copyAllMessages() {
+    const clientsWithPhone = filteredClients.filter((c) => c.phone);
+    if (clientsWithPhone.length === 0) { toast.error('No clients have phone numbers'); return; }
+
+    const allMessages = clientsWithPhone.map((client) => {
+      const msg = getMessage(client);
+      return `--- ${client.name} (${client.phone}) ---\n${msg}`;
+    }).join('\n\n');
+
+    navigator.clipboard.writeText(allMessages).then(() => {
+      toast.success(`Copied messages for ${clientsWithPhone.length} clients to clipboard`);
+    }).catch(() => {
+      toast.error('Failed to copy to clipboard');
+    });
   }
 
   return (
@@ -143,10 +191,15 @@ export default function CampaignsPage() {
             <div>
               <Label className="text-xs">Message</Label>
               <Textarea value={customMessage} onChange={(e) => setCustomMessage(e.target.value)} rows={6} className="mt-1 text-sm font-mono" placeholder="Write your message here... Use {client_name}, {salon_name} etc." />
-              <div className="flex flex-wrap gap-1 mt-1">
-                {['{client_name}', '{salon_name}', '{booking_link}'].map((v) => (
-                  <button key={v} onClick={() => setCustomMessage(customMessage + v)} className="text-[10px] px-1.5 py-0.5 rounded-full border border-gold/30 bg-gold/5 text-gold font-mono">{v}</button>
-                ))}
+              <div className="flex items-center justify-between mt-1">
+                <div className="flex flex-wrap gap-1">
+                  {['{client_name}', '{salon_name}', '{booking_link}'].map((v) => (
+                    <button key={v} onClick={() => setCustomMessage(customMessage + v)} className="text-[10px] px-1.5 py-0.5 rounded-full border border-gold/30 bg-gold/5 text-gold font-mono">{v}</button>
+                  ))}
+                </div>
+                <span className={`text-[11px] font-mono tabular-nums ${customMessage.length > 1000 ? 'text-destructive font-medium' : 'text-muted-foreground'}`}>
+                  {customMessage.length}/1000
+                </span>
               </div>
             </div>
 
@@ -168,11 +221,33 @@ export default function CampaignsPage() {
       </Dialog>
 
       {/* Send List Dialog */}
-      <Dialog open={showSendList} onOpenChange={setShowSendList}>
+      <Dialog open={showSendList} onOpenChange={(open) => { if (!isBulkSending) setShowSendList(open); }}>
         <DialogContent className="max-w-md max-h-[85vh]">
           <DialogHeader><DialogTitle>Send Messages — {campaignName || 'Campaign'}</DialogTitle></DialogHeader>
-          <p className="text-xs text-muted-foreground">Click &quot;Open&quot; to open WhatsApp for each client. Check off as sent.</p>
+          <p className="text-xs text-muted-foreground">Send individually, send all with delays, or copy all messages for WhatsApp Web broadcast.</p>
           <p className="text-sm font-medium">{sentSet.size}/{filteredClients.length} sent</p>
+
+          {/* Bulk action buttons */}
+          <div className="flex gap-2">
+            <Button size="sm" variant="outline" className="text-xs gap-1 flex-1" onClick={copyAllMessages} disabled={isBulkSending}>
+              <Copy className="w-3 h-3" /> Copy All Messages
+            </Button>
+            <Button size="sm" className="text-xs gap-1 flex-1 bg-gold text-black border border-gold" onClick={sendAllSequentially} disabled={isBulkSending}>
+              {isBulkSending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />}
+              {isBulkSending ? `Sending ${bulkSendIndex}/${filteredClients.filter((c) => c.phone).length}...` : 'Send All (2s delay)'}
+            </Button>
+          </div>
+
+          {/* Progress bar during bulk send */}
+          {isBulkSending && (
+            <div className="w-full bg-secondary rounded-full h-2 overflow-hidden">
+              <div
+                className="bg-gold h-2 rounded-full transition-all duration-300"
+                style={{ width: `${(bulkSendIndex / Math.max(filteredClients.filter((c) => c.phone).length, 1)) * 100}%` }}
+              />
+            </div>
+          )}
+
           <ScrollArea className="h-[400px]">
             <div className="space-y-1.5">
               {filteredClients.map((client) => {
@@ -186,7 +261,7 @@ export default function CampaignsPage() {
                     {isSent ? (
                       <Badge variant="outline" className="text-[10px] text-green-600 border-green-500/25">Sent ✓</Badge>
                     ) : (
-                      <Button size="sm" variant="outline" className="text-xs gap-1 shrink-0" onClick={() => openWhatsApp(client)} disabled={!client.phone}>
+                      <Button size="sm" variant="outline" className="text-xs gap-1 shrink-0" onClick={() => openWhatsApp(client)} disabled={!client.phone || isBulkSending}>
                         <ExternalLink className="w-3 h-3" /> Open
                       </Button>
                     )}

@@ -46,7 +46,9 @@ export default function WhatsAppPage() {
       salon_name: salon?.name || 'BrBr',
     });
     window.open(generateWhatsAppLink(apt.client.phone, msg), '_blank');
-    supabase.from('appointments').update({ reminder_sent: true }).eq('id', apt.id);
+    supabase.from('appointments').update({ reminder_sent: true }).eq('id', apt.id).then(({ error }: { error: unknown }) => {
+      if (error) toast.error('Failed to mark reminder as sent');
+    });
     toast.success('Reminder opened');
   }
 

@@ -75,17 +75,25 @@ export default function MonthlyReportPage() {
   const daysInMonth = new Date(year, month, 0).getDate();
   const avgDaily = bills.length > 0 ? totalRevenue / daysInMonth : 0;
 
-  // Daily revenue trend
+  // Daily revenue trend — compare only up to the min days shared by both months
+  const prevMonth = month === 1 ? 12 : month - 1;
+  const prevYear = month === 1 ? year - 1 : year;
+  const prevDaysInMonth = new Date(prevYear, prevMonth, 0).getDate();
+  const comparableDays = Math.min(daysInMonth, prevDaysInMonth);
+
   const dailyData = Array.from({ length: daysInMonth }, (_, i) => {
     const day = i + 1;
     const dayStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
     const dayBills = bills.filter((b) => b.created_at.startsWith(dayStr));
-    const prevDayBills = prevBills.filter((b) => {
-      const d = new Date(b.created_at).getDate();
-      return d === day;
-    });
+    // Only include previous month data for days both months share
+    const prevDayBills = day <= comparableDays
+      ? prevBills.filter((b) => {
+          const d = new Date(b.created_at).getDate();
+          return d === day;
+        })
+      : [];
     return {
-      day: String(day),
+      day: `Day ${day}`,
       current: dayBills.reduce((s, b) => s + b.total_amount, 0),
       previous: prevDayBills.reduce((s, b) => s + b.total_amount, 0),
     };

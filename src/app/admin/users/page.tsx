@@ -1,6 +1,8 @@
 'use client';
 
-import { Users, Shield, Store } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Users, Shield, Store, Loader2 } from 'lucide-react';
+import { supabase } from '@/lib/supabase';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -13,15 +15,69 @@ const DEMO_USERS = [
   { name: 'Usman Shah', email: 'usman@stylehub.pk', role: 'Owner', salon: 'Style Hub', status: 'Trial' },
 ];
 
+interface StaffUser {
+  name: string;
+  email: string;
+  role: string;
+  salon: string;
+  status: string;
+}
+
 export default function AdminUsersPage() {
+  const [users, setUsers] = useState<StaffUser[]>(DEMO_USERS);
+  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState({ superAdmins: 1, owners: 4, totalStaff: 23 });
+
+  useEffect(() => {
+    async function fetchUsers() {
+      try {
+        const { data, error } = await supabase
+          .from('staff')
+          .select('*, salon:salons(name)')
+          .order('name');
+
+        if (error) throw error;
+
+        if (data && data.length > 0) {
+          const mapped: StaffUser[] = data.map((s: { name: string; email?: string; role: string; salon?: { name: string }; is_active?: boolean }) => ({
+            name: s.name,
+            email: s.email || '',
+            role: s.role === 'super_admin' ? 'Super Admin' : s.role === 'owner' ? 'Owner' : s.role === 'senior_stylist' ? 'Senior Stylist' : s.role === 'junior_stylist' ? 'Junior Stylist' : s.role === 'receptionist' ? 'Receptionist' : s.role,
+            salon: s.salon?.name || '— Platform',
+            status: s.is_active ? 'Active' : 'Inactive',
+          }));
+          setUsers(mapped);
+
+          const superAdmins = mapped.filter((u) => u.role === 'Super Admin').length || 1;
+          const owners = mapped.filter((u) => u.role === 'Owner').length;
+          setStats({ superAdmins, owners, totalStaff: mapped.length });
+        }
+      } catch {
+        // Fall back to demo data
+        setUsers(DEMO_USERS);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchUsers();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
       <h2 className="font-heading text-xl font-bold">Platform Users</h2>
 
       <div className="grid grid-cols-3 gap-3">
-        <Card><CardContent className="p-4 text-center"><Shield className="w-5 h-5 text-red-500 mx-auto mb-1" /><p className="text-2xl font-bold">1</p><p className="text-xs text-muted-foreground">Super Admins</p></CardContent></Card>
-        <Card><CardContent className="p-4 text-center"><Store className="w-5 h-5 text-gold mx-auto mb-1" /><p className="text-2xl font-bold">4</p><p className="text-xs text-muted-foreground">Salon Owners</p></CardContent></Card>
-        <Card><CardContent className="p-4 text-center"><Users className="w-5 h-5 text-blue-500 mx-auto mb-1" /><p className="text-2xl font-bold">23</p><p className="text-xs text-muted-foreground">Total Staff</p></CardContent></Card>
+        <Card><CardContent className="p-4 text-center"><Shield className="w-5 h-5 text-red-500 mx-auto mb-1" /><p className="text-2xl font-bold">{stats.superAdmins}</p><p className="text-xs text-muted-foreground">Super Admins</p></CardContent></Card>
+        <Card><CardContent className="p-4 text-center"><Store className="w-5 h-5 text-gold mx-auto mb-1" /><p className="text-2xl font-bold">{stats.owners}</p><p className="text-xs text-muted-foreground">Salon Owners</p></CardContent></Card>
+        <Card><CardContent className="p-4 text-center"><Users className="w-5 h-5 text-blue-500 mx-auto mb-1" /><p className="text-2xl font-bold">{stats.totalStaff}</p><p className="text-xs text-muted-foreground">Total Staff</p></CardContent></Card>
       </div>
 
       <Card>
@@ -32,8 +88,8 @@ export default function AdminUsersPage() {
               <TableHead className="pl-4">Name</TableHead><TableHead>Email</TableHead><TableHead>Role</TableHead><TableHead>Salon</TableHead><TableHead className="text-center pr-4">Status</TableHead>
             </TableRow></TableHeader>
             <TableBody>
-              {DEMO_USERS.map((u) => (
-                <TableRow key={u.email}>
+              {users.map((u) => (
+                <TableRow key={u.email || u.name}>
                   <TableCell className="pl-4 font-medium text-sm">{u.name}</TableCell>
                   <TableCell className="text-sm text-muted-foreground">{u.email}</TableCell>
                   <TableCell><Badge variant={u.role === 'Super Admin' ? 'destructive' : 'secondary'} className="text-[10px]">{u.role}</Badge></TableCell>

@@ -49,6 +49,7 @@ function AppointmentsContent() {
     time?: string | null;
     date?: string | null;
     isWalkin?: boolean;
+    notes?: string;
   }>({});
   const [selectedAppointment, setSelectedAppointment] = useState<AppointmentWithDetails | null>(null);
   const [showDetail, setShowDetail] = useState(false);
@@ -126,7 +127,7 @@ function AppointmentsContent() {
     }
   }, [searchParams, appointments]);
 
-  // Real-time subscription
+  // Real-time subscription — only refresh when the changed appointment matches the viewed date
   useEffect(() => {
     if (!currentBranch) return;
 
@@ -140,12 +141,18 @@ function AppointmentsContent() {
           table: 'appointments',
           filter: `branch_id=eq.${currentBranch.id}`,
         },
-        () => { fetchData(); }
+        (payload: { new: Record<string, unknown>; old: Record<string, unknown> }) => {
+          const changedDate = payload.new?.appointment_date
+            || payload.old?.appointment_date;
+          if (changedDate === date) {
+            fetchData();
+          }
+        }
       )
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, [currentBranch, fetchData]);
+  }, [currentBranch, fetchData, date]);
 
   // Date navigation
   function navigateDate(delta: number) {
@@ -179,7 +186,11 @@ function AppointmentsContent() {
   }
 
   function handleAssignWalkIn(entry: WalkInEntry) {
-    setNewModalPrefill({ date, isWalkin: true });
+    setNewModalPrefill({
+      date,
+      isWalkin: true,
+      notes: `Walk-in #${entry.tokenNumber} — ${entry.services}${entry.preferredStylist ? ` (prefers ${entry.preferredStylist})` : ''}`,
+    });
     setShowNewModal(true);
     setWalkInQueue(walkInQueue.filter((e) => e.id !== entry.id));
   }
@@ -294,6 +305,7 @@ function AppointmentsContent() {
         prefillTime={newModalPrefill.time}
         prefillDate={newModalPrefill.date}
         isWalkin={newModalPrefill.isWalkin}
+        prefillNotes={newModalPrefill.notes}
       />
 
       {/* Appointment Detail Panel */}

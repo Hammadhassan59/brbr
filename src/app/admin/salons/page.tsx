@@ -1,7 +1,10 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Eye, Store, Plus } from 'lucide-react';
+import { Eye, Plus, Loader2 } from 'lucide-react';
+import toast from 'react-hot-toast';
+import { supabase } from '@/lib/supabase';
 import { useAppStore } from '@/store/app-store';
 import { formatPKR } from '@/lib/utils/currency';
 import { formatPKDate } from '@/lib/utils/dates';
@@ -21,21 +24,53 @@ export default function AdminSalonsPage() {
   const router = useRouter();
   const { setSalon, setCurrentBranch } = useAppStore();
 
+  const [salons, setSalons] = useState<Salon[]>(DEMO_ALL_SALONS);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchSalons() {
+      try {
+        const { data, error } = await supabase
+          .from('salons')
+          .select('*')
+          .order('created_at', { ascending: false });
+        if (error) throw error;
+        if (data && data.length > 0) {
+          setSalons(data as Salon[]);
+        }
+      } catch {
+        // Fall back to demo data
+        setSalons(DEMO_ALL_SALONS);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchSalons();
+  }, []);
+
   function enterSalon(salon: Salon) {
     setSalon(salon);
     setCurrentBranch(DEMO_BRANCH);
     router.push('/dashboard');
   }
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="font-heading text-xl font-bold">All Salons</h2>
-        <Button size="sm" className="bg-gold text-black border border-gold"><Plus className="w-4 h-4 mr-1" /> Add Salon</Button>
+        <Button size="sm" className="bg-gold text-black border border-gold" onClick={() => toast('Salon creation coming soon — salons self-register via /setup')}><Plus className="w-4 h-4 mr-1" /> Add Salon</Button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {DEMO_ALL_SALONS.map((salon) => {
+        {salons.map((salon) => {
           const type = TYPE_BADGE[salon.type] || TYPE_BADGE.unisex;
           return (
             <Card key={salon.id} className="hover:shadow-md transition-shadow">

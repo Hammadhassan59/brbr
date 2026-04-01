@@ -14,7 +14,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import toast from 'react-hot-toast';
-import type { Client, Staff, Service, ServiceCategory } from '@/types/database';
+import type { Client, Staff, Service, ServiceCategory, WorkingHours } from '@/types/database';
 
 interface NewAppointmentModalProps {
   open: boolean;
@@ -24,6 +24,7 @@ interface NewAppointmentModalProps {
   prefillTime?: string | null;
   prefillDate?: string | null;
   isWalkin?: boolean;
+  prefillNotes?: string;
 }
 
 const CATEGORIES: { value: ServiceCategory | 'all'; label: string }[] = [
@@ -46,6 +47,7 @@ export function NewAppointmentModal({
   prefillTime,
   prefillDate,
   isWalkin = false,
+  prefillNotes,
 }: NewAppointmentModalProps) {
   const { salon, currentBranch } = useAppStore();
 
@@ -109,7 +111,8 @@ export function NewAppointmentModal({
     if (prefillStaffId) setSelectedStaffId(prefillStaffId);
     if (prefillTime) setTime(prefillTime);
     if (prefillDate) setDate(prefillDate);
-  }, [prefillStaffId, prefillTime, prefillDate]);
+    if (prefillNotes) setNotes(prefillNotes);
+  }, [prefillStaffId, prefillTime, prefillDate, prefillNotes]);
 
   // Search clients
   const searchClients = useCallback(async (query: string) => {
@@ -199,6 +202,40 @@ export function NewAppointmentModal({
       const endH = Math.floor(endMinutes / 60);
       const endM = endMinutes % 60;
       const endTime = `${String(endH).padStart(2, '0')}:${String(endM).padStart(2, '0')}`;
+
+      // Check for scheduling conflicts with this stylist
+      const { data: existingApts } = await supabase
+        .from('appointments')
+        .select('*, client:clients(name)')
+        .eq('staff_id', selectedStaffId)
+        .eq('appointment_date', date)
+        .not('status', 'in', '("cancelled","no_show")');
+
+      if (existingApts && existingApts.length > 0) {
+        const conflict = existingApts.find((c: { start_time: string; end_time: string | null }) => {
+          return c.start_time < endTime && (c.end_time || '23:59') > time;
+        });
+        if (conflict) {
+          const stylistName = stylists.find((s) => s.id === selectedStaffId)?.name || 'This stylist';
+          const conflictClient = (conflict as { client?: { name?: string } }).client?.name || 'Walk-in';
+          toast.error(`${stylistName} is booked at ${formatTime(conflict.start_time)} — ${conflictClient}`);
+          setSaving(false);
+          return;
+        }
+      }
+
+      // Warn if appointment extends past closing time (non-blocking)
+      if (currentBranch?.working_hours) {
+        const dayNames: (keyof WorkingHours)[] = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+        const selectedDay = dayNames[new Date(date).getDay()];
+        const daySchedule = currentBranch.working_hours[selectedDay];
+        if (daySchedule && !daySchedule.off && endTime > daySchedule.close) {
+          toast(`This appointment would end at ${formatTime(endTime)}, after closing time (${formatTime(daySchedule.close)})`, {
+            icon: '⚠️',
+            duration: 5000,
+          });
+        }
+      }
 
       // Create appointment
       const { data: apt, error: aptErr } = await supabase

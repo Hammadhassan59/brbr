@@ -66,6 +66,7 @@ export default function PromosPage() {
 
   async function savePromo() {
     if (!salon || !formCode || !formDiscountValue) { toast.error('Code and discount required'); return; }
+    if (Number(formDiscountValue) <= 0) { toast.error('Discount must be positive'); return; }
     setSaving(true);
     try {
       const data = {
@@ -123,7 +124,28 @@ export default function PromosPage() {
                     {p.expiry_date && <span>Expires: {formatPKDate(p.expiry_date)}</span>}
                   </div>
                 </div>
-                <button onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(p.code); toast.success('Copied!'); }} className="text-muted-foreground hover:text-foreground">
+                <button onClick={async (e) => {
+                  e.stopPropagation();
+                  try {
+                    await navigator.clipboard.writeText(p.code);
+                    toast.success('Copied!');
+                  } catch {
+                    // Fallback for HTTP or unsupported browsers
+                    try {
+                      const textarea = document.createElement('textarea');
+                      textarea.value = p.code;
+                      textarea.style.position = 'fixed';
+                      textarea.style.opacity = '0';
+                      document.body.appendChild(textarea);
+                      textarea.select();
+                      document.execCommand('copy');
+                      document.body.removeChild(textarea);
+                      toast.success('Copied!');
+                    } catch {
+                      toast(`Code: ${p.code}`, { icon: '📋' });
+                    }
+                  }
+                }} className="text-muted-foreground hover:text-foreground">
                   <Copy className="w-4 h-4" />
                 </button>
               </CardContent>

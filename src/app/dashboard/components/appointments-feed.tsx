@@ -47,7 +47,7 @@ export function AppointmentsFeed({ appointments, loading }: AppointmentsFeedProp
         {loading ? (
           <div className="space-y-3 px-6">
             {[1, 2, 3, 4].map((i) => (
-              <div key={i} className="h-14 bg-muted rounded animate-pulse" />
+              <div key={i} className="h-14 shimmer" />
             ))}
           </div>
         ) : appointments.length === 0 ? (
@@ -56,14 +56,14 @@ export function AppointmentsFeed({ appointments, loading }: AppointmentsFeedProp
           </p>
         ) : (
           <ScrollArea className="h-[400px]">
-            <div className="space-y-1 px-3">
+            <div className="space-y-1 px-3 stagger-children">
               {appointments.map((apt) => {
                 const statusStyle = STATUS_STYLES[apt.status];
                 return (
                   <Link
                     key={apt.id}
                     href={`/dashboard/appointments?id=${apt.id}`}
-                    className="flex items-center gap-3 p-3 rounded-lg hover:bg-secondary/50 transition-colors"
+                    className="flex items-center gap-3 p-3 rounded-lg hover:bg-secondary/50 transition-colors animate-fade-up"
                   >
                     <div className={`w-2 h-2 rounded-full shrink-0 ${STATUS_DOT_COLORS[apt.status]}`} />
                     <div className="flex-1 min-w-0">

@@ -70,7 +70,7 @@ export default function PackagesPage() {
       setEditPkg(pkg);
       setFormName(pkg.name); setFormDesc(pkg.description || ''); setFormPrice(String(pkg.price));
       setFormValidity(String(pkg.validity_days)); setFormActive(pkg.is_active);
-      const svcEntries = (pkg.services as { serviceId: string; serviceName: string; quantity: number }[]) || [];
+      const svcEntries = Array.isArray(pkg.services) ? (pkg.services as { serviceId: string; serviceName: string; quantity: number }[]) : [];
       setFormServices(svcEntries);
     } else {
       setEditPkg(null);
@@ -147,7 +147,7 @@ export default function PackagesPage() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
           {filtered.map((pkg) => {
-            const svcList = (pkg.services as unknown as PackageServiceEntry[]) || [];
+            const svcList = Array.isArray(pkg.services) ? (pkg.services as unknown as PackageServiceEntry[]) : [];
             return (
               <Card key={pkg.id} className={`cursor-pointer hover:shadow-md transition-shadow ${!pkg.is_active ? 'opacity-60' : ''}`} onClick={() => openForm(pkg)}>
                 <CardContent className="p-4">
@@ -160,8 +160,8 @@ export default function PackagesPage() {
                   </div>
                   <p className="text-2xl font-bold text-gold mb-2">{formatPKR(pkg.price)}</p>
                   <div className="flex flex-wrap gap-1 mb-2">
-                    {svcList.map((s) => (
-                      <Badge key={s.serviceId} variant="outline" className="text-[10px]">{s.quantity}× {s.serviceName}</Badge>
+                    {svcList.map((s, i) => (
+                      <Badge key={`${s.serviceId}-${i}`} variant="outline" className="text-[10px]">{s.quantity}× {s.serviceName}</Badge>
                     ))}
                   </div>
                   <p className="text-[10px] text-muted-foreground">Valid for {pkg.validity_days} days</p>

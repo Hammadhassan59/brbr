@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { FileText, Eye } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { FileText, Eye, Pencil } from 'lucide-react';
 import { DEFAULT_TEMPLATES, type WhatsAppTemplate } from '@/lib/whatsapp-templates';
 import { useAppStore } from '@/store/app-store';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -17,11 +17,40 @@ export default function TemplatesPage() {
   const [showPreview, setShowPreview] = useState(false);
   const [editBody, setEditBody] = useState('');
   const [lang, setLang] = useState<'en' | 'ur'>('en');
+  const [customBodies, setCustomBodies] = useState<Record<string, { en?: string; ur?: string }>>({});
+
+  // Load customized templates from localStorage on mount
+  useEffect(() => {
+    const stored: Record<string, { en?: string; ur?: string }> = {};
+    DEFAULT_TEMPLATES.forEach((tpl) => {
+      const raw = localStorage.getItem(`brbr-templates-${tpl.id}`);
+      if (raw) {
+        try { stored[tpl.id] = JSON.parse(raw); } catch { /* ignore bad data */ }
+      }
+    });
+    setCustomBodies(stored);
+  }, []);
+
+  function getTemplateBody(tpl: WhatsAppTemplate, l: 'en' | 'ur'): string {
+    const custom = customBodies[tpl.id];
+    if (custom && custom[l]) return custom[l]!;
+    return l === 'en' ? tpl.bodyEn : tpl.bodyUr;
+  }
 
   function openEditor(tpl: WhatsAppTemplate) {
     setSelectedTemplate(tpl);
-    setEditBody(lang === 'en' ? tpl.bodyEn : tpl.bodyUr);
+    setEditBody(getTemplateBody(tpl, lang));
     setShowPreview(true);
+  }
+
+  function saveTemplate() {
+    if (!selectedTemplate) return;
+    const key = lang;
+    const updated = { ...customBodies[selectedTemplate.id], [key]: editBody };
+    const newCustom = { ...customBodies, [selectedTemplate.id]: updated };
+    setCustomBodies(newCustom);
+    localStorage.setItem(`brbr-templates-${selectedTemplate.id}`, JSON.stringify(updated));
+    setShowPreview(false);
   }
 
   function getPreview(body: string): string {
@@ -79,7 +108,7 @@ export default function TemplatesPage() {
                 <Button variant="ghost" size="sm" className="h-6 text-[10px] gap-1"><Eye className="w-3 h-3" /> Preview</Button>
               </div>
               <pre className="text-xs text-muted-foreground whitespace-pre-wrap line-clamp-4 font-sans">
-                {lang === 'en' ? tpl.bodyEn : tpl.bodyUr}
+                {getTemplateBody(tpl, lang)}
               </pre>
               <div className="flex flex-wrap gap-1 mt-2">
                 {tpl.variables.slice(0, 4).map((v) => (
@@ -121,6 +150,10 @@ export default function TemplatesPage() {
                   {getPreview(editBody)}
                 </div>
               </div>
+
+              <Button onClick={saveTemplate} className="bg-gold text-black border border-gold w-full">
+                Save Template
+              </Button>
             </div>
           )}
         </DialogContent>

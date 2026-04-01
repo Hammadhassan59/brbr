@@ -146,6 +146,9 @@ function ProductsContent() {
   async function saveProduct() {
     if (!salon) return;
     if (!formName.trim()) { toast.error('Name required'); return; }
+    if (Number(formPurchasePrice) > 0 && Number(formRetailPrice) > 0 && Number(formPurchasePrice) > Number(formRetailPrice)) {
+      toast('Purchase price exceeds retail price — check your values', { icon: '⚠️' });
+    }
     setSaving(true);
     try {
       const data = {

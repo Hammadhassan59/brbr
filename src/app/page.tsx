@@ -32,10 +32,10 @@ export default function LandingPage() {
             <Scissors className="w-5 h-5 text-gold" />
             BRBR
           </Link>
-          <div className="hidden md:flex items-center gap-6 ml-12 text-sm">
-            <a href="#features" className="py-3 px-2 text-white/60 hover:text-white transition-colors">Features</a>
-            <a href="#pricing" className="py-3 px-2 text-white/60 hover:text-white transition-colors">Pricing</a>
-            <a href="#faq" className="py-3 px-2 text-white/60 hover:text-white transition-colors">FAQ</a>
+          <div className="flex items-center gap-3 md:gap-6 ml-4 md:ml-12 text-xs md:text-sm">
+            <a href="#features" className="py-3 px-1 md:px-2 text-white/60 hover:text-white transition-colors">Features</a>
+            <a href="#pricing" className="py-3 px-1 md:px-2 text-white/60 hover:text-white transition-colors">Pricing</a>
+            <a href="#faq" className="py-3 px-1 md:px-2 text-white/60 hover:text-white transition-colors">FAQ</a>
           </div>
           <div className="ml-auto flex items-center gap-4">
             <Link href="/login" className="text-sm py-3 px-2 text-white/60 hover:text-white transition-colors hidden sm:block">Login</Link>
@@ -51,31 +51,31 @@ export default function LandingPage() {
         <div className="max-w-6xl mx-auto px-5 pt-20 pb-24 md:pt-28 md:pb-32">
           <div className="grid md:grid-cols-5 gap-12 md:gap-16 items-center">
             <div className="md:col-span-3">
-              <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-gold/10 text-gold text-xs font-semibold tracking-widest uppercase border border-gold/20">
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-gold/10 text-gold text-xs font-semibold tracking-widest uppercase border border-gold/20 animate-fade-up" style={{ animationDelay: '0ms' }}>
                 Made for Pakistani Salons
               </div>
-              <h1 className="font-heading text-4xl md:text-5xl lg:text-[3.5rem] font-bold leading-[1.1] mt-6 mb-5 text-balance">
+              <h1 className="font-heading text-4xl md:text-5xl lg:text-[3.5rem] font-bold leading-[1.1] mt-6 mb-5 text-balance animate-fade-up" style={{ animationDelay: '100ms' }}>
                 One app for your register, your khata, and your WhatsApp chaos
               </h1>
-              <p className="text-base text-white/60 mb-8 max-w-lg leading-relaxed">
+              <p className="text-base text-white/60 mb-8 max-w-lg leading-relaxed animate-fade-up" style={{ animationDelay: '200ms' }}>
                 Bookings, billing, staff commission, inventory, udhaar tracking, and daily reports — all in one place. Works with cash, JazzCash, and EasyPaisa. Set up in 5 minutes.
               </p>
-              <div className="flex flex-wrap items-center gap-3 mb-10">
-                <Link href="/login" className="bg-gold text-black px-7 py-3.5 text-sm font-bold hover:bg-gold/90 transition-colors inline-flex items-center gap-2 border border-gold">
+              <div className="flex flex-wrap items-center gap-3 mb-10 animate-fade-up" style={{ animationDelay: '300ms' }}>
+                <Link href="/login" className="bg-gold text-black px-7 py-3.5 text-sm font-bold hover:bg-gold/90 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg inline-flex items-center gap-2 border border-gold">
                   <Scissors className="w-4 h-4" /> Try Free — 14 Days
                 </Link>
-                <a href="#features" className="px-5 py-3.5 text-sm font-medium text-white/60 hover:text-white transition-colors inline-flex items-center gap-2 border border-[#2A2A2A] hover:border-white/30">
+                <a href="#features" className="px-5 py-3.5 text-sm font-medium text-white/60 hover:text-white transition-all duration-200 hover:-translate-y-0.5 inline-flex items-center gap-2 border border-[#2A2A2A] hover:border-white/30">
                   See how it works <ArrowRight className="w-4 h-4" />
                 </a>
               </div>
-              <div className="flex items-center gap-6 text-xs text-white/50">
+              <div className="flex items-center gap-6 text-xs text-white/50 animate-fade-up" style={{ animationDelay: '400ms' }}>
                 <span className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-gold" /> No credit card needed</span>
                 <span className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-gold" /> Urdu + English</span>
                 <span className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-gold" /> Rs 83/day</span>
               </div>
             </div>
             {/* Dashboard mockup */}
-            <div className="md:col-span-2">
+            <div className="md:col-span-2 animate-fade-up" style={{ animationDelay: '300ms', animationDuration: '800ms' }}>
               <div className="border border-[#2A2A2A] bg-[#111111] p-4 space-y-3">
                 <div className="flex items-center gap-2 pb-2 border-b border-[#2A2A2A]">
                   <Scissors className="w-4 h-4 text-gold" />
@@ -133,7 +133,7 @@ export default function LandingPage() {
         <div className="max-w-6xl mx-auto px-5">
           <div className="grid md:grid-cols-2 gap-12 md:gap-20 items-start">
             <div>
-              <h2 className="font-heading text-2xl md:text-3xl font-bold mb-2">Every salon owner knows this feeling</h2>
+              <h2 className="font-heading text-2xl md:text-3xl font-bold mb-2 scroll-reveal">Every salon owner knows this feeling</h2>
               <p className="text-[#1A1A1A]/50 text-sm mb-8">You&apos;re not running a bad business. You just don&apos;t have the right tools.</p>
               <div className="space-y-4">
                 {[
@@ -174,7 +174,7 @@ export default function LandingPage() {
       <section id="features" className="bg-[#1A1A1A] text-white py-16 md:py-24">
         <div className="max-w-6xl mx-auto px-5">
           <div className="grid md:grid-cols-5 gap-10 md:gap-16 items-center">
-            <div className="md:col-span-3">
+            <div className="md:col-span-3 scroll-reveal">
               <div className="flex items-center gap-2 mb-4">
                 <CalendarDays className="w-4 h-4 text-gold" />
                 <span className="text-[10px] font-semibold tracking-[0.2em] text-gold uppercase">Bookings</span>
@@ -219,7 +219,7 @@ export default function LandingPage() {
       <section className="bg-white text-[#1A1A1A] py-16 md:py-24">
         <div className="max-w-6xl mx-auto px-5">
           <div className="grid md:grid-cols-5 gap-10 md:gap-16 items-center">
-            <div className="md:col-span-2 md:order-1 order-2">
+            <div className="md:col-span-2 md:order-1 order-2 scroll-reveal">
               <div className="border border-[#1A1A1A] bg-[#1A1A1A] text-white p-4">
                 <p className="text-[10px] text-white/40 font-mono mb-3 pb-2 border-b border-[#2A2A2A]">BILL #BB-20260401-014</p>
                 <div className="space-y-1.5 text-xs pb-3 mb-3 border-b border-[#2A2A2A]">
@@ -239,7 +239,7 @@ export default function LandingPage() {
                 </div>
               </div>
             </div>
-            <div className="md:col-span-3 md:order-2 order-1">
+            <div className="md:col-span-3 md:order-2 order-1 scroll-reveal">
               <div className="flex items-center gap-2 mb-4">
                 <Banknote className="w-4 h-4 text-gold" />
                 <span className="text-[10px] font-semibold tracking-[0.2em] text-gold uppercase">Billing & Payments</span>
@@ -266,7 +266,7 @@ export default function LandingPage() {
       <section className="bg-[#1A1A1A] text-white py-16 md:py-24">
         <div className="max-w-6xl mx-auto px-5">
           <div className="grid md:grid-cols-5 gap-10 md:gap-16 items-center">
-            <div className="md:col-span-3">
+            <div className="md:col-span-3 scroll-reveal">
               <div className="flex items-center gap-2 mb-4">
                 <UserCog className="w-4 h-4 text-gold" />
                 <span className="text-[10px] font-semibold tracking-[0.2em] text-gold uppercase">Staff & Payroll</span>
@@ -305,15 +305,15 @@ export default function LandingPage() {
       {/* ── WHITE: More features ── */}
       <section className="bg-white text-[#1A1A1A] py-16 md:py-24">
         <div className="max-w-6xl mx-auto px-5">
-          <h2 className="font-heading text-2xl md:text-3xl font-bold mb-3">Everything else your salon needs</h2>
-          <p className="text-[#1A1A1A]/50 text-sm mb-10 max-w-lg">Built by people who understand how Pakistani salons actually run.</p>
+          <h2 className="font-heading text-2xl md:text-3xl font-bold mb-3 scroll-reveal">Everything else your salon needs</h2>
+          <p className="text-[#1A1A1A]/50 text-sm mb-10 max-w-lg scroll-reveal">Built by people who understand how Pakistani salons actually run.</p>
           <div className="grid md:grid-cols-3 gap-px bg-[#D4D4D4] border border-[#D4D4D4]">
             {[
               { icon: MessageCircle, title: 'WhatsApp Automation', desc: 'Booking confirmations, payment receipts, birthday wishes, udhaar reminders, and win-back messages for clients who haven\'t visited in 30 days. English or Urdu.' },
               { icon: BarChart3, title: 'Daily Report to Your Phone', desc: 'Every evening at 9 PM: total revenue, payment breakdown, top services, staff performance, cash vs digital. Sent to your WhatsApp.' },
               { icon: Scissors, title: 'Inventory & Packages', desc: 'Know when shampoo, color, or beard oil is running low before you run out. Create packages like "Groom Special: Haircut + Beard + Facial" with one price.' },
             ].map((f) => (
-              <div key={f.title} className="bg-white p-6 flex gap-4">
+              <div key={f.title} className="bg-white p-6 flex gap-4 scroll-reveal transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
                 <div className="w-9 h-9 border border-[#D4D4D4] flex items-center justify-center shrink-0">
                   <f.icon className="w-4 h-4 text-gold" />
                 </div>
@@ -336,7 +336,7 @@ export default function LandingPage() {
           </div>
           <div className="grid md:grid-cols-3 gap-px bg-[#2A2A2A] border border-[#2A2A2A]">
             {PLANS.map((plan) => (
-              <div key={plan.name} className={`p-6 relative ${plan.popular ? 'bg-white text-[#1A1A1A]' : 'bg-[#111111]'}`}>
+              <div key={plan.name} className={`p-6 relative transition-all duration-200 hover:-translate-y-1 hover:shadow-xl ${plan.popular ? 'bg-white text-[#1A1A1A]' : 'bg-[#111111]'}`}>
                 {plan.popular && <div className="absolute top-0 left-0 right-0 h-1 bg-gold" />}
                 <div className="flex items-center gap-2 mb-1">
                   <h3 className="font-heading text-base font-bold">{plan.name}</h3>
@@ -369,10 +369,10 @@ export default function LandingPage() {
       {/* ── WHITE: Testimonials ── */}
       <section className="bg-white text-[#1A1A1A] py-20 md:py-28">
         <div className="max-w-6xl mx-auto px-5">
-          <h2 className="font-heading text-2xl md:text-3xl font-bold mb-10">Salon owners talk</h2>
+          <h2 className="font-heading text-2xl md:text-3xl font-bold mb-10 scroll-reveal">Salon owners talk</h2>
           <div className="grid md:grid-cols-3 gap-px bg-[#D4D4D4] border border-[#D4D4D4]">
             {TESTIMONIALS.map((t, i) => (
-              <div key={t.name} className={`p-6 ${i === 0 ? 'bg-[#1A1A1A] text-white' : 'bg-white'}`}>
+              <div key={t.name} className={`p-6 scroll-reveal ${i === 0 ? 'bg-[#1A1A1A] text-white' : 'bg-white'}`}>
                 <div className="flex gap-0.5 mb-4">
                   {[1, 2, 3, 4, 5].map((s) => (
                     <Star key={s} className="w-3 h-3 text-gold fill-gold" />
@@ -405,9 +405,9 @@ export default function LandingPage() {
               <details key={faq.q} className="group bg-white">
                 <summary className="px-5 py-4 cursor-pointer text-sm font-medium flex items-center justify-between list-none select-none hover:bg-[#F2F2F2] transition-colors">
                   {faq.q}
-                  <ChevronDown className="w-4 h-4 text-[#1A1A1A]/40 group-open:rotate-180 transition-transform shrink-0 ml-4" />
+                  <ChevronDown className="w-4 h-4 text-[#1A1A1A]/40 group-open:rotate-180 transition-transform duration-200 shrink-0 ml-4" />
                 </summary>
-                <div className="px-5 pb-4 text-sm text-[#1A1A1A]/60 leading-relaxed">{faq.a}</div>
+                <div className="px-5 pb-4 text-sm text-[#1A1A1A]/60 leading-relaxed animate-fade-up">{faq.a}</div>
               </details>
             ))}
           </div>
@@ -437,11 +437,14 @@ export default function LandingPage() {
               <Scissors className="w-4 h-4 text-gold" />
               <span className="font-heading font-bold text-sm tracking-tight text-white">BRBR</span>
             </div>
-            <div className="flex items-center gap-4 text-xs">
+            <div className="flex flex-wrap items-center gap-4 text-xs">
               <a href="#features" className="py-2 px-1 hover:text-gold transition-colors">Features</a>
               <a href="#pricing" className="py-2 px-1 hover:text-gold transition-colors">Pricing</a>
               <a href="#faq" className="py-2 px-1 hover:text-gold transition-colors">FAQ</a>
               <Link href="/login" className="py-2 px-1 hover:text-gold transition-colors">Login</Link>
+              <span className="text-white/30">·</span>
+              <span className="text-[11px] text-white/30">Privacy Policy</span>
+              <span className="text-[11px] text-white/30">Terms of Service</span>
             </div>
             <p className="text-[11px]">© 2025 BrBr — brbr.pk</p>
           </div>
@@ -453,7 +456,8 @@ export default function LandingPage() {
         href="https://wa.me/923001234567?text=BrBr%20ke%20baare%20mein%20puchna%20tha"
         target="_blank"
         rel="noopener noreferrer"
-        className="fixed bottom-6 right-6 w-12 h-12 bg-[#25D366] flex items-center justify-center hover:scale-105 transition-transform z-50 border border-[#25D366]"
+        className="fixed bottom-6 right-6 w-12 h-12 bg-[#25D366] flex items-center justify-center hover:scale-110 transition-transform duration-200 z-50 border border-[#25D366]"
+        style={{ animation: 'pulse-gold 2s ease-in-out infinite', '--tw-ring-color': '#25D366' } as React.CSSProperties}
         aria-label="Chat on WhatsApp"
       >
         <MessageCircle className="w-6 h-6 text-white" />

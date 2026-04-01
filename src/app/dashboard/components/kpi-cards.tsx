@@ -50,14 +50,14 @@ export function KPICards({ summary, appointmentsDone, appointmentsTotal, walkIns
   ];
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
+    <div className={`grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4 ${!loading ? 'stagger-children' : ''}`}>
       {cards.map((card) => (
-        <Card key={card.label} className="relative overflow-hidden">
+        <Card key={card.label} className={`relative overflow-hidden ${!loading ? 'animate-fade-up' : ''}`}>
           <CardContent className="p-4">
             {loading ? (
-              <div className="space-y-2 animate-pulse">
-                <div className="h-4 w-20 bg-muted rounded" />
-                <div className="h-7 w-28 bg-muted rounded" />
+              <div className="space-y-2">
+                <div className="h-4 w-20 shimmer" />
+                <div className="h-7 w-28 shimmer" />
               </div>
             ) : (
               <>

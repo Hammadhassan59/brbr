@@ -12,7 +12,7 @@ import { AppointmentsFeed } from './components/appointments-feed';
 import { AlertsPanel, buildAlerts } from './components/alerts-panel';
 import { QuickActions } from './components/quick-actions';
 import { StylistDashboard } from './components/stylist-dashboard';
-import type { DailySummary, AppointmentWithDetails } from '@/types/database';
+import type { DailySummary, AppointmentWithDetails, Staff } from '@/types/database';
 
 interface HourlyData {
   hour: string;
@@ -29,6 +29,8 @@ export default function DashboardPage() {
   const [cashInDrawer, setCashInDrawer] = useState(0);
   const [lowStockCount, setLowStockCount] = useState(0);
   const [udhaarInfo, setUdhaarInfo] = useState({ clients: 0, total: 0 });
+  const [branchStaff, setBranchStaff] = useState<Staff[]>([]);
+  const [stylistTips, setStylistTips] = useState(0);
 
   const isStylist = currentStaff?.role === 'senior_stylist' || currentStaff?.role === 'junior_stylist';
   const today = getTodayPKT();
@@ -126,12 +128,32 @@ export default function DashboardPage() {
       setHourlyData(
         Object.entries(hourMap).map(([hour, data]) => ({ hour, ...data }))
       );
+
+      // Fetch branch staff for commission calculations
+      const { data: staffData } = await supabase
+        .from('staff')
+        .select('*')
+        .eq('branch_id', currentBranch.id)
+        .eq('is_active', true);
+      if (staffData) setBranchStaff(staffData as Staff[]);
+
+      // Fetch tips for current stylist (if stylist view)
+      if (currentStaff && (currentStaff.role === 'senior_stylist' || currentStaff.role === 'junior_stylist')) {
+        const { data: tipsData } = await supabase
+          .from('tips')
+          .select('amount')
+          .eq('staff_id', currentStaff.id)
+          .eq('date', today);
+        if (tipsData) {
+          setStylistTips(tipsData.reduce((sum: number, t: { amount: number }) => sum + t.amount, 0));
+        }
+      }
     } catch (err) {
       console.error('Dashboard fetch error:', err);
     } finally {
       setLoading(false);
     }
-  }, [currentBranch, salon, today]);
+  }, [currentBranch, salon, today, currentStaff]);
 
   useEffect(() => {
     fetchDashboardData();
@@ -178,12 +200,27 @@ export default function DashboardPage() {
   // Stylist dashboard
   if (isStylist && currentStaff) {
     const myAppointments = appointments.filter((a) => a.staff_id === currentStaff.id);
+
+    // Calculate today's service earnings from staff_performance data
+    const myPerf = summary?.staff_performance?.find((sp) => sp.name === currentStaff.name);
+    const todayServicesRevenue = myPerf?.revenue ?? 0;
+
+    // Calculate monthly commission based on staff's actual commission settings
+    let monthlyCommission = 0;
+    if (currentStaff.commission_type === 'percentage') {
+      monthlyCommission = todayServicesRevenue * (currentStaff.commission_rate / 100);
+    } else if (currentStaff.commission_type === 'flat') {
+      // Flat commission per service done
+      const servicesDone = myPerf?.services_done ?? 0;
+      monthlyCommission = servicesDone * currentStaff.commission_rate;
+    }
+
     return (
       <StylistDashboard
         staffName={currentStaff.name}
         todayAppointments={myAppointments}
-        todayEarnings={{ services: 0, tips: 0 }}
-        monthlyCommission={0}
+        todayEarnings={{ services: todayServicesRevenue, tips: stylistTips }}
+        monthlyCommission={monthlyCommission}
         loading={loading}
       />
     );
@@ -194,10 +231,22 @@ export default function DashboardPage() {
   const walkIns = appointments.filter((a) => a.is_walkin).length;
   const noShowCount = appointments.filter((a) => a.status === 'no_show').length;
 
-  const staffPerf = summary?.staff_performance?.map((sp) => ({
-    ...sp,
-    commission: sp.revenue * 0.25, // rough estimate; real calc via RPC
-  })) ?? [];
+  const staffPerf = summary?.staff_performance?.map((sp) => {
+    // Look up the actual staff record to get real commission rate
+    const staffRecord = branchStaff.find((s) => s.name === sp.name);
+    let commission = 0;
+    if (staffRecord) {
+      if (staffRecord.commission_type === 'percentage') {
+        commission = sp.revenue * (staffRecord.commission_rate / 100);
+      } else if (staffRecord.commission_type === 'flat') {
+        commission = sp.services_done * staffRecord.commission_rate;
+      }
+    } else {
+      // Fallback if staff record not found
+      commission = sp.revenue * 0.25;
+    }
+    return { ...sp, commission };
+  }) ?? [];
 
   const alerts = buildAlerts({
     lowStockCount,
