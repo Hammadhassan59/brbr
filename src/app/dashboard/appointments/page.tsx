@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useState, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { ChevronLeft, ChevronRight, CalendarIcon, RefreshCw, Plus, Filter } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { supabase } from '@/lib/supabase';
 import { useAppStore } from '@/store/app-store';
 import { getTodayPKT, formatPKDate } from '@/lib/utils/dates';
@@ -55,8 +56,36 @@ function AppointmentsContent() {
   const [showDetail, setShowDetail] = useState(false);
 
   // Walk-in queue
-  const [walkInQueue, setWalkInQueue] = useState<WalkInEntry[]>([]);
-  const [nextToken, setNextToken] = useState(1);
+  const [walkInQueue, setWalkInQueue] = useState<WalkInEntry[]>(() => {
+    if (typeof window === 'undefined') return [];
+    try {
+      const stored = localStorage.getItem('brbr_walkin_queue');
+      if (stored) {
+        const parsed = JSON.parse(stored) as WalkInEntry[];
+        return parsed.map((e) => ({ ...e, addedAt: new Date(e.addedAt) }));
+      }
+    } catch {}
+    return [];
+  });
+  const [nextToken, setNextToken] = useState(() => {
+    if (typeof window === 'undefined') return 1;
+    try {
+      const stored = localStorage.getItem('brbr_walkin_queue');
+      if (stored) {
+        const parsed = JSON.parse(stored) as WalkInEntry[];
+        if (parsed.length > 0) {
+          return Math.max(...parsed.map((e) => e.tokenNumber)) + 1;
+        }
+      }
+    } catch {}
+    return 1;
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('brbr_walkin_queue', JSON.stringify(walkInQueue));
+    } catch {}
+  }, [walkInQueue]);
 
   // Working hours
   const [workingHours, setWorkingHours] = useState<WorkingHours | null>(null);
@@ -98,8 +127,8 @@ function AppointmentsContent() {
         setWorkingHours(branchRes.data.working_hours as WorkingHours);
         setPrayerBlocks(branchRes.data.prayer_blocks as PrayerBlocks);
       }
-    } catch (err) {
-      console.error('Failed to load appointments:', err);
+    } catch {
+      toast.error('Failed to load appointments');
     } finally {
       setLoading(false);
     }

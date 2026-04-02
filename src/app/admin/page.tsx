@@ -5,12 +5,12 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
   Store, Users, TrendingUp, DollarSign, AlertTriangle,
-  CheckCircle, Clock, Eye, Scissors, ExternalLink, Loader2,
+  CheckCircle, Clock, Eye, Scissors, Loader2,
 } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { supabase } from '@/lib/supabase';
 import { useAppStore } from '@/store/app-store';
-import { formatPKR, formatPKRShort } from '@/lib/utils/currency';
-import { formatPKDate } from '@/lib/utils/dates';
+import { formatPKRShort } from '@/lib/utils/currency';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -108,9 +108,9 @@ export default function AdminDashboard() {
           topCity,
         });
       } catch {
-        // Fall back to demo data on any error
         setSalons(DEMO_ALL_SALONS);
         setPlatformStats(DEMO_PLATFORM_STATS);
+        toast.error('Could not load live data — showing demo');
       } finally {
         setLoading(false);
       }
@@ -206,7 +206,6 @@ export default function AdminDashboard() {
               {salons.map((salon) => {
                 const type = TYPE_BADGE[salon.type] || TYPE_BADGE.unisex;
                 const isComplete = salon.setup_complete;
-                const revenue = 0; // Revenue per salon requires per-salon aggregation — shown in analytics
                 return (
                   <TableRow key={salon.id}>
                     <TableCell className="pl-4">
@@ -231,7 +230,10 @@ export default function AdminDashboard() {
                         <Badge variant="outline" className="text-[10px] text-orange-600 border-orange-500/25 bg-orange-500/10">Setup Pending</Badge>
                       )}
                     </TableCell>
-                    <TableCell className="text-right text-sm">{revenue > 0 ? formatPKR(revenue) : '—'}</TableCell>
+                    <TableCell className="text-right text-sm">
+                      <span>—</span>
+                      <Link href="/admin/analytics" className="block text-[10px] text-muted-foreground hover:text-foreground">(see Analytics)</Link>
+                    </TableCell>
                     <TableCell className="text-center pr-4">
                       <div className="flex items-center justify-center gap-1">
                         <Button

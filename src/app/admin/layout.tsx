@@ -1,12 +1,14 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
   LayoutDashboard, Store, Users, BarChart3, Settings,
-  Shield, LogOut, Scissors,
+  Shield, LogOut, Scissors, Loader2,
 } from 'lucide-react';
 import { useAppStore } from '@/store/app-store';
+import { ErrorBoundary } from '@/components/error-boundary';
 
 const NAV_ITEMS = [
   { href: '/admin', icon: LayoutDashboard, label: 'Overview' },
@@ -19,7 +21,24 @@ const NAV_ITEMS = [
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { salon, currentStaff, reset } = useAppStore();
+  const { salon, currentStaff, isSuperAdmin, reset } = useAppStore();
+  const [authChecked, setAuthChecked] = useState(false);
+
+  useEffect(() => {
+    if (!isSuperAdmin) {
+      router.push('/login');
+      return;
+    }
+    setAuthChecked(true);
+  }, [isSuperAdmin, router]);
+
+  if (!authChecked) {
+    return (
+      <div className="h-screen flex items-center justify-center">
+        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
   function handleLogout() {
     reset();
@@ -96,7 +115,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <h1 className="font-heading text-lg font-semibold">BrBr Admin Panel</h1>
         </header>
         <main className="flex-1 overflow-y-auto p-6">
-          {children}
+          <ErrorBoundary>
+            {children}
+          </ErrorBoundary>
         </main>
       </div>
     </div>

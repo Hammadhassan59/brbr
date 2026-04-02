@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Search, X, Plus, Minus, Tag, ShoppingBag, Package } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -89,6 +89,7 @@ export function BillBuilder({
   const [showPackages, setShowPackages] = useState(false);
   const [showDiscount, setShowDiscount] = useState(false);
   const [promoInput, setPromoInput] = useState(promoCode);
+  useEffect(() => { setPromoInput(promoCode); }, [promoCode]);
   const [editingPrice, setEditingPrice] = useState<string | null>(null);
 
   const filteredServices = services.filter((s) => {
@@ -247,7 +248,8 @@ export function BillBuilder({
                     defaultValue={item.unitPrice}
                     className="w-20 h-7 text-xs text-right"
                     autoFocus
-                    onBlur={(e) => { onUpdateItemPrice(item.id, Number(e.target.value) || item.unitPrice); setEditingPrice(null); }}
+                    min={0}
+                    onBlur={(e) => { onUpdateItemPrice(item.id, Math.max(0, Number(e.target.value)) || item.unitPrice); setEditingPrice(null); }}
                     onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
                   />
                 ) : (
@@ -279,7 +281,7 @@ export function BillBuilder({
               <div className="flex gap-2">
                 <div className="flex-1">
                   <label className="text-[10px] text-muted-foreground">Flat (Rs)</label>
-                  <Input type="number" value={discountType === 'flat' ? discountValue : ''} onChange={(e) => onSetDiscount(e.target.value ? 'flat' : null, Number(e.target.value))} placeholder="0" className="h-7 text-xs" inputMode="numeric" />
+                  <Input type="number" value={discountType === 'flat' ? discountValue : ''} onChange={(e) => onSetDiscount(e.target.value ? 'flat' : null, Math.min(Math.max(0, Number(e.target.value)), subtotal))} placeholder="0" className="h-7 text-xs" inputMode="numeric" min={0} max={subtotal} />
                 </div>
                 <div className="flex-1">
                   <label className="text-[10px] text-muted-foreground">Percentage (%)</label>

@@ -110,14 +110,14 @@ export default function DashboardPage() {
 
       const hourMap: Record<string, { revenue: number; appointments: number }> = {};
       for (let h = 9; h <= 21; h++) {
-        const label = h <= 12 ? `${h}AM` : `${h - 12}PM`;
+        const label = h === 0 ? '12AM' : h < 12 ? `${h}AM` : h === 12 ? '12PM' : `${h - 12}PM`;
         hourMap[label] = { revenue: 0, appointments: 0 };
       }
 
       if (billsData) {
         billsData.forEach((bill: { total_amount: number; created_at: string }) => {
           const hour = new Date(bill.created_at).getHours();
-          const label = hour <= 12 ? `${hour}AM` : `${hour - 12}PM`;
+          const label = hour === 0 ? '12AM' : hour < 12 ? `${hour}AM` : hour === 12 ? '12PM' : `${hour - 12}PM`;
           if (hourMap[label]) {
             hourMap[label].revenue += bill.total_amount;
             hourMap[label].appointments += 1;

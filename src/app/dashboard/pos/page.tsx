@@ -189,7 +189,8 @@ function POSContent() {
   // Keyboard shortcuts
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      const tag = (e.target as HTMLElement).tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || (e.target as HTMLElement).isContentEditable) return;
       switch (e.key.toLowerCase()) {
         case 'c': setPaymentMethod('cash'); break;
         case 'j': setPaymentMethod('jazzcash'); break;
@@ -283,8 +284,6 @@ function POSContent() {
     if (!salon || !currentBranch) return;
     setSaving(true);
 
-    let createdBillId: string | null = null;
-
     try {
       const actualMethod = isSplit ? 'split' : paymentMethod;
       const pointsEarned = Math.floor(total / 100) * 10; // 10 pts per Rs100
@@ -317,8 +316,6 @@ function POSContent() {
         .select()
         .single();
       if (billErr) throw billErr;
-
-      createdBillId = bill.id;
 
       try {
         // Create bill items
@@ -397,14 +394,12 @@ function POSContent() {
           } catch { /* promo update is non-critical */ }
         }
       } catch (postBillErr: unknown) {
-        // A step after bill creation failed — attempt cleanup
-        console.error('Post-bill operation failed, attempting cleanup:', postBillErr);
         try {
           await supabase.from('bill_items').delete().eq('bill_id', bill.id);
           await supabase.from('tips').delete().eq('bill_id', bill.id);
           await supabase.from('bills').delete().eq('id', bill.id);
-        } catch (cleanupErr) {
-          console.error('Bill cleanup failed — manual review needed:', cleanupErr);
+        } catch {
+          // cleanup failed — manual review needed
         }
         throw new Error(
           `Checkout partially failed — bill ${billNumber} may need manual review. ` +

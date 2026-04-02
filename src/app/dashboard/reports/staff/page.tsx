@@ -73,7 +73,7 @@ export default function StaffReportPage() {
         </Select>
         <Select value={String(year)} onValueChange={(v) => { if (v) setYear(Number(v)); }}>
           <SelectTrigger className="w-[90px] h-8 text-xs"><SelectValue /></SelectTrigger>
-          <SelectContent>{[2024, 2025, 2026].map((y) => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}</SelectContent>
+          <SelectContent>{Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - 2 + i).map((y) => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}</SelectContent>
         </Select>
       </div>
 

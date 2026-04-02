@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Plus, Search } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { supabase } from '@/lib/supabase';
 import { useAppStore } from '@/store/app-store';
 import { formatPKR } from '@/lib/utils/currency';
@@ -25,7 +26,7 @@ const ROLE_COLORS: Record<string, string> = {
 
 export default function StaffListPage() {
   const router = useRouter();
-  const { salon, currentBranch } = useAppStore();
+  const { salon } = useAppStore();
   const [staff, setStaff] = useState<(Staff & { todayAttendance?: Attendance; todayServices?: number; todayRevenue?: number })[]>([]);
   const [loading, setLoading] = useState(true);
   const [roleFilter, setRoleFilter] = useState<string>('all');
@@ -76,8 +77,8 @@ export default function StaffListPage() {
         todayServices: billMap.get(s.id)?.count || 0,
         todayRevenue: billMap.get(s.id)?.revenue || 0,
       })));
-    } catch (err) {
-      console.error(err);
+    } catch {
+      toast.error('Failed to load staff');
     } finally {
       setLoading(false);
     }

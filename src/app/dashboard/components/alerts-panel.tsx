@@ -129,6 +129,7 @@ export function buildAlerts({
       type: 'no_show',
       label: `${noShowCount} no-shows today`,
       detail: 'Clients who missed their appointment',
+      action: { label: 'View Appointments', href: '/dashboard/appointments' },
     });
   }
 

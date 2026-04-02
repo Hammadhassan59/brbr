@@ -24,7 +24,7 @@ export default function ProfitLossPage() {
   const [billItems, setBillItems] = useState<BillItem[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [staff, setStaff] = useState<Staff[]>([]);
-  const [branchScope, setBranchScope] = useState<string>('all');
+  const [branchScope, setBranchScope] = useState<string>('current');
 
   const canSeeAllBranches = branches.length > 1 && (isPartner || currentStaff?.role === 'owner' || currentStaff?.role === 'manager');
   const monthName = new Date(year, month - 1).toLocaleString('default', { month: 'long' });
@@ -43,6 +43,7 @@ export default function ProfitLossPage() {
 
     if (branchScope === 'all') {
       billQuery = billQuery.eq('salon_id', salon.id);
+      expQuery = expQuery.eq('salon_id', salon.id);
     } else {
       const bid = branchScope === 'current' ? currentBranch?.id : branchScope;
       if (bid) {
@@ -199,14 +200,18 @@ export default function ProfitLossPage() {
       {/* Branch scope */}
       {canSeeAllBranches && (
         <div className="flex flex-wrap gap-1.5">
-          {branches.map(b => (
+          <button onClick={() => setBranchScope('current')}
+            className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${branchScope === 'current' ? 'bg-gold text-black' : 'bg-secondary text-muted-foreground hover:bg-secondary/80'}`}>
+            {currentBranch?.name || 'Current'}
+          </button>
+          {branches.filter(b => b.id !== currentBranch?.id).map(b => (
             <button key={b.id} onClick={() => setBranchScope(b.id)}
               className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${branchScope === b.id ? 'bg-gold text-black' : 'bg-secondary text-muted-foreground hover:bg-secondary/80'}`}>
               {b.name}
             </button>
           ))}
           <button onClick={() => setBranchScope('all')}
-            className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${branchScope === 'all' ? 'bg-gold text-white' : 'bg-secondary text-muted-foreground hover:bg-secondary/80'}`}>
+            className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${branchScope === 'all' ? 'bg-gold text-black' : 'bg-secondary text-muted-foreground hover:bg-secondary/80'}`}>
             All Branches
           </button>
         </div>
@@ -220,7 +225,7 @@ export default function ProfitLossPage() {
         </Select>
         <Select value={String(year)} onValueChange={(v) => { if (v) setYear(Number(v)); }}>
           <SelectTrigger className="w-[90px] h-8 text-xs"><SelectValue /></SelectTrigger>
-          <SelectContent>{[2024, 2025, 2026].map((y) => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}</SelectContent>
+          <SelectContent>{Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - 2 + i).map((y) => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}</SelectContent>
         </Select>
         <Button variant="outline" size="sm" className="ml-auto text-xs gap-1" onClick={exportCSV}>
           <Download className="w-3 h-3" /> Export

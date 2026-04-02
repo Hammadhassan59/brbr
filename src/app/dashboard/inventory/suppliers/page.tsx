@@ -66,12 +66,14 @@ export default function SuppliersPage() {
   }
 
   async function recordPayment() {
-    if (!paySupplier || !payAmount) return;
+    if (!paySupplier) return;
+    if (!payAmount) { toast.error('Enter a payment amount'); return; }
     setSavingPay(true);
     try {
       const amount = Number(payAmount);
+      if (amount > paySupplier.udhaar_balance) { toast.error('Payment amount exceeds outstanding balance'); setSavingPay(false); return; }
       await supabase.from('suppliers').update({
-        udhaar_balance: Math.max(0, paySupplier.udhaar_balance - amount),
+        udhaar_balance: paySupplier.udhaar_balance - amount,
       }).eq('id', paySupplier.id);
       toast.success(`Payment of ${formatPKR(amount)} recorded`);
       setShowPayment(false); setPayAmount(''); fetch();

@@ -172,7 +172,7 @@ export function CalendarGrid({
         <div>
           {timeSlots.map((time) => {
             const prayerName = isPrayerBlock(time, prayerBlocks, prayerBlockEnabled);
-            const jummah = isJummahBlock(time, dayOfWeek === 0 ? 7 : dayOfWeek, !!hasJummahBreak);
+            const jummah = isJummahBlock(time, dayOfWeek, !!hasJummahBreak);
             const isBlocked = !!prayerName || jummah;
 
             return (

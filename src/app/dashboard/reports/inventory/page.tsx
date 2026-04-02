@@ -241,7 +241,7 @@ export default function InventoryReportPage() {
         <Card>
           <CardHeader className="pb-2"><CardTitle className="text-sm">Backbar Consumption</CardTitle></CardHeader>
           <CardContent className="px-0">
-            {backbarData.length === 0 ? <p className="text-center text-muted-foreground text-sm py-6">No backbar usage</p> : (
+            {loading ? <div className="h-20 bg-muted rounded animate-pulse mx-4" /> : backbarData.length === 0 ? <p className="text-center text-muted-foreground text-sm py-6">No backbar usage</p> : (
               <Table><TableHeader><TableRow><TableHead className="pl-4">Product</TableHead><TableHead className="text-center">Used</TableHead><TableHead className="text-right pr-4">Cost</TableHead></TableRow></TableHeader>
                 <TableBody>{backbarData.map((d) => (
                   <TableRow key={d.name}><TableCell className="pl-4 text-sm">{d.name}</TableCell><TableCell className="text-center text-sm">{d.qty}</TableCell><TableCell className="text-right pr-4 text-sm">{formatPKR(d.cost)}</TableCell></TableRow>
@@ -255,7 +255,7 @@ export default function InventoryReportPage() {
         <Card>
           <CardHeader className="pb-2"><CardTitle className="text-sm">Retail Sales</CardTitle></CardHeader>
           <CardContent className="px-0">
-            {retailData.length === 0 ? <p className="text-center text-muted-foreground text-sm py-6">No retail sales</p> : (
+            {loading ? <div className="h-20 bg-muted rounded animate-pulse mx-4" /> : retailData.length === 0 ? <p className="text-center text-muted-foreground text-sm py-6">No retail sales</p> : (
               <Table><TableHeader><TableRow><TableHead className="pl-4">Product</TableHead><TableHead className="text-center">Sold</TableHead><TableHead className="text-right">Revenue</TableHead><TableHead className="text-right pr-4">Profit</TableHead></TableRow></TableHeader>
                 <TableBody>{retailData.map((d) => (
                   <TableRow key={d.name}><TableCell className="pl-4 text-sm">{d.name}</TableCell><TableCell className="text-center text-sm">{d.qty}</TableCell><TableCell className="text-right text-sm">{formatPKR(d.revenue)}</TableCell><TableCell className="text-right pr-4 text-sm text-green-600">{formatPKR(d.profit)}</TableCell></TableRow>

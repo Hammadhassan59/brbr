@@ -39,7 +39,8 @@ export function ClientForm({ client, onSaved }: ClientFormProps) {
   async function handleSave() {
     if (!salon) return;
     if (!name.trim()) { toast.error('Name is required'); return; }
-    if (phone && !isValidPKPhone(phone)) { toast.error('Invalid phone format — expected 03XX-XXXXXXX'); return; }
+    if (!phone.trim()) { toast.error('Phone number is required'); return; }
+    if (!isValidPKPhone(phone)) { toast.error('Invalid phone format — expected 03XX-XXXXXXX'); return; }
 
     setSaving(true);
     try {

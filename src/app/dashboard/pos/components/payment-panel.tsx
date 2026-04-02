@@ -295,7 +295,7 @@ export function PaymentPanel({
       {/* Checkout button */}
       <Button
         onClick={onCheckout}
-        disabled={saving || total <= 0 || (!isSplit && !selectedPaymentMethod) || (isSplit && Math.abs(splitRemaining) >= 1)}
+        disabled={saving || total <= 0 || (!isSplit && !selectedPaymentMethod) || (isSplit && Math.abs(splitRemaining) >= 0.5)}
         className="w-full h-14 text-lg font-bold bg-gold hover:bg-gold/90 text-black border border-gold touch-target mt-auto"
       >
         {saving ? 'Processing...' : `Checkout · ${formatPKR(total)}`}

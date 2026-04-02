@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Plus, UserPlus, Wallet, MessageCircle } from 'lucide-react';
+import { Plus, UserPlus, Wallet } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 export function QuickActions() {
@@ -12,7 +12,6 @@ export function QuickActions() {
     { label: 'New Appointment', href: '/dashboard/appointments', icon: Plus, color: 'bg-blue-500' },
     { label: 'Walk-in', href: '/dashboard/appointments?walkin=true', icon: UserPlus, color: 'bg-amber-500' },
     { label: 'Cash Drawer', href: '/dashboard/reports/daily', icon: Wallet, color: 'bg-green-500' },
-    { label: 'WhatsApp Blast', href: '/dashboard/whatsapp/campaigns', icon: MessageCircle, color: 'bg-purple-500' },
   ];
 
   return (
@@ -41,6 +40,7 @@ export function QuickActions() {
       {/* FAB */}
       <Button
         onClick={() => setOpen(!open)}
+        aria-label="Quick actions"
         className={`w-14 h-14 rounded-full shadow-xl transition-all duration-200 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${
           open ? 'bg-foreground rotate-45' : 'bg-gold hover:bg-gold/90'
         }`}

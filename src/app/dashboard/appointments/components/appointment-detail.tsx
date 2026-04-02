@@ -190,10 +190,10 @@ export function AppointmentDetail({ appointment, open, onClose, onUpdated }: App
             )}
             {apt.status !== 'done' && apt.status !== 'cancelled' && apt.status !== 'no_show' && (
               <>
-                <Button onClick={() => { if (window.confirm('Mark this appointment as no-show?')) updateStatus('no_show'); }} variant="outline" className="w-full text-red-600 border-red-500/20 hover:bg-red-500/10">
+                <Button onClick={() => updateStatus('no_show')} variant="outline" className="w-full text-red-600 border-red-500/20 hover:bg-red-500/10">
                   No Show
                 </Button>
-                <Button onClick={() => { if (window.confirm('Cancel this appointment? This cannot be undone.')) updateStatus('cancelled'); }} variant="outline" className="w-full text-muted-foreground">
+                <Button onClick={() => updateStatus('cancelled')} variant="outline" className="w-full text-muted-foreground">
                   Cancel Appointment
                 </Button>
               </>

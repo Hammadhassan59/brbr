@@ -94,14 +94,13 @@ export default function ClientProfilePage() {
       if (udhaarRes.data) setUdhaarPayments(udhaarRes.data as UdhaarPayment[]);
       if (pkgRes.data) setClientPackages(pkgRes.data as (ClientPackage & { package?: PkgType })[]);
       if (statsRes.error) {
-        console.error('get_client_stats RPC failed:', statsRes.error);
         toast.error('Could not load client stats');
         setStats({ favourite_service: null, favourite_stylist: null, last_visit_date: null });
       } else if (statsRes.data) {
         setStats(statsRes.data as { favourite_service: string | null; favourite_stylist: string | null; last_visit_date: string | null });
       }
-    } catch (err) {
-      console.error('Failed to load client:', err);
+    } catch {
+      toast.error('Failed to load client data');
     } finally {
       setLoading(false);
     }

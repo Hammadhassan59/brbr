@@ -87,7 +87,12 @@ export default function PromosPage() {
     finally { setSaving(false); }
   }
 
-  function isExpired(p: PromoCode) { return p.expiry_date && new Date(p.expiry_date) < new Date(); }
+  function isExpired(p: PromoCode) {
+    if (!p.expiry_date) return false;
+    const expiry = new Date(p.expiry_date);
+    expiry.setHours(23, 59, 59, 999);
+    return expiry < new Date();
+  }
   function isExhausted(p: PromoCode) { return p.max_uses !== null && p.used_count >= (p.max_uses || 0); }
 
   return (

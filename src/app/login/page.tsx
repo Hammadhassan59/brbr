@@ -29,6 +29,7 @@ function setSessionCookie(role: string) {
 }
 
 type LoginMode = 'owner' | 'staff';
+type OwnerMode = 'login' | 'signup';
 type StaffStep = 'phone' | 'pin';
 
 export default function LoginPage() {
@@ -37,6 +38,7 @@ export default function LoginPage() {
   const { setSalon, setBranches, setCurrentBranch, setCurrentStaff, setCurrentPartner, setIsPartner } = useAppStore();
 
   const [mode, setMode] = useState<LoginMode>('owner');
+  const [ownerMode, setOwnerMode] = useState<OwnerMode>('login');
   const [loading, setLoading] = useState(false);
 
   // Owner state
@@ -103,41 +105,48 @@ export default function LoginPage() {
     }
   }
 
+  async function handleOwnerSignup(e: React.FormEvent) {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.auth.signUp({ email, password });
+      if (error) throw error;
+      if (!data.user) throw new Error('Signup failed. Please try again.');
+
+      toast.success('Account created! Setting up your salon...');
+      router.push('/setup');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Signup failed';
+      toast.error(message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
   async function handlePhoneLookup(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
     try {
-      // Check staff first
-      const { data: staffData } = await supabase
-        .from('staff')
-        .select('*')
-        .eq('phone', phone)
-        .eq('is_active', true)
-        .single();
+      const res = await fetch('/api/auth/staff-lookup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone }),
+      });
 
-      if (staffData) {
-        setMatchedStaff(staffData as Staff);
+      if (!res.ok) {
+        toast.error('Phone number not found');
+        return;
+      }
+
+      const data = await res.json();
+      if (data.type === 'staff') {
+        setMatchedStaff({ ...data.person, phone } as Staff);
         setMatchedPartner(null);
-        setStaffStep('pin');
-        return;
-      }
-
-      // Check partners
-      const { data: partnerData } = await supabase
-        .from('salon_partners')
-        .select('*')
-        .eq('phone', phone)
-        .eq('is_active', true)
-        .single();
-
-      if (partnerData) {
-        setMatchedPartner(partnerData as SalonPartner);
+      } else {
+        setMatchedPartner({ ...data.person, phone } as SalonPartner);
         setMatchedStaff(null);
-        setStaffStep('pin');
-        return;
       }
-
-      toast.error('Phone number not found');
+      setStaffStep('pin');
     } catch {
       toast.error('Phone number not found');
     } finally {
@@ -158,50 +167,15 @@ export default function LoginPage() {
 
     setLoading(true);
     try {
-      // Partner login
-      if (matchedPartner) {
-        if (matchedPartner.pin_code !== pin) {
-          pinAttempts.current++;
-          if (pinAttempts.current >= MAX_PIN_ATTEMPTS) {
-            lockoutUntil.current = Date.now() + LOCKOUT_DURATION_MS;
-            setIsLockedOut(true);
-            setTimeout(() => setIsLockedOut(false), LOCKOUT_DURATION_MS);
-            toast.error('Too many failed attempts. Locked for 5 minutes.');
-          } else {
-            toast.error(`Incorrect PIN (${MAX_PIN_ATTEMPTS - pinAttempts.current} attempts remaining)`);
-          }
-          setPin('');
-          return;
-        }
+      const res = await fetch('/api/auth/staff-login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone, pin }),
+      });
 
-        pinAttempts.current = 0;
-        setCurrentPartner(matchedPartner);
-        setIsPartner(true);
-        setCurrentStaff(null);
-        setSessionCookie('partner');
+      const data = await res.json();
 
-        const { data: salon } = await supabase
-          .from('salons')
-          .select('*')
-          .eq('id', matchedPartner.salon_id)
-          .single();
-
-        if (salon) {
-          setSalon(salon);
-          const allBranches = await loadBranches(salon.id);
-          setBranches(allBranches);
-          const mainBranch = allBranches.find((b: Branch) => b.is_main) || allBranches[0];
-          if (mainBranch) setCurrentBranch(mainBranch);
-        }
-
-        toast.success(`Welcome, ${matchedPartner.name} (Owner)`);
-        router.push('/dashboard');
-        return;
-      }
-
-      // Staff login
-      if (!matchedStaff) return;
-      if (matchedStaff.pin_code !== pin) {
+      if (!res.ok) {
         pinAttempts.current++;
         if (pinAttempts.current >= MAX_PIN_ATTEMPTS) {
           lockoutUntil.current = Date.now() + LOCKOUT_DURATION_MS;
@@ -209,30 +183,32 @@ export default function LoginPage() {
           setTimeout(() => setIsLockedOut(false), LOCKOUT_DURATION_MS);
           toast.error('Too many failed attempts. Locked for 5 minutes.');
         } else {
-          toast.error(`Incorrect PIN (${MAX_PIN_ATTEMPTS - pinAttempts.current} attempts remaining)`);
+          toast.error(data.error || `Incorrect PIN (${MAX_PIN_ATTEMPTS - pinAttempts.current} attempts remaining)`);
         }
         setPin('');
         return;
       }
 
       pinAttempts.current = 0;
-      setCurrentStaff(matchedStaff);
-      setCurrentPartner(null);
-      setIsPartner(false);
-      setSessionCookie('staff');
 
-      const { data: salon } = await supabase
-        .from('salons')
-        .select('*')
-        .eq('id', matchedStaff.salon_id)
-        .single();
+      if (data.type === 'partner') {
+        setCurrentPartner(data.partner);
+        setIsPartner(true);
+        setCurrentStaff(null);
+        setSessionCookie('partner');
+        toast.success(`Welcome, ${data.partner.name} (Owner)`);
+      } else {
+        setCurrentStaff(data.staff);
+        setCurrentPartner(null);
+        setIsPartner(false);
+        setSessionCookie('staff');
+      }
 
-      if (salon) {
-        setSalon(salon);
-        const allBranches = await loadBranches(salon.id);
-        setBranches(allBranches);
-        const staffBranch = allBranches.find((b: Branch) => b.id === matchedStaff.branch_id) || allBranches.find((b: Branch) => b.is_main) || allBranches[0];
-        if (staffBranch) setCurrentBranch(staffBranch);
+      if (data.salon) {
+        setSalon(data.salon);
+        setBranches(data.branches || []);
+        const mainBranch = data.branches?.find((b: Branch) => b.is_main) || data.branches?.[0];
+        if (mainBranch) setCurrentBranch(mainBranch);
       }
 
       router.push('/dashboard');
@@ -333,6 +309,7 @@ export default function LoginPage() {
             variant="outline"
             size="sm"
             onClick={() => setLanguage(language === 'en' ? 'ur' : 'en')}
+            aria-label="Switch language"
           >
             {language === 'en' ? 'اردو' : 'EN'}
           </Button>
@@ -369,9 +346,9 @@ export default function LoginPage() {
             </button>
           </div>
 
-          {/* Owner Login Form */}
+          {/* Owner Login / Signup Form */}
           {mode === 'owner' && (
-            <form onSubmit={handleOwnerLogin} className="space-y-4 animate-fade-up">
+            <form onSubmit={ownerMode === 'login' ? handleOwnerLogin : handleOwnerSignup} className="space-y-4 animate-fade-up">
               <div>
                 <Label htmlFor="email">{t('email')}</Label>
                 <Input
@@ -387,25 +364,27 @@ export default function LoginPage() {
               <div>
                 <div className="flex items-center justify-between">
                   <Label htmlFor="password">{t('password')}</Label>
-                  <button
-                    type="button"
-                    className="text-xs text-gold hover:underline"
-                    onClick={async () => {
-                      if (!email.trim()) {
-                        toast.error('Enter your email first');
-                        return;
-                      }
-                      try {
-                        const { error } = await supabase.auth.resetPasswordForEmail(email);
-                        if (error) throw error;
-                        toast.success('Password reset email sent');
-                      } catch (err: unknown) {
-                        toast.error(err instanceof Error ? err.message : 'Failed to send reset email');
-                      }
-                    }}
-                  >
-                    {t('forgotPassword')}
-                  </button>
+                  {ownerMode === 'login' && (
+                    <button
+                      type="button"
+                      className="text-xs text-gold hover:underline"
+                      onClick={async () => {
+                        if (!email.trim()) {
+                          toast.error('Enter your email first');
+                          return;
+                        }
+                        try {
+                          const { error } = await supabase.auth.resetPasswordForEmail(email);
+                          if (error) throw error;
+                          toast.success('Password reset email sent');
+                        } catch (err: unknown) {
+                          toast.error(err instanceof Error ? err.message : 'Failed to send reset email');
+                        }
+                      }}
+                    >
+                      {t('forgotPassword')}
+                    </button>
+                  )}
                 </div>
                 <Input
                   id="password"
@@ -413,12 +392,20 @@ export default function LoginPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
+                  minLength={6}
                   className="mt-1.5"
                 />
               </div>
               <Button type="submit" className="w-full bg-gold hover:bg-gold/90 text-black border border-gold" disabled={loading}>
-                {loading ? t('loading') : t('login')}
+                {loading ? t('loading') : ownerMode === 'login' ? t('login') : 'Create Account'}
               </Button>
+              <p className="text-center text-sm text-muted-foreground">
+                {ownerMode === 'login' ? (
+                  <>New here? <button type="button" onClick={() => setOwnerMode('signup')} className="text-gold hover:underline font-medium">Create an account</button></>
+                ) : (
+                  <>Already have an account? <button type="button" onClick={() => setOwnerMode('login')} className="text-gold hover:underline font-medium">Log in</button></>
+                )}
+              </p>
             </form>
           )}
 
@@ -493,6 +480,7 @@ export default function LoginPage() {
                           ? 'bg-secondary text-muted-foreground hover:bg-secondary/80 active:scale-[0.92] text-base'
                           : 'bg-card border border-border hover:bg-secondary active:scale-[0.92] active:bg-gold/10 shadow-sm'
                     }`}
+                    {...(key === 'del' ? { 'aria-label': 'Delete' } : {})}
                   >
                     {key === 'del' ? '←' : key}
                   </button>

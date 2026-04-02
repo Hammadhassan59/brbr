@@ -182,7 +182,7 @@ export default function DailyReportPage() {
           ))}
           <button
             onClick={() => setBranchScope('all')}
-            className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${branchScope === 'all' ? 'bg-gold text-white' : 'bg-secondary text-muted-foreground hover:bg-secondary/80'}`}
+            className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${branchScope === 'all' ? 'bg-gold text-black' : 'bg-secondary text-muted-foreground hover:bg-secondary/80'}`}
           >
             All Branches
           </button>

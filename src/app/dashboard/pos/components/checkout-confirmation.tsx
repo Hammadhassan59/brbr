@@ -167,7 +167,7 @@ export function CheckoutConfirmation({
               )}
               <div className="flex justify-between font-bold text-lg pt-1">
                 <span>Total</span>
-                <span>{formatPKR(total)}</span>
+                <span>{formatPKR(total + tipAmount)}</span>
               </div>
             </div>
 
@@ -295,7 +295,7 @@ export function CheckoutConfirmation({
         {/* Grand total */}
         <div className="receipt-total" style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0' }}>
           <span>TOTAL</span>
-          <span>{formatPKR(total)}</span>
+          <span>{formatPKR(total + tipAmount)}</span>
         </div>
 
         <div className="receipt-divider" />

@@ -1,7 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { Star, AlertTriangle, Ban, MessageCircle, Pencil } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { Star, Ban, MessageCircle, Pencil } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -17,6 +18,7 @@ interface ClientCardProps {
 }
 
 export function ClientCard({ client, selected, onSelect }: ClientCardProps) {
+  const router = useRouter();
   const initials = client.name
     .split(' ')
     .map((w) => w[0])
@@ -113,7 +115,7 @@ export function ClientCard({ client, selected, onSelect }: ClientCardProps) {
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                window.location.href = `/dashboard/clients/${client.id}`;
+                router.push(`/dashboard/clients/${client.id}`);
               }}
               title="Edit"
             >

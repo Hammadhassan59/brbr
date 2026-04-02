@@ -86,7 +86,7 @@ export default function StaffProfilePage() {
       if (attRes.data) setAttendance(attRes.data as Attendance[]);
       if (advRes.data) setAdvances(advRes.data as Advance[]);
       if (commRes.data) setCommissionData(commRes.data as typeof commissionData);
-    } catch (err) { console.error(err); } finally { setLoading(false); }
+    } catch { toast.error('Failed to load staff data'); } finally { setLoading(false); }
   }, [staffId, month, year]);
 
   useEffect(() => { fetchData(); }, [fetchData]);

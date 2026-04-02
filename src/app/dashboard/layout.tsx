@@ -6,12 +6,12 @@ import { usePathname, useRouter } from 'next/navigation';
 import { ErrorBoundary } from '@/components/error-boundary';
 import {
   LayoutDashboard, CalendarDays, Users, Receipt, UserCog,
-  Package, BarChart3, MessageCircle, Settings, LogOut,
+  Package, BarChart3, Settings, LogOut,
   Scissors, Bell, Plus, Menu, X, ChevronDown, Gift, Check, Wallet,
 } from 'lucide-react';
 import { useLanguage } from '@/components/providers/language-provider';
 import { useAppStore } from '@/store/app-store';
-import { getRoleAccess, type StaffRoleAccess } from '@/lib/demo-data';
+import { getRoleAccess, type StaffRoleAccess } from '@/lib/role-access';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { getTodayPKT, formatPKDate } from '@/lib/utils/dates';
@@ -20,7 +20,7 @@ import type { Branch } from '@/types/database';
 interface NavItem {
   href: string;
   icon: typeof LayoutDashboard;
-  labelKey: 'dashboard' | 'appointments' | 'clients' | 'pos' | 'staff' | 'inventory' | 'expenses' | 'reports' | 'whatsappNav' | 'settings' | 'more';
+  labelKey: 'dashboard' | 'appointments' | 'clients' | 'pos' | 'staff' | 'inventory' | 'expenses' | 'reports' | 'settings' | 'more';
   access: StaffRoleAccess[];
 }
 
@@ -34,7 +34,6 @@ const ALL_NAV_ITEMS: NavItem[] = [
   { href: '/dashboard/expenses', icon: Wallet, labelKey: 'expenses', access: ['full', 'front_desk'] },
   { href: '/dashboard/packages', icon: Gift, labelKey: 'more', access: ['full'] },
   { href: '/dashboard/reports', icon: BarChart3, labelKey: 'reports', access: ['full'] },
-  { href: '/dashboard/whatsapp', icon: MessageCircle, labelKey: 'whatsappNav', access: ['full'] },
   { href: '/dashboard/settings', icon: Settings, labelKey: 'settings', access: ['full'] },
 ];
 
@@ -94,7 +93,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     <div className="h-screen flex overflow-hidden bg-background">
       {/* Mobile sidebar overlay */}
       {sidebarOpen && (
-        <div className="fixed inset-0 z-40 lg:hidden animate-in fade-in duration-200" onClick={() => setSidebarOpen(false)}>
+        <div className="fixed inset-0 z-40 lg:hidden animate-in fade-in duration-200" role="button" aria-label="Close sidebar" onClick={() => setSidebarOpen(false)}>
           <div className="absolute inset-0 bg-black/50" />
         </div>
       )}
@@ -114,7 +113,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               {salon.name}
             </span>
           )}
-          <button onClick={() => setSidebarOpen(false)} className="lg:hidden ml-auto">
+          <button onClick={() => setSidebarOpen(false)} className="lg:hidden ml-auto" aria-label="Close menu">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -227,7 +226,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <div className="flex-1 flex flex-col min-w-0">
         {/* Topbar */}
         <header className="sticky top-0 z-30 bg-card border-b px-4 lg:px-6 h-14 flex items-center gap-3 no-print">
-          <button onClick={() => setSidebarOpen(true)} className="lg:hidden touch-target">
+          <button onClick={() => setSidebarOpen(true)} className="lg:hidden touch-target" aria-label="Open menu">
             <Menu className="w-5 h-5" />
           </button>
 
@@ -242,7 +241,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 size="icon"
                 className="relative touch-target"
                 style={{ animation: 'pulse-gold 2s ease-in-out infinite' }}
-                title="View today's alerts"
+                title="View daily report"
                 onClick={() => router.push('/dashboard/reports/daily')}
               >
                 <Bell className="w-5 h-5" />

@@ -69,9 +69,26 @@ export default function ReportsPage() {
         }
       });
 
+      const now = new Date();
+      const curMonth = now.getMonth();
+      const curYear = now.getFullYear();
+      const prevMonthDate = new Date(curYear, curMonth - 1, 1);
+      const prevMonthEnd = new Date(curYear, curMonth, 0);
+      const curMonthStart = new Date(curYear, curMonth, 1);
+      const curMonthBills = bills.filter(b => new Date(b.created_at) >= curMonthStart);
+      const prevMonthBills = bills.filter(b => {
+        const d = new Date(b.created_at);
+        return d >= prevMonthDate && d <= prevMonthEnd;
+      });
+      const curMonthRevenue = curMonthBills.reduce((s, b) => s + b.total_amount, 0);
+      const prevMonthRevenue = prevMonthBills.reduce((s, b) => s + b.total_amount, 0);
+      const monthTrend = prevMonthRevenue > 0
+        ? Math.round(((curMonthRevenue - prevMonthRevenue) / prevMonthRevenue) * 100)
+        : 0;
+
       setData({
         daily: { revenue: todayRevenue, bills: todayBills.length },
-        monthly: { revenue: totalRevenue, trend: 12 },
+        monthly: { revenue: totalRevenue, trend: monthTrend },
         staff: { activeCount: staffList.length, topEarner },
         inventory: { lowStock, totalProducts: products.length },
         clients: { total: clients.length, udhaarTotal },
@@ -103,8 +120,8 @@ export default function ReportsPage() {
       icon: CalendarRange,
       metric: data ? formatPKRShort(data.monthly.revenue) : '—',
       metricLabel: 'This month',
-      sub: data?.monthly.trend ? `+${data.monthly.trend}%` : '',
-      subPositive: true,
+      sub: data?.monthly.trend ? `${data.monthly.trend > 0 ? '+' : ''}${data.monthly.trend}%` : '',
+      subPositive: (data?.monthly.trend || 0) > 0,
     },
     {
       href: '/dashboard/reports/staff',

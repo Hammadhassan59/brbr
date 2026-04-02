@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Users, Shield, Store, Loader2 } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { supabase } from '@/lib/supabase';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -53,8 +54,8 @@ export default function AdminUsersPage() {
           setStats({ superAdmins, owners, totalStaff: mapped.length });
         }
       } catch {
-        // Fall back to demo data
         setUsers(DEMO_USERS);
+        toast.error('Could not load live data — showing demo');
       } finally {
         setLoading(false);
       }
@@ -81,7 +82,7 @@ export default function AdminUsersPage() {
       </div>
 
       <Card>
-        <CardHeader className="pb-2"><CardTitle className="text-sm">Owner Accounts</CardTitle></CardHeader>
+        <CardHeader className="pb-2"><CardTitle className="text-sm">Platform Users</CardTitle></CardHeader>
         <CardContent className="px-0">
           <Table>
             <TableHeader><TableRow>

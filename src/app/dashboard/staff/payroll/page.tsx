@@ -106,7 +106,7 @@ export default function PayrollPage() {
         };
       });
       setRows(payrollRows);
-    } catch (err) { console.error(err); }
+    } catch { toast.error('Failed to load payroll data'); }
     finally { setLoading(false); }
   }, [salon, month, year]);
 

@@ -39,8 +39,8 @@ export default function AdminSalonsPage() {
           setSalons(data as Salon[]);
         }
       } catch {
-        // Fall back to demo data
         setSalons(DEMO_ALL_SALONS);
+        toast.error('Could not load live data — showing demo');
       } finally {
         setLoading(false);
       }

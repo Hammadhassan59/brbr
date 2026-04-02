@@ -93,7 +93,6 @@ export default function ExpensesPage() {
     setSaving(true);
     try {
       if (editingExpense) {
-        // Update existing expense
         const oldAmount = editingExpense.amount;
         const newAmount = Number(amount);
         await supabase.from('expenses').update({
@@ -102,26 +101,29 @@ export default function ExpensesPage() {
           description: description || null,
         }).eq('id', editingExpense.id);
 
-        // Adjust cash drawer if amount changed
         if (oldAmount !== newAmount) {
-          const { data: drawer } = await supabase
-            .from('cash_drawers')
-            .select('*')
-            .eq('branch_id', currentBranch.id)
-            .eq('date', editingExpense.date)
-            .eq('status', 'open')
-            .single();
+          try {
+            const { data: drawer } = await supabase
+              .from('cash_drawers')
+              .select('*')
+              .eq('branch_id', currentBranch.id)
+              .eq('date', editingExpense.date)
+              .eq('status', 'open')
+              .single();
 
-          if (drawer) {
-            await supabase.from('cash_drawers').update({
-              total_expenses: (drawer.total_expenses || 0) - oldAmount + newAmount,
-            }).eq('id', drawer.id);
+            if (drawer) {
+              const { error: drawerError } = await supabase.from('cash_drawers').update({
+                total_expenses: (drawer.total_expenses || 0) - oldAmount + newAmount,
+              }).eq('id', drawer.id);
+              if (drawerError) throw drawerError;
+            }
+          } catch {
+            toast.error('Expense saved but cash drawer not updated');
           }
         }
 
         toast.success('Expense updated');
       } else {
-        // Insert new expense
         const createdBy = isPartner ? currentPartner?.id : currentStaff?.id;
         await supabase.from('expenses').insert({
           branch_id: currentBranch.id,
@@ -132,19 +134,23 @@ export default function ExpensesPage() {
           created_by: createdBy || null,
         });
 
-        // Update today's cash drawer if open
-        const { data: drawer } = await supabase
-          .from('cash_drawers')
-          .select('*')
-          .eq('branch_id', currentBranch.id)
-          .eq('date', today)
-          .eq('status', 'open')
-          .single();
+        try {
+          const { data: drawer } = await supabase
+            .from('cash_drawers')
+            .select('*')
+            .eq('branch_id', currentBranch.id)
+            .eq('date', today)
+            .eq('status', 'open')
+            .single();
 
-        if (drawer) {
-          await supabase.from('cash_drawers').update({
-            total_expenses: (drawer.total_expenses || 0) + Number(amount),
-          }).eq('id', drawer.id);
+          if (drawer) {
+            const { error: drawerError } = await supabase.from('cash_drawers').update({
+              total_expenses: (drawer.total_expenses || 0) + Number(amount),
+            }).eq('id', drawer.id);
+            if (drawerError) throw drawerError;
+          }
+        } catch {
+          toast.error('Expense saved but cash drawer not updated');
         }
 
         toast.success('Expense recorded');
@@ -162,7 +168,7 @@ export default function ExpensesPage() {
   }
 
   async function deleteExpense(expense: Expense) {
-    if (!confirm(`Delete "${expense.description || expense.category || 'expense'}" (${formatPKR(expense.amount)})?`)) return;
+    if (!confirm('Delete this expense?')) return;
     try {
       await supabase.from('expenses').delete().eq('id', expense.id);
       toast.success('Expense deleted');
@@ -254,7 +260,7 @@ export default function ExpensesPage() {
                 <div key={cat} className="flex items-center gap-3">
                   <span className="text-sm flex-1">{cat}</span>
                   <div className="w-32 bg-secondary rounded-full h-2">
-                    <div className="bg-gold/60 h-2" style={{ width: `${(total / totalAmount) * 100}%` }} />
+                    <div className="bg-gold/60 h-2" style={{ width: `${totalAmount > 0 ? (total / totalAmount) * 100 : 0}%` }} />
                   </div>
                   <span className="text-sm font-medium w-24 text-right">{formatPKR(total)}</span>
                 </div>
@@ -280,7 +286,7 @@ export default function ExpensesPage() {
           </CardContent>
         </Card>
       ) : (
-        Object.entries(groupedByDate).map(([date, dayExpenses]) => (
+        Object.entries(groupedByDate).sort(([a], [b]) => b.localeCompare(a)).map(([date, dayExpenses]) => (
           <Card key={date}>
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between">
@@ -291,15 +297,15 @@ export default function ExpensesPage() {
             <CardContent className="px-0">
               <Table>
                 <TableBody>
-                  {dayExpenses.map((e) => (
-                    <TableRow key={e.id} className="cursor-pointer" onClick={() => openEditExpense(e)}>
+                  {dayExpenses.map((expense) => (
+                    <TableRow key={expense.id} className="cursor-pointer" onClick={() => openEditExpense(expense)}>
                       <TableCell className="pl-4">
-                        <p className="text-sm font-medium">{e.description || e.category || 'Expense'}</p>
-                        {e.category && e.description && <p className="text-xs text-muted-foreground">{e.category}</p>}
+                        <p className="text-sm font-medium">{expense.description || expense.category || 'Expense'}</p>
+                        {expense.category && expense.description && <p className="text-xs text-muted-foreground">{expense.category}</p>}
                       </TableCell>
-                      <TableCell className="text-right text-sm font-medium text-foreground">{formatPKR(e.amount)}</TableCell>
+                      <TableCell className="text-right text-sm font-medium text-foreground">{formatPKR(expense.amount)}</TableCell>
                       <TableCell className="text-right pr-4 w-10">
-                        <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive" onClick={() => deleteExpense(e)}>
+                        <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive" onClick={(e) => { e.stopPropagation(); deleteExpense(expense); }}>
                           <Trash2 className="w-3.5 h-3.5" />
                         </Button>
                       </TableCell>
@@ -334,7 +340,7 @@ export default function ExpensesPage() {
             </div>
             <div>
               <Label className="text-xs">Amount (Rs) *</Label>
-              <Input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0" className="mt-1 text-lg" inputMode="numeric" />
+              <Input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0" className="mt-1 text-lg" inputMode="numeric" min={0} />
             </div>
             <div>
               <Label className="text-xs">Description</Label>

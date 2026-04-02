@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
+import toast from 'react-hot-toast';
 import { supabase } from '@/lib/supabase';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatPKR } from '@/lib/utils/currency';
@@ -135,11 +136,11 @@ export default function AdminAnalyticsPage() {
           ]);
         }
       } catch {
-        // Fall back to demo data on any error
         setMonthlyRevenue(DEMO_MONTHLY_REVENUE);
         setSalonRevenue(DEMO_SALON_REVENUE);
         setCityDist(DEMO_CITY_DIST);
         setKeyMetrics(DEMO_KEY_METRICS);
+        toast.error('Could not load live data — showing demo');
       } finally {
         setLoading(false);
       }

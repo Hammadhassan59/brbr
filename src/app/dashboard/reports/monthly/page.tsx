@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import type { Bill, Staff } from '@/types/database';
 
-const PIE_COLORS = ['#4ADE80', '#F87171', '#34D399', '#60A5FA', '#C084FC', '#FB923C'];
+const PIE_COLORS = ['#4ADE80', '#F87171', '#34D399', '#60A5FA', '#C084FC', '#FB923C', '#8B5CF6', '#EC4899', '#14B8A6', '#F97316'];
 
 export default function MonthlyReportPage() {
   const { salon, branches, currentBranch, currentStaff, isPartner } = useAppStore();
@@ -143,7 +143,7 @@ export default function MonthlyReportPage() {
           ))}
           <button
             onClick={() => setBranchScope('all')}
-            className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${branchScope === 'all' ? 'bg-gold text-white' : 'bg-secondary text-muted-foreground hover:bg-secondary/80'}`}
+            className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${branchScope === 'all' ? 'bg-gold text-black' : 'bg-secondary text-muted-foreground hover:bg-secondary/80'}`}
           >
             All Branches
           </button>

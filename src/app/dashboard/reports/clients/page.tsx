@@ -157,7 +157,7 @@ export default function ClientReportPage() {
                       <TableCell className="text-center pr-4">
                         <Button variant="ghost" size="sm" className="h-7 text-xs gap-1" onClick={() => {
                           if (!c.phone) return;
-                          window.open(generateWhatsAppLink(c.phone, `Dear ${c.name}, your outstanding balance is ${formatPKR(c.udhaar_balance)}. Thank you! — BrBr`), '_blank');
+                          window.open(generateWhatsAppLink(c.phone, getUdhaarMessage(c)), '_blank');
                         }}><Send className="w-3 h-3" /> Remind</Button>
                       </TableCell>
                     </TableRow>

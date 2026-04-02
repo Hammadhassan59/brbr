@@ -54,10 +54,23 @@ export default function OrdersPage() {
     if (!currentBranch || !formSupplierId || !formTotal) { toast.error('Fill required fields'); return; }
     setSaving(true);
     try {
-      const items = formItems.split('\n').filter((line) => line.trim()).map((line) => {
-        const parts = line.split('-').map((s) => s.trim());
-        return { name: parts[0] || 'Item', qty: Number(parts[1]) || 1, price: Number(parts[2]) || 0 };
-      });
+      const items: { name: string; qty: number; price: number }[] = [];
+      for (const line of formItems.split('\n').filter((l) => l.trim())) {
+        const lastDash = line.lastIndexOf('-');
+        const secondLastDash = line.lastIndexOf('-', lastDash - 1);
+        if (lastDash === -1 || secondLastDash === -1) {
+          toast.error(`Malformed item line: "${line.trim()}"`);
+          continue;
+        }
+        const name = line.slice(0, secondLastDash).trim();
+        const qty = Number(line.slice(secondLastDash + 1, lastDash).trim());
+        const price = Number(line.slice(lastDash + 1).trim());
+        if (!name || isNaN(qty) || isNaN(price)) {
+          toast.error(`Invalid qty/price in: "${line.trim()}"`);
+          continue;
+        }
+        items.push({ name, qty, price });
+      }
       await supabase.from('purchase_orders').insert({
         supplier_id: formSupplierId, branch_id: currentBranch.id,
         items: JSON.parse(JSON.stringify(items)), total_amount: Number(formTotal), notes: formNotes || null,

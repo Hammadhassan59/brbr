@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { Search, Plus, Download, MessageCircle, Tag } from 'lucide-react';
+import { Search, Plus, Download, Tag } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { supabase } from '@/lib/supabase';
 import { useAppStore } from '@/store/app-store';
@@ -47,8 +47,8 @@ function ClientsContent() {
         .order('name');
       if (error) throw error;
       setClients((data || []) as Client[]);
-    } catch (err) {
-      console.error('Failed to load clients:', err);
+    } catch {
+      toast.error('Failed to load clients');
     } finally {
       setLoading(false);
     }
@@ -68,8 +68,9 @@ function ClientsContent() {
       case 'vip': return c.is_vip;
       case 'regular': return !c.is_vip && !c.is_blacklisted && c.total_visits > 0;
       case 'lapsed': {
-        // TODO: filter by last_visit_date when available
-        return c.total_visits > 0 && c.total_spent > 0;
+        const sixtyDaysMs = 60 * 24 * 60 * 60 * 1000;
+        const daysSinceCreated = new Date().getTime() - new Date(c.created_at).getTime();
+        return c.total_visits > 0 && !c.is_blacklisted && daysSinceCreated > sixtyDaysMs;
       }
       case 'udhaar': return c.udhaar_balance > 0;
       case 'blacklisted': return c.is_blacklisted;
@@ -168,9 +169,6 @@ function ClientsContent() {
           </Button>
           <Button variant="outline" size="sm" className="text-xs gap-1" onClick={() => toast('Tag management coming soon')}>
             <Tag className="w-3 h-3" /> Add Tag
-          </Button>
-          <Button variant="outline" size="sm" className="text-xs gap-1" onClick={() => router.push('/dashboard/whatsapp/campaigns')}>
-            <MessageCircle className="w-3 h-3" /> WhatsApp
           </Button>
           <Button variant="ghost" size="sm" className="text-xs ml-auto" onClick={() => setSelectedIds(new Set())}>
             Clear
