@@ -1,9 +1,10 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import {
-  Star, Phone, Edit, ArrowLeft, Calendar, CreditCard,
+  Star, Phone, Edit, Calendar, CreditCard, ChevronRight,
   Package, StickyNote, Award, MessageCircle,
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
@@ -158,20 +159,20 @@ export default function ClientProfilePage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-2">
-        <Button variant="ghost" size="sm" onClick={() => router.push('/dashboard/clients')} className="calendar-card transition-all duration-150">
-          <ArrowLeft className="w-4 h-4 mr-1" /> Clients
-        </Button>
-        <div className="ml-auto">
-          <Button variant="outline" size="sm" onClick={() => router.push(`/dashboard/clients/${client.id}/edit`)} className="calendar-card transition-all duration-150">
-            <Edit className="w-4 h-4 mr-1" /> Edit
-          </Button>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+          <Link href="/dashboard/clients" className="hover:text-foreground transition-colors">Clients</Link>
+          <ChevronRight className="w-3.5 h-3.5" />
+          <span className="text-foreground font-medium">{client.name}</span>
         </div>
+        <Button variant="outline" size="sm" onClick={() => router.push(`/dashboard/clients/${client.id}/edit`)} className="calendar-card transition-all duration-150">
+          <Edit className="w-4 h-4 mr-1" /> Edit
+        </Button>
       </div>
 
-      <div className="calendar-card bg-card p-6 border border-border/30">
+      <div className="calendar-card bg-card p-6 border border-border shadow-sm">
         <div className="flex items-start gap-4">
-          <div className="w-16 h-16 rounded-xl bg-gold/15 text-gold text-xl font-bold flex items-center justify-center shrink-0">
+          <div className="w-16 h-16 rounded-xl bg-gold/20 text-gold text-xl font-bold flex items-center justify-center shrink-0 shadow-sm">
             {initials}
           </div>
           <div className="flex-1 min-w-0">
@@ -185,26 +186,26 @@ export default function ClientProfilePage() {
                 <Phone className="w-3 h-3" /> {client.phone}
               </a>
             )}
-            <div className="flex flex-wrap items-center gap-3 mt-2 text-sm">
-              <span className="calendar-card bg-background/50 px-3 py-1.5 text-xs flex items-center gap-1">
+            <div className="flex flex-wrap items-center gap-2 mt-3 text-sm">
+              <span className="calendar-card bg-secondary border border-border px-3 py-1.5 text-xs font-medium flex items-center gap-1">
                 <Award className="w-3.5 h-3.5 text-gold" />
                 {client.loyalty_points} points ({formatPKR(client.loyalty_points * 0.5)})
               </span>
-              <span className="calendar-card bg-background/50 px-3 py-1.5 text-xs">{client.total_visits} visits</span>
-              <span className="calendar-card bg-background/50 px-3 py-1.5 text-xs">{formatPKR(client.total_spent)} spent</span>
-              <span className="calendar-card bg-background/50 px-3 py-1.5 text-xs">Since {formatPKDate(client.created_at)}</span>
+              <span className="calendar-card bg-secondary border border-border px-3 py-1.5 text-xs font-medium">{client.total_visits} visits</span>
+              <span className="calendar-card bg-secondary border border-border px-3 py-1.5 text-xs font-medium">{formatPKR(client.total_spent)} spent</span>
+              <span className="calendar-card bg-secondary border border-border px-3 py-1.5 text-xs font-medium">Since {formatPKDate(client.created_at)}</span>
             </div>
           </div>
         </div>
       </div>
 
       <Tabs defaultValue="visits">
-        <TabsList className="flex-wrap h-auto gap-1 bg-transparent">
-          <TabsTrigger value="visits" className="calendar-card text-xs gap-1 transition-all duration-150 data-[state=active]:bg-gold/10 data-[state=active]:text-gold text-muted-foreground hover:text-foreground"><Calendar className="w-3 h-3" /> Visits</TabsTrigger>
-          <TabsTrigger value="udhaar" className="calendar-card text-xs gap-1 transition-all duration-150 data-[state=active]:bg-gold/10 data-[state=active]:text-gold text-muted-foreground hover:text-foreground"><CreditCard className="w-3 h-3" /> Udhaar</TabsTrigger>
-          <TabsTrigger value="packages" className="calendar-card text-xs gap-1 transition-all duration-150 data-[state=active]:bg-gold/10 data-[state=active]:text-gold text-muted-foreground hover:text-foreground"><Package className="w-3 h-3" /> Packages</TabsTrigger>
-          <TabsTrigger value="notes" className="calendar-card text-xs gap-1 transition-all duration-150 data-[state=active]:bg-gold/10 data-[state=active]:text-gold text-muted-foreground hover:text-foreground"><StickyNote className="w-3 h-3" /> Notes</TabsTrigger>
-          <TabsTrigger value="loyalty" className="calendar-card text-xs gap-1 transition-all duration-150 data-[state=active]:bg-gold/10 data-[state=active]:text-gold text-muted-foreground hover:text-foreground"><Award className="w-3 h-3" /> Loyalty</TabsTrigger>
+        <TabsList className="flex-wrap h-auto gap-1.5 bg-transparent">
+          <TabsTrigger value="visits" className="calendar-card text-xs gap-1 transition-all duration-150 data-[state=active]:bg-gold data-[state=active]:text-black data-[state=active]:shadow-sm text-muted-foreground hover:text-foreground"><Calendar className="w-3 h-3" /> Visits</TabsTrigger>
+          <TabsTrigger value="udhaar" className="calendar-card text-xs gap-1 transition-all duration-150 data-[state=active]:bg-gold data-[state=active]:text-black data-[state=active]:shadow-sm text-muted-foreground hover:text-foreground"><CreditCard className="w-3 h-3" /> Udhaar</TabsTrigger>
+          <TabsTrigger value="packages" className="calendar-card text-xs gap-1 transition-all duration-150 data-[state=active]:bg-gold data-[state=active]:text-black data-[state=active]:shadow-sm text-muted-foreground hover:text-foreground"><Package className="w-3 h-3" /> Packages</TabsTrigger>
+          <TabsTrigger value="notes" className="calendar-card text-xs gap-1 transition-all duration-150 data-[state=active]:bg-gold data-[state=active]:text-black data-[state=active]:shadow-sm text-muted-foreground hover:text-foreground"><StickyNote className="w-3 h-3" /> Notes</TabsTrigger>
+          <TabsTrigger value="loyalty" className="calendar-card text-xs gap-1 transition-all duration-150 data-[state=active]:bg-gold data-[state=active]:text-black data-[state=active]:shadow-sm text-muted-foreground hover:text-foreground"><Award className="w-3 h-3" /> Loyalty</TabsTrigger>
         </TabsList>
 
         <TabsContent value="visits" className="mt-4">

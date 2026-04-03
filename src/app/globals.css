@@ -40,7 +40,7 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
-  --color-gold: #FEBE10;
+  --color-gold: var(--gold);
   --color-navy: #1A1A1A;
   --color-warm-white: #FFFFFF;
   --radius-sm: 0px;
@@ -53,14 +53,6 @@
 }
 
 :root {
-  /* BrBr — Dark POS Elevation System
-     Level 0  #0C0C0C — page background (deepest)
-     Level 1  #161616 — chrome: sidebar + header (same)
-     Level 2  #1E1E1E — cards, content surfaces
-     Level 3  #282828 — hover, active, interactive
-     Accent   #FEBE10 — gold CTAs
-     Text     #EFEFEF — primary text */
-
   /* Motion tokens — POS context: snappy */
   --ease-snappy: cubic-bezier(0.2, 0, 0, 1);
   --ease-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
@@ -72,45 +64,40 @@
   --duration-dramatic: 600ms;
   --duration-landing: 800ms;
 
-  /* Level 0 — page background */
-  --background: #0C0C0C;
-  --foreground: #EFEFEF;
-
-  /* Level 2 — cards (elevated content) */
-  --card: #1E1E1E;
-  --card-foreground: #EFEFEF;
-  --popover: #1E1E1E;
-  --popover-foreground: #EFEFEF;
-
-  /* Accent */
-  --primary: #FEBE10;
-  --primary-foreground: #0C0C0C;
-  --accent: #FEBE10;
-  --accent-foreground: #0C0C0C;
-
-  /* Level 3 — interactive surfaces */
-  --secondary: #282828;
-  --secondary-foreground: #EFEFEF;
-  --muted: #282828;
-  --muted-foreground: #808080;
-
-  --destructive: #EF4444;
-  --border: #2A2A2A;
-  --input: #2A2A2A;
-  --ring: #FEBE10;
-  --chart-1: #FEBE10;
-  --chart-2: #22C55E;
-  --chart-3: #3B82F6;
-  --chart-4: #F97316;
-  --chart-5: #EF4444;
+  /* BrBr — Light content, dark chrome
+     Content area: light backgrounds, white cards
+     Sidebar + Header: dark chrome (#161616) */
+  --gold: #F0B000;
+  --background: #F2F2F2;
+  --foreground: #1A1A1A;
+  --card: #FFFFFF;
+  --card-foreground: #1A1A1A;
+  --popover: #FFFFFF;
+  --popover-foreground: #1A1A1A;
+  --primary: var(--gold);
+  --primary-foreground: #FFFFFF;
+  --accent: var(--gold);
+  --accent-foreground: #FFFFFF;
+  --secondary: #E8E8E8;
+  --secondary-foreground: #1A1A1A;
+  --muted: #E8E8E8;
+  --muted-foreground: #666666;
+  --destructive: #DC2626;
+  --border: #D4D4D4;
+  --input: #D4D4D4;
+  --ring: var(--gold);
+  --chart-1: var(--gold);
+  --chart-2: #16A34A;
+  --chart-3: #2563EB;
+  --chart-4: #EA580C;
+  --chart-5: #DC2626;
   --radius: 0px;
 
-  /* Level 1 — chrome: sidebar + header (SAME color) */
+  /* Dark chrome — sidebar + header stay dark */
   --sidebar: #161616;
   --sidebar-foreground: #EFEFEF;
   --sidebar-primary: #FEBE10;
   --sidebar-primary-foreground: #0C0C0C;
-  /* Active nav = Level 2 (same as cards) */
   --sidebar-accent: #1E1E1E;
   --sidebar-accent-foreground: #EFEFEF;
   --sidebar-border: #222222;
@@ -123,6 +110,16 @@
   }
   body {
     @apply bg-background text-foreground;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  body::-webkit-scrollbar,
+  *::-webkit-scrollbar {
+    display: none;
+  }
+  * {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
   }
   html {
     @apply font-sans;
@@ -164,6 +161,14 @@
   .touch-target {
     min-width: 44px;
     min-height: 44px;
+  }
+
+  .hide-scrollbar {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .hide-scrollbar::-webkit-scrollbar {
+    display: none;
   }
 
   /* Shimmer loading skeleton — replaces animate-pulse */

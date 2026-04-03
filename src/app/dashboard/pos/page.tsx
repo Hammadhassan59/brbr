@@ -443,9 +443,9 @@ function POSContent() {
   return (
     <div className="h-[calc(100vh-3.5rem)] flex flex-col lg:flex-row gap-0 -m-4 lg:-m-6">
       {loading && (
-        <div className="flex-1 flex items-center justify-center">
-          <div className="text-center">
-            <div className="w-12 h-12 rounded-full bg-gold/10 flex items-center justify-center mx-auto mb-3 shimmer">
+        <div className="flex-1 flex items-center justify-center bg-background">
+          <div className="calendar-card bg-card border border-border/30 p-8 text-center">
+            <div className="w-12 h-12 rounded-xl bg-gold/10 flex items-center justify-center mx-auto mb-3 shimmer">
               <span className="text-gold font-bold">POS</span>
             </div>
             <p className="text-sm text-muted-foreground">Loading services...</p>
@@ -453,23 +453,20 @@ function POSContent() {
         </div>
       )}
       {!loading && (<>
-      {/* Left + Center: Catalog + Bill */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Header */}
-        <div className="flex items-center gap-2 px-3 py-2 border-b shrink-0">
-          <Button variant="ghost" size="sm" onClick={() => router.push('/dashboard')}>
+        <div className="flex items-center gap-2 px-3 py-2 bg-card border-b border-border shrink-0">
+          <Button variant="ghost" size="sm" onClick={() => router.push('/dashboard')} className="transition-all duration-150">
             <ArrowLeft className="w-4 h-4" />
           </Button>
 
-          {/* Client */}
           {selectedClient ? (
             <div className="flex items-center gap-2 flex-1 min-w-0">
-              <div className="w-7 h-7 rounded-full bg-gold/20 text-gold text-xs font-bold flex items-center justify-center shrink-0">
+              <div className="w-7 h-7 rounded-xl bg-gold/20 text-gold text-xs font-bold flex items-center justify-center shrink-0">
                 {selectedClient.name.charAt(0)}
               </div>
               <span className="text-sm font-medium truncate">{selectedClient.name}</span>
               {selectedClient.is_vip && <Badge variant="outline" className="text-[10px] text-gold border-gold">VIP</Badge>}
-              <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setSelectedClient(null)}>
+              <Button variant="ghost" size="icon" className="h-6 w-6 transition-all duration-150" onClick={() => setSelectedClient(null)}>
                 <X className="w-3 h-3" />
               </Button>
             </div>
@@ -480,29 +477,29 @@ function POSContent() {
                 value={clientSearch}
                 onChange={(e) => setClientSearch(e.target.value)}
                 placeholder="Search client..."
-                className="pl-8 h-8 text-sm"
+                className="calendar-card pl-8 h-8 text-sm"
               />
               {clientSearch.length >= 2 && (
-                <div className="absolute z-20 top-full left-0 right-0 mt-1 bg-card border rounded-lg shadow-lg max-h-40 overflow-y-auto">
+                <div className="absolute z-20 top-full left-0 right-0 mt-1 calendar-card bg-card border border-border/30 shadow-xl max-h-40 overflow-y-auto" style={{ scrollbarWidth: 'none' }}>
                   {clientResults.map((c) => (
                     <button key={c.id} onClick={() => { setSelectedClient(c); setClientSearch(''); setClientResults([]); }}
-                      className="w-full text-left px-3 py-1.5 hover:bg-secondary text-sm"
+                      className="w-full text-left px-3 py-1.5 hover:bg-secondary text-sm transition-all duration-150"
                     >
                       {c.name} <span className="text-muted-foreground">{c.phone}</span>
                     </button>
                   ))}
-                  <div className="border-t">
+                  <div className="border-t border-border/30">
                     {!showNewClient ? (
                       <div className="flex">
                         <button
                           onClick={() => { setClientSearch(''); setClientResults([]); }}
-                          className="flex-1 text-left px-3 py-1.5 hover:bg-secondary text-sm text-muted-foreground"
+                          className="flex-1 text-left px-3 py-1.5 hover:bg-secondary text-sm text-muted-foreground transition-all duration-150"
                         >
                           Walk-in Guest
                         </button>
                         <button
                           onClick={() => { setShowNewClient(true); setNewClientName(clientSearch); }}
-                          className="px-3 py-1.5 hover:bg-secondary text-sm text-gold font-medium"
+                          className="px-3 py-1.5 hover:bg-secondary text-sm text-gold font-medium transition-all duration-150"
                         >
                           <UserPlus className="w-3 h-3 inline mr-1" /> New Client
                         </button>
@@ -513,20 +510,20 @@ function POSContent() {
                           value={newClientName}
                           onChange={(e) => setNewClientName(e.target.value)}
                           placeholder="Client name *"
-                          className="h-7 text-xs"
+                          className="calendar-card h-7 text-xs"
                           autoFocus
                         />
                         <Input
                           value={newClientPhone}
                           onChange={(e) => setNewClientPhone(e.target.value)}
                           placeholder="Phone (optional)"
-                          className="h-7 text-xs"
+                          className="calendar-card h-7 text-xs"
                         />
                         <div className="flex gap-1.5">
-                          <Button variant="outline" size="sm" className="flex-1 h-7 text-xs" onClick={() => setShowNewClient(false)}>
+                          <Button variant="outline" size="sm" className="flex-1 h-7 text-xs transition-all duration-150" onClick={() => setShowNewClient(false)}>
                             Cancel
                           </Button>
-                          <Button size="sm" className="flex-1 h-7 text-xs bg-gold text-black border border-gold" onClick={createNewClient}>
+                          <Button size="sm" className="flex-1 h-7 text-xs bg-gold text-black border border-gold transition-all duration-150" onClick={createNewClient}>
                             Save
                           </Button>
                         </div>
@@ -538,16 +535,15 @@ function POSContent() {
             </div>
           )}
 
-          {/* Stylist */}
           <Select value={selectedStaffId} onValueChange={(v) => { if (v) { setSelectedStaffId(v); if (!tipStaffId) setTipStaffId(v); } }}>
-            <SelectTrigger className="h-8 text-xs w-[140px]">
+            <SelectTrigger className="calendar-card h-8 text-xs w-[140px]">
               <SelectValue placeholder="Stylist" />
             </SelectTrigger>
             <SelectContent>
               {stylists.map((s) => (
                 <SelectItem key={s.id} value={s.id}>
                   <span className="flex items-center gap-1.5">
-                    <span className="w-5 h-5 rounded-full bg-gold/20 text-gold text-[10px] font-bold flex items-center justify-center shrink-0">{s.name.charAt(0)}</span>
+                    <span className="w-5 h-5 rounded-xl bg-gold/20 text-gold text-[10px] font-bold flex items-center justify-center shrink-0">{s.name.charAt(0)}</span>
                     {s.name}
                   </span>
                 </SelectItem>
@@ -555,11 +551,10 @@ function POSContent() {
             </SelectContent>
           </Select>
 
-          <span className="text-[10px] text-muted-foreground font-mono hidden sm:block">{billNumber}</span>
+          <span className="calendar-card bg-background/50 px-3 py-1 text-xs text-muted-foreground font-mono hidden sm:block">{billNumber}</span>
         </div>
 
-        {/* Bill builder — two-column: catalog | bill */}
-        <div className="flex-1 overflow-hidden border-r">
+        <div className="flex-1 overflow-hidden bg-background">
           <BillBuilder
             services={services}
             products={products}
@@ -588,8 +583,7 @@ function POSContent() {
         </div>
       </div>
 
-      {/* Right panel: Payment */}
-      <div className="w-[320px] shrink-0 p-4 bg-card flex flex-col overflow-y-auto border-l">
+      <div className="w-[320px] shrink-0 p-4 bg-card flex flex-col overflow-y-auto border-l border-border" style={{ scrollbarWidth: 'none' }}>
         <PaymentPanel
           total={total}
           clientUdhaarBalance={selectedClient?.udhaar_balance || 0}
@@ -616,7 +610,6 @@ function POSContent() {
       </div>
       </>)}
 
-      {/* Checkout confirmation */}
       <CheckoutConfirmation
         open={showCheckout}
         onClose={() => setShowCheckout(false)}

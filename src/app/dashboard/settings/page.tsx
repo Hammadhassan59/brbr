@@ -212,25 +212,25 @@ export default function SettingsPage() {
     setServices(services.map((s) => s.id === id ? { ...s, base_price: price } : s));
   }
 
-  if (loading) return <div className="space-y-4"><div className="h-12 bg-muted rounded animate-pulse" /><div className="h-64 bg-muted rounded animate-pulse" /></div>;
+  if (loading) return <div className="space-y-6"><div className="h-12 bg-muted calendar-card animate-pulse" /><div className="h-64 bg-muted calendar-card animate-pulse" /></div>;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <h2 className="font-heading text-xl font-bold">Settings</h2>
 
       <Tabs defaultValue="profile">
-        <TabsList className="flex-wrap h-auto gap-1">
-          <TabsTrigger value="profile" className="text-xs">Salon Profile</TabsTrigger>
-          <TabsTrigger value="hours" className="text-xs">Working Hours</TabsTrigger>
-          <TabsTrigger value="services" className="text-xs">Services</TabsTrigger>
-          <TabsTrigger value="payment" className="text-xs">Payments</TabsTrigger>
-          <TabsTrigger value="tax" className="text-xs">Tax & Billing</TabsTrigger>
-          <TabsTrigger value="display" className="text-xs">Display</TabsTrigger>
+        <TabsList className="bg-transparent flex-wrap h-auto gap-1">
+          <TabsTrigger value="profile" className="calendar-card text-xs bg-secondary/50 border border-border text-muted-foreground data-[state=active]:bg-gold data-[state=active]:text-black data-[state=active]:shadow-sm">Salon Profile</TabsTrigger>
+          <TabsTrigger value="hours" className="calendar-card text-xs bg-secondary/50 border border-border text-muted-foreground data-[state=active]:bg-gold data-[state=active]:text-black data-[state=active]:shadow-sm">Working Hours</TabsTrigger>
+          <TabsTrigger value="services" className="calendar-card text-xs bg-secondary/50 border border-border text-muted-foreground data-[state=active]:bg-gold data-[state=active]:text-black data-[state=active]:shadow-sm">Services</TabsTrigger>
+          <TabsTrigger value="payment" className="calendar-card text-xs bg-secondary/50 border border-border text-muted-foreground data-[state=active]:bg-gold data-[state=active]:text-black data-[state=active]:shadow-sm">Payments</TabsTrigger>
+          <TabsTrigger value="tax" className="calendar-card text-xs bg-secondary/50 border border-border text-muted-foreground data-[state=active]:bg-gold data-[state=active]:text-black data-[state=active]:shadow-sm">Tax & Billing</TabsTrigger>
+          <TabsTrigger value="display" className="calendar-card text-xs bg-secondary/50 border border-border text-muted-foreground data-[state=active]:bg-gold data-[state=active]:text-black data-[state=active]:shadow-sm">Display</TabsTrigger>
         </TabsList>
 
         {/* Salon Profile */}
         <TabsContent value="profile" className="mt-4 space-y-4 max-w-2xl">
-          <div><Label>Salon Name</Label><Input value={salonName} onChange={(e) => setSalonName(e.target.value)} className="mt-1" /></div>
+          <div><Label>Salon Name</Label><Input value={salonName} onChange={(e) => setSalonName(e.target.value)} className="calendar-card mt-1" /></div>
           <div>
             <Label>Salon Type</Label>
             <div className="flex gap-2 mt-1">
@@ -241,11 +241,11 @@ export default function SettingsPage() {
               ))}
             </div>
           </div>
-          <div><Label>City</Label><Input value={city} onChange={(e) => setCity(e.target.value)} className="mt-1" /></div>
-          <div><Label>Address</Label><Input value={address} onChange={(e) => setAddress(e.target.value)} className="mt-1" /></div>
+          <div><Label>City</Label><Input value={city} onChange={(e) => setCity(e.target.value)} className="calendar-card mt-1" /></div>
+          <div><Label>Address</Label><Input value={address} onChange={(e) => setAddress(e.target.value)} className="calendar-card mt-1" /></div>
           <div className="grid grid-cols-2 gap-4">
-            <div><Label>Phone</Label><Input value={phone} onChange={(e) => setPhone(e.target.value)} className="mt-1" /></div>
-            <div><Label>WhatsApp</Label><Input value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)} className="mt-1" /></div>
+            <div><Label>Phone</Label><Input value={phone} onChange={(e) => setPhone(e.target.value)} className="calendar-card mt-1" /></div>
+            <div><Label>WhatsApp</Label><Input value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)} className="calendar-card mt-1" /></div>
           </div>
           <div>
             <Label>Language</Label>
@@ -256,38 +256,38 @@ export default function SettingsPage() {
           </div>
 
           {salonType === 'ladies' && (
-            <div className="flex items-center justify-between p-3 border rounded-lg">
+            <div className="calendar-card bg-secondary/30 p-4 border border-border flex items-center justify-between">
               <div><p className="text-sm font-medium">Privacy Mode</p><p className="text-xs text-muted-foreground">Hide client photos & last names for non-owner staff</p></div>
-              <Switch checked={privacyMode} onCheckedChange={setPrivacyMode} />
+              <Switch checked={privacyMode} onCheckedChange={setPrivacyMode} className="calendar-card" />
             </div>
           )}
 
-          <Button onClick={saveSalonProfile} disabled={saving} className="bg-gold text-black border border-gold">{saving ? 'Saving...' : 'Save Profile'}</Button>
+          <Button onClick={saveSalonProfile} disabled={saving} className="calendar-card bg-gold hover:bg-gold/90 text-black font-bold h-11">{saving ? 'Saving...' : 'Save Profile'}</Button>
         </TabsContent>
 
         {/* Working Hours */}
         <TabsContent value="hours" className="mt-4 space-y-4 max-w-2xl">
           {DAYS.map((day) => (
-            <div key={day} className="flex items-center gap-3 p-3 bg-card rounded-lg border">
+            <div key={day} className="calendar-card shadow-sm border-border flex items-center gap-3 p-3 bg-card border">
               <span className="w-24 text-sm font-medium">{DAY_LABELS[day]}</span>
               {hours[day]?.off ? <span className="flex-1 text-sm text-muted-foreground">Day Off</span> : (
                 <div className="flex items-center gap-2 flex-1">
-                  <Input type="time" value={hours[day]?.open || '09:00'} onChange={(e) => setHours({ ...hours, [day]: { ...hours[day], open: e.target.value } })} className="w-32" />
+                  <Input type="time" value={hours[day]?.open || '09:00'} onChange={(e) => setHours({ ...hours, [day]: { ...hours[day], open: e.target.value } })} className="calendar-card w-32" />
                   <span className="text-muted-foreground">to</span>
-                  <Input type="time" value={hours[day]?.close || '21:00'} onChange={(e) => setHours({ ...hours, [day]: { ...hours[day], close: e.target.value } })} className="w-32" />
+                  <Input type="time" value={hours[day]?.close || '21:00'} onChange={(e) => setHours({ ...hours, [day]: { ...hours[day], close: e.target.value } })} className="calendar-card w-32" />
                 </div>
               )}
               <label className="flex items-center gap-2 text-sm">
-                <Switch checked={hours[day]?.off || false} onCheckedChange={(checked) => setHours({ ...hours, [day]: { ...hours[day], off: checked } })} />
+                <Switch checked={hours[day]?.off || false} onCheckedChange={(checked) => setHours({ ...hours, [day]: { ...hours[day], off: checked } })} className="calendar-card" />
                 <span className="text-muted-foreground text-xs">Off</span>
               </label>
             </div>
           ))}
           <div className="space-y-3 pt-4 border-t">
-            <label className="flex items-center gap-3 cursor-pointer"><Switch checked={jummahBreak} onCheckedChange={setJummahBreak} /><span className="text-sm">Jummah Break (12:30 - 2:00 PM)</span></label>
-            <label className="flex items-center gap-3 cursor-pointer"><Switch checked={prayerBlockEnabled} onCheckedChange={setPrayerBlockEnabled} /><span className="text-sm">Auto-block prayer times on calendar</span></label>
+            <label className="calendar-card bg-secondary/30 p-4 border border-border flex items-center gap-3 cursor-pointer"><Switch checked={jummahBreak} onCheckedChange={setJummahBreak} className="calendar-card" /><span className="text-sm">Jummah Break (12:30 - 2:00 PM)</span></label>
+            <label className="calendar-card bg-secondary/30 p-4 border border-border flex items-center gap-3 cursor-pointer"><Switch checked={prayerBlockEnabled} onCheckedChange={setPrayerBlockEnabled} className="calendar-card" /><span className="text-sm">Auto-block prayer times on calendar</span></label>
           </div>
-          <Button onClick={saveWorkingHours} disabled={saving} className="bg-gold text-black border border-gold">{saving ? 'Saving...' : 'Save Hours'}</Button>
+          <Button onClick={saveWorkingHours} disabled={saving} className="calendar-card bg-gold hover:bg-gold/90 text-black font-bold h-11">{saving ? 'Saving...' : 'Save Hours'}</Button>
         </TabsContent>
 
         {/* Services */}
@@ -305,53 +305,53 @@ export default function SettingsPage() {
 
         {/* Payment Methods */}
         <TabsContent value="payment" className="mt-4 space-y-4 max-w-2xl">
-          <Card><CardContent className="p-4 space-y-3">
+          <Card className="calendar-card shadow-sm border-border"><CardContent className="p-4 space-y-3">
             <p className="text-sm font-medium">Cash</p>
             <p className="text-xs text-muted-foreground">Always enabled</p>
           </CardContent></Card>
-          <Card><CardContent className="p-4 space-y-3">
+          <Card className="calendar-card shadow-sm border-border"><CardContent className="p-4 space-y-3">
             <p className="text-sm font-medium">JazzCash</p>
-            <div><Label className="text-xs">Account Number</Label><Input value={jazzcashNumber} onChange={(e) => setJazzcashNumber(e.target.value)} placeholder="03XX-XXXXXXX" className="mt-1" /></div>
+            <div><Label className="text-xs">Account Number</Label><Input value={jazzcashNumber} onChange={(e) => setJazzcashNumber(e.target.value)} placeholder="03XX-XXXXXXX" className="calendar-card mt-1" /></div>
           </CardContent></Card>
-          <Card><CardContent className="p-4 space-y-3">
+          <Card className="calendar-card shadow-sm border-border"><CardContent className="p-4 space-y-3">
             <p className="text-sm font-medium">EasyPaisa</p>
-            <div><Label className="text-xs">Account Number</Label><Input value={easypaisaNumber} onChange={(e) => setEasypaisaNumber(e.target.value)} placeholder="03XX-XXXXXXX" className="mt-1" /></div>
+            <div><Label className="text-xs">Account Number</Label><Input value={easypaisaNumber} onChange={(e) => setEasypaisaNumber(e.target.value)} placeholder="03XX-XXXXXXX" className="calendar-card mt-1" /></div>
           </CardContent></Card>
-          <Card><CardContent className="p-4 space-y-3">
+          <Card className="calendar-card shadow-sm border-border"><CardContent className="p-4 space-y-3">
             <p className="text-sm font-medium">Bank Transfer (IBFT)</p>
             <div className="grid grid-cols-3 gap-3">
-              <div><Label className="text-xs">Bank Name</Label><Input value={bankName} onChange={(e) => setBankName(e.target.value)} placeholder="HBL" className="mt-1" /></div>
-              <div><Label className="text-xs">Account #</Label><Input value={bankAccount} onChange={(e) => setBankAccount(e.target.value)} className="mt-1" /></div>
-              <div><Label className="text-xs">Account Title</Label><Input value={bankTitle} onChange={(e) => setBankTitle(e.target.value)} className="mt-1" /></div>
+              <div><Label className="text-xs">Bank Name</Label><Input value={bankName} onChange={(e) => setBankName(e.target.value)} placeholder="HBL" className="calendar-card mt-1" /></div>
+              <div><Label className="text-xs">Account #</Label><Input value={bankAccount} onChange={(e) => setBankAccount(e.target.value)} className="calendar-card mt-1" /></div>
+              <div><Label className="text-xs">Account Title</Label><Input value={bankTitle} onChange={(e) => setBankTitle(e.target.value)} className="calendar-card mt-1" /></div>
             </div>
           </CardContent></Card>
-          <Button onClick={savePaymentSettings} disabled={saving} className="bg-gold text-black border border-gold">{saving ? 'Saving...' : 'Save Payment Settings'}</Button>
+          <Button onClick={savePaymentSettings} disabled={saving} className="calendar-card bg-gold hover:bg-gold/90 text-black font-bold h-11">{saving ? 'Saving...' : 'Save Payment Settings'}</Button>
         </TabsContent>
 
         {/* Tax & Billing */}
         <TabsContent value="tax" className="mt-4 space-y-4 max-w-2xl">
-          <div className="flex items-center justify-between p-3 border rounded-lg">
+          <div className="calendar-card bg-secondary/30 p-4 border border-border flex items-center justify-between">
             <div><p className="text-sm font-medium">GST / Sales Tax</p><p className="text-xs text-muted-foreground">Enable tax on bills</p></div>
-            <Switch checked={gstEnabled} onCheckedChange={setGstEnabled} />
+            <Switch checked={gstEnabled} onCheckedChange={setGstEnabled} className="calendar-card" />
           </div>
           {gstEnabled && (
             <div className="grid grid-cols-2 gap-4">
-              <div><Label className="text-xs">GST Number</Label><Input value={gstNumber} onChange={(e) => setGstNumber(e.target.value)} className="mt-1" /></div>
-              <div><Label className="text-xs">GST Rate (%)</Label><Input type="number" value={gstRate} onChange={(e) => setGstRate(e.target.value)} className="mt-1" /></div>
+              <div><Label className="text-xs">GST Number</Label><Input value={gstNumber} onChange={(e) => setGstNumber(e.target.value)} className="calendar-card mt-1" /></div>
+              <div><Label className="text-xs">GST Rate (%)</Label><Input type="number" value={gstRate} onChange={(e) => setGstRate(e.target.value)} className="calendar-card mt-1" /></div>
             </div>
           )}
-          <Button onClick={saveSalonProfile} disabled={saving} className="bg-gold text-black border border-gold">{saving ? 'Saving...' : 'Save Tax Settings'}</Button>
+          <Button onClick={saveSalonProfile} disabled={saving} className="calendar-card bg-gold hover:bg-gold/90 text-black font-bold h-11">{saving ? 'Saving...' : 'Save Tax Settings'}</Button>
         </TabsContent>
 
         {/* Display */}
         <TabsContent value="display" className="mt-4 space-y-4 max-w-2xl">
-          <div className="flex items-center justify-between p-3 border rounded-lg">
+          <div className="calendar-card bg-secondary/30 p-4 border border-border flex items-center justify-between">
             <div><p className="text-sm font-medium">Dark Mode</p><p className="text-xs text-muted-foreground">Switch to dark theme</p></div>
-            <Switch checked={darkMode} onCheckedChange={setDarkMode} />
+            <Switch checked={darkMode} onCheckedChange={setDarkMode} className="calendar-card" />
           </div>
-          <div className="flex items-center justify-between p-3 border rounded-lg">
+          <div className="calendar-card bg-secondary/30 p-4 border border-border flex items-center justify-between">
             <div><p className="text-sm font-medium">Keep Screen Awake</p><p className="text-xs text-muted-foreground">Prevent tablet from sleeping (front desk mode)</p></div>
-            <Switch checked={keepAwake} onCheckedChange={setKeepAwake} />
+            <Switch checked={keepAwake} onCheckedChange={setKeepAwake} className="calendar-card" />
           </div>
         </TabsContent>
       </Tabs>
@@ -452,24 +452,24 @@ function ServiceManager({
     <>
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">{services.length} services</p>
-        <Button size="sm" onClick={() => { if (showForm) resetForm(); else setShowForm(true); }} variant={showForm ? 'outline' : 'default'} className={showForm ? '' : 'bg-gold text-black border border-gold'}>
+        <Button size="sm" onClick={() => { if (showForm) resetForm(); else setShowForm(true); }} variant={showForm ? 'outline' : 'default'} className={showForm ? '' : 'calendar-card bg-gold hover:bg-gold/90 text-black font-bold'}>
           {showForm ? <><X className="w-4 h-4 mr-1" /> Cancel</> : <><Plus className="w-4 h-4 mr-1" /> Add Service</>}
         </Button>
       </div>
 
       {showForm && (
-        <Card className="border-gold/30 bg-gold/5">
+        <Card className="calendar-card shadow-sm border-border border-gold/30 bg-gold/5">
           <CardContent className="p-4 space-y-3">
             <p className="text-sm font-medium">{editingId ? 'Edit Service' : 'New Service'}</p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <Label className="text-xs">Service Name *</Label>
-                <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Haircut, Facial, Waxing" className="mt-1" />
+                <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Haircut, Facial, Waxing" className="calendar-card mt-1" />
               </div>
               <div>
                 <Label className="text-xs">Category</Label>
                 <Select value={category} onValueChange={(v) => { if (v) setCategory(v as ServiceCategory); }}>
-                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="calendar-card mt-1"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {SERVICE_CATEGORIES.map((c) => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}
                   </SelectContent>
@@ -479,14 +479,14 @@ function ServiceManager({
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label className="text-xs">Duration (minutes)</Label>
-                <Input type="number" value={duration} onChange={(e) => setDuration(e.target.value)} className="mt-1" inputMode="numeric" />
+                <Input type="number" value={duration} onChange={(e) => setDuration(e.target.value)} className="calendar-card mt-1" inputMode="numeric" />
               </div>
               <div>
                 <Label className="text-xs">Price (Rs) *</Label>
-                <Input type="number" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="0" className="mt-1" inputMode="numeric" />
+                <Input type="number" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="0" className="calendar-card mt-1" inputMode="numeric" />
               </div>
             </div>
-            <Button onClick={saveService} disabled={saving} size="sm" className="bg-gold text-black border border-gold">
+            <Button onClick={saveService} disabled={saving} size="sm" className="calendar-card bg-gold hover:bg-gold/90 text-black font-bold h-11">
               {saving ? 'Saving...' : editingId ? 'Save Changes' : 'Add Service'}
             </Button>
           </CardContent>
@@ -494,8 +494,8 @@ function ServiceManager({
       )}
 
       {services.map((svc) => (
-        <div key={svc.id} className={`flex items-center gap-3 p-3 bg-card rounded-lg border ${editingId === svc.id ? 'ring-2 ring-gold/40' : ''}`}>
-          <Switch checked={svc.is_active} onCheckedChange={(v) => onToggle(svc.id, v)} />
+        <div key={svc.id} className={`calendar-card shadow-sm border-border flex items-center gap-3 p-3 bg-card border ${editingId === svc.id ? 'ring-2 ring-gold/40' : ''}`}>
+          <Switch checked={svc.is_active} onCheckedChange={(v) => onToggle(svc.id, v)} className="calendar-card" />
           <div className="flex-1 min-w-0">
             <span className={`text-sm font-medium ${!svc.is_active ? 'line-through text-muted-foreground' : ''}`}>{svc.name}</span>
             <div className="flex items-center gap-2 mt-0.5">
@@ -503,7 +503,7 @@ function ServiceManager({
               <span className="text-xs text-muted-foreground">{svc.duration_minutes}min</span>
             </div>
           </div>
-          <Input type="number" value={svc.base_price} onChange={(e) => onPriceChange(svc.id, Number(e.target.value))} className="w-24 h-8 text-xs text-right" inputMode="numeric" />
+          <Input type="number" value={svc.base_price} onChange={(e) => onPriceChange(svc.id, Number(e.target.value))} className="calendar-card w-24 h-8 text-xs text-right" inputMode="numeric" />
           <Button variant="ghost" size="sm" className="h-8 text-xs px-2" onClick={() => startEdit(svc)}>Edit</Button>
           <Button variant="ghost" size="sm" className="h-8 text-xs px-2 text-destructive hover:text-destructive" onClick={() => removeService(svc)}>Remove</Button>
         </div>

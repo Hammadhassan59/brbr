@@ -89,7 +89,6 @@ export function CheckoutConfirmation({
   function printReceipt() {
     const el = document.getElementById('print-receipt');
     if (!el) return;
-    // Clone receipt into a new window for clean thermal printing
     const printWindow = window.open('', '_blank', 'width=320,height=600');
     if (!printWindow) return;
     const doc = printWindow.document;
@@ -103,7 +102,6 @@ export function CheckoutConfirmation({
     ].join('\n');
     doc.head.appendChild(style);
     doc.title = 'Receipt';
-    // Safe clone: receipt content is app-generated, not user input
     const clone = el.cloneNode(true) as HTMLElement;
     clone.style.position = 'static';
     clone.style.left = 'auto';
@@ -114,9 +112,8 @@ export function CheckoutConfirmation({
 
   return (
     <>
-      {/* ── On-screen dialog ── */}
       <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="calendar-card max-w-md bg-card border-border">
           <DialogHeader>
             <DialogTitle className="font-heading text-center">Checkout Summary</DialogTitle>
           </DialogHeader>
@@ -129,26 +126,22 @@ export function CheckoutConfirmation({
 
             <Separator />
 
-            {/* Items */}
-            <div className="space-y-1">
+            <div className="calendar-card bg-card border border-border/30 p-4 space-y-0">
               {items.map((item) => (
-                <div key={item.id} className="flex justify-between text-sm">
+                <div key={item.id} className="flex justify-between text-sm py-2 border-b border-border/20 last:border-0">
                   <span>{item.name} {item.quantity > 1 ? `×${item.quantity}` : ''}</span>
                   <span>{formatPKR(item.totalPrice)}</span>
                 </div>
               ))}
             </div>
 
-            <Separator />
-
-            {/* Totals */}
-            <div className="space-y-1 text-sm">
+            <div className="calendar-card bg-card border border-border/30 p-4 space-y-1 text-sm">
               <div className="flex justify-between">
                 <span>Subtotal</span>
                 <span>{formatPKR(subtotal)}</span>
               </div>
               {discountAmount > 0 && (
-                <div className="flex justify-between text-green-600">
+                <div className="flex justify-between text-green-400">
                   <span>Discount</span>
                   <span>-{formatPKR(discountAmount)}</span>
                 </div>
@@ -165,15 +158,13 @@ export function CheckoutConfirmation({
                   <span>{formatPKR(tipAmount)}</span>
                 </div>
               )}
-              <div className="flex justify-between font-bold text-lg pt-1">
+              <div className="flex justify-between text-xl font-bold pt-1">
                 <span>Total</span>
                 <span>{formatPKR(total + tipAmount)}</span>
               </div>
             </div>
 
-            <Separator />
-
-            <div className="text-sm space-y-1">
+            <div className="calendar-card bg-card border border-border/30 p-4 text-sm space-y-1">
               <div className="flex justify-between">
                 <span>Payment</span>
                 <span className="capitalize">{paymentMethod.replace('_', ' ')}</span>
@@ -185,7 +176,7 @@ export function CheckoutConfirmation({
                     <span>{formatPKR(cashReceived)}</span>
                   </div>
                   {change > 0 && (
-                    <div className="flex justify-between text-green-600 font-medium">
+                    <div className="flex justify-between text-green-400 font-medium">
                       <span>Change</span>
                       <span>{formatPKR(change)}</span>
                     </div>
@@ -198,15 +189,12 @@ export function CheckoutConfirmation({
               </div>
             </div>
 
-            <Separator />
-
-            {/* Actions */}
             <div className="flex gap-2">
-              <Button variant="outline" className="flex-1 gap-1 text-xs" onClick={printReceipt}>
+              <Button variant="outline" className="calendar-card flex-1 gap-1 text-xs transition-all duration-150" onClick={printReceipt}>
                 <Printer className="w-3.5 h-3.5" /> Print
               </Button>
               {clientPhone && (
-                <Button variant="outline" className="flex-1 gap-1 text-xs" onClick={sendWhatsAppReceipt}>
+                <Button variant="outline" className="calendar-card flex-1 gap-1 text-xs transition-all duration-150" onClick={sendWhatsAppReceipt}>
                   <MessageCircle className="w-3.5 h-3.5" /> WhatsApp
                 </Button>
               )}
@@ -215,7 +203,7 @@ export function CheckoutConfirmation({
             <Button
               onClick={onConfirm}
               disabled={saving}
-              className="w-full h-12 bg-green-600 hover:bg-green-700 text-white text-lg font-bold gap-2"
+              className="calendar-card w-full h-12 bg-green-500 hover:bg-green-600 text-white text-lg font-bold gap-2 transition-all duration-150"
             >
               <Check className="w-5 h-5" /> {saving ? 'Saving...' : 'Confirm'}
             </Button>
@@ -223,9 +211,7 @@ export function CheckoutConfirmation({
         </DialogContent>
       </Dialog>
 
-      {/* ── Hidden thermal receipt — only visible in @media print ── */}
       <div id="print-receipt" style={{ position: 'absolute', left: '-9999px', top: 0 }}>
-        {/* Header */}
         <div style={{ textAlign: 'center', marginBottom: 4 }}>
           <div style={{ fontSize: 16, fontWeight: 'bold', letterSpacing: 2 }}>✂ {salonName.toUpperCase()}</div>
           {salonAddress && <div style={{ fontSize: 10 }}>{salonAddress}</div>}
@@ -234,7 +220,6 @@ export function CheckoutConfirmation({
 
         <div className="receipt-divider" />
 
-        {/* Bill info */}
         <div>
           <div style={{ display: 'flex', justifyContent: 'space-between' }}>
             <span>Bill #</span>
@@ -252,7 +237,6 @@ export function CheckoutConfirmation({
 
         <div className="receipt-divider" />
 
-        {/* Items */}
         <div>
           {items.map((item, i) => (
             <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '1px 0' }}>
@@ -264,7 +248,6 @@ export function CheckoutConfirmation({
 
         <div className="receipt-divider" />
 
-        {/* Totals */}
         <div>
           <div style={{ display: 'flex', justifyContent: 'space-between' }}>
             <span>Subtotal</span>
@@ -292,7 +275,6 @@ export function CheckoutConfirmation({
 
         <div className="receipt-divider" />
 
-        {/* Grand total */}
         <div className="receipt-total" style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0' }}>
           <span>TOTAL</span>
           <span>{formatPKR(total + tipAmount)}</span>
@@ -300,7 +282,6 @@ export function CheckoutConfirmation({
 
         <div className="receipt-divider" />
 
-        {/* Payment */}
         <div>
           <div style={{ display: 'flex', justifyContent: 'space-between' }}>
             <span>Paid via</span>
@@ -324,7 +305,6 @@ export function CheckoutConfirmation({
 
         <div className="receipt-divider" />
 
-        {/* Footer */}
         <div style={{ textAlign: 'center', fontSize: 10, paddingTop: 4 }}>
           {pointsEarned > 0 && <div>★ Points earned: +{pointsEarned}</div>}
           <div style={{ marginTop: 6 }}>Thank you for visiting!</div>

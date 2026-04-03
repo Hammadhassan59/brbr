@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Send, UserPlus, Clock, CreditCard, Copy, Loader2 } from 'lucide-react';
+import { ChevronRight, Send, UserPlus, Clock, CreditCard, Copy, Loader2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAppStore } from '@/store/app-store';
 import { formatPKR } from '@/lib/utils/currency';
@@ -104,21 +104,26 @@ export default function ClientReportPage() {
   }
 
   return (
-    <div className="space-y-4">
-      <Link href="/dashboard/reports" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
-        <ArrowLeft className="w-4 h-4" /> Back to Reports
-      </Link>
-      <h2 className="font-heading text-xl font-bold">Client Report</h2>
+    <div className="space-y-6">
+      <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+        <Link href="/dashboard/reports" className="hover:text-foreground">Reports</Link>
+        <ChevronRight className="w-3.5 h-3.5" />
+        <span className="text-foreground font-medium">Clients</span>
+      </div>
+
+      <div className="calendar-card bg-card border border-border shadow-sm p-4">
+        <h2 className="font-heading text-xl font-bold">Client Report</h2>
+      </div>
 
       <Tabs defaultValue="new">
         <TabsList className="h-auto gap-1 flex-wrap">
-          <TabsTrigger value="new" className="text-xs gap-1"><UserPlus className="w-3 h-3" /> New ({newClients.length})</TabsTrigger>
-          <TabsTrigger value="udhaar" className="text-xs gap-1"><CreditCard className="w-3 h-3" /> Udhaar ({udhaarClients.length})</TabsTrigger>
+          <TabsTrigger value="new" className="calendar-card text-xs gap-1 bg-secondary/50 border border-border text-muted-foreground data-[state=active]:bg-gold data-[state=active]:text-black data-[state=active]:shadow-sm"><UserPlus className="w-3 h-3" /> New ({newClients.length})</TabsTrigger>
+          <TabsTrigger value="udhaar" className="calendar-card text-xs gap-1 bg-secondary/50 border border-border text-muted-foreground data-[state=active]:bg-gold data-[state=active]:text-black data-[state=active]:shadow-sm"><CreditCard className="w-3 h-3" /> Udhaar ({udhaarClients.length})</TabsTrigger>
         </TabsList>
 
         {/* New Clients */}
         <TabsContent value="new" className="mt-4">
-          <Card>
+          <Card className="calendar-card shadow-sm border-border">
             <CardHeader className="pb-2"><CardTitle className="text-sm">New Clients This Month</CardTitle></CardHeader>
             <CardContent className="px-0">
               {loading ? <div className="h-20 bg-muted rounded animate-pulse mx-4" /> : newClients.length === 0 ? (
@@ -136,14 +141,14 @@ export default function ClientReportPage() {
 
         {/* Udhaar */}
         <TabsContent value="udhaar" className="mt-4 space-y-4">
-          <Card className="border-red-500/20 bg-red-500/10">
+          <Card className="calendar-card shadow-sm border-border border-red-500/20 bg-red-500/10">
             <CardContent className="p-4 flex items-center justify-between">
-              <div><p className="text-xs text-red-600">Total Outstanding</p><p className="text-3xl font-heading font-bold text-red-600">{formatPKR(totalUdhaar)}</p></div>
+              <div><p className="text-xs text-muted-foreground uppercase tracking-wider text-red-600">Total Outstanding</p><p className="text-3xl font-heading font-bold text-red-600">{formatPKR(totalUdhaar)}</p></div>
               <Button size="sm" variant="outline" className="text-xs gap-1 border-red-500/25 text-red-600" onClick={sendUdhaarAll}><Send className="w-3 h-3" /> Send All Reminders</Button>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="calendar-card shadow-sm border-border">
             <CardContent className="px-0">
               {udhaarClients.length === 0 ? (
                 <p className="text-center text-muted-foreground text-sm py-6">No udhaar outstanding</p>

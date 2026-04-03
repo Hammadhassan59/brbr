@@ -164,12 +164,14 @@ export default function ReportsPage() {
   ];
 
   return (
-    <div className="space-y-4">
-      <h2 className="font-heading text-xl font-bold">Reports</h2>
+    <div className="space-y-6">
+      <div className="calendar-card bg-card border border-border shadow-sm p-4">
+        <h2 className="font-heading text-xl font-bold">Reports</h2>
+      </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         {REPORTS.map((r) => (
           <Link key={r.href} href={r.href} className="group">
-            <div className="flex items-center gap-4 p-4 rounded-xl border bg-card hover:border-gold/40 hover:shadow-sm transition-all">
+            <div className="calendar-card flex items-center gap-4 p-4 border border-border bg-card shadow-sm hover:border-gold/40 transition-all">
               <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center shrink-0">
                 <r.icon className="w-5 h-5 text-muted-foreground" />
               </div>
@@ -182,11 +184,11 @@ export default function ReportsPage() {
               </div>
               <div className="text-right shrink-0">
                 {loading ? (
-                  <div className="w-16 h-5 bg-secondary rounded animate-pulse" />
+                  <div className="w-16 h-5 bg-secondary rounded animate-pulse calendar-card" />
                 ) : (
                   <>
                     <p className="font-heading font-bold text-sm tabular-nums">{r.metric}</p>
-                    <p className="text-[10px] text-muted-foreground">{r.metricLabel}</p>
+                    <p className="text-xs text-muted-foreground uppercase tracking-wider">{r.metricLabel}</p>
                     {r.sub && (
                       <p className={`text-[10px] font-medium mt-0.5 flex items-center justify-end gap-0.5 ${
                         r.subAlert ? 'text-amber-600' : r.subPositive ? 'text-green-600' : 'text-muted-foreground'

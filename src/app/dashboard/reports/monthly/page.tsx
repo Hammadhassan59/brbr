@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
-import { ArrowLeft } from 'lucide-react';
+import { ChevronRight as ChevronRightIcon } from 'lucide-react';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, PieChart, Pie, Cell } from 'recharts';
 import { supabase } from '@/lib/supabase';
 import { useAppStore } from '@/store/app-store';
@@ -118,48 +118,51 @@ export default function MonthlyReportPage() {
   const staffLeaderboard = Object.values(staffLeaderMap).sort((a, b) => b.revenue - a.revenue);
 
   return (
-    <div className="space-y-4">
-      <Link href="/dashboard/reports" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
-        <ArrowLeft className="w-4 h-4" /> Back to Reports
-      </Link>
+    <div className="space-y-6">
+      <nav className="flex items-center gap-1 text-sm text-muted-foreground">
+        <Link href="/dashboard/reports" className="hover:text-foreground">Reports</Link>
+        <ChevronRightIcon className="w-3.5 h-3.5" />
+        <span className="text-foreground font-medium">Monthly</span>
+      </nav>
 
-      {/* Branch scope selector */}
-      {canSeeAllBranches && (
-        <div className="flex flex-wrap gap-1.5">
-          <button
-            onClick={() => setBranchScope('current')}
-            className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${branchScope === 'current' ? 'bg-gold text-black' : 'bg-secondary text-muted-foreground hover:bg-secondary/80'}`}
-          >
-            {currentBranch?.name || 'Current'}
-          </button>
-          {branches.filter(b => b.id !== currentBranch?.id).map(b => (
+      <div className="calendar-card bg-card border border-border shadow-sm p-4 space-y-3">
+        {canSeeAllBranches && (
+          <div className="flex flex-wrap gap-1.5">
             <button
-              key={b.id}
-              onClick={() => setBranchScope(b.id)}
-              className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${branchScope === b.id ? 'bg-gold text-black' : 'bg-secondary text-muted-foreground hover:bg-secondary/80'}`}
+              onClick={() => setBranchScope('current')}
+              className={`calendar-card px-3 py-1.5 text-xs font-medium transition-all ${branchScope === 'current' ? 'bg-gold text-black shadow-sm' : 'bg-secondary/50 border border-border text-muted-foreground hover:bg-secondary/80'}`}
             >
-              {b.name}
+              {currentBranch?.name || 'Current'}
             </button>
-          ))}
-          <button
-            onClick={() => setBranchScope('all')}
-            className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${branchScope === 'all' ? 'bg-gold text-black' : 'bg-secondary text-muted-foreground hover:bg-secondary/80'}`}
-          >
-            All Branches
-          </button>
-        </div>
-      )}
+            {branches.filter(b => b.id !== currentBranch?.id).map(b => (
+              <button
+                key={b.id}
+                onClick={() => setBranchScope(b.id)}
+                className={`calendar-card px-3 py-1.5 text-xs font-medium transition-all ${branchScope === b.id ? 'bg-gold text-black shadow-sm' : 'bg-secondary/50 border border-border text-muted-foreground hover:bg-secondary/80'}`}
+              >
+                {b.name}
+              </button>
+            ))}
+            <button
+              onClick={() => setBranchScope('all')}
+              className={`calendar-card px-3 py-1.5 text-xs font-medium transition-all ${branchScope === 'all' ? 'bg-gold text-black shadow-sm' : 'bg-secondary/50 border border-border text-muted-foreground hover:bg-secondary/80'}`}
+            >
+              All Branches
+            </button>
+          </div>
+        )}
 
-      <div className="flex items-center gap-3">
-        <h2 className="font-heading text-xl font-bold">Monthly Report</h2>
-        <Select value={String(month)} onValueChange={(v) => { if (v) setMonth(Number(v)); }}>
-          <SelectTrigger className="w-[120px] h-8 text-xs"><SelectValue /></SelectTrigger>
-          <SelectContent>{Array.from({ length: 12 }, (_, i) => <SelectItem key={i + 1} value={String(i + 1)}>{new Date(2000, i).toLocaleString('default', { month: 'long' })}</SelectItem>)}</SelectContent>
-        </Select>
-        <Select value={String(year)} onValueChange={(v) => { if (v) setYear(Number(v)); }}>
-          <SelectTrigger className="w-[90px] h-8 text-xs"><SelectValue /></SelectTrigger>
-          <SelectContent>{[2024, 2025, 2026].map((y) => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}</SelectContent>
-        </Select>
+        <div className="flex items-center gap-3">
+          <h2 className="font-heading text-xl font-bold">Monthly Report</h2>
+          <Select value={String(month)} onValueChange={(v) => { if (v) setMonth(Number(v)); }}>
+            <SelectTrigger className="w-[120px] h-8 text-xs calendar-card"><SelectValue /></SelectTrigger>
+            <SelectContent>{Array.from({ length: 12 }, (_, i) => <SelectItem key={i + 1} value={String(i + 1)}>{new Date(2000, i).toLocaleString('default', { month: 'long' })}</SelectItem>)}</SelectContent>
+          </Select>
+          <Select value={String(year)} onValueChange={(v) => { if (v) setYear(Number(v)); }}>
+            <SelectTrigger className="w-[90px] h-8 text-xs calendar-card"><SelectValue /></SelectTrigger>
+            <SelectContent>{[2024, 2025, 2026].map((y) => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}</SelectContent>
+          </Select>
+        </div>
       </div>
 
       {/* KPI Cards */}
@@ -170,17 +173,17 @@ export default function MonthlyReportPage() {
           { label: 'Avg Daily Revenue', value: formatPKR(Math.round(avgDaily)) },
           { label: 'Avg Bill Size', value: formatPKR(bills.length > 0 ? Math.round(totalRevenue / bills.length) : 0) },
         ].map((c) => (
-          <Card key={c.label}><CardContent className="p-4 text-center">
-            {loading ? <div className="h-12 bg-muted rounded animate-pulse" /> : (<><p className="text-xs text-muted-foreground">{c.label}</p><p className="text-xl font-bold">{c.value}</p></>)}
+          <Card key={c.label} className="calendar-card shadow-sm border-border"><CardContent className="p-4 text-center">
+            {loading ? <div className="h-12 bg-muted animate-pulse calendar-card" /> : (<><p className="text-xs text-muted-foreground uppercase tracking-wider">{c.label}</p><p className="text-xl font-bold">{c.value}</p></>)}
           </CardContent></Card>
         ))}
       </div>
 
       {/* Revenue trend */}
-      <Card>
+      <Card className="calendar-card shadow-sm border-border">
         <CardHeader className="pb-2"><CardTitle className="text-sm">Revenue Trend — This Month vs Last Month</CardTitle></CardHeader>
         <CardContent>
-          {loading ? <div className="h-[250px] bg-muted rounded animate-pulse" /> : (
+          {loading ? <div className="h-[250px] bg-muted animate-pulse calendar-card" /> : (
             <ResponsiveContainer width="100%" height={250}>
               <LineChart data={dailyData} margin={{ top: 5, right: 10, left: -15, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
@@ -197,8 +200,7 @@ export default function MonthlyReportPage() {
       </Card>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Payment methods */}
-        <Card>
+        <Card className="calendar-card shadow-sm border-border">
           <CardHeader className="pb-2"><CardTitle className="text-sm">Payment Methods</CardTitle></CardHeader>
           <CardContent>
             {paymentData.length === 0 ? <p className="text-center text-muted-foreground text-sm py-6">No data</p> : (
@@ -211,8 +213,7 @@ export default function MonthlyReportPage() {
           </CardContent>
         </Card>
 
-        {/* Staff leaderboard */}
-        <Card>
+        <Card className="calendar-card shadow-sm border-border">
           <CardHeader className="pb-2"><CardTitle className="text-sm">Staff Leaderboard</CardTitle></CardHeader>
           <CardContent className="px-0">
             {staffLeaderboard.length === 0 ? <p className="text-center text-muted-foreground text-sm py-6">No data</p> : (

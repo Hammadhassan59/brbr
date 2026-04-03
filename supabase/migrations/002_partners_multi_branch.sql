@@ -28,28 +28,3 @@ CREATE POLICY "Partners can view own salon partners"
     SELECT salon_id FROM salon_partners WHERE phone = current_setting('request.jwt.claims', true)::json->>'phone'
   ));
 
--- Seed: demo partner for Royal Barbers
-INSERT INTO salon_partners (id, salon_id, name, phone, pin_code)
-VALUES (
-  'aaaaaaaa-aaaa-aaaa-aaaa-pppppppppp01',
-  'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
-  'Imran Malik',
-  '0333-9998877',
-  '9999'
-);
-
--- Seed: second branch for Royal Barbers
-INSERT INTO branches (id, salon_id, name, address, phone, is_main)
-VALUES (
-  'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaac',
-  'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
-  'Blue Area',
-  'Shop 7, Blue Area, Islamabad',
-  '0333-4445566',
-  false
-);
-
--- Seed: staff for second branch
-INSERT INTO staff (id, salon_id, branch_id, name, phone, role, pin_code, base_salary, commission_type, commission_rate) VALUES
-  ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaa005', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaac', 'Nadeem Khan', '0345-7771234', 'senior_stylist', '4444', 18000, 'percentage', 25),
-  ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaa006', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaac', 'Waqar Ahmed', '0300-7775678', 'junior_stylist', '5555', 10000, 'flat', 50);

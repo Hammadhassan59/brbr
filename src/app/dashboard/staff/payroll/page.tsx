@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { Download, MessageCircle } from 'lucide-react';
+import Link from 'next/link';
+import { Download, MessageCircle, ChevronRight } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAppStore } from '@/store/app-store';
 import { formatPKR } from '@/lib/utils/currency';
@@ -218,34 +219,40 @@ Thank you 🙏 — BrBr Management`;
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-3">
+    <div className="space-y-6">
+      <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+        <Link href="/dashboard/staff" className="hover:text-foreground transition-colors">Staff</Link>
+        <ChevronRight className="w-3.5 h-3.5" />
+        <span className="text-foreground font-medium">Payroll</span>
+      </div>
+
+      <div className="calendar-card bg-card border border-border shadow-sm p-4 flex flex-wrap items-center gap-3">
         <h2 className="font-heading text-xl font-bold">Payroll</h2>
         <Select value={String(month)} onValueChange={(v) => { if (v) setMonth(Number(v)); }}>
-          <SelectTrigger className="w-[130px] h-8 text-xs"><SelectValue /></SelectTrigger>
+          <SelectTrigger className="calendar-card w-[130px] h-9 text-xs"><SelectValue /></SelectTrigger>
           <SelectContent>{Array.from({ length: 12 }, (_, i) => <SelectItem key={i + 1} value={String(i + 1)}>{new Date(2000, i).toLocaleString('default', { month: 'long' })}</SelectItem>)}</SelectContent>
         </Select>
         <Select value={String(year)} onValueChange={(v) => { if (v) setYear(Number(v)); }}>
-          <SelectTrigger className="w-[90px] h-8 text-xs"><SelectValue /></SelectTrigger>
+          <SelectTrigger className="calendar-card w-[90px] h-9 text-xs"><SelectValue /></SelectTrigger>
           <SelectContent>{[2024, 2025, 2026].map((y) => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}</SelectContent>
         </Select>
         <div className="ml-auto flex gap-2">
-          <Button variant="outline" size="sm" className="gap-1 text-xs" onClick={markAllPaid} disabled={markingPaid || loading}>
+          <Button variant="outline" size="sm" className="calendar-card gap-1 text-xs transition-all duration-150" onClick={markAllPaid} disabled={markingPaid || loading}>
             {markingPaid ? 'Saving...' : 'Mark All Paid'}
           </Button>
-          <Button variant="outline" size="sm" className="gap-1 text-xs" onClick={exportCSV}>
+          <Button variant="outline" size="sm" className="calendar-card gap-1 text-xs transition-all duration-150" onClick={exportCSV}>
             <Download className="w-3 h-3" /> Export CSV
           </Button>
         </div>
       </div>
 
       {loading ? (
-        <div className="space-y-2">{[1, 2, 3].map((i) => <div key={i} className="h-14 bg-muted rounded animate-pulse" />)}</div>
+        <div className="space-y-2">{[1, 2, 3].map((i) => <div key={i} className="calendar-card h-14 bg-muted animate-pulse" />)}</div>
       ) : rows.length === 0 ? (
         <p className="text-center text-muted-foreground py-16">No staff to show</p>
       ) : (
         <>
-          <Card>
+          <Card className="calendar-card shadow-sm border-border">
             <CardContent className="p-0 overflow-x-auto">
               <Table>
                 <TableHeader>

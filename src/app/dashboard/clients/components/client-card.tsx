@@ -26,17 +26,17 @@ export function ClientCard({ client, selected, onSelect }: ClientCardProps) {
     .toUpperCase();
 
   const colors = [
-    'bg-blue-500/15 text-blue-400',
-    'bg-green-500/15 text-green-400',
-    'bg-purple-500/15 text-purple-400',
-    'bg-amber-500/15 text-amber-400',
-    'bg-pink-500/15 text-pink-400',
-    'bg-teal-500/15 text-teal-400',
+    'bg-blue-100 text-blue-700',
+    'bg-green-100 text-green-700',
+    'bg-purple-100 text-purple-700',
+    'bg-amber-100 text-amber-700',
+    'bg-pink-100 text-pink-700',
+    'bg-teal-100 text-teal-700',
   ];
   const colorIndex = client.name.charCodeAt(0) % colors.length;
 
   return (
-    <div className={`calendar-card bg-card border p-4 group/card transition-all duration-200 ${selected ? 'ring-2 ring-gold border-gold/30' : 'border-border/30 hover:border-border/60'}`}>
+    <div className={`calendar-card bg-card border p-4 group/card transition-all duration-200 shadow-sm hover:shadow-md ${selected ? 'ring-2 ring-gold border-gold/30' : 'border-border hover:border-gold/30'}`}>
       <div className="flex items-start gap-3">
         {onSelect && (
           <input

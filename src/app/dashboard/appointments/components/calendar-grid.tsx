@@ -156,20 +156,20 @@ export function CalendarGrid({
     <div className="overflow-x-auto">
       <div className="min-w-[600px]">
         <div className="flex border-b border-border/50 sticky top-0 bg-card z-10">
-          <div className="w-24 shrink-0 px-3 py-3 text-xs font-medium text-muted-foreground border-r border-border/30 flex items-end justify-end">
+          <div className="w-24 shrink-0 px-3 py-3 text-xs font-medium text-muted-foreground border-r border-border flex items-end justify-end">
             Time
           </div>
           {filteredStylists.map((stylist) => (
             <div
               key={stylist.id}
-              className="flex-1 min-w-[160px] border-r border-border/30 last:border-r-0"
+              className="flex-1 min-w-[160px] border-r border-border last:border-r-0"
             >
-              <div className="bg-card/80 m-1.5 p-3 border border-border/30 calendar-card flex items-center gap-3">
+              <div className="bg-secondary m-1.5 p-3 border border-border calendar-card flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full bg-gold/15 text-gold text-sm font-bold flex items-center justify-center shrink-0 ring-2 ring-gold/20">
                   {stylist.name.charAt(0)}
                 </div>
                 <div className="min-w-0">
-                  <p className="text-sm font-semibold truncate">{stylist.name}</p>
+                  <p className="text-sm font-semibold truncate text-foreground">{stylist.name}</p>
                   <p className="text-xs text-muted-foreground capitalize">{stylist.role.replace('_', ' ')}</p>
                 </div>
               </div>
@@ -186,9 +186,9 @@ export function CalendarGrid({
             return (
               <div
                 key={time}
-                className={`flex border-b border-border/20 min-h-[52px] ${idx % 2 === 0 ? 'bg-muted/20' : ''}`}
+                className={`flex border-b border-border/50 min-h-[52px] ${idx % 2 === 0 ? 'bg-card' : 'bg-secondary/30'}`}
               >
-                <div className="w-24 shrink-0 px-3 py-2 text-sm text-muted-foreground font-mono border-r border-border/30 flex items-start justify-end">
+                <div className="w-24 shrink-0 px-3 py-2 text-sm text-muted-foreground/60 font-mono border-r border-border/50 flex items-start justify-end">
                   {formatTime(time)}
                 </div>
 
@@ -201,7 +201,7 @@ export function CalendarGrid({
                     return (
                       <div
                         key={key}
-                        className="flex-1 min-w-[160px] border-r border-border/30 last:border-r-0 bg-[repeating-linear-gradient(45deg,transparent,transparent_6px,var(--muted)_6px,var(--muted)_7px)] flex items-center justify-center opacity-60"
+                        className="flex-1 min-w-[160px] border-r border-border/50 last:border-r-0 bg-[repeating-linear-gradient(45deg,transparent,transparent_6px,var(--muted)_6px,var(--muted)_7px)] flex items-center justify-center opacity-40"
                       >
                         <span className="text-xs text-muted-foreground font-medium px-2 py-0.5 bg-card/60">
                           {prayerName || 'Jummah'}
@@ -231,11 +231,10 @@ export function CalendarGrid({
                         <button
                           onClick={() => onAppointmentClick(apt)}
                           className={`
-                            calendar-card w-full text-left p-3 border-l-4 border border-border/30
-                            shadow-sm transition-all duration-150 hover:scale-[1.02] hover:shadow-md
+                            calendar-card w-full text-left p-3 border-l-4 border border-border/40
+                            bg-card shadow-md transition-all duration-150 hover:scale-[1.02] hover:shadow-lg
                             ${STATUS_STRIPE[apt.status]}
-                            ${STATUS_BG[apt.status]}
-                            ${isCancelled ? 'line-through' : ''}
+                            ${isCancelled ? 'line-through opacity-60' : ''}
                           `}
                           style={{ height: span > 1 ? `${span * 52 - 8}px` : undefined }}
                         >
@@ -252,10 +251,10 @@ export function CalendarGrid({
                   }
 
                   return (
-                    <div key={key} className="flex-1 min-w-[160px] border-r border-border/30 last:border-r-0 p-0.5">
+                    <div key={key} className="flex-1 min-w-[160px] border-r border-border/50 last:border-r-0 p-0.5">
                       <button
                         onClick={() => onSlotClick(stylist.id, time)}
-                        className="w-full h-full min-h-[48px] border border-transparent hover:border-border/30 hover:bg-gold/5 cursor-pointer transition-all duration-150 calendar-card"
+                        className="w-full h-full min-h-[48px] border border-transparent hover:border-gold/20 hover:bg-card/80 hover:shadow-sm cursor-pointer transition-all duration-150 calendar-card"
                         aria-label={`Book ${stylist.name} at ${time}`}
                       />
                     </div>

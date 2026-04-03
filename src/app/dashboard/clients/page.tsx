@@ -153,10 +153,10 @@ function ClientsContent() {
           <button
             key={t.value}
             onClick={() => setTab(t.value)}
-            className={`calendar-card px-3.5 py-1.5 text-xs transition-all duration-150 ${
+            className={`calendar-card px-3.5 py-2 text-xs font-medium transition-all duration-150 ${
               tab === t.value
-                ? 'bg-gold/10 text-gold font-medium'
-                : 'bg-background/50 text-muted-foreground hover:text-foreground'
+                ? 'bg-gold text-black shadow-sm'
+                : 'bg-card border border-border text-muted-foreground hover:text-foreground hover:border-gold/30'
             }`}
           >
             {t.label}{t.count !== undefined ? ` (${t.count})` : ''}

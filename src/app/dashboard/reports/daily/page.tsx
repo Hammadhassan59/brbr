@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, ChevronLeft, ChevronRight, Printer, Wallet, Plus, Lock } from 'lucide-react';
+import { ChevronLeft, ChevronRight as ChevronRightIcon, Printer, Wallet, Plus, Lock } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 import { supabase } from '@/lib/supabase';
 import { useAppStore } from '@/store/app-store';
@@ -157,64 +157,66 @@ export default function DailyReportPage() {
   const serviceData = summary?.top_services?.map((s) => ({ name: s.name, revenue: s.revenue, count: s.count })) || [];
 
   return (
-    <div className="space-y-4">
-      <Link href="/dashboard/reports" className="no-print inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
-        <ArrowLeft className="w-4 h-4" /> Back to Reports
-      </Link>
+    <div className="space-y-6">
+      <nav className="no-print flex items-center gap-1 text-sm text-muted-foreground">
+        <Link href="/dashboard/reports" className="hover:text-foreground">Reports</Link>
+        <ChevronRightIcon className="w-3.5 h-3.5" />
+        <span className="text-foreground font-medium">Daily</span>
+      </nav>
 
-      {/* Branch scope selector */}
-      {canSeeAllBranches && (
-        <div className="no-print flex flex-wrap gap-1.5">
-          <button
-            onClick={() => setBranchScope('current')}
-            className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${branchScope === 'current' ? 'bg-gold text-black' : 'bg-secondary text-muted-foreground hover:bg-secondary/80'}`}
-          >
-            {currentBranch?.name || 'Current'}
-          </button>
-          {branches.filter(b => b.id !== currentBranch?.id).map(b => (
+      <div className="no-print calendar-card bg-card border border-border shadow-sm p-4 space-y-3">
+        {canSeeAllBranches && (
+          <div className="flex flex-wrap gap-1.5">
             <button
-              key={b.id}
-              onClick={() => setBranchScope(b.id)}
-              className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${branchScope === b.id ? 'bg-gold text-black' : 'bg-secondary text-muted-foreground hover:bg-secondary/80'}`}
+              onClick={() => setBranchScope('current')}
+              className={`calendar-card px-3 py-1.5 text-xs font-medium transition-all ${branchScope === 'current' ? 'bg-gold text-black shadow-sm' : 'bg-secondary/50 border border-border text-muted-foreground hover:bg-secondary/80'}`}
             >
-              {b.name}
+              {currentBranch?.name || 'Current'}
             </button>
-          ))}
-          <button
-            onClick={() => setBranchScope('all')}
-            className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${branchScope === 'all' ? 'bg-gold text-black' : 'bg-secondary text-muted-foreground hover:bg-secondary/80'}`}
-          >
-            All Branches
-          </button>
-        </div>
-      )}
+            {branches.filter(b => b.id !== currentBranch?.id).map(b => (
+              <button
+                key={b.id}
+                onClick={() => setBranchScope(b.id)}
+                className={`calendar-card px-3 py-1.5 text-xs font-medium transition-all ${branchScope === b.id ? 'bg-gold text-black shadow-sm' : 'bg-secondary/50 border border-border text-muted-foreground hover:bg-secondary/80'}`}
+              >
+                {b.name}
+              </button>
+            ))}
+            <button
+              onClick={() => setBranchScope('all')}
+              className={`calendar-card px-3 py-1.5 text-xs font-medium transition-all ${branchScope === 'all' ? 'bg-gold text-black shadow-sm' : 'bg-secondary/50 border border-border text-muted-foreground hover:bg-secondary/80'}`}
+            >
+              All Branches
+            </button>
+          </div>
+        )}
 
-      {/* Date nav */}
-      <div className="no-print flex items-center gap-2">
-        <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => navDate(-1)}><ChevronLeft className="w-4 h-4" /></Button>
-        <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="w-40 h-8" />
-        <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => navDate(1)}><ChevronRight className="w-4 h-4" /></Button>
-        {!isToday && <Button variant="outline" size="sm" className="text-xs" onClick={() => setDate(getTodayPKT())}>Today</Button>}
-        <span className="text-sm font-medium">{formatPKDate(date)}</span>
-        <Button variant="outline" size="sm" className="ml-auto gap-1 text-xs" onClick={() => window.print()}><Printer className="w-3 h-3" /> Print</Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="icon" className="h-8 w-8 calendar-card" onClick={() => navDate(-1)}><ChevronLeft className="w-4 h-4" /></Button>
+          <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="w-40 h-8 calendar-card" />
+          <Button variant="outline" size="icon" className="h-8 w-8 calendar-card" onClick={() => navDate(1)}><ChevronRightIcon className="w-4 h-4" /></Button>
+          {!isToday && <Button variant="outline" size="sm" className="text-xs calendar-card" onClick={() => setDate(getTodayPKT())}>Today</Button>}
+          <span className="text-sm font-medium">{formatPKDate(date)}</span>
+          <Button variant="outline" size="sm" className="ml-auto gap-1 text-xs calendar-card" onClick={() => window.print()}><Printer className="w-3 h-3" /> Print</Button>
+        </div>
       </div>
 
       {/* Cash Drawer */}
-      <Card className="border-green-500/20">
+      <Card className="calendar-card shadow-sm border-border border-green-500/20">
         <CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2"><Wallet className="w-4 h-4" /> Cash Drawer</CardTitle></CardHeader>
         <CardContent>
-          {loading ? <div className="h-20 bg-muted rounded animate-pulse" /> : !drawer ? (
+          {loading ? <div className="h-20 bg-muted animate-pulse calendar-card" /> : !drawer ? (
             <div className="text-center py-4">
               <p className="text-sm text-muted-foreground mb-2">Cash drawer not opened for this day</p>
-              {isToday && <Button size="sm" onClick={() => setShowOpenDrawer(true)} className="bg-gold text-black border border-gold">Open Cash Drawer</Button>}
+              {isToday && <Button size="sm" onClick={() => setShowOpenDrawer(true)} className="calendar-card bg-gold hover:bg-gold/90 text-black font-bold">Open Cash Drawer</Button>}
             </div>
           ) : (
             <div className="space-y-3">
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
-                <div><p className="text-xs text-muted-foreground">Opening</p><p className="text-lg font-bold">{formatPKR(drawer.opening_balance || 0)}</p></div>
-                <div><p className="text-xs text-muted-foreground">+ Cash Sales</p><p className="text-lg font-bold text-green-600">{formatPKR(drawer.total_cash_sales || 0)}</p></div>
-                <div><p className="text-xs text-muted-foreground">- Expenses</p><p className="text-lg font-bold text-red-600">{formatPKR(totalExpenses)}</p></div>
-                <div><p className="text-xs text-muted-foreground">= Balance</p><p className="text-lg font-bold">{formatPKR((drawer.opening_balance || 0) + (drawer.total_cash_sales || 0) - totalExpenses)}</p></div>
+                <div><p className="text-xs text-muted-foreground uppercase tracking-wider">Opening</p><p className="text-lg font-bold">{formatPKR(drawer.opening_balance || 0)}</p></div>
+                <div><p className="text-xs text-muted-foreground uppercase tracking-wider">+ Cash Sales</p><p className="text-lg font-bold text-green-600">{formatPKR(drawer.total_cash_sales || 0)}</p></div>
+                <div><p className="text-xs text-muted-foreground uppercase tracking-wider">- Expenses</p><p className="text-lg font-bold text-red-600">{formatPKR(totalExpenses)}</p></div>
+                <div><p className="text-xs text-muted-foreground uppercase tracking-wider">= Balance</p><p className="text-lg font-bold">{formatPKR((drawer.opening_balance || 0) + (drawer.total_cash_sales || 0) - totalExpenses)}</p></div>
               </div>
               {drawer.status === 'open' && isToday && (
                 <div className="no-print flex gap-2">
@@ -230,14 +232,13 @@ export default function DailyReportPage() {
 
       {/* Sales summary */}
       <div className="grid grid-cols-3 gap-3">
-        <Card><CardContent className="p-4 text-center"><p className="text-xs text-muted-foreground">Bills</p><p className="text-2xl font-bold">{summary?.total_bills || 0}</p></CardContent></Card>
-        <Card><CardContent className="p-4 text-center"><p className="text-xs text-muted-foreground">Revenue</p><p className="text-2xl font-bold">{formatPKR(summary?.total_revenue || 0)}</p></CardContent></Card>
-        <Card><CardContent className="p-4 text-center"><p className="text-xs text-muted-foreground">Avg Bill</p><p className="text-2xl font-bold">{formatPKR(Math.round(avgBill))}</p></CardContent></Card>
+        <Card className="calendar-card shadow-sm border-border"><CardContent className="p-4 text-center"><p className="text-xs text-muted-foreground uppercase tracking-wider">Bills</p><p className="text-2xl font-bold">{summary?.total_bills || 0}</p></CardContent></Card>
+        <Card className="calendar-card shadow-sm border-border"><CardContent className="p-4 text-center"><p className="text-xs text-muted-foreground uppercase tracking-wider">Revenue</p><p className="text-2xl font-bold">{formatPKR(summary?.total_revenue || 0)}</p></CardContent></Card>
+        <Card className="calendar-card shadow-sm border-border"><CardContent className="p-4 text-center"><p className="text-xs text-muted-foreground uppercase tracking-wider">Avg Bill</p><p className="text-2xl font-bold">{formatPKR(Math.round(avgBill))}</p></CardContent></Card>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Payment breakdown */}
-        <Card>
+        <Card className="calendar-card shadow-sm border-border">
           <CardHeader className="pb-2"><CardTitle className="text-sm">Payment Breakdown</CardTitle></CardHeader>
           <CardContent>
             {paymentData.length === 0 ? <p className="text-center text-muted-foreground text-sm py-6">No data</p> : (
@@ -250,8 +251,7 @@ export default function DailyReportPage() {
           </CardContent>
         </Card>
 
-        {/* Top services */}
-        <Card>
+        <Card className="calendar-card shadow-sm border-border">
           <CardHeader className="pb-2"><CardTitle className="text-sm">Services Today</CardTitle></CardHeader>
           <CardContent>
             {serviceData.length === 0 ? <p className="text-center text-muted-foreground text-sm py-6">No data</p> : (
@@ -271,7 +271,7 @@ export default function DailyReportPage() {
 
       {/* Staff performance */}
       {summary?.staff_performance && summary.staff_performance.length > 0 && (
-        <Card>
+        <Card className="calendar-card shadow-sm border-border">
           <CardHeader className="pb-2"><CardTitle className="text-sm">Staff Performance</CardTitle></CardHeader>
           <CardContent className="px-0">
             <Table>
@@ -290,7 +290,7 @@ export default function DailyReportPage() {
 
       {/* Expenses */}
       {expenses.length > 0 && (
-        <Card>
+        <Card className="calendar-card shadow-sm border-border">
           <CardHeader className="pb-2"><CardTitle className="text-sm">Expenses ({formatPKR(totalExpenses)})</CardTitle></CardHeader>
           <CardContent>
             <div className="space-y-1">
@@ -307,7 +307,7 @@ export default function DailyReportPage() {
 
       {/* Bills list */}
       {paidBills.length > 0 && (
-        <Card>
+        <Card className="calendar-card shadow-sm border-border">
           <CardHeader className="pb-2"><CardTitle className="text-sm">All Bills ({paidBills.length})</CardTitle></CardHeader>
           <CardContent className="px-0">
             <Table>
@@ -334,8 +334,8 @@ export default function DailyReportPage() {
         <DialogContent className="max-w-sm">
           <DialogHeader><DialogTitle>Open Cash Drawer</DialogTitle></DialogHeader>
           <div className="space-y-3">
-            <div><Label className="text-xs">Opening Balance (Rs)</Label><Input type="number" value={openingBalance} onChange={(e) => setOpeningBalance(e.target.value)} className="mt-1 text-lg" inputMode="numeric" placeholder="0" /></div>
-            <Button onClick={openCashDrawer} disabled={saving} className="w-full bg-gold text-black border border-gold">{saving ? 'Opening...' : 'Open Drawer'}</Button>
+            <div><Label className="text-xs">Opening Balance (Rs)</Label><Input type="number" value={openingBalance} onChange={(e) => setOpeningBalance(e.target.value)} className="mt-1 text-lg calendar-card" inputMode="numeric" placeholder="0" /></div>
+            <Button onClick={openCashDrawer} disabled={saving} className="w-full calendar-card bg-gold hover:bg-gold/90 text-black font-bold">{saving ? 'Opening...' : 'Open Drawer'}</Button>
           </div>
         </DialogContent>
       </Dialog>
@@ -346,14 +346,14 @@ export default function DailyReportPage() {
           <DialogHeader><DialogTitle>Add Expense</DialogTitle></DialogHeader>
           <div className="space-y-3">
             <div><Label className="text-xs">Category</Label>
-              <select value={expCategory} onChange={(e) => setExpCategory(e.target.value)} className="mt-1 w-full h-9 rounded-md border bg-background px-3 text-sm">
+              <select value={expCategory} onChange={(e) => setExpCategory(e.target.value)} className="mt-1 w-full h-9 border bg-background px-3 text-sm calendar-card">
                 <option value="">Select</option>
                 {['Chai/Snacks', 'Cleaning Supplies', 'Transport', 'Utility', 'Miscellaneous'].map((c) => <option key={c} value={c}>{c}</option>)}
               </select>
             </div>
-            <div><Label className="text-xs">Amount (Rs) *</Label><Input type="number" value={expAmount} onChange={(e) => setExpAmount(e.target.value)} className="mt-1" inputMode="numeric" /></div>
-            <div><Label className="text-xs">Description</Label><Input value={expDesc} onChange={(e) => setExpDesc(e.target.value)} className="mt-1" /></div>
-            <Button onClick={addExpense} disabled={saving} className="w-full bg-gold text-black border border-gold">{saving ? 'Adding...' : 'Add Expense'}</Button>
+            <div><Label className="text-xs">Amount (Rs) *</Label><Input type="number" value={expAmount} onChange={(e) => setExpAmount(e.target.value)} className="mt-1 calendar-card" inputMode="numeric" /></div>
+            <div><Label className="text-xs">Description</Label><Input value={expDesc} onChange={(e) => setExpDesc(e.target.value)} className="mt-1 calendar-card" /></div>
+            <Button onClick={addExpense} disabled={saving} className="w-full calendar-card bg-gold hover:bg-gold/90 text-black font-bold">{saving ? 'Adding...' : 'Add Expense'}</Button>
           </div>
         </DialogContent>
       </Dialog>

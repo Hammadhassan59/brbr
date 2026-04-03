@@ -85,14 +85,13 @@ export function PaymentPanel({
 
   return (
     <div className="flex flex-col h-full">
-      {/* Empty state when no items */}
       {!hasItems ? (
         <div className="flex-1 flex flex-col items-center justify-center text-center px-4">
-          <div className="w-16 h-16 rounded-full bg-gold/10 flex items-center justify-center mb-4">
+          <div className="w-14 h-14 rounded-xl bg-gold/10 flex items-center justify-center mb-4">
             <Banknote className="w-7 h-7 text-gold" />
           </div>
-          <p className="font-heading font-semibold text-sm mb-1">Ready for checkout</p>
-          <p className="text-xs text-muted-foreground max-w-[220px] mb-6">
+          <p className="font-heading font-semibold text-base mb-1">Ready for checkout</p>
+          <p className="text-sm text-muted-foreground max-w-[220px] mb-6">
             Select services from the left panel to start building the bill
           </p>
           <div className="w-full max-w-[200px] space-y-2 text-[11px] text-muted-foreground">
@@ -105,23 +104,20 @@ export function PaymentPanel({
         </div>
       ) : (
       <>
-      {/* Total due */}
       <div className="text-center mb-4">
         <p className="text-xs text-muted-foreground mb-1">Total Due</p>
-        <p className="text-4xl font-heading font-bold">{formatPKR(total)}</p>
+        <p className="text-4xl font-heading font-bold"><span className="text-gold">{formatPKR(total)}</span></p>
       </div>
 
-      {/* Split toggle */}
-      <label className="flex items-center gap-2 mb-3 text-xs cursor-pointer">
+      <label className="flex items-center gap-2 mb-3 text-sm cursor-pointer">
         <Switch checked={isSplit} onCheckedChange={onSplitToggle} />
         <Split className="w-3.5 h-3.5" /> Split Payment
       </label>
 
       {isSplit ? (
-        /* Split payment mode */
         <div className="space-y-2 mb-4 flex-1">
           {splitPayments.map((sp, i) => (
-            <div key={i} className="flex items-center gap-1.5">
+            <div key={i} className="calendar-card bg-card border border-border/30 p-3 flex items-center gap-1.5">
               <Select value={sp.method} onValueChange={(v) => { if (v) updateSplit(i, 'method', v); }}>
                 <SelectTrigger className="h-8 text-xs w-[120px]"><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -134,14 +130,14 @@ export function PaymentPanel({
                 type="number"
                 value={sp.amount || ''}
                 onChange={(e) => updateSplit(i, 'amount', e.target.value)}
-                className="h-8 text-xs flex-1"
+                className="calendar-card h-8 text-xs flex-1"
                 placeholder="Rs 0"
                 inputMode="numeric"
               />
-              <button onClick={() => removeSplit(i)} className="text-muted-foreground hover:text-destructive text-xs">×</button>
+              <button onClick={() => removeSplit(i)} className="text-muted-foreground hover:text-destructive text-xs transition-all duration-150">×</button>
             </div>
           ))}
-          <Button variant="outline" size="sm" className="w-full text-xs h-7" onClick={addSplitRow}>
+          <Button variant="outline" size="sm" className="calendar-card w-full text-xs h-7" onClick={addSplitRow}>
             + Add Method
           </Button>
           <p className={`text-xs text-center font-medium ${Math.abs(splitRemaining) < 1 ? 'text-green-600' : 'text-destructive'}`}>
@@ -149,9 +145,7 @@ export function PaymentPanel({
           </p>
         </div>
       ) : (
-        /* Single payment mode */
         <>
-          {/* Payment method grid */}
           <div className="grid grid-cols-3 gap-2 mb-4">
             {PAYMENT_METHODS.map((m) => {
               const isActive = selectedPaymentMethod === m.method;
@@ -161,12 +155,12 @@ export function PaymentPanel({
                   key={m.method}
                   onClick={() => !disabled && onSelectMethod(m.method)}
                   disabled={disabled}
-                  className={`flex flex-col items-center gap-1 p-3 rounded-lg border text-xs font-medium transition-all touch-target ${
+                  className={`calendar-card bg-card border border-border/30 flex flex-col items-center gap-1 p-4 h-auto text-xs font-medium transition-all duration-150 touch-target ${
                     isActive
                       ? 'border-gold bg-gold/10 text-foreground shadow-sm'
                       : disabled
                         ? 'opacity-40 cursor-not-allowed'
-                        : 'border-border hover:border-gold/50'
+                        : 'hover:border-gold/30'
                   }`}
                 >
                   <m.icon className="w-5 h-5" />
@@ -176,7 +170,6 @@ export function PaymentPanel({
             })}
           </div>
 
-          {/* Method-specific fields */}
           <div className="space-y-3 mb-4 flex-1">
             {selectedPaymentMethod === 'cash' && (
               <div>
@@ -186,24 +179,26 @@ export function PaymentPanel({
                   value={cashReceived || ''}
                   onChange={(e) => onCashReceived(Number(e.target.value))}
                   placeholder="Rs 0"
-                  className="mt-1 text-lg font-bold"
+                  className="calendar-card mt-1 text-2xl font-bold h-14"
                   inputMode="numeric"
                   autoFocus
                 />
                 <div className="flex gap-1.5 mt-2">
                   {[500, 1000, 2000, 5000].map((v) => (
-                    <Button key={v} variant="outline" size="sm" className="flex-1 text-xs h-8" onClick={() => onCashReceived(v)}>
+                    <Button key={v} variant="outline" size="sm" className="calendar-card bg-card border border-border/30 flex-1 text-xs h-10 transition-all duration-150" onClick={() => onCashReceived(v)}>
                       Rs {v.toLocaleString()}
                     </Button>
                   ))}
-                  <Button variant="outline" size="sm" className="flex-1 text-xs h-8 border-gold text-gold" onClick={() => onCashReceived(total)}>
+                  <Button variant="outline" size="sm" className="calendar-card bg-card border border-border/30 flex-1 text-xs h-10 border-gold text-gold transition-all duration-150" onClick={() => onCashReceived(total)}>
                     Exact
                   </Button>
                 </div>
                 {cashReceived > 0 && change > 0 && (
-                  <p className="text-lg font-bold text-green-600 mt-2">
-                    Change: {formatPKR(change)}
-                  </p>
+                  <div className="calendar-card bg-green-500/10 border border-green-500/20 p-3 text-center mt-2">
+                    <p className="text-green-400 text-xl font-bold">
+                      Change: {formatPKR(change)}
+                    </p>
+                  </div>
                 )}
               </div>
             )}
@@ -214,7 +209,7 @@ export function PaymentPanel({
                   Account: Salon&apos;s {selectedPaymentMethod === 'jazzcash' ? 'JazzCash' : 'EasyPaisa'} number
                 </p>
                 <Label className="text-xs">Reference # (optional)</Label>
-                <Input value={reference} onChange={(e) => onReferenceChange(e.target.value)} placeholder="Transaction ID" className="mt-1" />
+                <Input value={reference} onChange={(e) => onReferenceChange(e.target.value)} placeholder="Transaction ID" className="calendar-card mt-1" />
               </div>
             )}
 
@@ -222,7 +217,7 @@ export function PaymentPanel({
               <div>
                 <p className="text-xs text-muted-foreground mb-2">Bank account details from settings</p>
                 <Label className="text-xs">Reference #</Label>
-                <Input value={reference} onChange={(e) => onReferenceChange(e.target.value)} placeholder="IBFT reference" className="mt-1" />
+                <Input value={reference} onChange={(e) => onReferenceChange(e.target.value)} placeholder="IBFT reference" className="calendar-card mt-1" />
               </div>
             )}
 
@@ -241,7 +236,7 @@ export function PaymentPanel({
                   <span>{formatPKR(clientUdhaarLimit)}</span>
                 </div>
                 {overLimit && (
-                  <p className="text-xs text-destructive font-medium p-2 bg-red-500/10 rounded">
+                  <p className="calendar-card text-xs text-destructive font-medium p-3 bg-red-500/5 border border-red-500/20">
                     Warning: This exceeds the client&apos;s udhaar limit!
                   </p>
                 )}
@@ -251,16 +246,15 @@ export function PaymentPanel({
         </>
       )}
 
-      {/* Tip */}
       <button
         onClick={() => setShowTip(!showTip)}
-        className="text-xs text-muted-foreground hover:text-foreground mb-2"
+        className="text-xs text-muted-foreground hover:text-foreground mb-2 transition-all duration-150"
       >
         {showTip ? 'Hide tip' : '+ Add tip'}
       </button>
 
       {showTip && (
-        <div className="space-y-2 mb-3 p-2 bg-secondary/30 rounded-lg">
+        <div className="calendar-card bg-background/50 border border-border/20 space-y-2 mb-3 p-3">
           <div>
             <Label className="text-xs">Tip Amount</Label>
             <div className="flex gap-1.5 mt-1">
@@ -268,11 +262,11 @@ export function PaymentPanel({
                 type="number"
                 value={tipAmount || ''}
                 onChange={(e) => onTipChange(Number(e.target.value))}
-                className="h-8 text-sm flex-1"
+                className="calendar-card h-8 text-sm flex-1"
                 inputMode="numeric"
               />
               {[50, 100, 200].map((v) => (
-                <Button key={v} variant="outline" size="sm" className="h-8 text-xs" onClick={() => onTipChange(v)}>
+                <Button key={v} variant="outline" size="sm" className="calendar-card h-8 text-xs transition-all duration-150" onClick={() => onTipChange(v)}>
                   Rs{v}
                 </Button>
               ))}
@@ -292,11 +286,10 @@ export function PaymentPanel({
         </div>
       )}
 
-      {/* Checkout button */}
       <Button
         onClick={onCheckout}
         disabled={saving || total <= 0 || (!isSplit && !selectedPaymentMethod) || (isSplit && Math.abs(splitRemaining) >= 0.5)}
-        className="w-full h-14 text-lg font-bold bg-gold hover:bg-gold/90 text-black border border-gold touch-target mt-auto"
+        className="calendar-card w-full h-14 text-lg font-bold bg-gold hover:bg-gold/90 text-black border border-gold touch-target mt-auto transition-all duration-150"
       >
         {saving ? 'Processing...' : `Checkout · ${formatPKR(total)}`}
       </Button>

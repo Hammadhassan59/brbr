@@ -64,6 +64,7 @@ export function PaymentBreakdown({ summary, loading }: PaymentBreakdownProps) {
                 outerRadius={95}
                 paddingAngle={3}
                 dataKey="value"
+                label={false}
                 isAnimationActive={true}
                 animationDuration={800}
                 animationBegin={300}

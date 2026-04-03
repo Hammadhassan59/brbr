@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Plus, Search } from 'lucide-react';
+import { Plus, Search, DollarSign } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { supabase } from '@/lib/supabase';
 import { useAppStore } from '@/store/app-store';
@@ -16,12 +16,12 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { Staff, Attendance } from '@/types/database';
 
 const ROLE_COLORS: Record<string, string> = {
-  owner: 'bg-gold/20 text-gold',
-  manager: 'bg-blue-500/15 text-blue-600',
-  receptionist: 'bg-teal-500/15 text-teal-600',
-  senior_stylist: 'bg-purple-500/15 text-purple-600',
-  junior_stylist: 'bg-purple-500/10 text-purple-500',
-  helper: 'bg-gray-500/10 text-gray-600',
+  owner: 'bg-amber-100 text-amber-700',
+  manager: 'bg-blue-100 text-blue-700',
+  receptionist: 'bg-teal-100 text-teal-700',
+  senior_stylist: 'bg-purple-100 text-purple-700',
+  junior_stylist: 'bg-violet-100 text-violet-700',
+  helper: 'bg-gray-100 text-gray-700',
 };
 
 export default function StaffListPage() {
@@ -48,14 +48,12 @@ export default function StaffListPage() {
       const staffList = staffData as Staff[];
       const ids = staffList.map((s) => s.id);
 
-      // Fetch today's attendance
       const { data: attData } = await supabase
         .from('attendance')
         .select('*')
         .in('staff_id', ids)
         .eq('date', today);
 
-      // Fetch today's bills per staff
       const { data: billsData } = await supabase
         .from('bills')
         .select('staff_id, total_amount')
@@ -89,11 +87,11 @@ export default function StaffListPage() {
   function getStatusBadge(att?: Attendance) {
     if (!att) return <span className="text-xs text-muted-foreground">—</span>;
     const map: Record<string, { label: string; cls: string }> = {
-      present: { label: 'Present', cls: 'bg-green-500/15 text-green-600' },
-      absent: { label: 'Absent', cls: 'bg-red-500/15 text-red-600' },
-      late: { label: 'Late', cls: 'bg-yellow-500/15 text-yellow-600' },
-      half_day: { label: 'Half Day', cls: 'bg-orange-500/15 text-orange-600' },
-      leave: { label: 'Leave', cls: 'bg-blue-500/15 text-blue-600' },
+      present: { label: 'Present', cls: 'bg-green-100 text-green-700' },
+      absent: { label: 'Absent', cls: 'bg-red-100 text-red-700' },
+      late: { label: 'Late', cls: 'bg-yellow-100 text-yellow-700' },
+      half_day: { label: 'Half Day', cls: 'bg-orange-100 text-orange-700' },
+      leave: { label: 'Leave', cls: 'bg-blue-100 text-blue-700' },
     };
     const s = map[att.status] || map.present;
     return <Badge variant="secondary" className={`text-[10px] ${s.cls}`}>{s.label}</Badge>;
@@ -115,87 +113,93 @@ export default function StaffListPage() {
   });
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h2 className="font-heading text-xl font-bold">Staff</h2>
-        <div className="flex gap-2">
+    <div className="space-y-6">
+      <div className="calendar-card bg-card border border-border shadow-sm p-4 flex flex-wrap items-center gap-3">
+        <Tabs value={roleFilter} onValueChange={setRoleFilter}>
+          <TabsList className="h-auto gap-1 bg-transparent p-0">
+            {[
+              { value: 'all', label: 'All' },
+              { value: 'stylists', label: 'Stylists' },
+              { value: 'receptionist', label: 'Receptionist' },
+              { value: 'helper', label: 'Helper' },
+            ].map((tab) => (
+              <TabsTrigger
+                key={tab.value}
+                value={tab.value}
+                className="text-xs calendar-card transition-all duration-150 data-[state=active]:bg-gold data-[state=active]:text-black data-[state=active]:shadow-sm bg-secondary/50 border border-border text-muted-foreground hover:border-gold/30"
+              >
+                {tab.label}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </Tabs>
+
+        <div className="relative">
+          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            placeholder="Search staff..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="calendar-card h-10 w-52 pl-9 text-sm"
+          />
+        </div>
+
+        <div className="flex gap-2 ml-auto">
           <Link href="/dashboard/staff/payroll">
-            <Button variant="outline" size="sm">Payroll</Button>
+            <Button variant="outline" size="sm" className="calendar-card h-10 px-4 font-medium transition-all duration-150 gap-1.5">
+              <DollarSign className="w-3.5 h-3.5" /> Payroll
+            </Button>
           </Link>
-          <Button onClick={() => router.push('/dashboard/staff/new')} className="bg-gold hover:bg-gold/90 text-black border border-gold" size="sm">
+          <Button onClick={() => router.push('/dashboard/staff/new')} className="calendar-card bg-gold hover:bg-gold/90 text-black font-bold h-10 px-4 transition-all duration-150" size="sm">
             <Plus className="w-4 h-4 mr-1" /> Add Staff
           </Button>
         </div>
       </div>
 
-      {/* Role filter + search */}
-      <div className="flex flex-wrap items-center gap-3">
-        <Tabs value={roleFilter} onValueChange={setRoleFilter}>
-          <TabsList className="h-auto gap-1">
-            <TabsTrigger value="all" className="text-xs">All</TabsTrigger>
-            <TabsTrigger value="stylists" className="text-xs">Stylists</TabsTrigger>
-            <TabsTrigger value="receptionist" className="text-xs">Receptionist</TabsTrigger>
-            <TabsTrigger value="helper" className="text-xs">Helper</TabsTrigger>
-          </TabsList>
-        </Tabs>
-        <div className="relative ml-auto">
-          <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder="Search staff..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="h-8 w-48 pl-8 text-sm"
-          />
-        </div>
-      </div>
-
       {loading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-          {[1, 2, 3, 4].map((i) => <div key={i} className="h-32 bg-muted rounded-lg animate-pulse" />)}
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+          {[1, 2, 3, 4].map((i) => <div key={i} className="calendar-card h-32 bg-muted animate-pulse" />)}
         </div>
       ) : filteredStaff.length === 0 ? (
-        <p className="text-center text-muted-foreground py-16">
-          {staff.length === 0 ? 'No staff members yet' : 'No staff match your filters'}
-        </p>
+        <div className="calendar-card bg-card shadow-sm border border-border p-12">
+          <p className="text-center text-muted-foreground">
+            {staff.length === 0 ? 'No staff members yet' : 'No staff match your filters'}
+          </p>
+        </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {filteredStaff.map((s) => (
             <Link key={s.id} href={`/dashboard/staff/${s.id}`}>
-              <Card className="hover:shadow-md transition-shadow">
-                <CardContent className="p-4">
-                  <div className="flex items-start gap-3">
-                    <div className="w-12 h-12 rounded-full bg-gold/20 text-gold font-bold flex items-center justify-center text-lg shrink-0">
-                      {s.name.charAt(0)}
+              <div className="calendar-card bg-card border border-border shadow-sm hover:shadow-lg hover:border-gold/40 hover:-translate-y-0.5 p-5 transition-all duration-200">
+                <div className="flex items-center gap-4">
+                  <div className="w-14 h-14 rounded-xl bg-gold/20 text-gold font-bold flex items-center justify-center text-xl shrink-0 shadow-sm">
+                    {s.name.charAt(0)}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-base font-semibold truncate">{s.name}</span>
+                      <Badge variant="secondary" className={`text-[10px] ${ROLE_COLORS[s.role] || ''}`}>
+                        {s.role.replace('_', ' ')}
+                      </Badge>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-0.5">
-                        <span className="font-medium truncate">{s.name}</span>
-                        <Badge variant="secondary" className={`text-[10px] ${ROLE_COLORS[s.role] || ''}`}>
-                          {s.role.replace('_', ' ')}
-                        </Badge>
-                      </div>
-                      <div className="flex items-center gap-2 mb-2">
-                        {getStatusBadge(s.todayAttendance)}
-                      </div>
-                      <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                    <div className="flex items-center gap-2 mt-1.5">
+                      {getStatusBadge(s.todayAttendance)}
+                      <span className="text-xs text-muted-foreground">·</span>
+                      <span className="text-xs font-medium text-foreground/70">
                         {s.role === 'owner' || s.role === 'manager' ? (
-                          <span className="text-muted-foreground">{s.role === 'owner' ? 'Owner' : 'Manager'} — full access</span>
+                          `${s.role === 'owner' ? 'Owner' : 'Manager'} — full access`
                         ) : s.role === 'receptionist' ? (
-                          <span className="text-muted-foreground">Front desk</span>
+                          'Front desk'
                         ) : s.role === 'helper' ? (
-                          <span className="text-muted-foreground">Support staff</span>
+                          'Support staff'
                         ) : (
-                          <>
-                            <span>{s.todayServices || 0} services</span>
-                            <span>·</span>
-                            <span>{formatPKR(s.todayRevenue || 0)}</span>
-                          </>
+                          `${s.todayServices || 0} services · ${formatPKR(s.todayRevenue || 0)}`
                         )}
-                      </div>
+                      </span>
                     </div>
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+              </div>
             </Link>
           ))}
         </div>

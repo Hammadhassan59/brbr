@@ -95,22 +95,24 @@ export function StaffForm({ staff, onSaved }: StaffFormProps) {
     <div className="max-w-2xl space-y-6">
       <h2 className="font-heading text-xl font-bold">{isEditing ? 'Edit Staff Member' : 'Add Staff Member'}</h2>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div>
-          <Label>Full Name *</Label>
-          <Input value={name} onChange={(e) => setName(e.target.value)} className="mt-1" />
+      <div className="calendar-card bg-card border border-border shadow-sm p-5 space-y-4">
+        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Personal Info</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <Label>Full Name *</Label>
+            <Input value={name} onChange={(e) => setName(e.target.value)} className="calendar-card mt-1" />
+          </div>
+          <div>
+            <Label>Phone</Label>
+            <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="03XX-XXXXXXX" className="calendar-card mt-1" />
+          </div>
         </div>
-        <div>
-          <Label>Phone</Label>
-          <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="03XX-XXXXXXX" className="mt-1" />
-        </div>
-      </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div>
-          <Label>Role *</Label>
-          <Select value={role} onValueChange={(v) => { if (v) setRole(v as StaffRole); }}>
-            <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <Label>Role *</Label>
+            <Select value={role} onValueChange={(v) => { if (v) setRole(v as StaffRole); }}>
+              <SelectTrigger className="calendar-card mt-1"><SelectValue /></SelectTrigger>
             <SelectContent>
               {ROLES.map((r) => <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>)}
             </SelectContent>
@@ -118,33 +120,34 @@ export function StaffForm({ staff, onSaved }: StaffFormProps) {
         </div>
         <div>
           <Label>Join Date</Label>
-          <Input type="date" value={joinDate} onChange={(e) => setJoinDate(e.target.value)} className="mt-1" />
+          <Input type="date" value={joinDate} onChange={(e) => setJoinDate(e.target.value)} className="calendar-card mt-1" />
         </div>
       </div>
 
       <div className="grid grid-cols-2 gap-4">
         <div>
           <Label>{isEditing ? 'New PIN (leave blank to keep)' : 'Set 4-digit PIN *'}</Label>
-          <Input type="password" maxLength={4} inputMode="numeric" value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))} className="mt-1 text-center tracking-widest" />
+          <Input type="password" maxLength={4} inputMode="numeric" value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))} className="calendar-card mt-1 text-center tracking-widest" />
         </div>
         <div>
           <Label>Confirm PIN</Label>
-          <Input type="password" maxLength={4} inputMode="numeric" value={confirmPin} onChange={(e) => setConfirmPin(e.target.value.replace(/\D/g, ''))} className="mt-1 text-center tracking-widest" />
+          <Input type="password" maxLength={4} inputMode="numeric" value={confirmPin} onChange={(e) => setConfirmPin(e.target.value.replace(/\D/g, ''))} className="calendar-card mt-1 text-center tracking-widest" />
           {pin && confirmPin && pin !== confirmPin && <p className="text-xs text-destructive mt-1">PINs don&apos;t match</p>}
         </div>
       </div>
+      </div>
 
-      <section className="space-y-4 pt-4 border-t">
-        <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Salary & Commission</h3>
+      <div className="calendar-card bg-card border border-border shadow-sm p-5 space-y-4">
+        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Salary & Commission</p>
         <div>
           <Label>Base Salary (Rs/month)</Label>
-          <Input type="number" value={baseSalary} onChange={(e) => setBaseSalary(e.target.value)} className="mt-1 w-48" inputMode="numeric" />
+          <Input type="number" value={baseSalary} onChange={(e) => setBaseSalary(e.target.value)} className="calendar-card mt-1 w-48" inputMode="numeric" />
         </div>
         <div className="grid grid-cols-2 gap-4">
           <div>
             <Label>Commission Type</Label>
             <Select value={commissionType} onValueChange={(v) => { if (v) setCommissionType(v as CommissionType); }}>
-              <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+              <SelectTrigger className="calendar-card mt-1"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="percentage">Percentage (%)</SelectItem>
                 <SelectItem value="flat">Flat per service (Rs)</SelectItem>
@@ -153,15 +156,15 @@ export function StaffForm({ staff, onSaved }: StaffFormProps) {
           </div>
           <div>
             <Label>{commissionType === 'percentage' ? 'Commission Rate (%)' : 'Flat Amount (Rs)'}</Label>
-            <Input type="number" value={commissionRate} onChange={(e) => setCommissionRate(e.target.value)} className="mt-1" inputMode="numeric" />
+            <Input type="number" value={commissionRate} onChange={(e) => setCommissionRate(e.target.value)} className="calendar-card mt-1" inputMode="numeric" />
           </div>
         </div>
-      </section>
+      </div>
 
       {isEditing && (
-        <section className="space-y-3 pt-4 border-t">
-          <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Status</h3>
-          <div className="flex items-center justify-between p-3 border rounded-lg">
+        <div className="calendar-card bg-card border border-border shadow-sm p-5 space-y-3">
+          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Status</p>
+          <div className="flex items-center justify-between p-4 calendar-card bg-secondary/50 border border-border">
             <div>
               <p className="text-sm font-medium">Active</p>
               <p className="text-xs text-muted-foreground">
@@ -177,12 +180,12 @@ export function StaffForm({ staff, onSaved }: StaffFormProps) {
               Warning: Deactivated staff won&apos;t appear in booking or POS.
             </p>
           )}
-        </section>
+        </div>
       )}
 
-      <div className="flex gap-3 pt-4 border-t">
-        <Button variant="outline" onClick={() => router.back()}>Cancel</Button>
-        <Button onClick={handleSave} disabled={saving} className="bg-gold hover:bg-gold/90 text-black border border-gold">
+      <div className="flex gap-3 pt-4">
+        <Button variant="outline" onClick={() => router.back()} className="calendar-card">Cancel</Button>
+        <Button onClick={handleSave} disabled={saving} className="calendar-card bg-gold hover:bg-gold/90 text-black border border-gold font-bold h-11 px-6">
           {saving ? 'Saving...' : isEditing ? 'Save Changes' : 'Add Staff'}
         </Button>
       </div>

@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, TrendingUp, TrendingDown, Minus, Download } from 'lucide-react';
+import { ChevronRight, TrendingUp, TrendingDown, Minus, Download } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { supabase } from '@/lib/supabase';
 import { useAppStore } from '@/store/app-store';
@@ -192,83 +192,84 @@ export default function ProfitLossPage() {
   }
 
   return (
-    <div className="space-y-4">
-      <Link href="/dashboard/reports" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
-        <ArrowLeft className="w-4 h-4" /> Back to Reports
-      </Link>
+    <div className="space-y-6">
+      <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+        <Link href="/dashboard/reports" className="hover:text-foreground">Reports</Link>
+        <ChevronRight className="w-3.5 h-3.5" />
+        <span className="text-foreground font-medium">Profit & Loss</span>
+      </div>
 
-      {/* Branch scope */}
       {canSeeAllBranches && (
         <div className="flex flex-wrap gap-1.5">
           <button onClick={() => setBranchScope('current')}
-            className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${branchScope === 'current' ? 'bg-gold text-black' : 'bg-secondary text-muted-foreground hover:bg-secondary/80'}`}>
+            className={`calendar-card px-3 py-1.5 rounded-full text-xs font-medium transition-all ${branchScope === 'current' ? 'bg-gold text-black' : 'bg-secondary/50 border border-border text-muted-foreground hover:bg-secondary/80'}`}>
             {currentBranch?.name || 'Current'}
           </button>
           {branches.filter(b => b.id !== currentBranch?.id).map(b => (
             <button key={b.id} onClick={() => setBranchScope(b.id)}
-              className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${branchScope === b.id ? 'bg-gold text-black' : 'bg-secondary text-muted-foreground hover:bg-secondary/80'}`}>
+              className={`calendar-card px-3 py-1.5 rounded-full text-xs font-medium transition-all ${branchScope === b.id ? 'bg-gold text-black' : 'bg-secondary/50 border border-border text-muted-foreground hover:bg-secondary/80'}`}>
               {b.name}
             </button>
           ))}
           <button onClick={() => setBranchScope('all')}
-            className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${branchScope === 'all' ? 'bg-gold text-black' : 'bg-secondary text-muted-foreground hover:bg-secondary/80'}`}>
+            className={`calendar-card px-3 py-1.5 rounded-full text-xs font-medium transition-all ${branchScope === 'all' ? 'bg-gold text-black' : 'bg-secondary/50 border border-border text-muted-foreground hover:bg-secondary/80'}`}>
             All Branches
           </button>
         </div>
       )}
 
-      <div className="flex items-center gap-3">
+      <div className="calendar-card bg-card border border-border shadow-sm p-4 flex items-center gap-3">
         <h2 className="font-heading text-xl font-bold">Profit & Loss</h2>
         <Select value={String(month)} onValueChange={(v) => { if (v) setMonth(Number(v)); }}>
-          <SelectTrigger className="w-[120px] h-8 text-xs"><SelectValue /></SelectTrigger>
+          <SelectTrigger className="calendar-card w-[120px] h-8 text-xs"><SelectValue /></SelectTrigger>
           <SelectContent>{Array.from({ length: 12 }, (_, i) => <SelectItem key={i + 1} value={String(i + 1)}>{new Date(2000, i).toLocaleString('default', { month: 'long' })}</SelectItem>)}</SelectContent>
         </Select>
         <Select value={String(year)} onValueChange={(v) => { if (v) setYear(Number(v)); }}>
-          <SelectTrigger className="w-[90px] h-8 text-xs"><SelectValue /></SelectTrigger>
+          <SelectTrigger className="calendar-card w-[90px] h-8 text-xs"><SelectValue /></SelectTrigger>
           <SelectContent>{Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - 2 + i).map((y) => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}</SelectContent>
         </Select>
-        <Button variant="outline" size="sm" className="ml-auto text-xs gap-1" onClick={exportCSV}>
+        <Button variant="outline" size="sm" className="calendar-card ml-auto text-xs gap-1" onClick={exportCSV}>
           <Download className="w-3 h-3" /> Export
         </Button>
       </div>
 
       {loading ? (
-        <div className="space-y-3">{[1, 2, 3].map(i => <div key={i} className="h-24 bg-muted rounded animate-pulse" />)}</div>
+        <div className="space-y-3">{[1, 2, 3].map(i => <div key={i} className="calendar-card h-24 bg-muted rounded animate-pulse" />)}</div>
       ) : (
         <>
           {/* KPI Cards */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-            <Card>
+            <Card className="calendar-card shadow-sm border-border">
               <CardContent className="p-4 text-center">
-                <p className="text-xs text-muted-foreground">Total Revenue</p>
+                <p className="text-xs text-muted-foreground uppercase tracking-wider">Total Revenue</p>
                 <p className="text-xl font-bold text-green-600">{formatPKR(totalRevenue)}</p>
               </CardContent>
             </Card>
-            <Card>
+            <Card className="calendar-card shadow-sm border-border">
               <CardContent className="p-4 text-center">
-                <p className="text-xs text-muted-foreground">Total Costs</p>
+                <p className="text-xs text-muted-foreground uppercase tracking-wider">Total Costs</p>
                 <p className="text-xl font-bold text-red-600">{formatPKR(Math.round(totalCosts))}</p>
               </CardContent>
             </Card>
-            <Card className={netProfit >= 0 ? 'border-green-500/25' : 'border-red-500/25'}>
+            <Card className={`calendar-card shadow-sm border-border ${netProfit >= 0 ? 'border-green-500/25' : 'border-red-500/25'}`}>
               <CardContent className="p-4 text-center">
-                <p className="text-xs text-muted-foreground">Net Profit</p>
+                <p className="text-xs text-muted-foreground uppercase tracking-wider">Net Profit</p>
                 <div className="flex items-center justify-center gap-1">
                   {netProfit > 0 ? <TrendingUp className="w-4 h-4 text-green-600" /> : netProfit < 0 ? <TrendingDown className="w-4 h-4 text-red-600" /> : <Minus className="w-4 h-4" />}
                   <p className={`text-xl font-bold ${netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>{formatPKR(Math.round(Math.abs(netProfit)))}</p>
                 </div>
               </CardContent>
             </Card>
-            <Card>
+            <Card className="calendar-card shadow-sm border-border">
               <CardContent className="p-4 text-center">
-                <p className="text-xs text-muted-foreground">Profit Margin</p>
+                <p className="text-xs text-muted-foreground uppercase tracking-wider">Profit Margin</p>
                 <p className={`text-xl font-bold ${profitMargin >= 0 ? 'text-green-600' : 'text-red-600'}`}>{profitMargin.toFixed(1)}%</p>
               </CardContent>
             </Card>
           </div>
 
           {/* Weekly Trend Chart */}
-          <Card>
+          <Card className="calendar-card shadow-sm border-border">
             <CardHeader className="pb-2"><CardTitle className="text-sm">Weekly Trend — {monthName} {year}</CardTitle></CardHeader>
             <CardContent>
               <ResponsiveContainer width="100%" height={220}>
@@ -286,7 +287,7 @@ export default function ProfitLossPage() {
           </Card>
 
           {/* P&L Statement Table */}
-          <Card>
+          <Card className="calendar-card shadow-sm border-border">
             <CardHeader className="pb-2"><CardTitle className="text-sm">Statement — {monthName} {year}</CardTitle></CardHeader>
             <CardContent className="px-0">
               <Table>

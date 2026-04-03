@@ -246,7 +246,7 @@ function AppointmentsContent() {
 
   return (
     <div className="space-y-4">
-      <div className="calendar-card bg-card border border-border/50 p-3">
+      <div className="calendar-card bg-card text-foreground border border-border p-3">
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-2">
             <Button
@@ -277,13 +277,13 @@ function AppointmentsContent() {
 
           <div className="flex items-center gap-2">
             <CalendarIcon className="w-4 h-4 text-muted-foreground" />
-            <span className="text-lg font-semibold tracking-tight">{formattedDate}</span>
+            <span className="text-lg font-semibold tracking-tight text-foreground">{formattedDate}</span>
           </div>
 
           <div className="flex items-center gap-2 ml-auto">
             <Filter className="w-4 h-4 text-muted-foreground" />
             <Select value={filterStaffId || 'all'} onValueChange={(v) => setFilterStaffId(v === 'all' ? null : v)}>
-              <SelectTrigger className="h-10 w-[180px] bg-background border-border/50 transition-all duration-150">
+              <SelectTrigger className="calendar-card h-10 w-[180px] bg-secondary border-border text-foreground transition-all duration-150">
                 <SelectValue placeholder="All stylists" />
               </SelectTrigger>
               <SelectContent>
@@ -334,7 +334,7 @@ function AppointmentsContent() {
           </div>
         </div>
       ) : (
-        <div className="calendar-card bg-card border border-border/50 overflow-hidden">
+        <div className="calendar-card bg-card border border-border overflow-hidden">
           <CalendarGrid
             date={date}
             stylists={stylists}

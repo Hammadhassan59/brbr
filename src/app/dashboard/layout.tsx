@@ -227,20 +227,20 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       {/* Main content area */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Topbar */}
-        <header className="sticky top-0 z-30 bg-sidebar border-b border-sidebar-border px-4 lg:px-6 h-16 flex items-center gap-4 no-print">
-          <button onClick={() => setSidebarOpen(true)} className="lg:hidden touch-target p-2 -ml-2 rounded-xl hover:bg-muted/50 transition-colors" aria-label="Open menu">
+        <header className="sticky top-0 z-30 bg-sidebar text-sidebar-foreground border-b border-sidebar-border px-4 lg:px-6 h-16 flex items-center gap-4 no-print">
+          <button onClick={() => setSidebarOpen(true)} className="lg:hidden touch-target p-2 -ml-2 rounded-xl hover:bg-sidebar-accent/50 transition-colors" aria-label="Open menu">
             <Menu className="w-5 h-5" />
           </button>
 
           <div className="flex flex-col">
-            <h1 className="font-heading text-lg font-bold tracking-tight">{pageTitle}</h1>
-            <span className="text-[11px] text-muted-foreground hidden sm:block">{formatPKDate(getTodayPKT())}</span>
+            <h1 className="font-heading text-lg font-bold tracking-tight text-sidebar-foreground">{pageTitle}</h1>
+            <span className="text-[11px] text-sidebar-foreground/50 hidden sm:block">{formatPKDate(getTodayPKT())}</span>
           </div>
 
           <div className="ml-auto flex items-center gap-3">
             {roleAccess === 'full' && (
               <DropdownMenu>
-                <DropdownMenuTrigger className="relative w-10 h-10 rounded-xl bg-muted/50 hover:bg-muted flex items-center justify-center transition-all duration-150 outline-none" aria-label="Notifications">
+                <DropdownMenuTrigger className="relative w-10 h-10 rounded-xl bg-sidebar-accent hover:bg-sidebar-accent/80 flex items-center justify-center transition-all duration-150 outline-none text-sidebar-foreground" aria-label="Notifications">
                   <Bell className="w-[18px] h-[18px]" />
                   <span className="absolute top-2 right-2 w-1.5 h-1.5 rounded-full bg-gold" />
                 </DropdownMenuTrigger>
@@ -296,7 +296,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       </div>
 
       {/* Mobile bottom nav */}
-      <nav className="fixed bottom-0 inset-x-0 z-30 bg-sidebar border-t border-sidebar-border flex lg:hidden no-print safe-area-bottom">
+      <nav className="fixed bottom-0 inset-x-0 z-30 bg-sidebar text-sidebar-foreground border-t border-sidebar-border flex lg:hidden no-print safe-area-bottom">
         {mobileNav.map((item) => {
           const isActive = item.href === '/dashboard'
             ? pathname === '/dashboard'
@@ -306,7 +306,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               key={item.href}
               href={item.href}
               className={`relative flex-1 flex flex-col items-center py-2.5 text-[11px] touch-target transition-all duration-150 ${
-                isActive ? 'text-gold' : 'text-muted-foreground/60'
+                isActive ? 'text-gold' : 'text-sidebar-foreground/40'
               }`}
             >
               <div className={`p-1.5 rounded-xl mb-0.5 transition-colors ${isActive ? 'bg-gold/10' : ''}`}>

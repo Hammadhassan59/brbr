@@ -197,52 +197,51 @@ export default function ExpensesPage() {
   const sortedCategories = Object.entries(categoryTotals).sort((a, b) => b[1] - a[1]);
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h2 className="font-heading text-xl font-bold">Expenses</h2>
-        <Button onClick={() => { setEditingExpense(null); setCategory(''); setCustomCategory(''); setAmount(''); setDescription(''); setShowAdd(true); }} className="bg-gold text-black border border-gold" size="sm">
-          <Plus className="w-4 h-4 mr-1" /> Record Expense
-        </Button>
+    <div className="space-y-6">
+      <div className="calendar-card bg-card border border-border shadow-sm p-4 flex flex-wrap items-center gap-3">
+        <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)}>
+          <TabsList className="h-auto gap-1 bg-transparent p-0">
+            <TabsTrigger value="today" className="calendar-card text-xs transition-all duration-150 data-[state=active]:bg-gold data-[state=active]:text-black data-[state=active]:shadow-sm bg-secondary/50 border border-border text-muted-foreground hover:border-gold/30">Today</TabsTrigger>
+            <TabsTrigger value="week" className="calendar-card text-xs transition-all duration-150 data-[state=active]:bg-gold data-[state=active]:text-black data-[state=active]:shadow-sm bg-secondary/50 border border-border text-muted-foreground hover:border-gold/30">Last 7 Days</TabsTrigger>
+            <TabsTrigger value="month" className="calendar-card text-xs transition-all duration-150 data-[state=active]:bg-gold data-[state=active]:text-black data-[state=active]:shadow-sm bg-secondary/50 border border-border text-muted-foreground hover:border-gold/30">Last 30 Days</TabsTrigger>
+          </TabsList>
+        </Tabs>
+        <div className="ml-auto">
+          <Button onClick={() => { setEditingExpense(null); setCategory(''); setCustomCategory(''); setAmount(''); setDescription(''); setShowAdd(true); }} className="calendar-card bg-gold hover:bg-gold/90 text-black font-bold h-10 px-4 transition-all duration-150" size="sm">
+            <Plus className="w-4 h-4 mr-1" /> Record Expense
+          </Button>
+        </div>
       </div>
 
-      {/* Period tabs */}
-      <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)}>
-        <TabsList className="h-auto gap-1">
-          <TabsTrigger value="today" className="text-xs">Today</TabsTrigger>
-          <TabsTrigger value="week" className="text-xs">Last 7 Days</TabsTrigger>
-          <TabsTrigger value="month" className="text-xs">Last 30 Days</TabsTrigger>
-        </TabsList>
-      </Tabs>
-
       {/* Summary cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
-        <Card>
-          <CardContent className="p-4 text-center">
-            {loading ? <div className="h-12 bg-muted rounded animate-pulse" /> : (
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+        <Card className="calendar-card shadow-sm border-border">
+          <CardContent className="p-5 text-center">
+            {loading ? <div className="calendar-card h-12 bg-muted animate-pulse" /> : (
               <>
-                <p className="text-xs text-muted-foreground">Total Expenses</p>
-                <p className="text-2xl font-bold text-foreground">{formatPKR(totalAmount)}</p>
+                <p className="text-xs text-muted-foreground uppercase tracking-wider">Total Expenses</p>
+                <p className="text-2xl font-bold text-foreground mt-1">{formatPKR(totalAmount)}</p>
               </>
             )}
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="p-4 text-center">
-            {loading ? <div className="h-12 bg-muted rounded animate-pulse" /> : (
+        <Card className="calendar-card shadow-sm border-border">
+          <CardContent className="p-5 text-center">
+            {loading ? <div className="calendar-card h-12 bg-muted animate-pulse" /> : (
               <>
-                <p className="text-xs text-muted-foreground">Entries</p>
-                <p className="text-2xl font-bold">{expenses.length}</p>
+                <p className="text-xs text-muted-foreground uppercase tracking-wider">Entries</p>
+                <p className="text-2xl font-bold mt-1">{expenses.length}</p>
               </>
             )}
           </CardContent>
         </Card>
         {tab !== 'today' && (
-          <Card>
-            <CardContent className="p-4 text-center">
-              {loading ? <div className="h-12 bg-muted rounded animate-pulse" /> : (
+          <Card className="calendar-card shadow-sm border-border">
+            <CardContent className="p-5 text-center">
+              {loading ? <div className="calendar-card h-12 bg-muted animate-pulse" /> : (
                 <>
-                  <p className="text-xs text-muted-foreground">Daily Average</p>
-                  <p className="text-2xl font-bold">{formatPKR(Math.round(totalAmount / (tab === 'week' ? 7 : 30)))}</p>
+                  <p className="text-xs text-muted-foreground uppercase tracking-wider">Daily Average</p>
+                  <p className="text-2xl font-bold mt-1">{formatPKR(Math.round(totalAmount / (tab === 'week' ? 7 : 30)))}</p>
                 </>
               )}
             </CardContent>
@@ -252,7 +251,7 @@ export default function ExpensesPage() {
 
       {/* Category breakdown */}
       {sortedCategories.length > 0 && (
-        <Card>
+        <Card className="calendar-card shadow-sm border-border">
           <CardHeader className="pb-2"><CardTitle className="text-sm">By Category</CardTitle></CardHeader>
           <CardContent>
             <div className="space-y-2">
@@ -273,10 +272,10 @@ export default function ExpensesPage() {
       {/* Expense list grouped by date */}
       {loading ? (
         <div className="space-y-3">
-          {[1, 2, 3].map((i) => <div key={i} className="h-16 bg-muted rounded animate-pulse" />)}
+          {[1, 2, 3].map((i) => <div key={i} className="calendar-card h-16 bg-muted animate-pulse" />)}
         </div>
       ) : expenses.length === 0 ? (
-        <Card>
+        <Card className="calendar-card shadow-sm border-border">
           <CardContent className="p-8 text-center">
             <Wallet className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
             <p className="text-muted-foreground">No expenses recorded for this period.</p>
@@ -287,7 +286,7 @@ export default function ExpensesPage() {
         </Card>
       ) : (
         Object.entries(groupedByDate).sort(([a], [b]) => b.localeCompare(a)).map(([date, dayExpenses]) => (
-          <Card key={date}>
+          <Card key={date} className="calendar-card shadow-sm border-border">
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-sm">{date === today ? 'Today' : formatPKDate(date)}</CardTitle>
@@ -320,33 +319,33 @@ export default function ExpensesPage() {
 
       {/* Add Expense Dialog */}
       <Dialog open={showAdd} onOpenChange={(open) => { setShowAdd(open); if (!open) setEditingExpense(null); }}>
-        <DialogContent className="max-w-sm">
+        <DialogContent className="calendar-card max-w-sm">
           <DialogHeader><DialogTitle>{editingExpense ? 'Edit Expense' : 'Record Expense'}</DialogTitle></DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label className="text-xs">Category</Label>
+              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Category</Label>
               <select
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
-                className="mt-1 w-full h-9 rounded-md border bg-background px-3 text-sm"
+                className="calendar-card mt-1 w-full h-10 border border-border bg-background px-3 text-sm"
               >
                 <option value="">Select category</option>
                 {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
                 <option value="__custom">Other (type your own)</option>
               </select>
               {category === '__custom' && (
-                <Input value={customCategory} onChange={(e) => setCustomCategory(e.target.value)} placeholder="Enter category name" className="mt-2" />
+                <Input value={customCategory} onChange={(e) => setCustomCategory(e.target.value)} placeholder="Enter category name" className="calendar-card mt-2" />
               )}
             </div>
             <div>
-              <Label className="text-xs">Amount (Rs) *</Label>
-              <Input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0" className="mt-1 text-lg" inputMode="numeric" min={0} />
+              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Amount (Rs) *</Label>
+              <Input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0" className="calendar-card mt-1 text-lg h-12" inputMode="numeric" min={0} />
             </div>
             <div>
-              <Label className="text-xs">Description</Label>
-              <Input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="e.g. Chai for customers, cleaning supplies" className="mt-1" />
+              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Description</Label>
+              <Input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="e.g. Chai for customers, cleaning supplies" className="calendar-card mt-1" />
             </div>
-            <Button onClick={saveExpense} disabled={saving} className="w-full bg-gold text-black border border-gold">
+            <Button onClick={saveExpense} disabled={saving} className="calendar-card w-full h-11 bg-gold hover:bg-gold/90 text-black border border-gold font-bold transition-all duration-150">
               {saving ? 'Saving...' : editingExpense ? 'Update Expense' : 'Record Expense'}
             </Button>
           </div>
