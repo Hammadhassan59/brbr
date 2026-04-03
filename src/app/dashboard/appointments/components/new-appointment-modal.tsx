@@ -238,21 +238,21 @@ export function NewAppointmentModal({
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) { reset(); onClose(); } }}>
-      <DialogContent className="sm:max-w-xl max-h-[85vh] p-0 flex flex-col overflow-hidden">
+      <DialogContent className="calendar-card sm:max-w-xl max-h-[85vh] p-0 flex flex-col overflow-hidden bg-sidebar border-sidebar-border">
         {/* Header */}
-        <div className="px-5 pt-5 pb-3 border-b bg-[#1A1A1A] text-white shrink-0">
-          <DialogTitle className="font-heading text-lg text-white">
+        <div className="px-6 pt-6 pb-4 border-b border-border/30 shrink-0">
+          <DialogTitle className="font-heading text-lg font-bold">
             {isWalkin ? 'Add Walk-in' : 'New Appointment'}
           </DialogTitle>
-          <p className="text-xs text-white/50 mt-0.5">{new Date(date).toLocaleDateString('en-PK', { weekday: 'long', day: 'numeric', month: 'long' })}{time ? ` at ${formatTime(time)}` : ''}</p>
+          <p className="text-xs text-muted-foreground mt-1">{new Date(date).toLocaleDateString('en-PK', { weekday: 'long', day: 'numeric', month: 'long' })}{time ? ` at ${formatTime(time)}` : ''}</p>
         </div>
 
         {/* Scrollable form */}
-        <div className="overflow-y-auto flex-1 min-h-0 px-5 py-4 space-y-5">
+        <div className="overflow-y-auto flex-1 min-h-0 px-6 py-5 space-y-5" style={{ scrollbarWidth: 'none' }}>
 
           {/* Client */}
-          <section className="bg-secondary/30 p-3 border border-border/50">
-            <Label className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-2 block">Client (optional)</Label>
+          <section className="calendar-card bg-card p-4 border border-border/30">
+            <Label className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-3 block">Client (optional)</Label>
             {selectedClient ? (
               <div className="flex items-center gap-3 p-2.5 border bg-card">
                 <div className="w-8 h-8 bg-gold/20 text-gold text-xs font-bold flex items-center justify-center">{selectedClient.name.charAt(0)}</div>
@@ -277,7 +277,7 @@ export function NewAppointmentModal({
             ) : (
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input value={clientSearch} onChange={(e) => setClientSearch(e.target.value)} placeholder="Search by name or phone..." className="pl-9 h-10" />
+                <Input value={clientSearch} onChange={(e) => setClientSearch(e.target.value)} placeholder="Search by name or phone..." className="pl-9 h-10 calendar-card" />
                 {clientSearch.length >= 2 && (
                   <div className="absolute z-20 top-full left-0 right-0 mt-1 bg-card border shadow-lg max-h-48 overflow-y-auto">
                     {clientResults.map((client) => (
@@ -306,9 +306,9 @@ export function NewAppointmentModal({
           </section>
 
           {/* Stylist + Date/Time row */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <section className="bg-secondary/30 p-3 border border-border/50">
-              <Label className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-2 block">Stylist</Label>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <section className="calendar-card bg-card p-4 border border-border/30">
+              <Label className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-3 block">Stylist</Label>
               {stylists.length > 0 ? (
                 <div className="space-y-1.5">
                   {stylists.map((s) => (
@@ -327,28 +327,28 @@ export function NewAppointmentModal({
                   ))}
                 </div>
               ) : (
-                <div className="py-6 text-center border bg-secondary/30">
-                  <User className="w-5 h-5 mx-auto mb-1 text-muted-foreground" />
+                <div className="py-8 text-center calendar-card bg-background/50 border border-border/20">
+                  <User className="w-6 h-6 mx-auto mb-2 text-muted-foreground/50" />
                   <p className="text-xs text-muted-foreground">No stylists in this branch.</p>
-                  <p className="text-xs text-muted-foreground">Add staff in Settings first.</p>
+                  <p className="text-[11px] text-muted-foreground/60 mt-0.5">Add staff in Settings first.</p>
                 </div>
               )}
             </section>
 
-            <section className="bg-secondary/30 p-3 border border-border/50">
-              <Label className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-2 block">Date & Time</Label>
+            <section className="calendar-card bg-card p-4 border border-border/30">
+              <Label className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-3 block">Date & Time</Label>
               <div className="grid grid-cols-2 gap-2 mb-2">
                 <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="h-10 w-full" />
                 <Input type="time" value={time} onChange={(e) => setTime(e.target.value)} step={1800} className="h-10 w-full" />
               </div>
-              <div className="grid grid-cols-4 gap-1">
+              <div className="grid grid-cols-4 gap-1.5">
                 {TIME_SLOTS.map((slot) => {
                   const h = parseInt(slot.split(':')[0]);
                   const label = h === 0 ? '12a' : h < 12 ? `${h}a` : h === 12 ? '12p' : `${h - 12}p`;
                   return (
                     <button key={slot} onClick={() => setTime(slot)}
-                      className={`py-2 text-xs font-medium text-center transition-all ${
-                        time === slot ? 'bg-gold text-black font-bold' : 'bg-card border border-border text-muted-foreground hover:border-gold/40 hover:text-foreground'
+                      className={`py-2.5 text-xs font-medium text-center transition-all calendar-card ${
+                        time === slot ? 'bg-gold text-black font-bold' : 'bg-background/50 border border-border/30 text-muted-foreground hover:border-gold/40 hover:text-foreground'
                       }`}>
                       {label}
                     </button>
@@ -359,23 +359,23 @@ export function NewAppointmentModal({
           </div>
 
           {/* Services */}
-          <section className="bg-secondary/30 p-3 border border-border/50">
-            <Label className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-2 block">
+          <section className="calendar-card bg-card p-4 border border-border/30">
+            <Label className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-3 block">
               Services {selectedServices.length > 0 && <span className="text-gold">({selectedServices.length})</span>}
             </Label>
 
             <div className="flex gap-1.5 mb-2 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>
               {CATEGORIES.map((cat) => (
                 <button key={cat.value} onClick={() => setServiceCategory(cat.value)}
-                  className={`px-3 py-1.5 text-xs font-medium shrink-0 transition-all ${
-                    serviceCategory === cat.value ? 'bg-[#1A1A1A] text-white' : 'bg-secondary text-muted-foreground hover:text-foreground'
+                  className={`px-3 py-1.5 text-xs font-medium shrink-0 transition-all calendar-card ${
+                    serviceCategory === cat.value ? 'bg-gold/15 text-gold' : 'bg-background/50 text-muted-foreground hover:text-foreground'
                   }`}>{cat.label}</button>
               ))}
             </div>
 
             <div className="relative mb-2">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input value={serviceSearch} onChange={(e) => setServiceSearch(e.target.value)} placeholder="Search services..." className="pl-9 h-9 text-sm" />
+              <Input value={serviceSearch} onChange={(e) => setServiceSearch(e.target.value)} placeholder="Search services..." className="pl-9 h-9 text-sm calendar-card" />
             </div>
 
             {filteredServices.length > 0 ? (
@@ -397,10 +397,10 @@ export function NewAppointmentModal({
                 })}
               </div>
             ) : (
-              <div className="py-6 text-center border bg-secondary/30">
-                <Scissors className="w-5 h-5 mx-auto mb-1 text-muted-foreground" />
+              <div className="py-8 text-center calendar-card bg-background/50 border border-border/20">
+                <Scissors className="w-6 h-6 mx-auto mb-2 text-muted-foreground/50" />
                 <p className="text-xs text-muted-foreground">No services found.</p>
-                <p className="text-xs text-muted-foreground">Add services in Settings first.</p>
+                <p className="text-[11px] text-muted-foreground/60 mt-0.5">Add services in Settings first.</p>
               </div>
             )}
 
@@ -416,24 +416,24 @@ export function NewAppointmentModal({
           </section>
 
           {/* Notes */}
-          <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Notes (optional)" rows={2} className="text-sm bg-secondary/30 border-border/50" />
+          <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Notes (optional)" rows={2} className="calendar-card text-sm bg-card border-border/30" />
         </div>
 
         {/* Fixed bottom bar */}
-        <div className="border-t px-5 py-4 flex items-center gap-3 bg-[#1A1A1A] shrink-0">
+        <div className="border-t border-border/30 px-6 py-4 flex items-center gap-3 shrink-0">
           <div className="flex-1 min-w-0">
             {selectedServices.length > 0 ? (
               <>
-                <p className="text-xs text-white/50">{selectedServices.length} service{selectedServices.length > 1 ? 's' : ''} · {totalDuration} min{time ? ` · ${formatTime(time)}` : ''}</p>
-                <p className="font-heading font-bold text-lg leading-tight text-white">{formatPKR(totalPrice)}</p>
+                <p className="text-xs text-muted-foreground">{selectedServices.length} service{selectedServices.length > 1 ? 's' : ''} · {totalDuration} min{time ? ` · ${formatTime(time)}` : ''}</p>
+                <p className="font-heading font-bold text-lg leading-tight">{formatPKR(totalPrice)}</p>
               </>
             ) : (
-              <p className="text-sm text-white/40">Select stylist, services, and time</p>
+              <p className="text-sm text-muted-foreground/60">Select stylist, services, and time</p>
             )}
           </div>
-          <Button variant="ghost" onClick={() => { reset(); onClose(); }} className="text-white/50 hover:text-white shrink-0">Cancel</Button>
+          <Button variant="ghost" onClick={() => { reset(); onClose(); }} className="text-muted-foreground hover:text-foreground shrink-0">Cancel</Button>
           <Button onClick={handleSave} disabled={saving || !isReady}
-            className="bg-gold hover:bg-gold/90 text-black border border-gold font-bold h-11 px-8 shrink-0 disabled:opacity-40">
+            className="calendar-card bg-gold hover:bg-gold/90 text-black border border-gold/50 font-bold h-11 px-8 shrink-0 disabled:opacity-30">
             {saving ? 'Booking...' : 'Book'}
           </Button>
         </div>

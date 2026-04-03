@@ -4,15 +4,16 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recha
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useLanguage } from '@/components/providers/language-provider';
 import { formatPKR } from '@/lib/utils/currency';
+import { PieChartIcon } from 'lucide-react';
 import type { DailySummary } from '@/types/database';
 
 const COLORS: Record<string, string> = {
-  Cash: '#4ADE80',
-  JazzCash: '#F87171',
-  EasyPaisa: '#34D399',
-  Card: '#60A5FA',
-  'Bank Transfer': '#C084FC',
-  Udhaar: '#FB923C',
+  Cash: '#22C55E',
+  JazzCash: '#EF4444',
+  EasyPaisa: '#10B981',
+  Card: '#3B82F6',
+  'Bank Transfer': '#8B5CF6',
+  Udhaar: '#F97316',
 };
 
 interface PaymentBreakdownProps {
@@ -33,28 +34,34 @@ export function PaymentBreakdown({ summary, loading }: PaymentBreakdownProps) {
   ].filter((d) => d.value > 0) : [];
 
   return (
-    <Card>
-      <CardHeader className="pb-2">
-        <CardTitle className="text-sm font-medium">{t('paymentBreakdown')}</CardTitle>
+    <Card className="calendar-card bg-card border border-border/50">
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base font-semibold">{t('paymentBreakdown')}</CardTitle>
       </CardHeader>
       <CardContent>
         {loading ? (
-          <div className="h-[250px] flex items-center justify-center">
-            <div className="shimmer h-full w-full" />
+          <div className="h-[280px] flex items-center justify-center calendar-card overflow-hidden">
+            <div className="shimmer h-full w-full rounded-xl" />
           </div>
         ) : data.length === 0 ? (
-          <div className="h-[250px] flex items-center justify-center text-muted-foreground text-sm">
-            No payment data yet
+          <div className="h-[280px] flex flex-col items-center justify-center gap-3">
+            <div className="w-12 h-12 rounded-xl bg-muted/50 flex items-center justify-center">
+              <PieChartIcon className="w-6 h-6 text-muted-foreground" />
+            </div>
+            <div className="text-center">
+              <p className="text-sm font-medium text-muted-foreground">No payment data yet</p>
+              <p className="text-xs text-muted-foreground/60 mt-1">Payment breakdown will appear after transactions</p>
+            </div>
           </div>
         ) : (
-          <ResponsiveContainer width="100%" height={250}>
+          <ResponsiveContainer width="100%" height={280}>
             <PieChart>
               <Pie
                 data={data}
                 cx="50%"
                 cy="50%"
-                innerRadius={55}
-                outerRadius={85}
+                innerRadius={60}
+                outerRadius={95}
                 paddingAngle={3}
                 dataKey="value"
                 isAnimationActive={true}
@@ -68,8 +75,8 @@ export function PaymentBreakdown({ summary, loading }: PaymentBreakdownProps) {
               <Tooltip
                 formatter={(value) => formatPKR(Number(value))}
                 contentStyle={{
-                  background: 'var(--card)',
-                  border: '1px solid var(--border)',
+                  backgroundColor: 'hsl(var(--card))',
+                  border: '1px solid hsl(var(--border))',
                   borderRadius: '8px',
                   fontSize: '12px',
                 }}
@@ -79,7 +86,7 @@ export function PaymentBreakdown({ summary, loading }: PaymentBreakdownProps) {
                   const item = data.find((d) => d.name === value);
                   return `${value}: ${item ? formatPKR(item.value) : ''}`;
                 }}
-                wrapperStyle={{ fontSize: '11px' }}
+                wrapperStyle={{ fontSize: '13px' }}
               />
             </PieChart>
           </ResponsiveContainer>

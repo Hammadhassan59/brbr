@@ -1,14 +1,13 @@
 'use client';
 
 import { Suspense, useEffect, useState, useCallback } from 'react';
-import { useSearchParams } from 'next/navigation';
-import { ChevronLeft, ChevronRight, CalendarIcon, RefreshCw, Plus, Filter } from 'lucide-react';
+import { useSearchParams, useRouter } from 'next/navigation';
+import { ChevronLeft, ChevronRight, CalendarIcon, RefreshCw, Filter, Users } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { supabase } from '@/lib/supabase';
 import { useAppStore } from '@/store/app-store';
-import { getTodayPKT, formatPKDate } from '@/lib/utils/dates';
+import { getTodayPKT } from '@/lib/utils/dates';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { CalendarGrid } from './components/calendar-grid';
 import { NewAppointmentModal } from './components/new-appointment-modal';
@@ -35,6 +34,7 @@ export default function AppointmentsPage() {
 
 function AppointmentsContent() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const { salon, currentBranch } = useAppStore();
 
   const [date, setDate] = useState(getTodayPKT());
@@ -112,7 +112,7 @@ function AppointmentsContent() {
           .select('*')
           .eq('branch_id', currentBranch.id)
           .eq('is_active', true)
-          .in('role', ['senior_stylist', 'junior_stylist'])
+          .in('role', ['senior_stylist', 'junior_stylist', 'owner', 'manager'])
           .order('name'),
         supabase
           .from('branches')
@@ -153,10 +153,16 @@ function AppointmentsContent() {
     if (isWalkin === 'true') {
       setNewModalPrefill({ isWalkin: true });
       setShowNewModal(true);
+      router.replace('/dashboard/appointments', { scroll: false });
+    }
+    if (searchParams.get('new') === 'true') {
+      setNewModalPrefill({ date });
+      setShowNewModal(true);
+      router.replace('/dashboard/appointments', { scroll: false });
     }
   }, [searchParams, appointments]);
 
-  // Real-time subscription — only refresh when the changed appointment matches the viewed date
+  // Real-time subscription
   useEffect(() => {
     if (!currentBranch) return;
 
@@ -228,89 +234,107 @@ function AppointmentsContent() {
     setWalkInQueue(walkInQueue.filter((e) => e.id !== id));
   }
 
+  const formattedDate = (() => {
+    const d = new Date(date + 'T00:00:00');
+    return d.toLocaleDateString('en-US', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+    });
+  })();
+
   return (
     <div className="space-y-4">
-      {/* Controls bar */}
-      <div className="flex flex-wrap items-center gap-2">
-        {/* Date navigation */}
-        <div className="flex items-center gap-1">
-          <Button variant="outline" size="icon" onClick={() => navigateDate(-1)} className="h-9 w-9">
-            <ChevronLeft className="w-4 h-4" />
-          </Button>
-          <Button
-            variant={isToday ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setDate(getTodayPKT())}
-            className={isToday ? 'bg-gold text-black border border-gold' : ''}
-          >
-            Today
-          </Button>
-          <Button variant="outline" size="icon" onClick={() => navigateDate(1)} className="h-9 w-9">
-            <ChevronRight className="w-4 h-4" />
-          </Button>
+      <div className="calendar-card bg-card border border-border/50 p-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => navigateDate(-1)}
+              className="h-11 w-11 touch-target transition-all duration-150 hover:bg-muted"
+            >
+              <ChevronLeft className="w-5 h-5" />
+            </Button>
+            <Button
+              variant={isToday ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setDate(getTodayPKT())}
+              className={`h-9 px-4 font-semibold transition-all duration-150 ${isToday ? 'bg-gold text-black border border-gold hover:bg-gold/90' : 'hover:bg-muted'}`}
+            >
+              Today
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => navigateDate(1)}
+              className="h-11 w-11 touch-target transition-all duration-150 hover:bg-muted"
+            >
+              <ChevronRight className="w-5 h-5" />
+            </Button>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <CalendarIcon className="w-4 h-4 text-muted-foreground" />
+            <span className="text-lg font-semibold tracking-tight">{formattedDate}</span>
+          </div>
+
+          <div className="flex items-center gap-2 ml-auto">
+            <Filter className="w-4 h-4 text-muted-foreground" />
+            <Select value={filterStaffId || 'all'} onValueChange={(v) => setFilterStaffId(v === 'all' ? null : v)}>
+              <SelectTrigger className="h-10 w-[180px] bg-background border-border/50 transition-all duration-150">
+                <SelectValue placeholder="All stylists" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Stylists</SelectItem>
+                {stylists.map((s) => (
+                  <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <WalkInQueue
+              queue={walkInQueue}
+              onAddWalkIn={handleAddWalkIn}
+              onAssign={handleAssignWalkIn}
+              onRemove={handleRemoveWalkIn}
+            />
+
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={fetchData}
+              className="h-10 w-10 text-muted-foreground hover:text-foreground transition-all duration-150"
+            >
+              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+            </Button>
+          </div>
         </div>
-
-        {/* Date picker */}
-        <div className="flex items-center gap-1.5">
-          <CalendarIcon className="w-4 h-4 text-muted-foreground" />
-          <Input
-            type="date"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            className="h-9 w-40"
-          />
-        </div>
-
-        <span className="text-sm font-medium hidden sm:block">{formatPKDate(date)}</span>
-
-        {/* Stylist filter */}
-        <div className="flex items-center gap-1.5 ml-auto">
-          <Filter className="w-4 h-4 text-muted-foreground" />
-          <Select value={filterStaffId || 'all'} onValueChange={(v) => setFilterStaffId(v === 'all' ? null : v)}>
-            <SelectTrigger className="h-9 w-[160px]">
-              <SelectValue placeholder="All stylists" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Stylists</SelectItem>
-              {stylists.map((s) => (
-                <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        {/* Walk-in queue */}
-        <WalkInQueue
-          queue={walkInQueue}
-          onAddWalkIn={handleAddWalkIn}
-          onAssign={handleAssignWalkIn}
-          onRemove={handleRemoveWalkIn}
-        />
-
-        {/* Refresh */}
-        <Button variant="outline" size="icon" onClick={fetchData} className="h-9 w-9">
-          <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-        </Button>
-
-        {/* New appointment */}
-        <Button
-          onClick={() => { setNewModalPrefill({ date }); setShowNewModal(true); }}
-          className="bg-gold hover:bg-gold/90 text-black border border-gold h-9"
-          size="sm"
-        >
-          <Plus className="w-4 h-4 mr-1" /> New
-        </Button>
       </div>
 
-      {/* Calendar grid */}
       {loading && appointments.length === 0 ? (
-        <div className="space-y-2">
-          {[1, 2, 3, 4, 5, 6].map((i) => (
-            <div key={i} className="h-12 bg-muted rounded animate-pulse" />
-          ))}
+        <div className="calendar-card bg-card border border-border/50 p-6">
+          <div className="space-y-3">
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+              <div key={i} className="h-[52px] bg-muted/40 shimmer" />
+            ))}
+          </div>
+        </div>
+      ) : !loading && stylists.length === 0 ? (
+        <div className="calendar-card bg-card border border-border/50">
+          <div className="flex flex-col items-center justify-center h-[400px] gap-4">
+            <div className="w-16 h-16 bg-muted/40 flex items-center justify-center" style={{ borderRadius: '12px' }}>
+              <Users className="w-8 h-8 text-muted-foreground/40" />
+            </div>
+            <div className="text-center">
+              <p className="text-base font-semibold text-foreground">No stylists available</p>
+              <p className="text-sm text-muted-foreground mt-1">Add staff with stylist roles to see the calendar</p>
+            </div>
+          </div>
         </div>
       ) : (
-        <div className="bg-card border rounded-lg overflow-hidden">
+        <div className="calendar-card bg-card border border-border/50 overflow-hidden">
           <CalendarGrid
             date={date}
             stylists={stylists}
@@ -325,7 +349,6 @@ function AppointmentsContent() {
         </div>
       )}
 
-      {/* New Appointment Modal */}
       <NewAppointmentModal
         open={showNewModal}
         onClose={() => { setShowNewModal(false); setNewModalPrefill({}); }}
@@ -337,7 +360,6 @@ function AppointmentsContent() {
         prefillNotes={newModalPrefill.notes}
       />
 
-      {/* Appointment Detail Panel */}
       <AppointmentDetail
         appointment={selectedAppointment}
         open={showDetail}

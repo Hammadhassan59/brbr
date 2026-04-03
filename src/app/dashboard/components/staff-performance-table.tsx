@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { Trophy } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
 import { useLanguage } from '@/components/providers/language-provider';
 import { formatPKR } from '@/lib/utils/currency';
 
@@ -23,16 +23,16 @@ export function StaffPerformanceTable({ data, loading }: StaffPerformanceTablePr
   const { t } = useLanguage();
 
   return (
-    <Card>
+    <Card className="calendar-card bg-card border border-border/50">
       <CardHeader className="pb-2 flex flex-row items-center justify-between">
         <CardTitle className="text-sm font-medium">{t('staffPerformance')}</CardTitle>
-        <Link href="/dashboard/reports/staff" className="text-xs text-gold hover:underline">
+        <Link href="/dashboard/reports/staff" className="text-xs text-muted-foreground hover:text-gold transition-colors">
           {t('viewFullReport')}
         </Link>
       </CardHeader>
-      <CardContent className="px-0">
+      <CardContent>
         {loading ? (
-          <div className="space-y-3 px-6">
+          <div className="space-y-3">
             {[1, 2, 3].map((i) => (
               <div key={i} className="h-10 shimmer" />
             ))}
@@ -40,34 +40,35 @@ export function StaffPerformanceTable({ data, loading }: StaffPerformanceTablePr
         ) : data.length === 0 ? (
           <p className="text-center text-muted-foreground text-sm py-8">No staff data yet</p>
         ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="pl-6">Name</TableHead>
-                <TableHead className="text-center">Services</TableHead>
-                <TableHead className="text-right">Revenue</TableHead>
-                <TableHead className="text-right pr-6">Commission</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody className="stagger-children">
-              {data.map((staff, i) => (
-                <TableRow
-                  key={staff.name}
-                  className={`${i === 0 ? 'bg-gold/5' : ''} animate-fade-up`}
-                >
-                  <TableCell className="pl-6 font-medium">
-                    <span className="flex items-center gap-2">
-                      {i === 0 && <Trophy className="w-3.5 h-3.5 text-gold" />}
-                      {staff.name}
-                    </span>
-                  </TableCell>
-                  <TableCell className="text-center">{staff.services_done}</TableCell>
-                  <TableCell className="text-right">{formatPKR(staff.revenue)}</TableCell>
-                  <TableCell className="text-right pr-6">{formatPKR(staff.commission ?? 0)}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+          <div className="space-y-2 stagger-children">
+            {data.map((staff, i) => (
+              <div
+                key={staff.name}
+                className={`calendar-card flex items-center justify-between p-4 rounded-xl border hover:border-border/60 transition-all duration-200 animate-fade-up ${
+                  i === 0
+                    ? 'border-gold/30 bg-gold/5'
+                    : 'bg-background/50 border-border/30'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-gold/20 flex items-center justify-center text-gold font-bold text-sm">
+                    {staff.name.charAt(0).toUpperCase()}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {i === 0 && <Trophy className="w-3.5 h-3.5 text-gold" />}
+                    <span className="text-sm font-medium">{staff.name}</span>
+                  </div>
+                </div>
+                <Badge variant="secondary" className="text-xs">
+                  {staff.services_done} services
+                </Badge>
+                <div className="text-right">
+                  <p className="text-sm font-bold">{formatPKR(staff.revenue)}</p>
+                  <p className="text-xs text-muted-foreground">{formatPKR(staff.commission ?? 0)} comm.</p>
+                </div>
+              </div>
+            ))}
+          </div>
         )}
       </CardContent>
     </Card>

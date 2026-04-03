@@ -110,6 +110,14 @@ const CL_GL = [
   '55555555-5555-5555-5555-555555555505', '55555555-5555-5555-5555-555555555506',
   '55555555-5555-5555-5555-555555555507', '55555555-5555-5555-5555-555555555508',
   '55555555-5555-5555-5555-555555555509', '55555555-5555-5555-5555-555555555510',
+  '55555555-5555-5555-5555-555555555511', '55555555-5555-5555-5555-555555555512',
+  '55555555-5555-5555-5555-555555555513', '55555555-5555-5555-5555-555555555514',
+  '55555555-5555-5555-5555-555555555515', '55555555-5555-5555-5555-555555555516',
+  '55555555-5555-5555-5555-555555555517', '55555555-5555-5555-5555-555555555518',
+  '55555555-5555-5555-5555-555555555519', '55555555-5555-5555-5555-555555555520',
+  '55555555-5555-5555-5555-555555555521', '55555555-5555-5555-5555-555555555522',
+  '55555555-5555-5555-5555-555555555523', '55555555-5555-5555-5555-555555555524',
+  '55555555-5555-5555-5555-555555555525',
 ];
 
 // Client IDs (Royal Barbers)
@@ -119,6 +127,14 @@ const CL_RB = [
   '55555555-aaaa-5555-aaaa-555555555505', '55555555-aaaa-5555-aaaa-555555555506',
   '55555555-aaaa-5555-aaaa-555555555507', '55555555-aaaa-5555-aaaa-555555555508',
   '55555555-aaaa-5555-aaaa-555555555509', '55555555-aaaa-5555-aaaa-555555555510',
+  '55555555-aaaa-5555-aaaa-555555555511', '55555555-aaaa-5555-aaaa-555555555512',
+  '55555555-aaaa-5555-aaaa-555555555513', '55555555-aaaa-5555-aaaa-555555555514',
+  '55555555-aaaa-5555-aaaa-555555555515', '55555555-aaaa-5555-aaaa-555555555516',
+  '55555555-aaaa-5555-aaaa-555555555517', '55555555-aaaa-5555-aaaa-555555555518',
+  '55555555-aaaa-5555-aaaa-555555555519', '55555555-aaaa-5555-aaaa-555555555520',
+  '55555555-aaaa-5555-aaaa-555555555521', '55555555-aaaa-5555-aaaa-555555555522',
+  '55555555-aaaa-5555-aaaa-555555555523', '55555555-aaaa-5555-aaaa-555555555524',
+  '55555555-aaaa-5555-aaaa-555555555525',
 ];
 
 // Product IDs
@@ -214,6 +230,21 @@ const glamourClients: Client[] = [
   { id: CL_GL[7], salon_id: GL_SALON, name: 'Iqra Aziz', phone: '0333-8888888', whatsapp: '0333-8888888', gender: 'female', is_vip: false, is_blacklisted: false, notes: null, hair_notes: null, allergy_notes: 'Sensitive skin - patch test required', loyalty_points: 270, total_visits: 7, total_spent: 22000, udhaar_balance: 4000, udhaar_limit: 5000, created_at: '2024-11-01T00:00:00Z' },
   { id: CL_GL[8], salon_id: GL_SALON, name: 'Mawra Hocane', phone: '0300-9999999', whatsapp: '0300-9999999', gender: 'female', is_vip: true, is_blacklisted: false, notes: 'Top client', hair_notes: 'Prefers Keune products only', allergy_notes: null, loyalty_points: 830, total_visits: 22, total_spent: 95000, udhaar_balance: 0, udhaar_limit: 20000, created_at: '2024-06-01T00:00:00Z' },
   { id: CL_GL[9], salon_id: GL_SALON, name: 'Kinza Hashmi', phone: '0312-0000000', whatsapp: '0312-0000000', gender: 'female', is_vip: false, is_blacklisted: false, notes: null, hair_notes: null, allergy_notes: null, loyalty_points: 40, total_visits: 2, total_spent: 3500, udhaar_balance: 0, udhaar_limit: 3000, created_at: '2025-03-01T00:00:00Z' },
+  { id: CL_GL[10], salon_id: GL_SALON, name: 'Nimra Khan', phone: '0333-1112001', whatsapp: '0333-1112001', gender: 'female', is_vip: true, is_blacklisted: false, notes: 'VIP - influencer, gives social media shoutouts', hair_notes: 'Platinum blonde, toner every 6 weeks', allergy_notes: null, loyalty_points: 920, total_visits: 25, total_spent: 112000, udhaar_balance: 0, udhaar_limit: 25000, created_at: '2024-05-01T00:00:00Z' },
+  { id: CL_GL[11], salon_id: GL_SALON, name: 'Sanam Jung', phone: '0300-1112002', whatsapp: '0300-1112002', gender: 'female', is_vip: false, is_blacklisted: false, notes: 'Referred by Mehreen', hair_notes: 'Curly hair, wants frizz control', allergy_notes: 'Latex allergy — no latex gloves', loyalty_points: 380, total_visits: 10, total_spent: 34000, udhaar_balance: 3500, udhaar_limit: 8000, created_at: '2024-09-15T00:00:00Z' },
+  { id: CL_GL[12], salon_id: GL_SALON, name: 'Sajal Aly', phone: '0345-1112003', whatsapp: '0345-1112003', gender: 'female', is_vip: true, is_blacklisted: false, notes: 'VIP - celebrity client, ensure privacy', hair_notes: 'Natural brown, hates chemical treatments', allergy_notes: null, loyalty_points: 1200, total_visits: 30, total_spent: 145000, udhaar_balance: 0, udhaar_limit: 50000, created_at: '2024-03-01T00:00:00Z' },
+  { id: CL_GL[13], salon_id: GL_SALON, name: 'Kubra Khan', phone: '0321-1112004', whatsapp: '0321-1112004', gender: 'female', is_vip: false, is_blacklisted: false, notes: null, hair_notes: 'Thick wavy hair', allergy_notes: null, loyalty_points: 160, total_visits: 5, total_spent: 14500, udhaar_balance: 0, udhaar_limit: 5000, created_at: '2025-01-15T00:00:00Z' },
+  { id: CL_GL[14], salon_id: GL_SALON, name: 'Yumna Zaidi', phone: '0312-1112005', whatsapp: '0312-1112005', gender: 'female', is_vip: false, is_blacklisted: false, notes: 'Comes with her mother usually', hair_notes: null, allergy_notes: null, loyalty_points: 75, total_visits: 3, total_spent: 6800, udhaar_balance: 1800, udhaar_limit: 3000, created_at: '2025-02-10T00:00:00Z' },
+  { id: CL_GL[15], salon_id: GL_SALON, name: 'Aiman Khan', phone: '0301-1112006', whatsapp: '0301-1112006', gender: 'female', is_vip: true, is_blacklisted: false, notes: 'VIP - bridal season regular', hair_notes: 'Loves updos and braids', allergy_notes: null, loyalty_points: 640, total_visits: 17, total_spent: 78000, udhaar_balance: 0, udhaar_limit: 15000, created_at: '2024-07-20T00:00:00Z' },
+  { id: CL_GL[16], salon_id: GL_SALON, name: 'Dur-e-Fishan', phone: '0333-1112007', whatsapp: '0333-1112007', gender: 'female', is_vip: false, is_blacklisted: false, notes: null, hair_notes: 'Highlights every 3 months', allergy_notes: null, loyalty_points: 310, total_visits: 9, total_spent: 27500, udhaar_balance: 0, udhaar_limit: 5000, created_at: '2024-10-15T00:00:00Z' },
+  { id: CL_GL[17], salon_id: GL_SALON, name: 'Naimal Khawar', phone: '0345-1112008', whatsapp: '0345-1112008', gender: 'female', is_vip: false, is_blacklisted: true, notes: 'BLACKLISTED: bounced payment, argued with staff', hair_notes: null, allergy_notes: null, loyalty_points: 0, total_visits: 4, total_spent: 8000, udhaar_balance: 6500, udhaar_limit: 0, created_at: '2024-12-01T00:00:00Z' },
+  { id: CL_GL[18], salon_id: GL_SALON, name: 'Saba Qamar', phone: '0300-1112009', whatsapp: '0300-1112009', gender: 'female', is_vip: false, is_blacklisted: false, notes: 'Only visits on weekends', hair_notes: 'Dry scalp, needs moisturizing treatments', allergy_notes: null, loyalty_points: 220, total_visits: 7, total_spent: 19000, udhaar_balance: 0, udhaar_limit: 5000, created_at: '2024-11-15T00:00:00Z' },
+  { id: CL_GL[19], salon_id: GL_SALON, name: 'Syra Yousuf', phone: '0321-1112010', whatsapp: '0321-1112010', gender: 'female', is_vip: false, is_blacklisted: false, notes: null, hair_notes: null, allergy_notes: null, loyalty_points: 30, total_visits: 1, total_spent: 2500, udhaar_balance: 0, udhaar_limit: 3000, created_at: '2025-03-20T00:00:00Z' },
+  { id: CL_GL[20], salon_id: GL_SALON, name: 'Mahira Khan', phone: '0312-1112011', whatsapp: '0312-1112011', gender: 'female', is_vip: true, is_blacklisted: false, notes: 'VIP - always books full day for events', hair_notes: 'Prefers organic products', allergy_notes: 'PPD allergy — no dark hair colors', loyalty_points: 1500, total_visits: 35, total_spent: 185000, udhaar_balance: 0, udhaar_limit: 50000, created_at: '2024-02-01T00:00:00Z' },
+  { id: CL_GL[21], salon_id: GL_SALON, name: 'Urwa Hocane', phone: '0301-1112012', whatsapp: '0301-1112012', gender: 'female', is_vip: false, is_blacklisted: false, notes: 'Sister of Mawra', hair_notes: 'Bob cut enthusiast', allergy_notes: null, loyalty_points: 410, total_visits: 11, total_spent: 38000, udhaar_balance: 2000, udhaar_limit: 5000, created_at: '2024-08-10T00:00:00Z' },
+  { id: CL_GL[22], salon_id: GL_SALON, name: 'Hania Aamir', phone: '0333-1112013', whatsapp: '0333-1112013', gender: 'female', is_vip: false, is_blacklisted: false, notes: null, hair_notes: 'Loves vibrant colors — pinks, purples', allergy_notes: null, loyalty_points: 290, total_visits: 8, total_spent: 24000, udhaar_balance: 0, udhaar_limit: 5000, created_at: '2024-10-01T00:00:00Z' },
+  { id: CL_GL[23], salon_id: GL_SALON, name: 'Ramsha Khan', phone: '0345-1112014', whatsapp: '0345-1112014', gender: 'female', is_vip: false, is_blacklisted: false, notes: 'College student, budget-conscious', hair_notes: null, allergy_notes: null, loyalty_points: 50, total_visits: 2, total_spent: 4000, udhaar_balance: 0, udhaar_limit: 2000, created_at: '2025-03-10T00:00:00Z' },
+  { id: CL_GL[24], salon_id: GL_SALON, name: 'Neelam Muneer', phone: '0300-1112015', whatsapp: '0300-1112015', gender: 'female', is_vip: false, is_blacklisted: false, notes: null, hair_notes: 'Long straight hair, trims only', allergy_notes: null, loyalty_points: 130, total_visits: 6, total_spent: 11000, udhaar_balance: 0, udhaar_limit: 5000, created_at: '2024-12-15T00:00:00Z' },
 ];
 
 
@@ -232,6 +263,21 @@ const royalClients: Client[] = [
   { id: CL_RB[7], salon_id: RB_SALON, name: 'Imran Khalid', phone: '0300-1110008', whatsapp: '0300-1110008', gender: 'male', is_vip: false, is_blacklisted: false, notes: null, hair_notes: null, allergy_notes: null, loyalty_points: 60, total_visits: 3, total_spent: 2400, udhaar_balance: 0, udhaar_limit: 2000, created_at: '2025-03-10T00:00:00Z' },
   { id: CL_RB[8], salon_id: RB_SALON, name: 'Shahid Abbas', phone: '0312-1110009', whatsapp: '0312-1110009', gender: 'male', is_vip: false, is_blacklisted: false, notes: null, hair_notes: 'Thick curly hair', allergy_notes: null, loyalty_points: 340, total_visits: 16, total_spent: 18200, udhaar_balance: 1200, udhaar_limit: 3000, created_at: '2025-02-15T00:00:00Z' },
   { id: CL_RB[9], salon_id: RB_SALON, name: 'Kamran Akmal', phone: '0301-1110010', whatsapp: '0301-1110010', gender: 'male', is_vip: false, is_blacklisted: false, notes: null, hair_notes: null, allergy_notes: null, loyalty_points: 120, total_visits: 6, total_spent: 5400, udhaar_balance: 0, udhaar_limit: 3000, created_at: '2025-03-01T00:00:00Z' },
+  { id: CL_RB[10], salon_id: RB_SALON, name: 'Wasim Akram', phone: '0333-1120011', whatsapp: '0333-1120011', gender: 'male', is_vip: true, is_blacklisted: false, notes: 'VIP - legend, always give best service', hair_notes: 'Greying temples, wants natural look', allergy_notes: null, loyalty_points: 780, total_visits: 28, total_spent: 48000, udhaar_balance: 0, udhaar_limit: 20000, created_at: '2025-02-15T00:00:00Z' },
+  { id: CL_RB[11], salon_id: RB_SALON, name: 'Babar Azam', phone: '0345-1120012', whatsapp: '0345-1120012', gender: 'male', is_vip: true, is_blacklisted: false, notes: 'VIP - needs privacy, comes after hours sometimes', hair_notes: 'Clean fade, skin tight sides', allergy_notes: null, loyalty_points: 650, total_visits: 22, total_spent: 38000, udhaar_balance: 0, udhaar_limit: 15000, created_at: '2025-02-15T00:00:00Z' },
+  { id: CL_RB[12], salon_id: RB_SALON, name: 'Shaheen Afridi', phone: '0300-1120013', whatsapp: '0300-1120013', gender: 'male', is_vip: false, is_blacklisted: false, notes: null, hair_notes: 'Long on top, likes volume', allergy_notes: null, loyalty_points: 320, total_visits: 12, total_spent: 14800, udhaar_balance: 0, udhaar_limit: 5000, created_at: '2025-02-18T00:00:00Z' },
+  { id: CL_RB[13], salon_id: RB_SALON, name: 'Rizwan Ahmed', phone: '0312-1120014', whatsapp: '0312-1120014', gender: 'male', is_vip: false, is_blacklisted: false, notes: 'IT professional, comes during lunch', hair_notes: null, allergy_notes: null, loyalty_points: 190, total_visits: 10, total_spent: 9200, udhaar_balance: 1500, udhaar_limit: 3000, created_at: '2025-02-20T00:00:00Z' },
+  { id: CL_RB[14], salon_id: RB_SALON, name: 'Junaid Jamshed Jr', phone: '0301-1120015', whatsapp: '0301-1120015', gender: 'male', is_vip: false, is_blacklisted: false, notes: null, hair_notes: 'Beard is priority, hair secondary', allergy_notes: 'Sensitive to aftershave with alcohol', loyalty_points: 240, total_visits: 14, total_spent: 12600, udhaar_balance: 0, udhaar_limit: 5000, created_at: '2025-02-15T00:00:00Z' },
+  { id: CL_RB[15], salon_id: RB_SALON, name: 'Adnan Siddiqui', phone: '0333-1120016', whatsapp: '0333-1120016', gender: 'male', is_vip: true, is_blacklisted: false, notes: 'VIP - actor, tips generously', hair_notes: 'Salt and pepper look, maintain it', allergy_notes: null, loyalty_points: 560, total_visits: 19, total_spent: 34000, udhaar_balance: 0, udhaar_limit: 10000, created_at: '2025-02-15T00:00:00Z' },
+  { id: CL_RB[16], salon_id: RB_SALON, name: 'Asad Umer', phone: '0345-1120017', whatsapp: '0345-1120017', gender: 'male', is_vip: false, is_blacklisted: false, notes: 'Government official, punctual', hair_notes: 'Conservative side part', allergy_notes: null, loyalty_points: 170, total_visits: 9, total_spent: 8400, udhaar_balance: 0, udhaar_limit: 3000, created_at: '2025-02-25T00:00:00Z' },
+  { id: CL_RB[17], salon_id: RB_SALON, name: 'Danish Taimoor', phone: '0300-1120018', whatsapp: '0300-1120018', gender: 'male', is_vip: false, is_blacklisted: false, notes: null, hair_notes: 'Messy textured look', allergy_notes: null, loyalty_points: 100, total_visits: 5, total_spent: 5800, udhaar_balance: 2000, udhaar_limit: 4000, created_at: '2025-03-01T00:00:00Z' },
+  { id: CL_RB[18], salon_id: RB_SALON, name: 'Atif Aslam', phone: '0312-1120019', whatsapp: '0312-1120019', gender: 'male', is_vip: true, is_blacklisted: false, notes: 'VIP - musician, irregular schedule', hair_notes: 'Long hair, just trims', allergy_notes: null, loyalty_points: 430, total_visits: 15, total_spent: 28000, udhaar_balance: 0, udhaar_limit: 10000, created_at: '2025-02-15T00:00:00Z' },
+  { id: CL_RB[19], salon_id: RB_SALON, name: 'Shan Masood', phone: '0301-1120020', whatsapp: '0301-1120020', gender: 'male', is_vip: false, is_blacklisted: false, notes: null, hair_notes: null, allergy_notes: null, loyalty_points: 45, total_visits: 2, total_spent: 2200, udhaar_balance: 0, udhaar_limit: 2000, created_at: '2025-03-15T00:00:00Z' },
+  { id: CL_RB[20], salon_id: RB_SALON, name: 'Fakhar Zaman', phone: '0333-1120021', whatsapp: '0333-1120021', gender: 'male', is_vip: false, is_blacklisted: false, notes: null, hair_notes: 'Buzz cut, every 2 weeks', allergy_notes: null, loyalty_points: 380, total_visits: 20, total_spent: 16000, udhaar_balance: 0, udhaar_limit: 5000, created_at: '2025-02-15T00:00:00Z' },
+  { id: CL_RB[21], salon_id: RB_SALON, name: 'Muneeb Butt', phone: '0345-1120022', whatsapp: '0345-1120022', gender: 'male', is_vip: false, is_blacklisted: false, notes: 'Comes with wife Aiman sometimes', hair_notes: null, allergy_notes: null, loyalty_points: 260, total_visits: 13, total_spent: 11800, udhaar_balance: 0, udhaar_limit: 5000, created_at: '2025-02-18T00:00:00Z' },
+  { id: CL_RB[22], salon_id: RB_SALON, name: 'Naseem Shah', phone: '0300-1120023', whatsapp: '0300-1120023', gender: 'male', is_vip: false, is_blacklisted: true, notes: 'BLACKLISTED: no-showed 3 times, wasted staff time', hair_notes: null, allergy_notes: null, loyalty_points: 0, total_visits: 3, total_spent: 2400, udhaar_balance: 800, udhaar_limit: 0, created_at: '2025-03-01T00:00:00Z' },
+  { id: CL_RB[23], salon_id: RB_SALON, name: 'Hasan Ali', phone: '0312-1120024', whatsapp: '0312-1120024', gender: 'male', is_vip: false, is_blacklisted: false, notes: 'Student, budget cuts only', hair_notes: null, allergy_notes: null, loyalty_points: 70, total_visits: 4, total_spent: 2800, udhaar_balance: 0, udhaar_limit: 1000, created_at: '2025-03-10T00:00:00Z' },
+  { id: CL_RB[24], salon_id: RB_SALON, name: 'Fahad Mustafa', phone: '0301-1120025', whatsapp: '0301-1120025', gender: 'male', is_vip: false, is_blacklisted: false, notes: 'TV host, irregular visits', hair_notes: 'Prefers pomade finish', allergy_notes: null, loyalty_points: 200, total_visits: 8, total_spent: 9600, udhaar_balance: 0, udhaar_limit: 5000, created_at: '2025-02-20T00:00:00Z' },
 ];
 
 
@@ -413,7 +459,7 @@ function generateTransactions(): TransactionBundle {
         udhaar_added: payMethod === 'udhaar' ? total : 0,
         loyalty_points_used: 0, loyalty_points_earned: Math.floor(subtotal / 100) * 10,
         promo_code: null, status: 'paid', notes: null, receipt_sent: Math.random() > 0.5,
-        created_at: `${date}T${start}:00+05:00`,
+        created_at: `${date}T${start}:00`,
       });
 
       for (const svc of svcs) {
@@ -472,8 +518,8 @@ function generateTransactions(): TransactionBundle {
   addApt(RB_BRANCH, RB_SALON, CL_RB[7], ST.usman, td, '17:00', '17:20', 'booked',
     [{ id: SV_RB.regularHaircut, name: 'Regular Haircut', price: 400, dur: 20 }]);
 
-  // ── Past 7 days — Glamour Studio ──
-  const glPastSchedule: Array<[string, string, string, { id: string; name: string; price: number; dur: number }[], 'cash' | 'jazzcash' | 'easypaisa' | 'card', number]> = [
+  // ── Past 90 days — Glamour Studio ──
+  const glPool: Array<[string, string, string, { id: string; name: string; price: number; dur: number }[], 'cash' | 'jazzcash' | 'easypaisa' | 'card', number]> = [
     [CL_GL[8], ST.sadia, '10:00', [{ id: SV_GL.keratin, name: 'Keratin Treatment', price: 12000, dur: 180 }], 'card', 500],
     [CL_GL[2], ST.nadia, '11:00', [{ id: SV_GL.goldFacial, name: 'Gold Facial', price: 3000, dur: 60 }], 'cash', 200],
     [CL_GL[6], ST.sadia, '14:00', [{ id: SV_GL.balayage, name: 'Balayage', price: 8000, dur: 150 }], 'jazzcash', 0],
@@ -484,21 +530,30 @@ function generateTransactions(): TransactionBundle {
     [CL_GL[3], ST.nadia, '14:00', [{ id: SV_GL.basicFacial, name: 'Basic Facial', price: 1500, dur: 45 }], 'cash', 0],
     [CL_GL[5], ST.rabia, '16:00', [{ id: SV_GL.bobCut, name: 'Bob Cut', price: 1000, dur: 40 }], 'cash', 0],
     [CL_GL[9], ST.sadia, '10:00', [{ id: SV_GL.basicHaircut, name: 'Basic Haircut', price: 500, dur: 30 }], 'cash', 0],
+    [CL_GL[10], ST.nadia, '12:00', [{ id: SV_GL.highlights, name: 'Highlights / Lowlights', price: 5000, dur: 120 }], 'card', 300],
+    [CL_GL[12], ST.sadia, '15:00', [{ id: SV_GL.keratin, name: 'Keratin Treatment', price: 12000, dur: 180 }], 'jazzcash', 0],
+    [CL_GL[15], ST.rabia, '11:30', [{ id: SV_GL.armsWax, name: 'Full Arms Wax', price: 800, dur: 30 }, { id: SV_GL.legsWax, name: 'Full Legs Wax', price: 1200, dur: 45 }], 'cash', 0],
+    [CL_GL[20], ST.nadia, '16:00', [{ id: SV_GL.fullColor, name: 'Full Head Color', price: 3500, dur: 90 }], 'easypaisa', 200],
+    [CL_GL[16], ST.sadia, '09:30', [{ id: SV_GL.deepCond, name: 'Deep Conditioning', price: 2000, dur: 45 }], 'cash', 100],
   ];
 
-  for (let day = -7; day <= -1; day++) {
+  for (let day = -90; day <= -1; day++) {
     const date = dateOffset(day);
     const dow = new Date(date).getDay();
-    if (dow === 0) continue; // Skip Sunday for variety (Glamour is open but fewer clients)
-    const dayApts = glPastSchedule.slice(0, 4 + (Math.abs(day) % 3)); // 4-6 apts per day
-    for (const [cId, sId, start, svcs, pay, tip] of dayApts) {
+    if (dow === 0) continue;
+    const seed = Math.abs(day * 7 + 3);
+    const count = 3 + (seed % 5);
+    for (let i = 0; i < count; i++) {
+      const pick = glPool[(seed + i * 3) % glPool.length];
+      const [cId, sId, start, svcs, pay, tip] = pick;
       const endH = parseInt(start.split(':')[0]) + Math.ceil(svcs.reduce((s, sv) => s + sv.dur, 0) / 60);
-      addApt(GL_BRANCH, GL_SALON, cId, sId, date, start, `${endH}:00`, 'done', svcs, false, pay, tip);
+      const walkin = (seed + i) % 7 === 0;
+      addApt(GL_BRANCH, GL_SALON, walkin ? null : cId, sId, date, start, `${endH}:00`, 'done', svcs, walkin, pay, tip);
     }
   }
 
-  // ── Past 7 days — Royal Barbers ──
-  const rbPastSchedule: Array<[string, string, string, { id: string; name: string; price: number; dur: number }[], 'cash' | 'jazzcash' | 'easypaisa' | 'card', number]> = [
+  // ── Past 90 days — Royal Barbers (Branch 1) ──
+  const rbPool: Array<[string, string, string, { id: string; name: string; price: number; dur: number }[], 'cash' | 'jazzcash' | 'easypaisa' | 'card', number]> = [
     [CL_RB[0], ST.usman, '09:00', [{ id: SV_RB.regularHaircut, name: 'Regular Haircut', price: 400, dur: 20 }, { id: SV_RB.beardTrim, name: 'Beard Trim', price: 200, dur: 15 }], 'cash', 50],
     [CL_RB[1], ST.usman, '10:00', [{ id: SV_RB.premiumHaircut, name: 'Premium Haircut', price: 800, dur: 30 }], 'card', 100],
     [CL_RB[4], ST.bilal, '09:30', [{ id: SV_RB.regularHaircut, name: 'Regular Haircut', price: 400, dur: 20 }], 'cash', 0],
@@ -507,16 +562,26 @@ function generateTransactions(): TransactionBundle {
     [CL_RB[9], ST.usman, '15:00', [{ id: SV_RB.mensFacial, name: "Men's Facial", price: 1200, dur: 30 }], 'cash', 0],
     [CL_RB[6], ST.bilal, '16:00', [{ id: SV_RB.washStyle, name: 'Hair Wash & Style', price: 600, dur: 25 }], 'cash', 0],
     [CL_RB[2], ST.usman, '17:00', [{ id: SV_RB.cleanShave, name: 'Clean Shave', price: 300, dur: 20 }, { id: SV_RB.beardColor, name: 'Beard Color', price: 500, dur: 20 }], 'easypaisa', 0],
+    [CL_RB[10], ST.usman, '09:30', [{ id: SV_RB.premiumHaircut, name: 'Premium Haircut', price: 800, dur: 30 }, { id: SV_RB.beardStyling, name: 'Beard Styling', price: 400, dur: 20 }], 'card', 200],
+    [CL_RB[11], ST.bilal, '10:30', [{ id: SV_RB.regularHaircut, name: 'Regular Haircut', price: 400, dur: 20 }], 'cash', 0],
+    [CL_RB[15], ST.usman, '11:30', [{ id: SV_RB.hairTreatment, name: 'Hair Treatment', price: 2000, dur: 60 }], 'jazzcash', 100],
+    [CL_RB[18], ST.bilal, '13:00', [{ id: SV_RB.premiumHaircut, name: 'Premium Haircut', price: 800, dur: 30 }, { id: SV_RB.headMassage, name: 'Head Massage', price: 500, dur: 20 }], 'cash', 0],
+    [CL_RB[20], ST.usman, '14:30', [{ id: SV_RB.regularHaircut, name: 'Regular Haircut', price: 400, dur: 20 }], 'cash', 0],
+    [CL_RB[21], ST.bilal, '15:30', [{ id: SV_RB.mensFacial, name: "Men's Facial", price: 1200, dur: 30 }], 'easypaisa', 0],
   ];
 
-  for (let day = -7; day <= -1; day++) {
+  for (let day = -90; day <= -1; day++) {
     const date = dateOffset(day);
     const dow = new Date(date).getDay();
-    if (dow === 0) continue; // Royal Barbers closed Sunday
-    const dayApts = rbPastSchedule.slice(0, 3 + (Math.abs(day) % 3));
-    for (const [cId, sId, start, svcs, pay, tip] of dayApts) {
+    if (dow === 0) continue;
+    const seed = Math.abs(day * 11 + 5);
+    const count = 3 + (seed % 4);
+    for (let i = 0; i < count; i++) {
+      const pick = rbPool[(seed + i * 3) % rbPool.length];
+      const [cId, sId, start, svcs, pay, tip] = pick;
       const endH = parseInt(start.split(':')[0]) + 1;
-      addApt(RB_BRANCH, RB_SALON, cId, sId, date, start, `${endH}:00`, 'done', svcs, false, pay, tip);
+      const walkin = (seed + i) % 5 === 0;
+      addApt(RB_BRANCH, RB_SALON, walkin ? null : cId, sId, date, start, `${endH}:00`, 'done', svcs, walkin, pay, tip);
     }
   }
 
@@ -547,18 +612,23 @@ function generateTransactions(): TransactionBundle {
   addApt(RB_BRANCH2, RB_SALON, CL_RB[8], ST.waqar, td, '15:00', '16:00', 'booked',
     [{ id: SV_RB.hairTreatment, name: 'Hair Treatment', price: 2000, dur: 60 }]);
 
-  // ── ROYAL BARBERS — Branch 2 — Past 7 days ──
-  for (let day = -7; day <= -1; day++) {
+  // ── ROYAL BARBERS — Branch 2 — Past 90 days ──
+  for (let day = -90; day <= -1; day++) {
     const date = dateOffset(day);
     const dow = new Date(date).getDay();
     if (dow === 0) continue;
-    addApt(RB_BRANCH2, RB_SALON, CL_RB[(Math.abs(day)) % 10], ST.nadeem, date, '09:30', '10:00', 'done',
-      [{ id: SV_RB.premiumHaircut, name: 'Premium Haircut', price: 800, dur: 30 }], false, 'cash', 50);
-    addApt(RB_BRANCH2, RB_SALON, CL_RB[(Math.abs(day) + 3) % 10], ST.waqar, date, '10:30', '10:50', 'done',
-      [{ id: SV_RB.regularHaircut, name: 'Regular Haircut', price: 400, dur: 20 }, { id: SV_RB.beardTrim, name: 'Beard Trim', price: 200, dur: 15 }], false, 'cash');
-    if (Math.abs(day) % 2 === 0) {
-      addApt(RB_BRANCH2, RB_SALON, CL_RB[(Math.abs(day) + 5) % 10], ST.nadeem, date, '14:00', '14:30', 'done',
+    const seed = Math.abs(day * 13 + 7);
+    addApt(RB_BRANCH2, RB_SALON, CL_RB[seed % 25], ST.nadeem, date, '09:30', '10:00', 'done',
+      [{ id: SV_RB.premiumHaircut, name: 'Premium Haircut', price: 800, dur: 30 }], false, 'cash', seed % 3 === 0 ? 50 : 0);
+    addApt(RB_BRANCH2, RB_SALON, CL_RB[(seed + 3) % 25], ST.waqar, date, '10:30', '10:50', 'done',
+      [{ id: SV_RB.regularHaircut, name: 'Regular Haircut', price: 400, dur: 20 }, { id: SV_RB.beardTrim, name: 'Beard Trim', price: 200, dur: 15 }], false, seed % 4 === 0 ? 'jazzcash' : 'cash');
+    if (seed % 2 === 0) {
+      addApt(RB_BRANCH2, RB_SALON, CL_RB[(seed + 5) % 25], ST.nadeem, date, '14:00', '14:30', 'done',
         [{ id: SV_RB.mensFacial, name: "Men's Facial", price: 1200, dur: 30 }], false, 'jazzcash');
+    }
+    if (seed % 3 === 0) {
+      addApt(RB_BRANCH2, RB_SALON, CL_RB[(seed + 7) % 25], ST.waqar, date, '15:00', '16:00', 'done',
+        [{ id: SV_RB.hairTreatment, name: 'Hair Treatment', price: 2000, dur: 60 }], false, 'card', 100);
     }
   }
 

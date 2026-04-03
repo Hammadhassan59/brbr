@@ -1,17 +1,27 @@
 'use client';
 
 import { useMemo } from 'react';
+import { CalendarIcon } from 'lucide-react';
 import { formatTime, getPrayerBlocks as getPrayerBlockTimes } from '@/lib/utils/dates';
 import { formatPKR } from '@/lib/utils/currency';
 import type { AppointmentWithDetails, Staff, AppointmentStatus, PrayerBlocks, WorkingHours } from '@/types/database';
 
-const STATUS_COLORS: Record<AppointmentStatus, string> = {
-  booked: 'bg-blue-500/10 border-blue-500/20 text-blue-600',
-  confirmed: 'bg-blue-500/15 border-blue-500/25 text-blue-700',
-  in_progress: 'bg-amber-500/15 border-amber-500/25 text-amber-600',
-  done: 'bg-gray-500/10 border-gray-200 text-gray-500',
-  no_show: 'bg-red-500/10 border-red-500/20 text-red-600',
-  cancelled: 'bg-gray-500/5 border-gray-200 text-gray-400 line-through',
+const STATUS_STRIPE: Record<AppointmentStatus, string> = {
+  booked: 'border-l-blue-500',
+  confirmed: 'border-l-blue-700',
+  in_progress: 'border-l-amber-500',
+  done: 'border-l-gray-400',
+  no_show: 'border-l-red-500',
+  cancelled: 'border-l-gray-400',
+};
+
+const STATUS_BG: Record<AppointmentStatus, string> = {
+  booked: 'bg-blue-500/8 hover:bg-blue-500/12',
+  confirmed: 'bg-blue-700/8 hover:bg-blue-700/12',
+  in_progress: 'bg-amber-500/8 hover:bg-amber-500/12',
+  done: 'bg-muted/30 hover:bg-muted/40 opacity-70',
+  no_show: 'bg-red-500/8 hover:bg-red-500/12',
+  cancelled: 'bg-muted/20 hover:bg-muted/30 opacity-50',
 };
 
 interface CalendarGridProps {
@@ -45,7 +55,6 @@ function isPrayerBlock(time: string, prayerBlocks: PrayerBlocks | null, enabled:
   const [h, m] = time.split(':').map(Number);
   const mins = h * 60 + m;
 
-  // Use centralized prayer times from the dates utility
   const prayerTimes = getPrayerBlockTimes();
   const keyMap: Record<string, keyof PrayerBlocks> = {
     Fajr: 'fajr', Zuhr: 'zuhr', Asr: 'asr', Maghrib: 'maghrib', Isha: 'isha',
@@ -53,7 +62,6 @@ function isPrayerBlock(time: string, prayerBlocks: PrayerBlocks | null, enabled:
 
   for (const prayer of prayerTimes) {
     const key = keyMap[prayer.name];
-    // Only block prayers enabled in the branch's prayer_blocks settings
     if (!key || !prayerBlocks[key]) continue;
 
     const [sH, sM] = prayer.start.split(':').map(Number);
@@ -69,10 +77,10 @@ function isPrayerBlock(time: string, prayerBlocks: PrayerBlocks | null, enabled:
 }
 
 function isJummahBlock(time: string, dayOfWeek: number, enabled: boolean): boolean {
-  if (!enabled || dayOfWeek !== 5) return false; // Friday = 5
+  if (!enabled || dayOfWeek !== 5) return false;
   const [h, m] = time.split(':').map(Number);
   const mins = h * 60 + m;
-  return mins >= 750 && mins < 840; // 12:30 - 14:00
+  return mins >= 750 && mins < 840;
 }
 
 export function CalendarGrid({
@@ -100,7 +108,6 @@ export function CalendarGrid({
     ? stylists.filter((s) => s.id === filterStaffId)
     : stylists;
 
-  // Map appointments by staff+time for quick lookup
   const appointmentMap = useMemo(() => {
     const map: Record<string, AppointmentWithDetails[]> = {};
     appointments.forEach((apt) => {
@@ -112,13 +119,11 @@ export function CalendarGrid({
     return map;
   }, [appointments]);
 
-  // Calculate appointment height (spans)
   function getAppointmentSpan(apt: AppointmentWithDetails): number {
     const totalDuration = apt.services?.reduce((sum, s) => sum + (s.duration_minutes || 30), 0) || 30;
     return Math.max(1, Math.ceil(totalDuration / 30));
   }
 
-  // Track which slots are occupied by multi-slot appointments
   const occupiedSlots = useMemo(() => {
     const set = new Set<string>();
     appointments.forEach((apt) => {
@@ -138,9 +143,10 @@ export function CalendarGrid({
   if (isDayOff) {
     return (
       <div className="flex items-center justify-center h-[400px] text-muted-foreground">
-        <div className="text-center">
-          <p className="text-lg font-medium">Day Off</p>
-          <p className="text-sm">Salon is closed today</p>
+        <div className="text-center space-y-2">
+          <CalendarIcon className="w-12 h-12 text-muted-foreground/30 mx-auto" />
+          <p className="text-lg font-semibold">Day Off</p>
+          <p className="text-sm text-muted-foreground">Salon is closed today</p>
         </div>
       </div>
     );
@@ -149,40 +155,43 @@ export function CalendarGrid({
   return (
     <div className="overflow-x-auto">
       <div className="min-w-[600px]">
-        {/* Header: stylist names */}
-        <div className="flex border-b sticky top-0 bg-card z-10">
-          <div className="w-16 shrink-0 p-2 text-xs text-muted-foreground font-medium border-r">
+        <div className="flex border-b border-border/50 sticky top-0 bg-card z-10">
+          <div className="w-24 shrink-0 px-3 py-3 text-xs font-medium text-muted-foreground border-r border-border/30 flex items-end justify-end">
             Time
           </div>
           {filteredStylists.map((stylist) => (
             <div
               key={stylist.id}
-              className="flex-1 min-w-[140px] p-2 text-center border-r last:border-r-0"
+              className="flex-1 min-w-[160px] border-r border-border/30 last:border-r-0"
             >
-              <div className="w-8 h-8 rounded-full bg-gold/20 text-gold text-xs font-bold flex items-center justify-center mx-auto mb-1">
-                {stylist.name.charAt(0)}
+              <div className="bg-card/80 m-1.5 p-3 border border-border/30 calendar-card flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-gold/15 text-gold text-sm font-bold flex items-center justify-center shrink-0 ring-2 ring-gold/20">
+                  {stylist.name.charAt(0)}
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold truncate">{stylist.name}</p>
+                  <p className="text-xs text-muted-foreground capitalize">{stylist.role.replace('_', ' ')}</p>
+                </div>
               </div>
-              <p className="text-xs font-medium truncate">{stylist.name}</p>
-              <p className="text-[10px] text-muted-foreground capitalize">{stylist.role.replace('_', ' ')}</p>
             </div>
           ))}
         </div>
 
-        {/* Time slots grid */}
         <div>
-          {timeSlots.map((time) => {
+          {timeSlots.map((time, idx) => {
             const prayerName = isPrayerBlock(time, prayerBlocks, prayerBlockEnabled);
             const jummah = isJummahBlock(time, dayOfWeek, !!hasJummahBreak);
             const isBlocked = !!prayerName || jummah;
 
             return (
-              <div key={time} className="flex border-b min-h-[48px]">
-                {/* Time label */}
-                <div className="w-16 shrink-0 p-1 text-[11px] text-muted-foreground font-mono border-r flex items-start justify-end pr-2 pt-1">
+              <div
+                key={time}
+                className={`flex border-b border-border/20 min-h-[52px] ${idx % 2 === 0 ? 'bg-muted/20' : ''}`}
+              >
+                <div className="w-24 shrink-0 px-3 py-2 text-sm text-muted-foreground font-mono border-r border-border/30 flex items-start justify-end">
                   {formatTime(time)}
                 </div>
 
-                {/* Stylist columns */}
                 {filteredStylists.map((stylist) => {
                   const key = `${stylist.id}-${time}`;
                   const apts = appointmentMap[key];
@@ -192,9 +201,9 @@ export function CalendarGrid({
                     return (
                       <div
                         key={key}
-                        className="flex-1 min-w-[140px] border-r last:border-r-0 bg-[repeating-linear-gradient(45deg,transparent,transparent_4px,var(--muted)_4px,var(--muted)_5px)] flex items-center justify-center"
+                        className="flex-1 min-w-[160px] border-r border-border/30 last:border-r-0 bg-[repeating-linear-gradient(45deg,transparent,transparent_6px,var(--muted)_6px,var(--muted)_7px)] flex items-center justify-center opacity-60"
                       >
-                        <span className="text-[10px] text-muted-foreground font-medium">
+                        <span className="text-xs text-muted-foreground font-medium px-2 py-0.5 bg-card/60">
                           {prayerName || 'Jummah'}
                         </span>
                       </div>
@@ -202,9 +211,8 @@ export function CalendarGrid({
                   }
 
                   if (isOccupied) {
-                    // Slot occupied by a multi-slot appointment above
                     return (
-                      <div key={key} className="flex-1 min-w-[140px] border-r last:border-r-0" />
+                      <div key={key} className="flex-1 min-w-[160px] border-r border-border/30 last:border-r-0" />
                     );
                   }
 
@@ -212,32 +220,42 @@ export function CalendarGrid({
                     const apt = apts[0];
                     const span = getAppointmentSpan(apt);
                     const totalPrice = apt.services?.reduce((sum, s) => sum + s.price, 0) || 0;
+                    const isCancelled = apt.status === 'cancelled';
 
                     return (
-                      <div key={key} className="flex-1 min-w-[140px] border-r last:border-r-0 p-0.5 relative" style={{ minHeight: span > 1 ? `${span * 48}px` : undefined }}>
+                      <div
+                        key={key}
+                        className="flex-1 min-w-[160px] border-r border-border/30 last:border-r-0 p-1 relative"
+                        style={{ minHeight: span > 1 ? `${span * 52}px` : undefined }}
+                      >
                         <button
                           onClick={() => onAppointmentClick(apt)}
-                          className={`w-full text-left p-2 rounded-md border text-xs transition-all hover:shadow-md ${STATUS_COLORS[apt.status]}`}
-                          style={{ height: span > 1 ? `${span * 48 - 4}px` : undefined }}
+                          className={`
+                            calendar-card w-full text-left p-3 border-l-4 border border-border/30
+                            shadow-sm transition-all duration-150 hover:scale-[1.02] hover:shadow-md
+                            ${STATUS_STRIPE[apt.status]}
+                            ${STATUS_BG[apt.status]}
+                            ${isCancelled ? 'line-through' : ''}
+                          `}
+                          style={{ height: span > 1 ? `${span * 52 - 8}px` : undefined }}
                         >
-                          <p className="font-medium truncate">{apt.client?.name || 'Walk-in'}</p>
-                          <p className="truncate opacity-80">
+                          <p className="text-sm font-semibold truncate">{apt.client?.name || 'Walk-in'}</p>
+                          <p className="text-xs text-muted-foreground truncate mt-0.5">
                             {apt.services?.map((s) => s.service_name).join(', ')}
                           </p>
                           {totalPrice > 0 && (
-                            <p className="opacity-70 mt-0.5">{formatPKR(totalPrice)}</p>
+                            <p className="text-xs font-medium text-foreground/70 mt-1">{formatPKR(totalPrice)}</p>
                           )}
                         </button>
                       </div>
                     );
                   }
 
-                  // Empty slot — clickable
                   return (
-                    <div key={key} className="flex-1 min-w-[140px] border-r last:border-r-0">
+                    <div key={key} className="flex-1 min-w-[160px] border-r border-border/30 last:border-r-0 p-0.5">
                       <button
                         onClick={() => onSlotClick(stylist.id, time)}
-                        className="w-full h-full min-h-[48px] hover:bg-gold/5 cursor-pointer transition-colors"
+                        className="w-full h-full min-h-[48px] border border-transparent hover:border-border/30 hover:bg-gold/5 cursor-pointer transition-all duration-150 calendar-card"
                         aria-label={`Book ${stylist.name} at ${time}`}
                       />
                     </div>
@@ -246,6 +264,13 @@ export function CalendarGrid({
               </div>
             );
           })}
+          {appointments.length === 0 && (
+            <div className="text-center py-16 text-muted-foreground">
+              <CalendarIcon className="w-10 h-10 text-muted-foreground/25 mx-auto mb-3" />
+              <p className="text-sm font-medium">No appointments yet</p>
+              <p className="text-xs text-muted-foreground mt-1">Tap a slot to book</p>
+            </div>
+          )}
         </div>
       </div>
     </div>

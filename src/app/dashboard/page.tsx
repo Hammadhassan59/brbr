@@ -10,12 +10,16 @@ import { PaymentBreakdown } from './components/payment-breakdown';
 import { StaffPerformanceTable } from './components/staff-performance-table';
 import { AppointmentsFeed } from './components/appointments-feed';
 import { AlertsPanel, buildAlerts } from './components/alerts-panel';
-import { QuickActions } from './components/quick-actions';
 import { StylistDashboard } from './components/stylist-dashboard';
+import { Store, ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { formatPKDate } from '@/lib/utils/dates';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar as CalendarPicker } from '@/components/ui/calendar';
 import type { DailySummary, AppointmentWithDetails, Staff } from '@/types/database';
 
-interface HourlyData {
-  hour: string;
+interface ChartData {
+  label: string;
   revenue: number;
   appointments: number;
 }
@@ -25,7 +29,7 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [summary, setSummary] = useState<DailySummary | null>(null);
   const [appointments, setAppointments] = useState<AppointmentWithDetails[]>([]);
-  const [hourlyData, setHourlyData] = useState<HourlyData[]>([]);
+  const [chartData, setChartData] = useState<ChartData[]>([]);
   const [cashInDrawer, setCashInDrawer] = useState(0);
   const [lowStockCount, setLowStockCount] = useState(0);
   const [udhaarInfo, setUdhaarInfo] = useState({ clients: 0, total: 0 });
@@ -33,7 +37,80 @@ export default function DashboardPage() {
   const [stylistTips, setStylistTips] = useState(0);
 
   const isStylist = currentStaff?.role === 'senior_stylist' || currentStaff?.role === 'junior_stylist';
-  const today = getTodayPKT();
+  const todayPKT = getTodayPKT();
+  const [selectedDate, setSelectedDate] = useState(todayPKT);
+  const [activeFilter, setActiveFilter] = useState<string>('today');
+  const [customOpen, setCustomOpen] = useState(false);
+  const today = selectedDate;
+  const isToday = selectedDate === todayPKT;
+
+  function daysAgoStr(n: number) { const d = new Date(todayPKT); d.setDate(d.getDate() - n); return d.toISOString().slice(0, 10); }
+
+  function getMonthStr(monthsAgo: number) {
+    const d = new Date(todayPKT);
+    d.setMonth(d.getMonth() - monthsAgo, 1);
+    return d.toISOString().slice(0, 10);
+  }
+
+  function getMonthLabel(monthsAgo: number) {
+    const d = new Date(todayPKT);
+    d.setMonth(d.getMonth() - monthsAgo);
+    return d.toLocaleDateString('en-US', { month: 'short' });
+  }
+
+  function setFilter(key: string, date: string) {
+    setActiveFilter(key);
+    setSelectedDate(date);
+    setRangeFrom(undefined);
+    setRangeTo(undefined);
+  }
+
+  function navigateDate(delta: number) {
+    const d = new Date(selectedDate);
+    d.setDate(d.getDate() + delta);
+    const newDate = d.toISOString().slice(0, 10);
+    if (newDate > todayPKT) return;
+    setSelectedDate(newDate);
+    setActiveFilter('custom');
+  }
+
+  const [rangeFrom, setRangeFrom] = useState<Date | undefined>();
+  const [rangeTo, setRangeTo] = useState<Date | undefined>();
+
+  function handleDayClick(day: Date) {
+    if (!rangeFrom || (rangeFrom && rangeTo)) {
+      setRangeFrom(day);
+      setRangeTo(undefined);
+      setSelectedDate(day.toISOString().slice(0, 10));
+      setActiveFilter('custom');
+    } else {
+      const from = day < rangeFrom ? day : rangeFrom;
+      const to = day < rangeFrom ? rangeFrom : day;
+      setRangeFrom(from);
+      setRangeTo(to);
+      setSelectedDate(from.toISOString().slice(0, 10));
+      setActiveFilter('custom');
+      setTimeout(() => setCustomOpen(false), 400);
+    }
+  }
+
+  const endDate = rangeTo ? rangeTo.toISOString().slice(0, 10) : todayPKT;
+  const isMultiDay = selectedDate !== endDate || activeFilter === '7d' || activeFilter === '30d' || activeFilter.startsWith('mon-');
+
+  const computedEndDate = (() => {
+    if (rangeTo) return rangeTo.toISOString().slice(0, 10);
+    if (activeFilter === '7d') return todayPKT;
+    if (activeFilter === '30d') return todayPKT;
+    if (activeFilter.startsWith('mon-')) {
+      const monthsAgo = Number(activeFilter.split('-')[1]);
+      const d = new Date(todayPKT);
+      d.setMonth(d.getMonth() - monthsAgo);
+      const lastDay = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+      const end = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${lastDay}`;
+      return end > todayPKT ? todayPKT : end;
+    }
+    return selectedDate;
+  })();
 
   const fetchDashboardData = useCallback(async () => {
     if (!currentBranch || !salon) {
@@ -43,26 +120,32 @@ export default function DashboardPage() {
 
     setLoading(true);
     try {
-      // Fetch daily summary via RPC
+      const startDate = selectedDate;
+      const endDateFinal = computedEndDate;
+      const multiDay = startDate !== endDateFinal;
+
       const { data: summaryData } = await supabase
-        .rpc('get_daily_summary', { p_branch_id: currentBranch.id, p_date: today });
+        .rpc('get_daily_summary', { p_branch_id: currentBranch.id, p_date: startDate });
       if (summaryData) setSummary(summaryData as DailySummary);
 
-      // Fetch today's appointments
-      const { data: aptsData } = await supabase
+      const aptQuery = supabase
         .from('appointments')
         .select('*, client:clients(*), staff:staff(*), services:appointment_services(*)')
         .eq('branch_id', currentBranch.id)
-        .eq('appointment_date', today)
         .order('start_time');
+      if (multiDay) {
+        aptQuery.gte('appointment_date', startDate).lte('appointment_date', endDateFinal);
+      } else {
+        aptQuery.eq('appointment_date', startDate);
+      }
+      const { data: aptsData } = await aptQuery;
       if (aptsData) setAppointments(aptsData as AppointmentWithDetails[]);
 
-      // Fetch cash drawer
       const { data: drawerData } = await supabase
         .from('cash_drawers')
         .select('*')
         .eq('branch_id', currentBranch.id)
-        .eq('date', today)
+        .eq('date', startDate)
         .single();
       if (drawerData) {
         setCashInDrawer(
@@ -72,7 +155,6 @@ export default function DashboardPage() {
         );
       }
 
-      // Fetch low stock count
       const { data: productsData } = await supabase
         .from('products')
         .select('current_stock, low_stock_threshold')
@@ -86,7 +168,6 @@ export default function DashboardPage() {
         setLowStockCount(low.length);
       }
 
-      // Fetch udhaar info
       const { data: udhaarData } = await supabase
         .from('clients')
         .select('udhaar_balance')
@@ -99,37 +180,89 @@ export default function DashboardPage() {
         });
       }
 
-      // Build hourly data from bills
       const { data: billsData } = await supabase
         .from('bills')
-        .select('total_amount, created_at')
+        .select('total_amount, created_at, payment_method, staff_id')
         .eq('branch_id', currentBranch.id)
         .eq('status', 'paid')
-        .gte('created_at', `${today}T00:00:00`)
-        .lte('created_at', `${today}T23:59:59`);
+        .gte('created_at', `${startDate}T00:00:00`)
+        .lte('created_at', `${endDateFinal}T23:59:59`);
 
-      const hourMap: Record<string, { revenue: number; appointments: number }> = {};
-      for (let h = 9; h <= 21; h++) {
-        const label = h === 0 ? '12AM' : h < 12 ? `${h}AM` : h === 12 ? '12PM' : `${h - 12}PM`;
-        hourMap[label] = { revenue: 0, appointments: 0 };
-      }
+      if (multiDay) {
+        const dayMap: Record<string, { revenue: number; appointments: number }> = {};
+        const d = new Date(startDate);
+        const end = new Date(endDateFinal);
+        while (d <= end) {
+          const iso = d.toISOString().slice(0, 10);
+          const short = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+          dayMap[`${iso}|${short}`] = { revenue: 0, appointments: 0 };
+          d.setDate(d.getDate() + 1);
+        }
 
-      if (billsData) {
-        billsData.forEach((bill: { total_amount: number; created_at: string }) => {
-          const hour = new Date(bill.created_at).getHours();
-          const label = hour === 0 ? '12AM' : hour < 12 ? `${hour}AM` : hour === 12 ? '12PM' : `${hour - 12}PM`;
-          if (hourMap[label]) {
-            hourMap[label].revenue += bill.total_amount;
-            hourMap[label].appointments += 1;
+        if (billsData) {
+          billsData.forEach((bill: { total_amount: number; created_at: string }) => {
+            const billDate = bill.created_at.slice(0, 10);
+            const key = Object.keys(dayMap).find(k => k.startsWith(billDate));
+            if (key) {
+              dayMap[key].revenue += bill.total_amount;
+              dayMap[key].appointments += 1;
+            }
+          });
+        }
+
+        setChartData(
+          Object.entries(dayMap).map(([key, data]) => ({ label: key.split('|')[1], ...data }))
+        );
+
+        if (billsData && billsData.length > 0) {
+          const totalRev = billsData.reduce((s: number, b: { total_amount: number }) => s + b.total_amount, 0);
+          const byMethod = (m: string) => billsData.filter((b: { payment_method: string }) => b.payment_method === m).reduce((s: number, b: { total_amount: number }) => s + b.total_amount, 0);
+          const allStaffData = await supabase.from('staff').select('*').eq('branch_id', currentBranch.id).eq('is_active', true);
+          const staffList = (allStaffData.data || []) as Staff[];
+          const staffMap = new Map<string, { services_done: number; revenue: number }>();
+          for (const bill of billsData) {
+            const st = staffList.find((s) => s.id === (bill as { staff_id: string }).staff_id);
+            const name = st?.name || 'Unknown';
+            const e = staffMap.get(name) || { services_done: 0, revenue: 0 };
+            e.services_done += 1; e.revenue += bill.total_amount;
+            staffMap.set(name, e);
           }
-        });
+          setSummary({
+            total_revenue: totalRev,
+            total_bills: billsData.length,
+            cash_amount: byMethod('cash'),
+            jazzcash_amount: byMethod('jazzcash'),
+            easypaisa_amount: byMethod('easypaisa'),
+            card_amount: byMethod('card'),
+            bank_transfer_amount: byMethod('bank_transfer'),
+            udhaar_amount: byMethod('udhaar'),
+            top_services: [],
+            staff_performance: Array.from(staffMap.entries()).map(([name, s]) => ({ name, ...s })).sort((a, b) => b.revenue - a.revenue),
+          } as DailySummary);
+        }
+      } else {
+        const hourMap: Record<string, { revenue: number; appointments: number }> = {};
+        for (let h = 9; h <= 21; h++) {
+          const label = h === 0 ? '12AM' : h < 12 ? `${h}AM` : h === 12 ? '12PM' : `${h - 12}PM`;
+          hourMap[label] = { revenue: 0, appointments: 0 };
+        }
+
+        if (billsData) {
+          billsData.forEach((bill: { total_amount: number; created_at: string }) => {
+            const hour = new Date(bill.created_at).getHours();
+            const label = hour === 0 ? '12AM' : hour < 12 ? `${hour}AM` : hour === 12 ? '12PM' : `${hour - 12}PM`;
+            if (hourMap[label]) {
+              hourMap[label].revenue += bill.total_amount;
+              hourMap[label].appointments += 1;
+            }
+          });
+        }
+
+        setChartData(
+          Object.entries(hourMap).map(([label, data]) => ({ label, ...data }))
+        );
       }
 
-      setHourlyData(
-        Object.entries(hourMap).map(([hour, data]) => ({ hour, ...data }))
-      );
-
-      // Fetch branch staff for commission calculations
       const { data: staffData } = await supabase
         .from('staff')
         .select('*')
@@ -137,7 +270,6 @@ export default function DashboardPage() {
         .eq('is_active', true);
       if (staffData) setBranchStaff(staffData as Staff[]);
 
-      // Fetch tips for current stylist (if stylist view)
       if (currentStaff && (currentStaff.role === 'senior_stylist' || currentStaff.role === 'junior_stylist')) {
         const { data: tipsData } = await supabase
           .from('tips')
@@ -153,13 +285,13 @@ export default function DashboardPage() {
     } finally {
       setLoading(false);
     }
-  }, [currentBranch, salon, today, currentStaff]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentBranch, salon, today, computedEndDate, currentStaff, activeFilter]);
 
   useEffect(() => {
     fetchDashboardData();
   }, [fetchDashboardData]);
 
-  // Real-time subscriptions
   useEffect(() => {
     if (!currentBranch) return;
 
@@ -197,20 +329,16 @@ export default function DashboardPage() {
     };
   }, [currentBranch, fetchDashboardData]);
 
-  // Stylist dashboard
   if (isStylist && currentStaff) {
     const myAppointments = appointments.filter((a) => a.staff_id === currentStaff.id);
 
-    // Calculate today's service earnings from staff_performance data
     const myPerf = summary?.staff_performance?.find((sp) => sp.name === currentStaff.name);
     const todayServicesRevenue = myPerf?.revenue ?? 0;
 
-    // Calculate monthly commission based on staff's actual commission settings
     let monthlyCommission = 0;
     if (currentStaff.commission_type === 'percentage') {
       monthlyCommission = todayServicesRevenue * (currentStaff.commission_rate / 100);
     } else if (currentStaff.commission_type === 'flat') {
-      // Flat commission per service done
       const servicesDone = myPerf?.services_done ?? 0;
       monthlyCommission = servicesDone * currentStaff.commission_rate;
     }
@@ -226,13 +354,11 @@ export default function DashboardPage() {
     );
   }
 
-  // Derived values
   const appointmentsDone = appointments.filter((a) => a.status === 'done').length;
   const walkIns = appointments.filter((a) => a.is_walkin).length;
   const noShowCount = appointments.filter((a) => a.status === 'no_show').length;
 
   const staffPerf = summary?.staff_performance?.map((sp) => {
-    // Look up the actual staff record to get real commission rate
     const staffRecord = branchStaff.find((s) => s.name === sp.name);
     let commission = 0;
     if (staffRecord) {
@@ -242,7 +368,6 @@ export default function DashboardPage() {
         commission = sp.services_done * staffRecord.commission_rate;
       }
     } else {
-      // Fallback if staff record not found
       commission = sp.revenue * 0.25;
     }
     return { ...sp, commission };
@@ -255,18 +380,90 @@ export default function DashboardPage() {
     noShowCount,
   });
 
-  // Empty state
   if (!loading && !salon) {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-center">
-        <p className="text-muted-foreground">Please log in to see your dashboard.</p>
+        <div className="calendar-card bg-card border border-border/50 p-8 flex flex-col items-center gap-4">
+          <div className="w-14 h-14 rounded-xl bg-gold/10 flex items-center justify-center">
+            <Store className="w-7 h-7 text-gold" />
+          </div>
+          <p className="text-muted-foreground text-sm">Please log in to see your dashboard.</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-4 lg:space-y-6">
-      {/* KPI Cards */}
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold">{salon?.name ?? 'Dashboard'}</h1>
+          <p className="text-muted-foreground text-sm">
+            {rangeTo
+              ? `${formatPKDate(selectedDate)} — ${formatPKDate(rangeTo.toISOString().slice(0, 10))}`
+              : `${formatPKDate(selectedDate)}${isToday ? ' — Today' : ''}`
+            }
+          </p>
+        </div>
+
+        <div className="calendar-card bg-card border border-border/30 p-2 flex items-center gap-1 flex-wrap">
+          <Button variant="ghost" size="icon" onClick={() => navigateDate(-1)} className="h-9 w-9 transition-all duration-150">
+            <ChevronLeft className="w-4 h-4" />
+          </Button>
+
+          {([
+            { key: 'today', label: 'Today', date: todayPKT },
+            { key: '7d', label: '7 Days', date: daysAgoStr(6) },
+            { key: '30d', label: '30 Days', date: daysAgoStr(29) },
+            { key: 'mon-0', label: getMonthLabel(0), date: getMonthStr(0) },
+            { key: 'mon-1', label: getMonthLabel(1), date: getMonthStr(1) },
+            { key: 'mon-2', label: getMonthLabel(2), date: getMonthStr(2) },
+          ]).map(({ key, label, date: d }) => (
+            <button
+              key={key}
+              onClick={() => setFilter(key, d)}
+              className={`calendar-card px-3 py-1.5 text-xs font-medium transition-all duration-150 ${
+                activeFilter === key
+                  ? 'bg-gold/10 text-gold'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+
+          <Popover open={customOpen} onOpenChange={(open) => { setCustomOpen(open); if (open) { setRangeFrom(undefined); setRangeTo(undefined); } }}>
+            <PopoverTrigger
+              className={`calendar-card px-3 py-1.5 text-xs font-medium transition-all duration-150 flex items-center gap-1.5 outline-none ${
+                activeFilter === 'custom'
+                  ? 'bg-gold/10 text-gold'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              <Calendar className="w-3 h-3" />
+              Custom
+            </PopoverTrigger>
+            <PopoverContent className="calendar-card w-auto p-3" align="end">
+              <div className="text-xs text-muted-foreground mb-2 px-1">
+                {!rangeFrom ? 'Select start date' : !rangeTo ? 'Select end date' : `${formatPKDate(rangeFrom.toISOString().slice(0, 10))} — ${formatPKDate(rangeTo.toISOString().slice(0, 10))}`}
+              </div>
+              <CalendarPicker
+                mode="range"
+                selected={rangeFrom ? { from: rangeFrom, to: rangeTo } : undefined}
+                onDayClick={handleDayClick}
+                disabled={{ after: new Date(todayPKT) }}
+                defaultMonth={new Date(selectedDate)}
+                numberOfMonths={2}
+              />
+            </PopoverContent>
+          </Popover>
+
+          <Button variant="ghost" size="icon" onClick={() => navigateDate(1)} className="h-9 w-9 transition-all duration-150" disabled={isToday}>
+            <ChevronRight className="w-4 h-4" />
+          </Button>
+        </div>
+      </div>
+
       <KPICards
         summary={summary}
         appointmentsDone={appointmentsDone}
@@ -276,13 +473,11 @@ export default function DashboardPage() {
         loading={loading}
       />
 
-      {/* Charts + Appointments */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6">
-        {/* Left: Charts (2 cols) */}
-        <div className="lg:col-span-2 space-y-4 lg:space-y-6">
-          <RevenueChart data={hourlyData} loading={loading} />
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2 space-y-6">
+          <RevenueChart data={chartData} loading={loading} title={isMultiDay ? 'Revenue by Day' : undefined} />
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <PaymentBreakdown summary={summary} loading={loading} />
             <AlertsPanel alerts={alerts} loading={loading} />
           </div>
@@ -290,14 +485,10 @@ export default function DashboardPage() {
           <StaffPerformanceTable data={staffPerf} loading={loading} />
         </div>
 
-        {/* Right: Appointments feed (1 col) */}
         <div>
           <AppointmentsFeed appointments={appointments} loading={loading} />
         </div>
       </div>
-
-      {/* Quick Actions FAB */}
-      <QuickActions />
     </div>
   );
 }

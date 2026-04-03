@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { AlertTriangle, CreditCard, UserX } from 'lucide-react';
+import { AlertTriangle, CreditCard, UserX, ShieldCheck } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useLanguage } from '@/components/providers/language-provider';
@@ -32,21 +32,32 @@ export function AlertsPanel({ alerts, loading }: AlertsPanelProps) {
   const { t } = useLanguage();
 
   return (
-    <Card>
-      <CardHeader className="pb-2">
-        <CardTitle className="text-sm font-medium">{t('alerts')}</CardTitle>
+    <Card className="calendar-card bg-card border border-border/50">
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-base font-semibold">{t('alerts')}</CardTitle>
+          {alerts.length > 0 && (
+            <span className="text-base font-bold text-gold">{alerts.length}</span>
+          )}
+        </div>
       </CardHeader>
       <CardContent>
         {loading ? (
           <div className="space-y-3">
             {[1, 2].map((i) => (
-              <div key={i} className="h-12 shimmer" />
+              <div key={i} className="h-16 shimmer rounded-xl" />
             ))}
           </div>
         ) : alerts.length === 0 ? (
-          <p className="text-center text-muted-foreground text-sm py-4">
-            No alerts today
-          </p>
+          <div className="flex flex-col items-center justify-center gap-3 py-8">
+            <div className="w-12 h-12 rounded-xl bg-muted/50 flex items-center justify-center">
+              <ShieldCheck className="w-6 h-6 text-muted-foreground" />
+            </div>
+            <div className="text-center">
+              <p className="text-sm font-medium text-muted-foreground">No alerts today</p>
+              <p className="text-xs text-muted-foreground/60 mt-1">Everything is running smoothly</p>
+            </div>
+          </div>
         ) : (
           <div className="space-y-2 stagger-children">
             {alerts.map((alert, i) => {
@@ -54,13 +65,13 @@ export function AlertsPanel({ alerts, loading }: AlertsPanelProps) {
               return (
                 <div
                   key={i}
-                  className={`flex items-center gap-3 p-3 rounded-lg ${style.bg} animate-fade-up`}
+                  className="calendar-card flex items-center gap-3 bg-background/50 border border-border/30 p-4 rounded-xl hover:border-border/60 transition-all duration-200 animate-fade-up"
                 >
-                  <div className={`w-8 h-8 rounded-full bg-white/10 flex items-center justify-center shrink-0`}>
-                    <style.icon className={`w-4 h-4 ${style.color}`} />
+                  <div className={`w-10 h-10 rounded-xl ${style.bg} flex items-center justify-center shrink-0`}>
+                    <style.icon className={`w-5 h-5 ${style.color}`} />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium">{alert.label}</p>
+                    <p className="text-sm font-semibold">{alert.label}</p>
                     <p className="text-xs text-muted-foreground">{alert.detail}</p>
                   </div>
                   {alert.action && (
@@ -70,13 +81,13 @@ export function AlertsPanel({ alerts, loading }: AlertsPanelProps) {
                         target="_blank"
                         rel="noopener noreferrer"
                       >
-                        <Button size="sm" className="text-xs shrink-0 bg-gold text-black border border-gold hover:bg-gold/90">
+                        <Button size="sm" className="calendar-card text-xs shrink-0 bg-gold text-black border border-gold hover:bg-gold/90">
                           {alert.action.label}
                         </Button>
                       </a>
                     ) : alert.action.href ? (
                       <Link href={alert.action.href}>
-                        <Button size="sm" className="text-xs shrink-0 bg-gold text-black border border-gold hover:bg-gold/90">
+                        <Button size="sm" className="calendar-card text-xs shrink-0 bg-gold text-black border border-gold hover:bg-gold/90">
                           {alert.action.label}
                         </Button>
                       </Link>
@@ -92,7 +103,6 @@ export function AlertsPanel({ alerts, loading }: AlertsPanelProps) {
   );
 }
 
-// Helper to build alerts from dashboard data
 export function buildAlerts({
   lowStockCount,
   udhaarClients,

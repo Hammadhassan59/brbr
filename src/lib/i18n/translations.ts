@@ -64,7 +64,7 @@ export const translations = {
     reports: 'Reports',
     settings: 'Settings',
     logout: 'Logout',
-    newAppointment: '+ New Appointment',
+    newAppointment: 'New Appointment',
     more: 'More',
 
     // Dashboard
@@ -161,7 +161,7 @@ export const translations = {
     reports: 'رپورٹس',
     settings: 'سیٹنگز',
     logout: 'لاگ آؤٹ',
-    newAppointment: '+ نئی اپائنٹمنٹ',
+    newAppointment: 'نئی اپائنٹمنٹ',
     more: 'مزید',
 
     // Dashboard

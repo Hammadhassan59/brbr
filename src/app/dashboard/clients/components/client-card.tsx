@@ -3,7 +3,6 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Star, Ban, MessageCircle, Pencil } from 'lucide-react';
-import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { formatPKR } from '@/lib/utils/currency';
@@ -27,103 +26,95 @@ export function ClientCard({ client, selected, onSelect }: ClientCardProps) {
     .toUpperCase();
 
   const colors = [
-    'bg-blue-500/15 text-blue-600',
-    'bg-green-500/15 text-green-600',
-    'bg-purple-500/15 text-purple-600',
-    'bg-amber-500/15 text-amber-600',
-    'bg-pink-500/15 text-pink-600',
-    'bg-teal-500/15 text-teal-600',
+    'bg-blue-500/15 text-blue-400',
+    'bg-green-500/15 text-green-400',
+    'bg-purple-500/15 text-purple-400',
+    'bg-amber-500/15 text-amber-400',
+    'bg-pink-500/15 text-pink-400',
+    'bg-teal-500/15 text-teal-400',
   ];
   const colorIndex = client.name.charCodeAt(0) % colors.length;
 
   return (
-    <Card className={`group/card hover:shadow-md transition-shadow ${selected ? 'ring-2 ring-gold' : ''}`}>
-      <CardContent className="p-4">
-        <div className="flex items-start gap-3">
-          {onSelect && (
-            <input
-              type="checkbox"
-              checked={selected}
-              onChange={(e) => onSelect(client.id, e.target.checked)}
-              className="mt-1 rounded"
-            />
-          )}
+    <div className={`calendar-card bg-card border p-4 group/card transition-all duration-200 ${selected ? 'ring-2 ring-gold border-gold/30' : 'border-border/30 hover:border-border/60'}`}>
+      <div className="flex items-start gap-3">
+        {onSelect && (
+          <input
+            type="checkbox"
+            checked={selected}
+            onChange={(e) => onSelect(client.id, e.target.checked)}
+            className="mt-1 rounded"
+          />
+        )}
 
-          <Link href={`/dashboard/clients/${client.id}`} className="flex items-start gap-3 flex-1 min-w-0">
-            {/* Avatar */}
-            <div className={`w-11 h-11 rounded-full ${colors[colorIndex]} flex items-center justify-center text-sm font-bold shrink-0`}>
-              {initials}
+        <Link href={`/dashboard/clients/${client.id}`} className="flex items-start gap-3 flex-1 min-w-0">
+          <div className={`w-11 h-11 rounded-xl ${colors[colorIndex]} flex items-center justify-center text-sm font-bold shrink-0`}>
+            {initials}
+          </div>
+
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-1.5 mb-0.5">
+              <span className="text-sm font-semibold truncate">{client.name}</span>
+              {client.is_vip && <Star className="w-3.5 h-3.5 text-gold fill-gold shrink-0" />}
+              {client.is_blacklisted && <Ban className="w-3.5 h-3.5 text-destructive shrink-0" />}
             </div>
 
-            <div className="flex-1 min-w-0">
-              {/* Name + badges */}
-              <div className="flex items-center gap-1.5 mb-0.5">
-                <span className="font-medium text-sm truncate">{client.name}</span>
-                {client.is_vip && <Star className="w-3.5 h-3.5 text-gold fill-gold shrink-0" />}
-                {client.is_blacklisted && <Ban className="w-3.5 h-3.5 text-destructive shrink-0" />}
-              </div>
-
-              {/* Phone */}
-              {client.phone && (
-                <p className="text-xs text-muted-foreground">{client.phone}</p>
-              )}
-
-              {/* Stats row */}
-              <div className="flex items-center gap-3 mt-1.5 text-xs text-muted-foreground">
-                <span>{client.total_visits} visits</span>
-                <span>·</span>
-                <span>{formatPKR(client.total_spent)}</span>
-              </div>
-
-              {/* Loyalty + Udhaar */}
-              <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                {client.loyalty_points > 0 && (
-                  <Badge variant="secondary" className="text-[10px] gap-0.5">
-                    <Star className="w-2.5 h-2.5" /> {client.loyalty_points} pts
-                  </Badge>
-                )}
-                {client.udhaar_balance > 0 && (
-                  <Badge variant="destructive" className="text-[10px]">
-                    {formatPKR(client.udhaar_balance)} owed
-                  </Badge>
-                )}
-              </div>
-            </div>
-          </Link>
-
-          {/* Quick actions — visible on hover */}
-          <div className="flex flex-col gap-1 shrink-0 opacity-0 group-hover/card:opacity-100 transition-opacity">
             {client.phone && (
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  window.open(generateWhatsAppLink(client.phone!, `Hi ${client.name}!`), '_blank');
-                }}
-                title="WhatsApp"
-              >
-                <MessageCircle className="w-3.5 h-3.5 text-green-600" />
-              </Button>
+              <p className="text-xs text-muted-foreground">{client.phone}</p>
             )}
+
+            <div className="flex items-center gap-3 mt-2 text-xs">
+              <span className="text-muted-foreground/80 font-medium">{client.total_visits} visits</span>
+              <span className="text-muted-foreground/40">·</span>
+              <span className="text-muted-foreground/80 font-medium">{formatPKR(client.total_spent)}</span>
+            </div>
+
+            <div className="flex items-center gap-2 mt-2 flex-wrap">
+              {client.loyalty_points > 0 && (
+                <Badge variant="secondary" className="calendar-card text-[10px] gap-0.5">
+                  <Star className="w-2.5 h-2.5" /> {client.loyalty_points} pts
+                </Badge>
+              )}
+              {client.udhaar_balance > 0 && (
+                <Badge variant="destructive" className="calendar-card text-[10px]">
+                  {formatPKR(client.udhaar_balance)} owed
+                </Badge>
+              )}
+            </div>
+          </div>
+        </Link>
+
+        <div className="flex flex-col gap-1 shrink-0 opacity-0 group-hover/card:opacity-100 transition-all duration-200">
+          {client.phone && (
             <Button
               variant="ghost"
               size="icon"
-              className="h-7 w-7"
+              className="calendar-card h-9 w-9 transition-all duration-150"
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                router.push(`/dashboard/clients/${client.id}`);
+                window.open(generateWhatsAppLink(client.phone!, `Hi ${client.name}!`), '_blank');
               }}
-              title="Edit"
+              title="WhatsApp"
             >
-              <Pencil className="w-3.5 h-3.5 text-muted-foreground" />
+              <MessageCircle className="w-4 h-4 text-green-500" />
             </Button>
-          </div>
+          )}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="calendar-card h-9 w-9 transition-all duration-150"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              router.push(`/dashboard/clients/${client.id}`);
+            }}
+            title="Edit"
+          >
+            <Pencil className="w-4 h-4 text-muted-foreground" />
+          </Button>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }

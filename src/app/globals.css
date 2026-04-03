@@ -53,11 +53,13 @@
 }
 
 :root {
-  /* BrBr — 4-Color POS System
-     White #FFFFFF — cards, surfaces
-     Grey #F2F2F2 — content background
-     Real Madrid Gold #FEBE10 — accent, CTAs
-     Night Black #1A1A1A — text, sidebar chrome */
+  /* BrBr — Dark POS Elevation System
+     Level 0  #0C0C0C — page background (deepest)
+     Level 1  #161616 — chrome: sidebar + header (same)
+     Level 2  #1E1E1E — cards, content surfaces
+     Level 3  #282828 — hover, active, interactive
+     Accent   #FEBE10 — gold CTAs
+     Text     #EFEFEF — primary text */
 
   /* Motion tokens — POS context: snappy */
   --ease-snappy: cubic-bezier(0.2, 0, 0, 1);
@@ -69,39 +71,49 @@
   --duration-slow: 300ms;
   --duration-dramatic: 600ms;
   --duration-landing: 800ms;
-  --background: #F2F2F2;
-  --foreground: #1A1A1A;
-  --card: #FFFFFF;
-  --card-foreground: #1A1A1A;
-  --popover: #FFFFFF;
-  --popover-foreground: #1A1A1A;
+
+  /* Level 0 — page background */
+  --background: #0C0C0C;
+  --foreground: #EFEFEF;
+
+  /* Level 2 — cards (elevated content) */
+  --card: #1E1E1E;
+  --card-foreground: #EFEFEF;
+  --popover: #1E1E1E;
+  --popover-foreground: #EFEFEF;
+
+  /* Accent */
   --primary: #FEBE10;
-  --primary-foreground: #1A1A1A;
-  --secondary: #E8E8E8;
-  --secondary-foreground: #1A1A1A;
-  --muted: #E8E8E8;
-  --muted-foreground: #666666;
+  --primary-foreground: #0C0C0C;
   --accent: #FEBE10;
-  --accent-foreground: #1A1A1A;
-  --destructive: #DC2626;
-  --border: #D4D4D4;
-  --input: #D4D4D4;
+  --accent-foreground: #0C0C0C;
+
+  /* Level 3 — interactive surfaces */
+  --secondary: #282828;
+  --secondary-foreground: #EFEFEF;
+  --muted: #282828;
+  --muted-foreground: #808080;
+
+  --destructive: #EF4444;
+  --border: #2A2A2A;
+  --input: #2A2A2A;
   --ring: #FEBE10;
   --chart-1: #FEBE10;
-  --chart-2: #16A34A;
-  --chart-3: #2563EB;
-  --chart-4: #EA580C;
-  --chart-5: #DC2626;
+  --chart-2: #22C55E;
+  --chart-3: #3B82F6;
+  --chart-4: #F97316;
+  --chart-5: #EF4444;
   --radius: 0px;
 
-  /* Sidebar stays Night Black */
-  --sidebar: #1A1A1A;
-  --sidebar-foreground: #FFFFFF;
+  /* Level 1 — chrome: sidebar + header (SAME color) */
+  --sidebar: #161616;
+  --sidebar-foreground: #EFEFEF;
   --sidebar-primary: #FEBE10;
-  --sidebar-primary-foreground: #1A1A1A;
-  --sidebar-accent: #2A2A2A;
-  --sidebar-accent-foreground: #FFFFFF;
-  --sidebar-border: #2A2A2A;
+  --sidebar-primary-foreground: #0C0C0C;
+  /* Active nav = Level 2 (same as cards) */
+  --sidebar-accent: #1E1E1E;
+  --sidebar-accent-foreground: #EFEFEF;
+  --sidebar-border: #222222;
   --sidebar-ring: #FEBE10;
 }
 
@@ -139,6 +151,11 @@
   a[class*="bg-gold"],
   .btn {
     border-radius: 6px !important;
+  }
+
+  /* Exception: calendar card containers get rounding */
+  .calendar-card {
+    border-radius: 12px !important;
   }
 }
 

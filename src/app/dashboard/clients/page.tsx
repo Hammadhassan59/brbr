@@ -2,13 +2,12 @@
 
 import { useEffect, useState, useCallback, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { Search, Plus, Download, Tag } from 'lucide-react';
+import { Search, Plus, Download, Tag, Users } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { supabase } from '@/lib/supabase';
 import { useAppStore } from '@/store/app-store';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ClientCard } from './components/client-card';
 import type { Client } from '@/types/database';
@@ -56,14 +55,11 @@ function ClientsContent() {
 
   useEffect(() => { fetchClients(); }, [fetchClients]);
 
-  // Filter
   const filtered = clients.filter((c) => {
-    // Search
     if (search) {
       const q = search.toLowerCase();
       if (!c.name.toLowerCase().includes(q) && !(c.phone || '').includes(q)) return false;
     }
-    // Tab filter
     switch (tab) {
       case 'vip': return c.is_vip;
       case 'regular': return !c.is_vip && !c.is_blacklisted && c.total_visits > 0;
@@ -78,7 +74,6 @@ function ClientsContent() {
     }
   });
 
-  // Sort
   const sorted = [...filtered].sort((a, b) => {
     switch (sortBy) {
       case 'total_spent': return b.total_spent - a.total_spent;
@@ -111,24 +106,29 @@ function ClientsContent() {
     URL.revokeObjectURL(url);
   }
 
+  const tabs: { value: FilterTab; label: string; count?: number }[] = [
+    { value: 'all', label: 'All', count: clients.length },
+    { value: 'vip', label: 'VIP', count: clients.filter((c) => c.is_vip).length },
+    { value: 'regular', label: 'Regular' },
+    { value: 'udhaar', label: 'Udhaar', count: clients.filter((c) => c.udhaar_balance > 0).length },
+    { value: 'blacklisted', label: 'Blacklisted' },
+  ];
+
   return (
-    <div className="space-y-4">
-      {/* Header */}
-      <div className="flex flex-wrap items-center gap-3">
-        {/* Search */}
+    <div className="space-y-6">
+      <div className="calendar-card bg-card border border-border/30 p-4 flex flex-wrap items-center gap-3">
         <div className="relative flex-1 min-w-[200px]">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
           <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search by name or phone..."
-            className="pl-9"
+            className="calendar-card pl-10 h-11"
           />
         </div>
 
-        {/* Sort */}
         <Select value={sortBy} onValueChange={(v) => { if (v) setSortBy(v as SortBy); }}>
-          <SelectTrigger className="w-[150px] h-9">
+          <SelectTrigger className="calendar-card w-[150px] h-11">
             <SelectValue placeholder="Sort by" />
           </SelectTrigger>
           <SelectContent>
@@ -140,57 +140,60 @@ function ClientsContent() {
           </SelectContent>
         </Select>
 
-        {/* Add Client */}
         <Button
           onClick={() => router.push('/dashboard/clients/new')}
-          className="bg-gold hover:bg-gold/90 text-black border border-gold"
+          className="calendar-card bg-gold hover:bg-gold/90 text-black font-bold h-11 transition-all duration-150"
         >
           <Plus className="w-4 h-4 mr-1" /> Add Client
         </Button>
       </div>
 
-      {/* Filter tabs */}
-      <Tabs value={tab} onValueChange={(v) => setTab(v as FilterTab)}>
-        <TabsList className="flex-wrap h-auto gap-1">
-          <TabsTrigger value="all" className="text-xs">All ({clients.length})</TabsTrigger>
-          <TabsTrigger value="vip" className="text-xs">VIP ({clients.filter((c) => c.is_vip).length})</TabsTrigger>
-          <TabsTrigger value="regular" className="text-xs">Regular</TabsTrigger>
-          <TabsTrigger value="udhaar" className="text-xs">Udhaar ({clients.filter((c) => c.udhaar_balance > 0).length})</TabsTrigger>
-          <TabsTrigger value="blacklisted" className="text-xs">Blacklisted</TabsTrigger>
-        </TabsList>
-      </Tabs>
+      <div className="flex flex-wrap gap-2">
+        {tabs.map((t) => (
+          <button
+            key={t.value}
+            onClick={() => setTab(t.value)}
+            className={`calendar-card px-3.5 py-1.5 text-xs transition-all duration-150 ${
+              tab === t.value
+                ? 'bg-gold/10 text-gold font-medium'
+                : 'bg-background/50 text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            {t.label}{t.count !== undefined ? ` (${t.count})` : ''}
+          </button>
+        ))}
+      </div>
 
-      {/* Bulk actions */}
       {selectedIds.size > 0 && (
-        <div className="flex items-center gap-2 p-2 bg-gold/5 border border-gold/20 rounded-lg text-sm">
+        <div className="calendar-card bg-card border border-gold/20 p-3 flex items-center gap-2 text-sm">
           <span className="font-medium">{selectedIds.size} selected</span>
-          <Button variant="outline" size="sm" className="text-xs gap-1" onClick={exportCSV}>
+          <Button variant="outline" size="sm" className="calendar-card text-xs gap-1 transition-all duration-150" onClick={exportCSV}>
             <Download className="w-3 h-3" /> Export CSV
           </Button>
-          <Button variant="outline" size="sm" className="text-xs gap-1" onClick={() => toast('Tag management coming soon')}>
+          <Button variant="outline" size="sm" className="calendar-card text-xs gap-1 transition-all duration-150" onClick={() => toast('Tag management coming soon')}>
             <Tag className="w-3 h-3" /> Add Tag
           </Button>
-          <Button variant="ghost" size="sm" className="text-xs ml-auto" onClick={() => setSelectedIds(new Set())}>
+          <Button variant="ghost" size="sm" className="text-xs ml-auto transition-all duration-150" onClick={() => setSelectedIds(new Set())}>
             Clear
           </Button>
         </div>
       )}
 
-      {/* Client grid */}
       {loading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {[1, 2, 3, 4, 5, 6].map((i) => (
-            <div key={i} className="h-28 bg-muted rounded-lg animate-pulse" />
+            <div key={i} className="calendar-card h-32 bg-muted animate-pulse" />
           ))}
         </div>
       ) : sorted.length === 0 ? (
-        <div className="text-center py-16">
-          <p className="text-muted-foreground">
+        <div className="calendar-card bg-card border border-border/30 p-12 flex flex-col items-center justify-center text-center">
+          <Users className="w-12 h-12 text-muted-foreground/40 mb-4" />
+          <p className="text-muted-foreground text-sm">
             {search ? 'No clients match your search' : 'No clients yet — add your first client'}
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {sorted.map((client) => (
             <ClientCard
               key={client.id}
@@ -202,9 +205,8 @@ function ClientsContent() {
         </div>
       )}
 
-      {/* Count */}
       {!loading && sorted.length > 0 && (
-        <p className="text-xs text-muted-foreground text-center">
+        <p className="text-xs text-muted-foreground/60 text-center">
           Showing {sorted.length} of {clients.length} clients
         </p>
       )}
