@@ -216,26 +216,28 @@ export default function SettingsPage() {
 
   return (
     <div className="space-y-6">
-      <h2 className="font-heading text-xl font-bold">Settings</h2>
-
       <Tabs defaultValue="profile">
-        <TabsList className="bg-transparent flex-wrap h-auto gap-1">
-          <TabsTrigger value="profile" className="calendar-card text-xs bg-secondary/50 border border-border text-muted-foreground data-[state=active]:bg-gold data-[state=active]:text-black data-[state=active]:shadow-sm">Salon Profile</TabsTrigger>
-          <TabsTrigger value="hours" className="calendar-card text-xs bg-secondary/50 border border-border text-muted-foreground data-[state=active]:bg-gold data-[state=active]:text-black data-[state=active]:shadow-sm">Working Hours</TabsTrigger>
-          <TabsTrigger value="services" className="calendar-card text-xs bg-secondary/50 border border-border text-muted-foreground data-[state=active]:bg-gold data-[state=active]:text-black data-[state=active]:shadow-sm">Services</TabsTrigger>
-          <TabsTrigger value="payment" className="calendar-card text-xs bg-secondary/50 border border-border text-muted-foreground data-[state=active]:bg-gold data-[state=active]:text-black data-[state=active]:shadow-sm">Payments</TabsTrigger>
-          <TabsTrigger value="tax" className="calendar-card text-xs bg-secondary/50 border border-border text-muted-foreground data-[state=active]:bg-gold data-[state=active]:text-black data-[state=active]:shadow-sm">Tax & Billing</TabsTrigger>
-          <TabsTrigger value="display" className="calendar-card text-xs bg-secondary/50 border border-border text-muted-foreground data-[state=active]:bg-gold data-[state=active]:text-black data-[state=active]:shadow-sm">Display</TabsTrigger>
-        </TabsList>
+        <div className="calendar-card bg-card border border-border shadow-sm p-4">
+          <TabsList className="bg-transparent flex-wrap h-auto gap-1.5 p-0">
+            <TabsTrigger value="profile" className="calendar-card text-xs font-medium px-4 py-2 bg-secondary/50 border border-border text-muted-foreground hover:border-gold/30 transition-all duration-150 data-[state=active]:bg-gold data-[state=active]:text-black data-[state=active]:shadow-sm data-[state=active]:border-gold">Salon Profile</TabsTrigger>
+            <TabsTrigger value="hours" className="calendar-card text-xs font-medium px-4 py-2 bg-secondary/50 border border-border text-muted-foreground hover:border-gold/30 transition-all duration-150 data-[state=active]:bg-gold data-[state=active]:text-black data-[state=active]:shadow-sm data-[state=active]:border-gold">Working Hours</TabsTrigger>
+            <TabsTrigger value="services" className="calendar-card text-xs font-medium px-4 py-2 bg-secondary/50 border border-border text-muted-foreground hover:border-gold/30 transition-all duration-150 data-[state=active]:bg-gold data-[state=active]:text-black data-[state=active]:shadow-sm data-[state=active]:border-gold">Services</TabsTrigger>
+            <TabsTrigger value="payment" className="calendar-card text-xs font-medium px-4 py-2 bg-secondary/50 border border-border text-muted-foreground hover:border-gold/30 transition-all duration-150 data-[state=active]:bg-gold data-[state=active]:text-black data-[state=active]:shadow-sm data-[state=active]:border-gold">Payments</TabsTrigger>
+            <TabsTrigger value="tax" className="calendar-card text-xs font-medium px-4 py-2 bg-secondary/50 border border-border text-muted-foreground hover:border-gold/30 transition-all duration-150 data-[state=active]:bg-gold data-[state=active]:text-black data-[state=active]:shadow-sm data-[state=active]:border-gold">Tax & Billing</TabsTrigger>
+            <TabsTrigger value="display" className="calendar-card text-xs font-medium px-4 py-2 bg-secondary/50 border border-border text-muted-foreground hover:border-gold/30 transition-all duration-150 data-[state=active]:bg-gold data-[state=active]:text-black data-[state=active]:shadow-sm data-[state=active]:border-gold">Display</TabsTrigger>
+          </TabsList>
+        </div>
 
         {/* Salon Profile */}
-        <TabsContent value="profile" className="mt-4 space-y-4 max-w-2xl">
+        <TabsContent value="profile" className="mt-4">
+          <div className="calendar-card bg-card border border-border shadow-sm p-6 space-y-5 max-w-2xl">
+          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Salon Information</p>
           <div><Label>Salon Name</Label><Input value={salonName} onChange={(e) => setSalonName(e.target.value)} className="calendar-card mt-1" /></div>
           <div>
             <Label>Salon Type</Label>
             <div className="flex gap-2 mt-1">
               {['gents', 'ladies', 'unisex'].map((t) => (
-                <button key={t} onClick={() => setSalonType(t)} className={`flex-1 py-2 rounded-lg border text-sm font-medium ${salonType === t ? 'border-gold bg-gold/10' : 'border-border'}`}>
+                <button key={t} onClick={() => setSalonType(t)} className={`calendar-card flex-1 py-2.5 border text-sm font-medium transition-all duration-150 ${salonType === t ? 'border-gold bg-gold text-black shadow-sm' : 'border-border hover:border-gold/30'}`}>
                   {t === 'gents' ? '✂️ Gents' : t === 'ladies' ? '💄 Ladies' : '🌟 Unisex'}
                 </button>
               ))}
@@ -250,8 +252,8 @@ export default function SettingsPage() {
           <div>
             <Label>Language</Label>
             <div className="flex gap-2 mt-1">
-              <button onClick={() => setLanguage('en')} className={`px-4 py-2 rounded-lg border text-sm ${language === 'en' ? 'border-gold bg-gold/10' : 'border-border'}`}>English</button>
-              <button onClick={() => setLanguage('ur')} className={`px-4 py-2 rounded-lg border text-sm ${language === 'ur' ? 'border-gold bg-gold/10' : 'border-border'}`}>اردو</button>
+              <button onClick={() => setLanguage('en')} className={`calendar-card px-4 py-2.5 border text-sm font-medium transition-all duration-150 ${language === 'en' ? 'border-gold bg-gold text-black shadow-sm' : 'border-border hover:border-gold/30'}`}>English</button>
+              <button onClick={() => setLanguage('ur')} className={`calendar-card px-4 py-2.5 border text-sm font-medium transition-all duration-150 ${language === 'ur' ? 'border-gold bg-gold text-black shadow-sm' : 'border-border hover:border-gold/30'}`}>اردو</button>
             </div>
           </div>
 
@@ -263,10 +265,13 @@ export default function SettingsPage() {
           )}
 
           <Button onClick={saveSalonProfile} disabled={saving} className="calendar-card bg-gold hover:bg-gold/90 text-black font-bold h-11">{saving ? 'Saving...' : 'Save Profile'}</Button>
+          </div>
         </TabsContent>
 
         {/* Working Hours */}
-        <TabsContent value="hours" className="mt-4 space-y-4 max-w-2xl">
+        <TabsContent value="hours" className="mt-4">
+          <div className="calendar-card bg-card border border-border shadow-sm p-6 space-y-3 max-w-2xl">
+          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Weekly Schedule</p>
           {DAYS.map((day) => (
             <div key={day} className="calendar-card shadow-sm border-border flex items-center gap-3 p-3 bg-card border">
               <span className="w-24 text-sm font-medium">{DAY_LABELS[day]}</span>
@@ -288,6 +293,7 @@ export default function SettingsPage() {
             <label className="calendar-card bg-secondary/30 p-4 border border-border flex items-center gap-3 cursor-pointer"><Switch checked={prayerBlockEnabled} onCheckedChange={setPrayerBlockEnabled} className="calendar-card" /><span className="text-sm">Auto-block prayer times on calendar</span></label>
           </div>
           <Button onClick={saveWorkingHours} disabled={saving} className="calendar-card bg-gold hover:bg-gold/90 text-black font-bold h-11">{saving ? 'Saving...' : 'Save Hours'}</Button>
+          </div>
         </TabsContent>
 
         {/* Services */}
@@ -304,7 +310,9 @@ export default function SettingsPage() {
         </TabsContent>
 
         {/* Payment Methods */}
-        <TabsContent value="payment" className="mt-4 space-y-4 max-w-2xl">
+        <TabsContent value="payment" className="mt-4">
+          <div className="calendar-card bg-card border border-border shadow-sm p-6 space-y-4 max-w-2xl">
+          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Payment Methods</p>
           <Card className="calendar-card shadow-sm border-border"><CardContent className="p-4 space-y-3">
             <p className="text-sm font-medium">Cash</p>
             <p className="text-xs text-muted-foreground">Always enabled</p>
@@ -326,10 +334,13 @@ export default function SettingsPage() {
             </div>
           </CardContent></Card>
           <Button onClick={savePaymentSettings} disabled={saving} className="calendar-card bg-gold hover:bg-gold/90 text-black font-bold h-11">{saving ? 'Saving...' : 'Save Payment Settings'}</Button>
+          </div>
         </TabsContent>
 
         {/* Tax & Billing */}
-        <TabsContent value="tax" className="mt-4 space-y-4 max-w-2xl">
+        <TabsContent value="tax" className="mt-4">
+          <div className="calendar-card bg-card border border-border shadow-sm p-6 space-y-4 max-w-2xl">
+          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Tax Configuration</p>
           <div className="calendar-card bg-secondary/30 p-4 border border-border flex items-center justify-between">
             <div><p className="text-sm font-medium">GST / Sales Tax</p><p className="text-xs text-muted-foreground">Enable tax on bills</p></div>
             <Switch checked={gstEnabled} onCheckedChange={setGstEnabled} className="calendar-card" />
@@ -341,10 +352,13 @@ export default function SettingsPage() {
             </div>
           )}
           <Button onClick={saveSalonProfile} disabled={saving} className="calendar-card bg-gold hover:bg-gold/90 text-black font-bold h-11">{saving ? 'Saving...' : 'Save Tax Settings'}</Button>
+          </div>
         </TabsContent>
 
         {/* Display */}
-        <TabsContent value="display" className="mt-4 space-y-4 max-w-2xl">
+        <TabsContent value="display" className="mt-4">
+          <div className="calendar-card bg-card border border-border shadow-sm p-6 space-y-4 max-w-2xl">
+          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Display Preferences</p>
           <div className="calendar-card bg-secondary/30 p-4 border border-border flex items-center justify-between">
             <div><p className="text-sm font-medium">Dark Mode</p><p className="text-xs text-muted-foreground">Switch to dark theme</p></div>
             <Switch checked={darkMode} onCheckedChange={setDarkMode} className="calendar-card" />
@@ -352,6 +366,7 @@ export default function SettingsPage() {
           <div className="calendar-card bg-secondary/30 p-4 border border-border flex items-center justify-between">
             <div><p className="text-sm font-medium">Keep Screen Awake</p><p className="text-xs text-muted-foreground">Prevent tablet from sleeping (front desk mode)</p></div>
             <Switch checked={keepAwake} onCheckedChange={setKeepAwake} className="calendar-card" />
+          </div>
           </div>
         </TabsContent>
       </Tabs>
