@@ -424,16 +424,19 @@ export default function LandingPage() {
       </section>
 
       {/* ── Footer ── */}
-      <footer className="border-t border-[#E8E8E8] py-8">
+      <footer className="bg-[#161616] border-t border-[#222] py-8">
         <div className="max-w-6xl mx-auto px-5 flex flex-col md:flex-row items-center justify-between gap-4">
-          <p className="text-xs text-[#1A1A1A]/40">
-            © 2025 BrBr. All Rights Reserved.
-          </p>
-          <div className="flex items-center gap-2 text-xs text-[#1A1A1A]/40">
-            <a href="#" className="hover:text-[#1A1A1A] transition-colors px-2 py-3">LinkedIn</a>
-            <a href="#" className="hover:text-[#1A1A1A] transition-colors px-2 py-3">Instagram</a>
-            <a href="#" className="hover:text-[#1A1A1A] transition-colors px-2 py-3">Facebook</a>
-            <a href="#" className="hover:text-[#1A1A1A] transition-colors px-2 py-3">Twitter</a>
+          <div className="flex items-center gap-3">
+            <Scissors className="w-4 h-4 text-gold" />
+            <p className="text-xs text-[#EFEFEF]/40">
+              © 2025 BrBr. All Rights Reserved.
+            </p>
+          </div>
+          <div className="flex items-center gap-2 text-xs text-[#EFEFEF]/40">
+            <a href="#" className="hover:text-[#EFEFEF] transition-colors px-2 py-3">LinkedIn</a>
+            <a href="#" className="hover:text-[#EFEFEF] transition-colors px-2 py-3">Instagram</a>
+            <a href="#" className="hover:text-[#EFEFEF] transition-colors px-2 py-3">Facebook</a>
+            <a href="#" className="hover:text-[#EFEFEF] transition-colors px-2 py-3">Twitter</a>
           </div>
         </div>
       </footer>
