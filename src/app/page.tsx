@@ -309,7 +309,7 @@ export default function LandingPage() {
                     </li>
                   ))}
                 </ul>
-                <Link href="/login" className={`block text-center py-3 text-sm font-semibold transition-colors border touch-target btn ${
+                <Link href="/login" role="button" className={`block text-center py-3 text-sm font-semibold transition-colors border touch-target ${
                   plan.popular
                     ? 'bg-gold text-black border-gold hover:bg-gold/90'
                     : 'border-[#D4D4D4] text-[#1A1A1A] hover:border-[#1A1A1A]'
