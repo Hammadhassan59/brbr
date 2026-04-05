@@ -156,10 +156,10 @@ export default function LandingPage() {
                 Bookings, billing, staff commission, inventory, udhaar tracking. All in one place. Works with cash, JazzCash, and EasyPaisa.
               </p>
               <div className="flex flex-wrap gap-3 mb-8">
-                <Link href="/login" className="bg-[#1A1A1A] text-white px-6 py-3.5 text-sm font-semibold hover:bg-[#333] transition-colors inline-flex items-center gap-2">
+                <Link href="/login" className="bg-[#1A1A1A] text-white px-6 py-3.5 text-sm font-semibold hover:bg-[#333] transition-colors inline-flex items-center gap-2 touch-target">
                   <Scissors className="w-4 h-4" /> Try Free for 14 Days
                 </Link>
-                <a href="#features" className="bg-white text-[#1A1A1A] px-6 py-3.5 text-sm font-semibold border border-[#D4D4D4] hover:border-[#1A1A1A] transition-colors inline-flex items-center gap-2">
+                <a href="#features" className="bg-white text-[#1A1A1A] px-6 py-3.5 text-sm font-semibold border border-[#D4D4D4] hover:border-[#1A1A1A] transition-colors inline-flex items-center gap-2 touch-target">
                   Watch Demo
                 </a>
               </div>
@@ -309,7 +309,7 @@ export default function LandingPage() {
                     </li>
                   ))}
                 </ul>
-                <Link href="/login" className={`block text-center py-3 text-sm font-semibold transition-colors border ${
+                <Link href="/login" className={`block text-center py-3 text-sm font-semibold transition-colors border touch-target btn ${
                   plan.popular
                     ? 'bg-gold text-black border-gold hover:bg-gold/90'
                     : 'border-[#D4D4D4] text-[#1A1A1A] hover:border-[#1A1A1A]'
@@ -409,10 +409,10 @@ export default function LandingPage() {
                   14 days free. No card needed. Set up in 5 minutes. If it doesn&apos;t help, don&apos;t pay.
                 </p>
                 <div className="flex flex-wrap gap-3">
-                  <Link href="/login" className="bg-[#1A1A1A] text-white px-6 py-3.5 text-sm font-semibold hover:bg-[#333] transition-colors inline-flex items-center gap-2">
+                  <Link href="/login" className="bg-[#1A1A1A] text-white px-6 py-3.5 text-sm font-semibold hover:bg-[#333] transition-colors inline-flex items-center gap-2 touch-target">
                     <Scissors className="w-4 h-4" /> Start Free Trial
                   </Link>
-                  <Link href="/login" className="bg-white text-[#1A1A1A] px-6 py-3.5 text-sm font-semibold border border-[#D4D4D4] hover:border-[#1A1A1A] transition-colors inline-flex items-center gap-2">
+                  <Link href="/login" className="bg-white text-[#1A1A1A] px-6 py-3.5 text-sm font-semibold border border-[#D4D4D4] hover:border-[#1A1A1A] transition-colors inline-flex items-center gap-2 touch-target">
                     Book a Demo
                   </Link>
                 </div>
@@ -429,11 +429,11 @@ export default function LandingPage() {
           <p className="text-xs text-[#1A1A1A]/40">
             © 2025 BrBr. All Rights Reserved.
           </p>
-          <div className="flex items-center gap-6 text-xs text-[#1A1A1A]/40">
-            <a href="#" className="hover:text-[#1A1A1A] transition-colors">LinkedIn</a>
-            <a href="#" className="hover:text-[#1A1A1A] transition-colors">Instagram</a>
-            <a href="#" className="hover:text-[#1A1A1A] transition-colors">Facebook</a>
-            <a href="#" className="hover:text-[#1A1A1A] transition-colors">Twitter</a>
+          <div className="flex items-center gap-2 text-xs text-[#1A1A1A]/40">
+            <a href="#" className="hover:text-[#1A1A1A] transition-colors px-2 py-3">LinkedIn</a>
+            <a href="#" className="hover:text-[#1A1A1A] transition-colors px-2 py-3">Instagram</a>
+            <a href="#" className="hover:text-[#1A1A1A] transition-colors px-2 py-3">Facebook</a>
+            <a href="#" className="hover:text-[#1A1A1A] transition-colors px-2 py-3">Twitter</a>
           </div>
         </div>
       </footer>
