@@ -36,8 +36,8 @@ export function AppointmentsFeed({ appointments, loading }: AppointmentsFeedProp
   const { t } = useLanguage();
 
   return (
-    <Card className="calendar-card h-full bg-card border border-border/50 flex flex-col">
-      <CardHeader className="pb-2 shrink-0">
+    <Card className="calendar-card bg-card border border-border/50 sticky top-20">
+      <CardHeader className="pb-2">
         <CardTitle className="text-sm font-medium flex items-center gap-2">
           <div className="w-8 h-8 rounded-xl bg-gold/20 flex items-center justify-center">
             <Clock className="w-4 h-4 text-gold" />
@@ -45,7 +45,7 @@ export function AppointmentsFeed({ appointments, loading }: AppointmentsFeedProp
           {t('todayAppointments')} ({appointments.length})
         </CardTitle>
       </CardHeader>
-      <CardContent className="px-0 flex-1 min-h-0">
+      <CardContent className="px-0">
         {loading ? (
           <div className="space-y-3 px-6">
             {[1, 2, 3, 4].map((i) => (
@@ -57,7 +57,7 @@ export function AppointmentsFeed({ appointments, loading }: AppointmentsFeedProp
             No appointments today
           </p>
         ) : (
-          <ScrollArea className="h-full max-h-[calc(100vh-220px)]">
+          <ScrollArea className="max-h-[calc(100vh-200px)]">
             <div className="space-y-2 px-3 stagger-children">
               {appointments.map((apt) => {
                 const statusStyle = STATUS_STYLES[apt.status];
