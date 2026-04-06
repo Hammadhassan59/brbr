@@ -138,6 +138,13 @@
     box-shadow: none !important;
   }
 
+  /* Pointer cursor on all clickable elements */
+  a, button, [role="button"], [type="button"], [type="submit"], [type="reset"],
+  select, summary, label[for], [tabindex]:not([tabindex="-1"]),
+  [onclick], .cursor-pointer {
+    cursor: pointer !important;
+  }
+
   /* Exception: avatar circles */
   .rounded-full {
     border-radius: 9999px !important;
