@@ -8,6 +8,7 @@ import { supabase } from '@/lib/supabase';
 import { useLanguage } from '@/components/providers/language-provider';
 import { useAppStore } from '@/store/app-store';
 import { Button } from '@/components/ui/button';
+import { DataNotice } from '@/components/data-notice';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -289,6 +290,7 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex">
+      <DataNotice />
       {/* Left branding panel — hidden on mobile */}
       <div className="hidden lg:flex lg:w-1/2 bg-[#1A1A1A] text-white flex-col items-center justify-center p-12 relative overflow-hidden border-r border-[#2A2A2A]">
         <div className="relative z-10 text-center">

@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useState } from 'react';
 import { Scissors, ChevronDown, Star, Zap, Shield, Clock, Smartphone, Check } from 'lucide-react';
 import PublicLayout from '@/components/public-layout';
+import { DataNotice } from '@/components/data-notice';
 
 const PLANS = [
   {
@@ -118,6 +119,7 @@ export default function LandingPage() {
 
   return (
     <PublicLayout showHomeNav>
+      <DataNotice />
 
       {/* ── Hero ── */}
       <section className="bg-[#161616] border-b border-[#222]">
