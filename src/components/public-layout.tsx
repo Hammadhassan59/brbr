@@ -77,13 +77,13 @@ export default function PublicLayout({ children, showHomeNav = false }: PublicLa
               <h4 className="text-xs font-bold text-[#EFEFEF]/60 tracking-[0.12em] uppercase mb-4">Product</h4>
               <ul className="space-y-0.5">
                 <li>
-                  <Link href="/#features" className="text-sm text-[#EFEFEF]/40 hover:text-[#EFEFEF] transition-colors block py-1.5">Features</Link>
+                  <Link href="/#features" className="text-sm text-[#EFEFEF]/40 hover:text-[#EFEFEF] transition-colors block py-2.5">Features</Link>
                 </li>
                 <li>
-                  <Link href="/#pricing" className="text-sm text-[#EFEFEF]/40 hover:text-[#EFEFEF] transition-colors block py-1.5">Pricing</Link>
+                  <Link href="/#pricing" className="text-sm text-[#EFEFEF]/40 hover:text-[#EFEFEF] transition-colors block py-2.5">Pricing</Link>
                 </li>
                 <li>
-                  <Link href="/login" className="text-sm text-[#EFEFEF]/40 hover:text-[#EFEFEF] transition-colors block py-1.5">Login</Link>
+                  <Link href="/login" className="text-sm text-[#EFEFEF]/40 hover:text-[#EFEFEF] transition-colors block py-2.5">Login</Link>
                 </li>
               </ul>
             </div>
@@ -93,10 +93,10 @@ export default function PublicLayout({ children, showHomeNav = false }: PublicLa
               <h4 className="text-xs font-bold text-[#EFEFEF]/60 tracking-[0.12em] uppercase mb-4">Company</h4>
               <ul className="space-y-0.5">
                 <li>
-                  <Link href="/about" className="text-sm text-[#EFEFEF]/40 hover:text-[#EFEFEF] transition-colors block py-1.5">About</Link>
+                  <Link href="/about" className="text-sm text-[#EFEFEF]/40 hover:text-[#EFEFEF] transition-colors block py-2.5">About</Link>
                 </li>
                 <li>
-                  <Link href="/contact" className="text-sm text-[#EFEFEF]/40 hover:text-[#EFEFEF] transition-colors block py-1.5">Contact</Link>
+                  <Link href="/contact" className="text-sm text-[#EFEFEF]/40 hover:text-[#EFEFEF] transition-colors block py-2.5">Contact</Link>
                 </li>
               </ul>
             </div>
@@ -106,13 +106,13 @@ export default function PublicLayout({ children, showHomeNav = false }: PublicLa
               <h4 className="text-xs font-bold text-[#EFEFEF]/60 tracking-[0.12em] uppercase mb-4">Legal</h4>
               <ul className="space-y-0.5">
                 <li>
-                  <Link href="/privacy" className="text-sm text-[#EFEFEF]/40 hover:text-[#EFEFEF] transition-colors block py-1.5">Privacy Policy</Link>
+                  <Link href="/privacy" className="text-sm text-[#EFEFEF]/40 hover:text-[#EFEFEF] transition-colors block py-2.5">Privacy Policy</Link>
                 </li>
                 <li>
-                  <Link href="/terms" className="text-sm text-[#EFEFEF]/40 hover:text-[#EFEFEF] transition-colors block py-1.5">Terms of Service</Link>
+                  <Link href="/terms" className="text-sm text-[#EFEFEF]/40 hover:text-[#EFEFEF] transition-colors block py-2.5">Terms of Service</Link>
                 </li>
                 <li>
-                  <Link href="/refund" className="text-sm text-[#EFEFEF]/40 hover:text-[#EFEFEF] transition-colors block py-1.5">Refund Policy</Link>
+                  <Link href="/refund" className="text-sm text-[#EFEFEF]/40 hover:text-[#EFEFEF] transition-colors block py-2.5">Refund Policy</Link>
                 </li>
               </ul>
             </div>
@@ -126,10 +126,10 @@ export default function PublicLayout({ children, showHomeNav = false }: PublicLa
               &copy; {new Date().getFullYear()} BrBr. All Rights Reserved.
             </p>
             <div className="flex items-center gap-1 text-xs text-[#EFEFEF]/40">
-              <a href="#" className="hover:text-[#EFEFEF] transition-colors px-2 py-3">LinkedIn</a>
-              <a href="#" className="hover:text-[#EFEFEF] transition-colors px-2 py-3">Instagram</a>
-              <a href="#" className="hover:text-[#EFEFEF] transition-colors px-2 py-3">Facebook</a>
-              <a href="#" className="hover:text-[#EFEFEF] transition-colors px-2 py-3">Twitter</a>
+              <a href="#" className="hover:text-[#EFEFEF] transition-colors px-3 py-3.5">LinkedIn</a>
+              <a href="#" className="hover:text-[#EFEFEF] transition-colors px-3 py-3.5">Instagram</a>
+              <a href="#" className="hover:text-[#EFEFEF] transition-colors px-3 py-3.5">Facebook</a>
+              <a href="#" className="hover:text-[#EFEFEF] transition-colors px-3 py-3.5">Twitter</a>
             </div>
           </div>
         </div>
