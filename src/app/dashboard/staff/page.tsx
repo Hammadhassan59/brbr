@@ -126,7 +126,7 @@ export default function StaffListPage() {
               <TabsTrigger
                 key={tab.value}
                 value={tab.value}
-                className="text-xs px-3.5 py-2 font-medium transition-all duration-150 data-[state=active]:bg-[#1A1A1A] data-[state=active]:text-white data-[state=active]:border-[#1A1A1A] border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30"
+                className="text-xs px-3.5 py-2 font-medium transition-all duration-150 data-[state=active]:text-[#1A1A1A] data-[state=active]:border-[#1A1A1A] data-[state=active]:font-bold border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30"
               >
                 {tab.label}
               </TabsTrigger>
