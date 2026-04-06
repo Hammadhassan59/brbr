@@ -349,7 +349,7 @@ export default function LandingPage() {
       {/* ── FAQ ── */}
       <section id="faq" className="bg-[#FAFAFA] border-y border-[#E8E8E8] py-20 md:py-28">
         <div className="max-w-3xl mx-auto px-5">
-          <h2 className="font-heading text-2xl md:text-3xl font-bold text-[#1A1A1A] mb-8">
+          <h2 className="font-heading text-2xl md:text-3xl font-bold text-center text-[#1A1A1A] mb-8">
             FAQ
           </h2>
           <div className="border border-[#E8E8E8] divide-y divide-[#E8E8E8]">
