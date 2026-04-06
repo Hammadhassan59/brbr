@@ -24,10 +24,10 @@ export function QuickActions() {
                 className="flex items-center gap-2 justify-end animate-fade-up"
                 style={{ animationDelay: `${i * 60}ms` }}
               >
-                <span className="calendar-card bg-card border border-border/50 shadow-lg text-sm font-medium px-4 py-2 rounded-xl">
+                <span className="calendar-card bg-card border border-border text-sm font-medium px-4 py-2 rounded-xl">
                   {action.label}
                 </span>
-                <div className={`w-12 h-12 rounded-full ${action.color} text-white flex items-center justify-center shadow-lg`}>
+                <div className={`w-12 h-12 rounded-full ${action.color} text-white flex items-center justify-center border border-black/10`}>
                   <action.icon className="w-6 h-6" />
                 </div>
               </div>
@@ -39,7 +39,7 @@ export function QuickActions() {
       <Button
         onClick={() => setOpen(!open)}
         aria-label="Quick actions"
-        className={`w-16 h-16 rounded-full shadow-xl border-0 transition-all duration-200 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${
+        className={`w-16 h-16 rounded-full border border-black/10 transition-all duration-200 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${
           open ? 'bg-foreground text-background rotate-45' : 'bg-gold hover:bg-gold/90 text-black'
         }`}
       >

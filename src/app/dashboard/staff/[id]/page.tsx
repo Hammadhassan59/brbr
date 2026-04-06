@@ -160,9 +160,9 @@ export default function StaffProfilePage() {
         <Button variant="outline" size="sm" className="calendar-card transition-all duration-150" onClick={() => router.push(`/dashboard/staff/${staffId}/edit`)}><Edit className="w-4 h-4 mr-1" /> Edit</Button>
       </div>
 
-      <Card className="calendar-card shadow-sm border-border">
+      <Card className="calendar-card border-border">
         <CardContent className="p-6 flex items-center gap-4">
-          <div className="w-16 h-16 rounded-xl bg-gold/20 text-gold text-xl font-bold flex items-center justify-center shrink-0 shadow-sm">{staff.name.charAt(0)}</div>
+          <div className="w-16 h-16 rounded-xl bg-gold/20 text-gold text-xl font-bold flex items-center justify-center shrink-0">{staff.name.charAt(0)}</div>
           <div>
             <div className="flex items-center gap-2"><h2 className="font-heading text-xl font-bold">{staff.name}</h2><Badge variant="secondary" className={`text-xs ${ROLE_COLORS[staff.role] || ''}`}>{staff.role.replace('_', ' ')}</Badge></div>
             <p className="text-sm text-muted-foreground">{staff.phone || 'No phone'} · Joined {formatPKDate(staff.join_date)}</p>
@@ -172,16 +172,16 @@ export default function StaffProfilePage() {
 
       <Tabs defaultValue="schedule">
         <TabsList className="flex-wrap h-auto gap-1.5 bg-transparent">
-          <TabsTrigger value="schedule" className="calendar-card text-xs gap-1 transition-all duration-150 data-[state=active]:bg-gold data-[state=active]:text-black data-[state=active]:shadow-sm text-muted-foreground hover:text-foreground"><Clock className="w-3 h-3" /> Schedule</TabsTrigger>
-          <TabsTrigger value="attendance" className="calendar-card text-xs gap-1 transition-all duration-150 data-[state=active]:bg-gold data-[state=active]:text-black data-[state=active]:shadow-sm text-muted-foreground hover:text-foreground"><Calendar className="w-3 h-3" /> Attendance</TabsTrigger>
-          <TabsTrigger value="commission" className="calendar-card text-xs gap-1 transition-all duration-150 data-[state=active]:bg-gold data-[state=active]:text-black data-[state=active]:shadow-sm text-muted-foreground hover:text-foreground"><DollarSign className="w-3 h-3" /> Commission</TabsTrigger>
-          <TabsTrigger value="advances" className="calendar-card text-xs gap-1 transition-all duration-150 data-[state=active]:bg-gold data-[state=active]:text-black data-[state=active]:shadow-sm text-muted-foreground hover:text-foreground"><CreditCard className="w-3 h-3" /> Advances</TabsTrigger>
-          <TabsTrigger value="performance" className="calendar-card text-xs gap-1 transition-all duration-150 data-[state=active]:bg-gold data-[state=active]:text-black data-[state=active]:shadow-sm text-muted-foreground hover:text-foreground"><TrendingUp className="w-3 h-3" /> Performance</TabsTrigger>
+          <TabsTrigger value="schedule" className="calendar-card text-xs gap-1 transition-all duration-150 data-[state=active]:bg-gold data-[state=active]:text-black data-[state=active]:text-muted-foreground hover:text-foreground"><Clock className="w-3 h-3" /> Schedule</TabsTrigger>
+          <TabsTrigger value="attendance" className="calendar-card text-xs gap-1 transition-all duration-150 data-[state=active]:bg-gold data-[state=active]:text-black data-[state=active]:text-muted-foreground hover:text-foreground"><Calendar className="w-3 h-3" /> Attendance</TabsTrigger>
+          <TabsTrigger value="commission" className="calendar-card text-xs gap-1 transition-all duration-150 data-[state=active]:bg-gold data-[state=active]:text-black data-[state=active]:text-muted-foreground hover:text-foreground"><DollarSign className="w-3 h-3" /> Commission</TabsTrigger>
+          <TabsTrigger value="advances" className="calendar-card text-xs gap-1 transition-all duration-150 data-[state=active]:bg-gold data-[state=active]:text-black data-[state=active]:text-muted-foreground hover:text-foreground"><CreditCard className="w-3 h-3" /> Advances</TabsTrigger>
+          <TabsTrigger value="performance" className="calendar-card text-xs gap-1 transition-all duration-150 data-[state=active]:bg-gold data-[state=active]:text-black data-[state=active]:text-muted-foreground hover:text-foreground"><TrendingUp className="w-3 h-3" /> Performance</TabsTrigger>
         </TabsList>
 
         {/* Schedule */}
         <TabsContent value="schedule" className="mt-4">
-          <Card className="calendar-card shadow-sm border-border">
+          <Card className="calendar-card border-border">
             <CardHeader className="pb-2"><CardTitle className="text-sm">Today&apos;s Schedule ({todayAppointments.filter((a) => a.status === 'done').length}/{todayAppointments.length} done)</CardTitle></CardHeader>
             <CardContent>
               {todayAppointments.length === 0 ? <p className="text-center text-muted-foreground text-sm py-6">No appointments</p> : (
@@ -223,7 +223,7 @@ export default function StaffProfilePage() {
           </div>
 
           {/* Calendar grid */}
-          <Card className="calendar-card shadow-sm border-border"><CardContent className="p-3">
+          <Card className="calendar-card border-border"><CardContent className="p-3">
             <div className="grid grid-cols-7 gap-1">
               {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((d, i) => <div key={i} className="text-center text-[10px] text-muted-foreground font-medium py-1">{d}</div>)}
               {/* Offset for first day */}
@@ -278,11 +278,11 @@ export default function StaffProfilePage() {
           {commissionData ? (
             <>
               <div className="grid grid-cols-3 gap-3">
-                <Card className="calendar-card shadow-sm border-border"><CardContent className="p-3 text-center"><p className="text-lg font-bold">{commissionData.services_count}</p><p className="text-[10px] text-muted-foreground">Services</p></CardContent></Card>
-                <Card className="calendar-card shadow-sm border-border"><CardContent className="p-3 text-center"><p className="text-lg font-bold">{formatPKR(commissionData.total_revenue)}</p><p className="text-[10px] text-muted-foreground">Revenue</p></CardContent></Card>
-                <Card className="calendar-card shadow-sm border-border"><CardContent className="p-3 text-center"><p className="text-lg font-bold">{formatPKR(commissionData.commission_earned)}</p><p className="text-[10px] text-muted-foreground">Commission</p></CardContent></Card>
+                <Card className="calendar-card border-border"><CardContent className="p-3 text-center"><p className="text-lg font-bold">{commissionData.services_count}</p><p className="text-[10px] text-muted-foreground">Services</p></CardContent></Card>
+                <Card className="calendar-card border-border"><CardContent className="p-3 text-center"><p className="text-lg font-bold">{formatPKR(commissionData.total_revenue)}</p><p className="text-[10px] text-muted-foreground">Revenue</p></CardContent></Card>
+                <Card className="calendar-card border-border"><CardContent className="p-3 text-center"><p className="text-lg font-bold">{formatPKR(commissionData.commission_earned)}</p><p className="text-[10px] text-muted-foreground">Commission</p></CardContent></Card>
               </div>
-              <Card className="calendar-card shadow-sm border-border"><CardContent className="p-4 space-y-3">
+              <Card className="calendar-card border-border"><CardContent className="p-4 space-y-3">
                 <h3 className="text-sm font-medium">Monthly Summary</h3>
                 <div className="grid grid-cols-2 gap-2 text-sm">
                   <div className="flex justify-between p-2 bg-secondary/50 rounded"><span className="text-muted-foreground">Tips</span><span className="font-medium">{formatPKR(commissionData.tips_total)}</span></div>
@@ -291,7 +291,7 @@ export default function StaffProfilePage() {
                   <div className="flex justify-between p-2 bg-gold/10 border border-gold/20 rounded"><span className="text-muted-foreground">Net Payable</span><span className="font-bold">{formatPKR(commissionData.net_payable)}</span></div>
                 </div>
               </CardContent></Card>
-              <Card className="calendar-card shadow-sm border-border"><CardContent className="p-4 space-y-2">
+              <Card className="calendar-card border-border"><CardContent className="p-4 space-y-2">
                 <h3 className="text-sm font-medium">Attendance This Month</h3>
                 <div className="grid grid-cols-4 gap-2 text-center text-sm">
                   <div><p className="text-lg font-bold text-green-600">{attPresent}</p><p className="text-[10px] text-muted-foreground">Present</p></div>
@@ -302,7 +302,7 @@ export default function StaffProfilePage() {
               </CardContent></Card>
             </>
           ) : (
-            <Card className="calendar-card shadow-sm border-border"><CardContent className="p-4">
+            <Card className="calendar-card border-border"><CardContent className="p-4">
               <p className="text-center text-muted-foreground text-sm py-8">No performance data available for this month.</p>
             </CardContent></Card>
           )}

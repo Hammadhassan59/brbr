@@ -218,7 +218,7 @@ export default function ProfitLossPage() {
         </div>
       )}
 
-      <div className="calendar-card bg-card border border-border shadow-sm p-4 flex items-center gap-3">
+      <div className="calendar-card bg-card border border-border p-4 flex items-center gap-3">
         <h2 className="font-heading text-xl font-bold">Profit & Loss</h2>
         <Select value={String(month)} onValueChange={(v) => { if (v) setMonth(Number(v)); }}>
           <SelectTrigger className="calendar-card w-[120px] h-8 text-xs"><SelectValue /></SelectTrigger>
@@ -239,19 +239,19 @@ export default function ProfitLossPage() {
         <>
           {/* KPI Cards */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-            <Card className="calendar-card shadow-sm border-border">
+            <Card className="calendar-card border-border">
               <CardContent className="p-4 text-center">
                 <p className="text-xs text-muted-foreground uppercase tracking-wider">Total Revenue</p>
                 <p className="text-xl font-bold text-green-600">{formatPKR(totalRevenue)}</p>
               </CardContent>
             </Card>
-            <Card className="calendar-card shadow-sm border-border">
+            <Card className="calendar-card border-border">
               <CardContent className="p-4 text-center">
                 <p className="text-xs text-muted-foreground uppercase tracking-wider">Total Costs</p>
                 <p className="text-xl font-bold text-red-600">{formatPKR(Math.round(totalCosts))}</p>
               </CardContent>
             </Card>
-            <Card className={`calendar-card shadow-sm border-border ${netProfit >= 0 ? 'border-green-500/25' : 'border-red-500/25'}`}>
+            <Card className={`calendar-card border-border ${netProfit >= 0 ? 'border-green-500/25' : 'border-red-500/25'}`}>
               <CardContent className="p-4 text-center">
                 <p className="text-xs text-muted-foreground uppercase tracking-wider">Net Profit</p>
                 <div className="flex items-center justify-center gap-1">
@@ -260,7 +260,7 @@ export default function ProfitLossPage() {
                 </div>
               </CardContent>
             </Card>
-            <Card className="calendar-card shadow-sm border-border">
+            <Card className="calendar-card border-border">
               <CardContent className="p-4 text-center">
                 <p className="text-xs text-muted-foreground uppercase tracking-wider">Profit Margin</p>
                 <p className={`text-xl font-bold ${profitMargin >= 0 ? 'text-green-600' : 'text-red-600'}`}>{profitMargin.toFixed(1)}%</p>
@@ -269,7 +269,7 @@ export default function ProfitLossPage() {
           </div>
 
           {/* Weekly Trend Chart */}
-          <Card className="calendar-card shadow-sm border-border">
+          <Card className="calendar-card border-border">
             <CardHeader className="pb-2"><CardTitle className="text-sm">Weekly Trend — {monthName} {year}</CardTitle></CardHeader>
             <CardContent>
               <ResponsiveContainer width="100%" height={220}>
@@ -287,7 +287,7 @@ export default function ProfitLossPage() {
           </Card>
 
           {/* P&L Statement Table */}
-          <Card className="calendar-card shadow-sm border-border">
+          <Card className="calendar-card border-border">
             <CardHeader className="pb-2"><CardTitle className="text-sm">Statement — {monthName} {year}</CardTitle></CardHeader>
             <CardContent className="px-0">
               <Table>

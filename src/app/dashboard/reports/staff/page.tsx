@@ -64,7 +64,7 @@ export default function StaffReportPage() {
         <span className="text-foreground font-medium">Staff</span>
       </div>
 
-      <div className="calendar-card bg-card border border-border shadow-sm p-4 flex flex-wrap items-center gap-3">
+      <div className="calendar-card bg-card border border-border p-4 flex flex-wrap items-center gap-3">
         <h2 className="font-heading text-xl font-bold">Staff Report</h2>
         <Select value={selectedStaffId} onValueChange={(v) => { if (v) setSelectedStaffId(v); }}>
           <SelectTrigger className="calendar-card w-[180px] h-8 text-xs"><SelectValue placeholder="Select staff" /></SelectTrigger>
@@ -90,12 +90,12 @@ export default function StaffReportPage() {
               { label: 'Commission', value: formatPKR(commData.commission_earned) },
               { label: 'Tips', value: formatPKR(commData.tips_total) },
             ].map((c) => (
-              <Card key={c.label} className="calendar-card shadow-sm border-border"><CardContent className="p-4 text-center"><p className="text-xs text-muted-foreground uppercase tracking-wider">{c.label}</p><p className="text-xl font-bold">{c.value}</p></CardContent></Card>
+              <Card key={c.label} className="calendar-card border-border"><CardContent className="p-4 text-center"><p className="text-xs text-muted-foreground uppercase tracking-wider">{c.label}</p><p className="text-xl font-bold">{c.value}</p></CardContent></Card>
             ))}
           </div>
 
           {/* Net payable */}
-          <Card className="calendar-card shadow-sm border-border border-gold/30 bg-gold/5">
+          <Card className="calendar-card border-border border-gold/30 bg-gold/5">
             <CardContent className="p-4">
               <Table>
                 <TableBody>
@@ -111,7 +111,7 @@ export default function StaffReportPage() {
           </Card>
 
           {/* Attendance summary */}
-          <Card className="calendar-card shadow-sm border-border">
+          <Card className="calendar-card border-border">
             <CardHeader className="pb-2"><CardTitle className="text-sm">Attendance</CardTitle></CardHeader>
             <CardContent>
               <div className="grid grid-cols-4 gap-3 text-center">

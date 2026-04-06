@@ -97,7 +97,7 @@ export default function OrdersPage() {
         <span className="text-foreground font-medium">Orders</span>
       </div>
 
-      <div className="calendar-card bg-card border border-border shadow-sm p-4 flex items-center justify-between">
+      <div className="calendar-card bg-card border border-border p-4 flex items-center justify-between">
         <h2 className="font-heading text-xl font-bold">Purchase Orders</h2>
         <Button onClick={() => setShowForm(true)} className="calendar-card bg-gold hover:bg-gold/90 text-black font-bold" size="sm"><Plus className="w-4 h-4 mr-1" /> New Order</Button>
       </div>
@@ -109,7 +109,7 @@ export default function OrdersPage() {
       ) : (
         <div className="space-y-3">
           {orders.map((o) => (
-            <Card key={o.id} className="calendar-card shadow-sm border-border">
+            <Card key={o.id} className="calendar-card border-border">
               <CardContent className="p-4">
                 <div className="flex items-start justify-between mb-2">
                   <div>

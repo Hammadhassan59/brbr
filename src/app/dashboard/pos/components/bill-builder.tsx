@@ -104,7 +104,7 @@ export function BillBuilder({
 
   return (
     <div className="flex h-full gap-0">
-      <div className="flex-1 flex flex-col min-w-0 bg-background border-r border-border/30">
+      <div className="flex-1 flex flex-col min-w-0 bg-background border-r border-border">
         <div className="px-3 pt-2 pb-1">
           <Tabs value={svcCategory} onValueChange={setSvcCategory}>
             <TabsList className="flex-wrap h-auto gap-1 bg-transparent p-0">
@@ -135,7 +135,7 @@ export function BillBuilder({
               <button
                 key={svc.id}
                 onClick={() => onAddService(svc)}
-                className={`calendar-card aspect-square flex flex-col items-center justify-center text-center bg-card border border-border/30 p-2.5 hover:border-gold/30 hover:bg-gold/5 active:scale-[0.97] transition-all duration-150 touch-target border-t-[3px] ${CATEGORY_COLORS[svc.category] || 'border-t-gray-400'}`}
+                className={`calendar-card aspect-square flex flex-col items-center justify-center text-center bg-card border border-border p-2.5 hover:border-gold/30 hover:bg-gold/5 active:scale-[0.97] transition-all duration-150 touch-target border-t-[3px] ${CATEGORY_COLORS[svc.category] || 'border-t-gray-400'}`}
               >
                 <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">{svc.category}</p>
                 <p className="text-sm font-semibold leading-tight">{svc.name}</p>
@@ -160,7 +160,7 @@ export function BillBuilder({
                 </div>
                 <div className="space-y-1 max-h-[120px] overflow-y-auto" style={{ scrollbarWidth: 'none' }}>
                   {filteredProducts.map((prod) => (
-                    <button key={prod.id} onClick={() => onAddProduct(prod)} className="calendar-card w-full text-left p-2 bg-card border border-border/30 text-xs hover:border-gold/30 flex items-center justify-between transition-all duration-150">
+                    <button key={prod.id} onClick={() => onAddProduct(prod)} className="calendar-card w-full text-left p-2 bg-card border border-border text-xs hover:border-gold/30 flex items-center justify-between transition-all duration-150">
                       <div>
                         <p className="font-medium">{prod.name}</p>
                         <p className="text-muted-foreground">{prod.brand} · Stock: {prod.current_stock}</p>
@@ -187,7 +187,7 @@ export function BillBuilder({
                   {packages.map((pkg) => {
                     const svcList = (pkg.services as unknown as { serviceName: string; quantity: number }[]) || [];
                     return (
-                      <button key={pkg.id} onClick={() => onAddPackage(pkg)} className="calendar-card w-full text-left p-3 bg-card border border-border/30 text-xs hover:border-gold/30 transition-all duration-150">
+                      <button key={pkg.id} onClick={() => onAddPackage(pkg)} className="calendar-card w-full text-left p-3 bg-card border border-border text-xs hover:border-gold/30 transition-all duration-150">
                         <div className="flex items-center justify-between">
                           <p className="font-medium">{pkg.name}</p>
                           <span className="font-bold text-gold">{formatPKR(pkg.price)}</span>
@@ -219,7 +219,7 @@ export function BillBuilder({
             </div>
           ) : (
             items.map((item) => (
-              <div key={item.id} className="calendar-card bg-card border border-border/30 p-3 flex items-center gap-2 text-sm group transition-all duration-150">
+              <div key={item.id} className="calendar-card bg-card border border-border p-3 flex items-center gap-2 text-sm group transition-all duration-150">
                 <div className="flex-1 min-w-0">
                   <p className="font-medium truncate">{item.name}</p>
                   {item.stylistName && <p className="text-[10px] text-muted-foreground">{item.stylistName}</p>}
@@ -227,11 +227,11 @@ export function BillBuilder({
 
                 {item.type === 'product' && (
                   <div className="flex items-center gap-1">
-                    <button onClick={() => onUpdateItemQty(item.id, Math.max(1, item.quantity - 1))} className="w-6 h-6 calendar-card bg-background border border-border/30 flex items-center justify-center transition-all duration-150">
+                    <button onClick={() => onUpdateItemQty(item.id, Math.max(1, item.quantity - 1))} className="w-6 h-6 calendar-card bg-background border border-border flex items-center justify-center transition-all duration-150">
                       <Minus className="w-3 h-3" />
                     </button>
                     <span className="text-xs w-5 text-center">{item.quantity}</span>
-                    <button onClick={() => onUpdateItemQty(item.id, item.quantity + 1)} className="w-6 h-6 calendar-card bg-background border border-border/30 flex items-center justify-center transition-all duration-150">
+                    <button onClick={() => onUpdateItemQty(item.id, item.quantity + 1)} className="w-6 h-6 calendar-card bg-background border border-border flex items-center justify-center transition-all duration-150">
                       <Plus className="w-3 h-3" />
                     </button>
                   </div>

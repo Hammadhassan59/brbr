@@ -164,12 +164,12 @@ export default function DailyReportPage() {
         <span className="text-foreground font-medium">Daily</span>
       </nav>
 
-      <div className="no-print calendar-card bg-card border border-border shadow-sm p-4 space-y-3">
+      <div className="no-print calendar-card bg-card border border-border p-4 space-y-3">
         {canSeeAllBranches && (
           <div className="flex flex-wrap gap-1.5">
             <button
               onClick={() => setBranchScope('current')}
-              className={`calendar-card px-3 py-1.5 text-xs font-medium transition-all ${branchScope === 'current' ? 'bg-gold text-black shadow-sm' : 'bg-secondary/50 border border-border text-muted-foreground hover:bg-secondary/80'}`}
+              className={`calendar-card px-3 py-1.5 text-xs font-medium transition-all ${branchScope === 'current' ? 'bg-gold text-black' : 'bg-secondary/50 border border-border text-muted-foreground hover:bg-secondary/80'}`}
             >
               {currentBranch?.name || 'Current'}
             </button>
@@ -177,14 +177,14 @@ export default function DailyReportPage() {
               <button
                 key={b.id}
                 onClick={() => setBranchScope(b.id)}
-                className={`calendar-card px-3 py-1.5 text-xs font-medium transition-all ${branchScope === b.id ? 'bg-gold text-black shadow-sm' : 'bg-secondary/50 border border-border text-muted-foreground hover:bg-secondary/80'}`}
+                className={`calendar-card px-3 py-1.5 text-xs font-medium transition-all ${branchScope === b.id ? 'bg-gold text-black' : 'bg-secondary/50 border border-border text-muted-foreground hover:bg-secondary/80'}`}
               >
                 {b.name}
               </button>
             ))}
             <button
               onClick={() => setBranchScope('all')}
-              className={`calendar-card px-3 py-1.5 text-xs font-medium transition-all ${branchScope === 'all' ? 'bg-gold text-black shadow-sm' : 'bg-secondary/50 border border-border text-muted-foreground hover:bg-secondary/80'}`}
+              className={`calendar-card px-3 py-1.5 text-xs font-medium transition-all ${branchScope === 'all' ? 'bg-gold text-black' : 'bg-secondary/50 border border-border text-muted-foreground hover:bg-secondary/80'}`}
             >
               All Branches
             </button>
@@ -202,7 +202,7 @@ export default function DailyReportPage() {
       </div>
 
       {/* Cash Drawer */}
-      <Card className="calendar-card shadow-sm border-border border-green-500/20">
+      <Card className="calendar-card border-border border-green-500/20">
         <CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2"><Wallet className="w-4 h-4" /> Cash Drawer</CardTitle></CardHeader>
         <CardContent>
           {loading ? <div className="h-20 bg-muted animate-pulse calendar-card" /> : !drawer ? (
@@ -232,13 +232,13 @@ export default function DailyReportPage() {
 
       {/* Sales summary */}
       <div className="grid grid-cols-3 gap-3">
-        <Card className="calendar-card shadow-sm border-border"><CardContent className="p-4 text-center"><p className="text-xs text-muted-foreground uppercase tracking-wider">Bills</p><p className="text-2xl font-bold">{summary?.total_bills || 0}</p></CardContent></Card>
-        <Card className="calendar-card shadow-sm border-border"><CardContent className="p-4 text-center"><p className="text-xs text-muted-foreground uppercase tracking-wider">Revenue</p><p className="text-2xl font-bold">{formatPKR(summary?.total_revenue || 0)}</p></CardContent></Card>
-        <Card className="calendar-card shadow-sm border-border"><CardContent className="p-4 text-center"><p className="text-xs text-muted-foreground uppercase tracking-wider">Avg Bill</p><p className="text-2xl font-bold">{formatPKR(Math.round(avgBill))}</p></CardContent></Card>
+        <Card className="calendar-card border-border"><CardContent className="p-4 text-center"><p className="text-xs text-muted-foreground uppercase tracking-wider">Bills</p><p className="text-2xl font-bold">{summary?.total_bills || 0}</p></CardContent></Card>
+        <Card className="calendar-card border-border"><CardContent className="p-4 text-center"><p className="text-xs text-muted-foreground uppercase tracking-wider">Revenue</p><p className="text-2xl font-bold">{formatPKR(summary?.total_revenue || 0)}</p></CardContent></Card>
+        <Card className="calendar-card border-border"><CardContent className="p-4 text-center"><p className="text-xs text-muted-foreground uppercase tracking-wider">Avg Bill</p><p className="text-2xl font-bold">{formatPKR(Math.round(avgBill))}</p></CardContent></Card>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <Card className="calendar-card shadow-sm border-border">
+        <Card className="calendar-card border-border">
           <CardHeader className="pb-2"><CardTitle className="text-sm">Payment Breakdown</CardTitle></CardHeader>
           <CardContent>
             {paymentData.length === 0 ? <p className="text-center text-muted-foreground text-sm py-6">No data</p> : (
@@ -251,7 +251,7 @@ export default function DailyReportPage() {
           </CardContent>
         </Card>
 
-        <Card className="calendar-card shadow-sm border-border">
+        <Card className="calendar-card border-border">
           <CardHeader className="pb-2"><CardTitle className="text-sm">Services Today</CardTitle></CardHeader>
           <CardContent>
             {serviceData.length === 0 ? <p className="text-center text-muted-foreground text-sm py-6">No data</p> : (
@@ -271,7 +271,7 @@ export default function DailyReportPage() {
 
       {/* Staff performance */}
       {summary?.staff_performance && summary.staff_performance.length > 0 && (
-        <Card className="calendar-card shadow-sm border-border">
+        <Card className="calendar-card border-border">
           <CardHeader className="pb-2"><CardTitle className="text-sm">Staff Performance</CardTitle></CardHeader>
           <CardContent className="px-0">
             <Table>
@@ -290,7 +290,7 @@ export default function DailyReportPage() {
 
       {/* Expenses */}
       {expenses.length > 0 && (
-        <Card className="calendar-card shadow-sm border-border">
+        <Card className="calendar-card border-border">
           <CardHeader className="pb-2"><CardTitle className="text-sm">Expenses ({formatPKR(totalExpenses)})</CardTitle></CardHeader>
           <CardContent>
             <div className="space-y-1">
@@ -307,7 +307,7 @@ export default function DailyReportPage() {
 
       {/* Bills list */}
       {paidBills.length > 0 && (
-        <Card className="calendar-card shadow-sm border-border">
+        <Card className="calendar-card border-border">
           <CardHeader className="pb-2"><CardTitle className="text-sm">All Bills ({paidBills.length})</CardTitle></CardHeader>
           <CardContent className="px-0">
             <Table>

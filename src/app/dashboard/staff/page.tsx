@@ -114,7 +114,7 @@ export default function StaffListPage() {
 
   return (
     <div className="space-y-6">
-      <div className="calendar-card bg-card border border-border shadow-sm p-4 flex flex-wrap items-center gap-3">
+      <div className="calendar-card bg-card border border-border p-4 flex flex-wrap items-center gap-3">
         <Tabs value={roleFilter} onValueChange={setRoleFilter}>
           <TabsList className="h-auto gap-1 bg-transparent p-0">
             {[
@@ -126,7 +126,7 @@ export default function StaffListPage() {
               <TabsTrigger
                 key={tab.value}
                 value={tab.value}
-                className="text-xs calendar-card transition-all duration-150 data-[state=active]:bg-gold data-[state=active]:text-black data-[state=active]:shadow-sm bg-secondary/50 border border-border text-muted-foreground hover:border-gold/30"
+                className="text-xs calendar-card transition-all duration-150 data-[state=active]:bg-gold data-[state=active]:text-black data-[state=active]:bg-secondary/50 border border-border text-muted-foreground hover:border-gold/30"
               >
                 {tab.label}
               </TabsTrigger>
@@ -161,7 +161,7 @@ export default function StaffListPage() {
           {[1, 2, 3, 4].map((i) => <div key={i} className="calendar-card h-32 bg-muted animate-pulse" />)}
         </div>
       ) : filteredStaff.length === 0 ? (
-        <div className="calendar-card bg-card shadow-sm border border-border p-12">
+        <div className="calendar-card bg-card border border-border p-12">
           <p className="text-center text-muted-foreground">
             {staff.length === 0 ? 'No staff members yet' : 'No staff match your filters'}
           </p>
@@ -170,9 +170,9 @@ export default function StaffListPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {filteredStaff.map((s) => (
             <Link key={s.id} href={`/dashboard/staff/${s.id}`}>
-              <div className="calendar-card bg-card border border-border shadow-sm hover:shadow-lg hover:border-gold/40 hover:-translate-y-0.5 p-5 transition-all duration-200">
+              <div className="calendar-card bg-card border border-border hover:shadow-lg hover:border-gold/40 hover:-translate-y-0.5 p-5 transition-all duration-200">
                 <div className="flex items-center gap-4">
-                  <div className="w-14 h-14 rounded-xl bg-gold/20 text-gold font-bold flex items-center justify-center text-xl shrink-0 shadow-sm">
+                  <div className="w-14 h-14 rounded-xl bg-gold/20 text-gold font-bold flex items-center justify-center text-xl shrink-0">
                     {s.name.charAt(0)}
                   </div>
                   <div className="flex-1 min-w-0">

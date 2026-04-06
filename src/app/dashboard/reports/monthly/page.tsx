@@ -125,12 +125,12 @@ export default function MonthlyReportPage() {
         <span className="text-foreground font-medium">Monthly</span>
       </nav>
 
-      <div className="calendar-card bg-card border border-border shadow-sm p-4 space-y-3">
+      <div className="calendar-card bg-card border border-border p-4 space-y-3">
         {canSeeAllBranches && (
           <div className="flex flex-wrap gap-1.5">
             <button
               onClick={() => setBranchScope('current')}
-              className={`calendar-card px-3 py-1.5 text-xs font-medium transition-all ${branchScope === 'current' ? 'bg-gold text-black shadow-sm' : 'bg-secondary/50 border border-border text-muted-foreground hover:bg-secondary/80'}`}
+              className={`calendar-card px-3 py-1.5 text-xs font-medium transition-all ${branchScope === 'current' ? 'bg-gold text-black' : 'bg-secondary/50 border border-border text-muted-foreground hover:bg-secondary/80'}`}
             >
               {currentBranch?.name || 'Current'}
             </button>
@@ -138,14 +138,14 @@ export default function MonthlyReportPage() {
               <button
                 key={b.id}
                 onClick={() => setBranchScope(b.id)}
-                className={`calendar-card px-3 py-1.5 text-xs font-medium transition-all ${branchScope === b.id ? 'bg-gold text-black shadow-sm' : 'bg-secondary/50 border border-border text-muted-foreground hover:bg-secondary/80'}`}
+                className={`calendar-card px-3 py-1.5 text-xs font-medium transition-all ${branchScope === b.id ? 'bg-gold text-black' : 'bg-secondary/50 border border-border text-muted-foreground hover:bg-secondary/80'}`}
               >
                 {b.name}
               </button>
             ))}
             <button
               onClick={() => setBranchScope('all')}
-              className={`calendar-card px-3 py-1.5 text-xs font-medium transition-all ${branchScope === 'all' ? 'bg-gold text-black shadow-sm' : 'bg-secondary/50 border border-border text-muted-foreground hover:bg-secondary/80'}`}
+              className={`calendar-card px-3 py-1.5 text-xs font-medium transition-all ${branchScope === 'all' ? 'bg-gold text-black' : 'bg-secondary/50 border border-border text-muted-foreground hover:bg-secondary/80'}`}
             >
               All Branches
             </button>
@@ -173,14 +173,14 @@ export default function MonthlyReportPage() {
           { label: 'Avg Daily Revenue', value: formatPKR(Math.round(avgDaily)) },
           { label: 'Avg Bill Size', value: formatPKR(bills.length > 0 ? Math.round(totalRevenue / bills.length) : 0) },
         ].map((c) => (
-          <Card key={c.label} className="calendar-card shadow-sm border-border"><CardContent className="p-4 text-center">
+          <Card key={c.label} className="calendar-card border-border"><CardContent className="p-4 text-center">
             {loading ? <div className="h-12 bg-muted animate-pulse calendar-card" /> : (<><p className="text-xs text-muted-foreground uppercase tracking-wider">{c.label}</p><p className="text-xl font-bold">{c.value}</p></>)}
           </CardContent></Card>
         ))}
       </div>
 
       {/* Revenue trend */}
-      <Card className="calendar-card shadow-sm border-border">
+      <Card className="calendar-card border-border">
         <CardHeader className="pb-2"><CardTitle className="text-sm">Revenue Trend — This Month vs Last Month</CardTitle></CardHeader>
         <CardContent>
           {loading ? <div className="h-[250px] bg-muted animate-pulse calendar-card" /> : (
@@ -200,7 +200,7 @@ export default function MonthlyReportPage() {
       </Card>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <Card className="calendar-card shadow-sm border-border">
+        <Card className="calendar-card border-border">
           <CardHeader className="pb-2"><CardTitle className="text-sm">Payment Methods</CardTitle></CardHeader>
           <CardContent>
             {paymentData.length === 0 ? <p className="text-center text-muted-foreground text-sm py-6">No data</p> : (
@@ -213,7 +213,7 @@ export default function MonthlyReportPage() {
           </CardContent>
         </Card>
 
-        <Card className="calendar-card shadow-sm border-border">
+        <Card className="calendar-card border-border">
           <CardHeader className="pb-2"><CardTitle className="text-sm">Staff Leaderboard</CardTitle></CardHeader>
           <CardContent className="px-0">
             {staffLeaderboard.length === 0 ? <p className="text-center text-muted-foreground text-sm py-6">No data</p> : (

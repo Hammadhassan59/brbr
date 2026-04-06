@@ -279,7 +279,7 @@ export function NewAppointmentModal({
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input value={clientSearch} onChange={(e) => setClientSearch(e.target.value)} placeholder="Search by name or phone..." className="pl-9 h-10 calendar-card" />
                 {clientSearch.length >= 2 && (
-                  <div className="absolute z-20 top-full left-0 right-0 mt-1 bg-secondary border border-border shadow-lg max-h-48 overflow-y-auto calendar-card">
+                  <div className="absolute z-20 top-full left-0 right-0 mt-1 bg-secondary border border-border max-h-48 overflow-y-auto calendar-card">
                     {clientResults.map((client) => (
                       <button key={client.id} onClick={() => { setSelectedClient(client); setClientSearch(''); setClientResults([]); }}
                         className="w-full text-left px-3 py-2 hover:bg-secondary text-sm flex items-center gap-2 border-b last:border-0">

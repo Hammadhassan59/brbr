@@ -95,7 +95,7 @@ export function StaffForm({ staff, onSaved }: StaffFormProps) {
     <div className="max-w-2xl space-y-6">
       <h2 className="font-heading text-xl font-bold">{isEditing ? 'Edit Staff Member' : 'Add Staff Member'}</h2>
 
-      <div className="calendar-card bg-card border border-border shadow-sm p-5 space-y-4">
+      <div className="calendar-card bg-card border border-border p-5 space-y-4">
         <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Personal Info</p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
@@ -137,7 +137,7 @@ export function StaffForm({ staff, onSaved }: StaffFormProps) {
       </div>
       </div>
 
-      <div className="calendar-card bg-card border border-border shadow-sm p-5 space-y-4">
+      <div className="calendar-card bg-card border border-border p-5 space-y-4">
         <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Salary & Commission</p>
         <div>
           <Label>Base Salary (Rs/month)</Label>
@@ -162,7 +162,7 @@ export function StaffForm({ staff, onSaved }: StaffFormProps) {
       </div>
 
       {isEditing && (
-        <div className="calendar-card bg-card border border-border shadow-sm p-5 space-y-3">
+        <div className="calendar-card bg-card border border-border p-5 space-y-3">
           <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Status</p>
           <div className="flex items-center justify-between p-4 calendar-card bg-secondary/50 border border-border">
             <div>

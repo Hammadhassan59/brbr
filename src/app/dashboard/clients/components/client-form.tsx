@@ -105,7 +105,7 @@ export function ClientForm({ client, onSaved }: ClientFormProps) {
         {isEditing ? 'Edit Client' : 'Add New Client'}
       </h2>
 
-      <section className="calendar-card bg-card p-5 border border-border/30 space-y-4">
+      <section className="calendar-card bg-card p-5 border border-border space-y-4">
         <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-4">Personal Info</h3>
 
         <div>
@@ -140,7 +140,7 @@ export function ClientForm({ client, onSaved }: ClientFormProps) {
                 key={g.value}
                 onClick={() => setGender(g.value)}
                 className={`flex-1 py-2.5 calendar-card border text-sm font-medium transition-all duration-150 ${
-                  gender === g.value ? 'border-gold bg-gold/10' : 'border-border/30 hover:border-gold/40'
+                  gender === g.value ? 'border-gold bg-gold/10' : 'border-border hover:border-gold/40'
                 }`}
               >
                 {g.label}
@@ -151,7 +151,7 @@ export function ClientForm({ client, onSaved }: ClientFormProps) {
 
       </section>
 
-      <section className="calendar-card bg-card p-5 border border-border/30 space-y-4">
+      <section className="calendar-card bg-card p-5 border border-border space-y-4">
         <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-4">Preferences & Notes</h3>
 
         <div>
@@ -179,7 +179,7 @@ export function ClientForm({ client, onSaved }: ClientFormProps) {
         </div>
       </section>
 
-      <section className="calendar-card bg-card p-5 border border-border/30 space-y-4">
+      <section className="calendar-card bg-card p-5 border border-border space-y-4">
         <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-4">Settings</h3>
 
         <div className="calendar-card bg-background/50 p-4 border border-border/20 flex items-center justify-between">

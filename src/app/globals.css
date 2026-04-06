@@ -135,6 +135,7 @@
   /* Force square corners everywhere */
   * {
     border-radius: 0 !important;
+    box-shadow: none !important;
   }
 
   /* Exception: avatar circles */

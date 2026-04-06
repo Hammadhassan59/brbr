@@ -383,7 +383,7 @@ export default function DashboardPage() {
   if (!loading && !salon) {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-center">
-        <div className="calendar-card bg-card border border-border/50 p-8 flex flex-col items-center gap-4">
+        <div className="calendar-card bg-card border border-border p-8 flex flex-col items-center gap-4">
           <div className="w-14 h-14 rounded-xl bg-gold/10 flex items-center justify-center">
             <Store className="w-7 h-7 text-gold" />
           </div>
@@ -406,7 +406,7 @@ export default function DashboardPage() {
           </p>
         </div>
 
-        <div className="calendar-card bg-card border border-border/30 p-2 flex items-center gap-1 flex-wrap">
+        <div className="calendar-card bg-card border border-border p-2 flex items-center gap-1 flex-wrap">
           <Button variant="ghost" size="icon" onClick={() => navigateDate(-1)} className="h-9 w-9 transition-all duration-150">
             <ChevronLeft className="w-4 h-4" />
           </Button>

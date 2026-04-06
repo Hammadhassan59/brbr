@@ -158,7 +158,7 @@ export default function InventoryReportPage() {
         <span className="text-foreground font-medium">Inventory</span>
       </div>
 
-      <div className="calendar-card bg-card border border-border shadow-sm p-4 flex flex-wrap items-center gap-3">
+      <div className="calendar-card bg-card border border-border p-4 flex flex-wrap items-center gap-3">
         <h2 className="font-heading text-xl font-bold">Inventory Report</h2>
         <div className="flex items-center gap-2 ml-auto">
           <Label className="text-xs">From</Label><Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="calendar-card w-36 h-8" />
@@ -166,14 +166,14 @@ export default function InventoryReportPage() {
         </div>
       </div>
 
-      <Card className="calendar-card shadow-sm border-border"><CardContent className="p-4 text-center">
+      <Card className="calendar-card border-border"><CardContent className="p-4 text-center">
         <p className="text-xs text-muted-foreground uppercase tracking-wider">Current Stock Valuation</p>
         <p className="text-3xl font-heading font-bold">{formatPKR(totalStockValue)}</p>
       </CardContent></Card>
 
       {/* Usage Discrepancy Report */}
       {discrepancies.length > 0 && (
-        <Card className="calendar-card shadow-sm border-border border-orange-500/25">
+        <Card className="calendar-card border-border border-orange-500/25">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center gap-2">
               <AlertTriangle className="w-4 h-4 text-orange-500" />
@@ -240,7 +240,7 @@ export default function InventoryReportPage() {
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <Card className="calendar-card shadow-sm border-border">
+        <Card className="calendar-card border-border">
           <CardHeader className="pb-2"><CardTitle className="text-sm">Backbar Consumption</CardTitle></CardHeader>
           <CardContent className="px-0">
             {loading ? <div className="h-20 bg-muted rounded animate-pulse mx-4" /> : backbarData.length === 0 ? <p className="text-center text-muted-foreground text-sm py-6">No backbar usage</p> : (
@@ -253,7 +253,7 @@ export default function InventoryReportPage() {
           </CardContent>
         </Card>
 
-        <Card className="calendar-card shadow-sm border-border">
+        <Card className="calendar-card border-border">
           <CardHeader className="pb-2"><CardTitle className="text-sm">Retail Sales</CardTitle></CardHeader>
           <CardContent className="px-0">
             {loading ? <div className="h-20 bg-muted rounded animate-pulse mx-4" /> : retailData.length === 0 ? <p className="text-center text-muted-foreground text-sm py-6">No retail sales</p> : (
@@ -267,7 +267,7 @@ export default function InventoryReportPage() {
         </Card>
       </div>
 
-      <Card className="calendar-card shadow-sm border-border">
+      <Card className="calendar-card border-border">
         <CardHeader className="pb-2">
           <CardTitle className="text-sm">
             Stock Movements Log ({movements.length})

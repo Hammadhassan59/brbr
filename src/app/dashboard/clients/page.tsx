@@ -116,7 +116,7 @@ function ClientsContent() {
 
   return (
     <div className="space-y-6">
-      <div className="calendar-card bg-card border border-border/30 p-4 flex flex-wrap items-center gap-3">
+      <div className="calendar-card bg-card border border-border p-4 flex flex-wrap items-center gap-3">
         <div className="relative flex-1 min-w-[200px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
           <Input
@@ -155,7 +155,7 @@ function ClientsContent() {
             onClick={() => setTab(t.value)}
             className={`calendar-card px-3.5 py-2 text-xs font-medium transition-all duration-150 ${
               tab === t.value
-                ? 'bg-gold text-black shadow-sm'
+                ? 'bg-gold text-black'
                 : 'bg-card border border-border text-muted-foreground hover:text-foreground hover:border-gold/30'
             }`}
           >
@@ -186,7 +186,7 @@ function ClientsContent() {
           ))}
         </div>
       ) : sorted.length === 0 ? (
-        <div className="calendar-card bg-card border border-border/30 p-12 flex flex-col items-center justify-center text-center">
+        <div className="calendar-card bg-card border border-border p-12 flex flex-col items-center justify-center text-center">
           <Users className="w-12 h-12 text-muted-foreground/40 mb-4" />
           <p className="text-muted-foreground text-sm">
             {search ? 'No clients match your search' : 'No clients yet — add your first client'}

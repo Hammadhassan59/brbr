@@ -32,7 +32,7 @@ export function AlertsPanel({ alerts, loading }: AlertsPanelProps) {
   const { t } = useLanguage();
 
   return (
-    <Card className="calendar-card bg-card border border-border/50">
+    <Card className="calendar-card bg-card border border-border">
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <CardTitle className="text-base font-semibold">{t('alerts')}</CardTitle>
@@ -65,7 +65,7 @@ export function AlertsPanel({ alerts, loading }: AlertsPanelProps) {
               return (
                 <div
                   key={i}
-                  className="calendar-card flex items-center gap-3 bg-background/50 border border-border/30 p-4 rounded-xl hover:border-border/60 transition-all duration-200 animate-fade-up"
+                  className="calendar-card flex items-center gap-3 bg-background/50 border border-border p-4 rounded-xl hover:border-border/60 transition-all duration-200 animate-fade-up"
                 >
                   <div className={`w-10 h-10 rounded-xl ${style.bg} flex items-center justify-center shrink-0`}>
                     <style.icon className={`w-5 h-5 ${style.color}`} />

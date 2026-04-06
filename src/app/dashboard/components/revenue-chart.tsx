@@ -22,7 +22,7 @@ export function RevenueChart({ data, loading, title }: RevenueChartProps) {
   const { t } = useLanguage();
 
   return (
-    <Card className="calendar-card bg-card border border-border/50">
+    <Card className="calendar-card bg-card border border-border">
       <CardHeader className="pb-3">
         <CardTitle className="text-base font-semibold">{title || t('hourlyRevenue')}</CardTitle>
       </CardHeader>

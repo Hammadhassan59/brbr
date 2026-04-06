@@ -52,7 +52,7 @@ export default function InventoryDashboardPage() {
   return (
     <div className="space-y-6">
       {/* Navigation + Actions */}
-      <div className="calendar-card bg-card border border-border shadow-sm p-4 flex flex-wrap items-center gap-3">
+      <div className="calendar-card bg-card border border-border p-4 flex flex-wrap items-center gap-3">
         <Link href="/dashboard/inventory/products">
           <Button variant="outline" size="sm" className="calendar-card h-10 px-4 font-medium transition-all duration-150 gap-1.5">
             <Package className="w-3.5 h-3.5" /> Products
@@ -85,7 +85,7 @@ export default function InventoryDashboardPage() {
           { label: 'Retail Value', value: formatPKR(retailValue), icon: ShoppingBag, color: 'text-muted-foreground', bg: 'bg-secondary', urgent: false },
           { label: 'Backbar Value', value: formatPKR(backbarValue), icon: Beaker, color: 'text-muted-foreground', bg: 'bg-secondary', urgent: false },
         ].map((c) => (
-          <Card key={c.label} className={`calendar-card shadow-sm border-border ${c.urgent ? 'border-amber-500/25 bg-amber-500/5' : ''}`}>
+          <Card key={c.label} className={`calendar-card border-border ${c.urgent ? 'border-amber-500/25 bg-amber-500/5' : ''}`}>
             <CardContent className="p-4">
               {loading ? <div className="h-12 bg-muted rounded animate-pulse" /> : (
                 <>
@@ -103,7 +103,7 @@ export default function InventoryDashboardPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Low stock alerts */}
-        <Card className="calendar-card shadow-sm border-border">
+        <Card className="calendar-card border-border">
           <CardHeader className="pb-2 flex flex-row items-center justify-between">
             <CardTitle className="text-sm">Low Stock Alerts</CardTitle>
             <Link href="/dashboard/inventory/products?tab=low"><Button variant="ghost" size="sm" className="text-xs gap-1">View All <ArrowRight className="w-3 h-3" /></Button></Link>
@@ -114,7 +114,7 @@ export default function InventoryDashboardPage() {
             ) : (
               <div className="space-y-2">
                 {lowStock.slice(0, 5).map((p) => (
-                  <div key={p.id} className="calendar-card flex items-center justify-between p-3 bg-secondary/30 border border-border/50">
+                  <div key={p.id} className="calendar-card flex items-center justify-between p-3 bg-secondary/30 border border-border">
                     <div>
                       <p className="text-sm font-medium">{p.name}</p>
                       <p className="text-xs text-muted-foreground">{p.brand}</p>
@@ -131,7 +131,7 @@ export default function InventoryDashboardPage() {
         </Card>
 
         {/* Recent movements */}
-        <Card className="calendar-card shadow-sm border-border">
+        <Card className="calendar-card border-border">
           <CardHeader className="pb-2"><CardTitle className="text-sm">Recent Stock Movements</CardTitle></CardHeader>
           <CardContent>
             {loading ? <div className="h-20 bg-muted rounded animate-pulse" /> : movements.length === 0 ? (
@@ -141,7 +141,7 @@ export default function InventoryDashboardPage() {
                 {movements.map((m) => {
                   const style = MOVE_LABELS[m.movement_type] || { label: m.movement_type, color: 'text-gray-600' };
                   return (
-                    <div key={m.id} className="calendar-card flex items-center justify-between text-sm p-3 bg-secondary/30 border border-border/50">
+                    <div key={m.id} className="calendar-card flex items-center justify-between text-sm p-3 bg-secondary/30 border border-border">
                       <div>
                         <p className="font-medium">{m.product_name || 'Unknown'}</p>
                         <p className="text-[10px] text-muted-foreground">{formatDateTime(m.created_at)}</p>

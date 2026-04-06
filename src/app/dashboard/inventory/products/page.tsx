@@ -222,7 +222,7 @@ function ProductsContent() {
         <span className="text-foreground font-medium">Products</span>
       </div>
 
-      <div className="calendar-card bg-card border border-border shadow-sm p-4 space-y-4">
+      <div className="calendar-card bg-card border border-border p-4 space-y-4">
         <div className="flex flex-wrap items-center gap-2">
           <div className="relative flex-1 min-w-[180px]">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
@@ -255,7 +255,7 @@ function ProductsContent() {
       ) : filtered.length === 0 ? (
         <p className="text-center text-muted-foreground py-16">No products found</p>
       ) : (
-        <div className="calendar-card shadow-sm border-border overflow-hidden overflow-x-auto">
+        <div className="calendar-card border-border overflow-hidden overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>

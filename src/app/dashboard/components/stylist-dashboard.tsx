@@ -62,14 +62,14 @@ export function StylistDashboard({
       <div className="grid grid-cols-3 gap-3">
         {loading ? (
           [1, 2, 3].map((i) => (
-            <Card key={i} className="calendar-card bg-card border border-border/50">
+            <Card key={i} className="calendar-card bg-card border border-border">
               <CardContent className="p-5">
                 <div className="h-12 bg-muted rounded animate-pulse" />
               </CardContent>
             </Card>
           ))
         ) : todayEarnings.services === 0 && todayEarnings.tips === 0 && monthlyCommission === 0 ? (
-          <Card className="calendar-card col-span-3 bg-card border border-border/50 hover:border-border/60 transition-all duration-200">
+          <Card className="calendar-card col-span-3 bg-card border border-border hover:border-border/60 transition-all duration-200">
             <CardContent className="p-5 text-center">
               <p className="text-sm text-muted-foreground">
                 Complete your next appointment to start tracking earnings here
@@ -78,7 +78,7 @@ export function StylistDashboard({
           </Card>
         ) : (
           <>
-            <Card className="calendar-card bg-card border border-border/50 hover:border-border/60 transition-all duration-200">
+            <Card className="calendar-card bg-card border border-border hover:border-border/60 transition-all duration-200">
               <CardContent className="p-5">
                 <div className="w-10 h-10 rounded-xl bg-green-600/20 flex items-center justify-center mb-2">
                   <DollarSign className="w-5 h-5 text-green-600" />
@@ -87,7 +87,7 @@ export function StylistDashboard({
                 <p className="text-xl font-bold tabular-nums">{formatPKR(todayEarnings.services)}</p>
               </CardContent>
             </Card>
-            <Card className="calendar-card bg-card border border-border/50 hover:border-border/60 transition-all duration-200">
+            <Card className="calendar-card bg-card border border-border hover:border-border/60 transition-all duration-200">
               <CardContent className="p-5">
                 <div className="w-10 h-10 rounded-xl bg-blue-600/20 flex items-center justify-center mb-2">
                   <DollarSign className="w-5 h-5 text-blue-600" />
@@ -96,7 +96,7 @@ export function StylistDashboard({
                 <p className="text-xl font-bold tabular-nums">{formatPKR(todayEarnings.tips)}</p>
               </CardContent>
             </Card>
-            <Card className="calendar-card bg-card border border-border/50 hover:border-border/60 transition-all duration-200">
+            <Card className="calendar-card bg-card border border-border hover:border-border/60 transition-all duration-200">
               <CardContent className="p-5">
                 <div className="w-10 h-10 rounded-xl bg-purple-600/20 flex items-center justify-center mb-2">
                   <TrendingUp className="w-5 h-5 text-purple-600" />
@@ -109,7 +109,7 @@ export function StylistDashboard({
         )}
       </div>
 
-      <Card className="calendar-card bg-card border border-border/50 hover:border-border/60 transition-all duration-200">
+      <Card className="calendar-card bg-card border border-border hover:border-border/60 transition-all duration-200">
         <CardHeader className="pb-2">
           <CardTitle className="text-sm font-medium">
             My Schedule Today ({completedCount}/{todayAppointments.length} done)
@@ -125,7 +125,7 @@ export function StylistDashboard({
               {todayAppointments.map((apt) => (
                 <div
                   key={apt.id}
-                  className={`calendar-card flex items-center gap-3 bg-background/50 border border-border/30 p-3 rounded-xl hover:border-border/60 transition-all duration-200 ${
+                  className={`calendar-card flex items-center gap-3 bg-background/50 border border-border p-3 rounded-xl hover:border-border/60 transition-all duration-200 ${
                     apt.status === 'done'
                       ? 'opacity-60'
                       : apt.status === 'in_progress'

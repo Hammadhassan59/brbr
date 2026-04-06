@@ -36,7 +36,7 @@ export function ClientCard({ client, selected, onSelect }: ClientCardProps) {
   const colorIndex = client.name.charCodeAt(0) % colors.length;
 
   return (
-    <div className={`calendar-card bg-card border p-4 group/card transition-all duration-200 shadow-sm hover:shadow-md ${selected ? 'ring-2 ring-gold border-gold/30' : 'border-border hover:border-gold/30'}`}>
+    <div className={`calendar-card bg-card border p-4 group/card transition-all duration-200 hover:shadow-md ${selected ? 'ring-2 ring-gold border-gold/30' : 'border-border hover:border-gold/30'}`}>
       <div className="flex items-start gap-3">
         {onSelect && (
           <input

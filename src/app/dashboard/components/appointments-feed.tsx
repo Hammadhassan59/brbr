@@ -36,7 +36,7 @@ export function AppointmentsFeed({ appointments, loading }: AppointmentsFeedProp
   const { t } = useLanguage();
 
   return (
-    <Card className="calendar-card bg-card border border-border/50 sticky top-20">
+    <Card className="calendar-card bg-card border border-border sticky top-20">
       <CardHeader className="pb-2">
         <CardTitle className="text-sm font-medium flex items-center gap-2">
           <div className="w-8 h-8 rounded-xl bg-gold/20 flex items-center justify-center">
@@ -65,7 +65,7 @@ export function AppointmentsFeed({ appointments, loading }: AppointmentsFeedProp
                   <Link
                     key={apt.id}
                     href={`/dashboard/appointments?id=${apt.id}`}
-                    className="calendar-card flex items-center gap-3 bg-background/50 border border-border/30 p-3 rounded-xl hover:border-border/60 transition-all duration-200 animate-fade-up"
+                    className="calendar-card flex items-center gap-3 bg-background/50 border border-border p-3 rounded-xl hover:border-border/60 transition-all duration-200 animate-fade-up"
                   >
                     <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${STATUS_DOT_COLORS[apt.status]}`} />
                     <div className="flex-1 min-w-0">

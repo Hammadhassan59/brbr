@@ -444,7 +444,7 @@ function POSContent() {
     <div className="h-[calc(100vh-3.5rem)] flex flex-col lg:flex-row gap-0 -m-4 lg:-m-6">
       {loading && (
         <div className="flex-1 flex items-center justify-center bg-background">
-          <div className="calendar-card bg-card border border-border/30 p-8 text-center">
+          <div className="calendar-card bg-card border border-border p-8 text-center">
             <div className="w-12 h-12 rounded-xl bg-gold/10 flex items-center justify-center mx-auto mb-3 shimmer">
               <span className="text-gold font-bold">POS</span>
             </div>
@@ -480,7 +480,7 @@ function POSContent() {
                 className="calendar-card pl-8 h-8 text-sm"
               />
               {clientSearch.length >= 2 && (
-                <div className="absolute z-20 top-full left-0 right-0 mt-1 calendar-card bg-card border border-border/30 shadow-xl max-h-40 overflow-y-auto" style={{ scrollbarWidth: 'none' }}>
+                <div className="absolute z-20 top-full left-0 right-0 mt-1 calendar-card bg-card border border-border max-h-40 overflow-y-auto" style={{ scrollbarWidth: 'none' }}>
                   {clientResults.map((c) => (
                     <button key={c.id} onClick={() => { setSelectedClient(c); setClientSearch(''); setClientResults([]); }}
                       className="w-full text-left px-3 py-1.5 hover:bg-secondary text-sm transition-all duration-150"
@@ -488,7 +488,7 @@ function POSContent() {
                       {c.name} <span className="text-muted-foreground">{c.phone}</span>
                     </button>
                   ))}
-                  <div className="border-t border-border/30">
+                  <div className="border-t border-border">
                     {!showNewClient ? (
                       <div className="flex">
                         <button

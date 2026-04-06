@@ -117,7 +117,7 @@ export function PaymentPanel({
       {isSplit ? (
         <div className="space-y-2 mb-4 flex-1">
           {splitPayments.map((sp, i) => (
-            <div key={i} className="calendar-card bg-card border border-border/30 p-3 flex items-center gap-1.5">
+            <div key={i} className="calendar-card bg-card border border-border p-3 flex items-center gap-1.5">
               <Select value={sp.method} onValueChange={(v) => { if (v) updateSplit(i, 'method', v); }}>
                 <SelectTrigger className="h-8 text-xs w-[120px]"><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -155,9 +155,9 @@ export function PaymentPanel({
                   key={m.method}
                   onClick={() => !disabled && onSelectMethod(m.method)}
                   disabled={disabled}
-                  className={`calendar-card bg-card border border-border/30 flex flex-col items-center gap-1 p-4 h-auto text-xs font-medium transition-all duration-150 touch-target ${
+                  className={`calendar-card bg-card border border-border flex flex-col items-center gap-1 p-4 h-auto text-xs font-medium transition-all duration-150 touch-target ${
                     isActive
-                      ? 'border-gold bg-gold/10 text-foreground shadow-sm'
+                      ? 'border-gold bg-gold/10 text-foreground'
                       : disabled
                         ? 'opacity-40 cursor-not-allowed'
                         : 'hover:border-gold/30'
@@ -185,11 +185,11 @@ export function PaymentPanel({
                 />
                 <div className="flex gap-1.5 mt-2">
                   {[500, 1000, 2000, 5000].map((v) => (
-                    <Button key={v} variant="outline" size="sm" className="calendar-card bg-card border border-border/30 flex-1 text-xs h-10 transition-all duration-150" onClick={() => onCashReceived(v)}>
+                    <Button key={v} variant="outline" size="sm" className="calendar-card bg-card border border-border flex-1 text-xs h-10 transition-all duration-150" onClick={() => onCashReceived(v)}>
                       Rs {v.toLocaleString()}
                     </Button>
                   ))}
-                  <Button variant="outline" size="sm" className="calendar-card bg-card border border-border/30 flex-1 text-xs h-10 border-gold text-gold transition-all duration-150" onClick={() => onCashReceived(total)}>
+                  <Button variant="outline" size="sm" className="calendar-card bg-card border border-border flex-1 text-xs h-10 border-gold text-gold transition-all duration-150" onClick={() => onCashReceived(total)}>
                     Exact
                   </Button>
                 </div>

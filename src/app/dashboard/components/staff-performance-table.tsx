@@ -23,7 +23,7 @@ export function StaffPerformanceTable({ data, loading }: StaffPerformanceTablePr
   const { t } = useLanguage();
 
   return (
-    <Card className="calendar-card bg-card border border-border/50">
+    <Card className="calendar-card bg-card border border-border">
       <CardHeader className="pb-2 flex flex-row items-center justify-between">
         <CardTitle className="text-sm font-medium">{t('staffPerformance')}</CardTitle>
         <Link href="/dashboard/reports/staff" className="text-xs text-muted-foreground hover:text-gold transition-colors">
@@ -47,7 +47,7 @@ export function StaffPerformanceTable({ data, loading }: StaffPerformanceTablePr
                 className={`calendar-card flex items-center justify-between p-4 rounded-xl border hover:border-border/60 transition-all duration-200 animate-fade-up ${
                   i === 0
                     ? 'border-gold/30 bg-gold/5'
-                    : 'bg-background/50 border-border/30'
+                    : 'bg-background/50 border-border'
                 }`}
               >
                 <div className="flex items-center gap-3">

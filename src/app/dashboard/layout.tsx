@@ -279,7 +279,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
             {showNewAppointment && (
               <Link href="/dashboard/appointments?new=true">
-                <Button size="sm" className="calendar-card bg-gold hover:bg-gold/90 text-black touch-target border border-gold/50 font-bold h-10 px-4 text-sm shadow-sm shadow-gold/10">
+                <Button size="sm" className="calendar-card bg-gold hover:bg-gold/90 text-black touch-target border border-gold/50 font-bold h-10 px-4 text-sm">
                   <Plus className="w-4 h-4 mr-1.5" />
                   <span className="hidden sm:inline">{t('newAppointment')}</span>
                   <span className="sm:hidden">Book</span>

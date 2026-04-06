@@ -190,7 +190,7 @@ export default function PackagesPage() {
               <div className="relative mt-1">
                 <Input value={svcSearch} onChange={(e) => setSvcSearch(e.target.value)} placeholder="Search and add services..." className="h-8 text-sm" />
                 {filteredSvcSearch.length > 0 && (
-                  <div className="absolute z-10 top-full left-0 right-0 mt-1 bg-card border rounded-lg shadow-lg max-h-32 overflow-y-auto">
+                  <div className="absolute z-10 top-full left-0 right-0 mt-1 bg-card border rounded-lg max-h-32 overflow-y-auto">
                     {filteredSvcSearch.map((s) => (
                       <button key={s.id} onClick={() => addServiceToPackage(s)} className="w-full text-left px-3 py-1.5 hover:bg-secondary text-sm">
                         {s.name} — {formatPKR(s.base_price)}

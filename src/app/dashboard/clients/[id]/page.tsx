@@ -170,9 +170,9 @@ export default function ClientProfilePage() {
         </Button>
       </div>
 
-      <div className="calendar-card bg-card p-6 border border-border shadow-sm">
+      <div className="calendar-card bg-card p-6 border border-border">
         <div className="flex items-start gap-4">
-          <div className="w-16 h-16 rounded-xl bg-gold/20 text-gold text-xl font-bold flex items-center justify-center shrink-0 shadow-sm">
+          <div className="w-16 h-16 rounded-xl bg-gold/20 text-gold text-xl font-bold flex items-center justify-center shrink-0">
             {initials}
           </div>
           <div className="flex-1 min-w-0">
@@ -201,16 +201,16 @@ export default function ClientProfilePage() {
 
       <Tabs defaultValue="visits">
         <TabsList className="flex-wrap h-auto gap-1.5 bg-transparent">
-          <TabsTrigger value="visits" className="calendar-card text-xs gap-1 transition-all duration-150 data-[state=active]:bg-gold data-[state=active]:text-black data-[state=active]:shadow-sm text-muted-foreground hover:text-foreground"><Calendar className="w-3 h-3" /> Visits</TabsTrigger>
-          <TabsTrigger value="udhaar" className="calendar-card text-xs gap-1 transition-all duration-150 data-[state=active]:bg-gold data-[state=active]:text-black data-[state=active]:shadow-sm text-muted-foreground hover:text-foreground"><CreditCard className="w-3 h-3" /> Udhaar</TabsTrigger>
-          <TabsTrigger value="packages" className="calendar-card text-xs gap-1 transition-all duration-150 data-[state=active]:bg-gold data-[state=active]:text-black data-[state=active]:shadow-sm text-muted-foreground hover:text-foreground"><Package className="w-3 h-3" /> Packages</TabsTrigger>
-          <TabsTrigger value="notes" className="calendar-card text-xs gap-1 transition-all duration-150 data-[state=active]:bg-gold data-[state=active]:text-black data-[state=active]:shadow-sm text-muted-foreground hover:text-foreground"><StickyNote className="w-3 h-3" /> Notes</TabsTrigger>
-          <TabsTrigger value="loyalty" className="calendar-card text-xs gap-1 transition-all duration-150 data-[state=active]:bg-gold data-[state=active]:text-black data-[state=active]:shadow-sm text-muted-foreground hover:text-foreground"><Award className="w-3 h-3" /> Loyalty</TabsTrigger>
+          <TabsTrigger value="visits" className="calendar-card text-xs gap-1 transition-all duration-150 data-[state=active]:bg-gold data-[state=active]:text-black data-[state=active]:text-muted-foreground hover:text-foreground"><Calendar className="w-3 h-3" /> Visits</TabsTrigger>
+          <TabsTrigger value="udhaar" className="calendar-card text-xs gap-1 transition-all duration-150 data-[state=active]:bg-gold data-[state=active]:text-black data-[state=active]:text-muted-foreground hover:text-foreground"><CreditCard className="w-3 h-3" /> Udhaar</TabsTrigger>
+          <TabsTrigger value="packages" className="calendar-card text-xs gap-1 transition-all duration-150 data-[state=active]:bg-gold data-[state=active]:text-black data-[state=active]:text-muted-foreground hover:text-foreground"><Package className="w-3 h-3" /> Packages</TabsTrigger>
+          <TabsTrigger value="notes" className="calendar-card text-xs gap-1 transition-all duration-150 data-[state=active]:bg-gold data-[state=active]:text-black data-[state=active]:text-muted-foreground hover:text-foreground"><StickyNote className="w-3 h-3" /> Notes</TabsTrigger>
+          <TabsTrigger value="loyalty" className="calendar-card text-xs gap-1 transition-all duration-150 data-[state=active]:bg-gold data-[state=active]:text-black data-[state=active]:text-muted-foreground hover:text-foreground"><Award className="w-3 h-3" /> Loyalty</TabsTrigger>
         </TabsList>
 
         <TabsContent value="visits" className="mt-4">
           {bills.length === 0 ? (
-            <div className="calendar-card bg-card p-4 border border-border/30">
+            <div className="calendar-card bg-card p-4 border border-border">
               <p className="text-center text-muted-foreground py-8">No visit history yet</p>
             </div>
           ) : (
@@ -257,7 +257,7 @@ export default function ClientProfilePage() {
             )}
           </div>
 
-          <div className="calendar-card bg-card border border-border/30">
+          <div className="calendar-card bg-card border border-border">
             <div className="p-4 pb-2">
               <h3 className="text-sm font-medium">Transaction History</h3>
             </div>
@@ -291,13 +291,13 @@ export default function ClientProfilePage() {
 
         <TabsContent value="packages" className="mt-4">
           {clientPackages.length === 0 ? (
-            <div className="calendar-card bg-card p-4 border border-border/30">
+            <div className="calendar-card bg-card p-4 border border-border">
               <p className="text-center text-muted-foreground py-8">No packages assigned</p>
             </div>
           ) : (
             <div className="space-y-3">
               {clientPackages.map((cp) => (
-                <div key={cp.id} className={`calendar-card bg-card p-4 border border-border/30 ${cp.is_active ? '' : 'opacity-50'}`}>
+                <div key={cp.id} className={`calendar-card bg-card p-4 border border-border ${cp.is_active ? '' : 'opacity-50'}`}>
                   <div className="flex items-center justify-between mb-2">
                     <div>
                       <p className="font-medium">{cp.package?.name || 'Package'}</p>
@@ -435,7 +435,7 @@ export default function ClientProfilePage() {
             <p className="text-sm text-muted-foreground">= {formatPKR(client.loyalty_points * 0.5)} value</p>
           </div>
 
-          <div className="calendar-card bg-card border border-border/30">
+          <div className="calendar-card bg-card border border-border">
             <div className="p-4 pb-2">
               <h3 className="text-sm font-medium">Points History</h3>
             </div>

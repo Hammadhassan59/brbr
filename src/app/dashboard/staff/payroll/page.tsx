@@ -226,7 +226,7 @@ Thank you 🙏 — BrBr Management`;
         <span className="text-foreground font-medium">Payroll</span>
       </div>
 
-      <div className="calendar-card bg-card border border-border shadow-sm p-4 flex flex-wrap items-center gap-3">
+      <div className="calendar-card bg-card border border-border p-4 flex flex-wrap items-center gap-3">
         <h2 className="font-heading text-xl font-bold">Payroll</h2>
         <Select value={String(month)} onValueChange={(v) => { if (v) setMonth(Number(v)); }}>
           <SelectTrigger className="calendar-card w-[130px] h-9 text-xs"><SelectValue /></SelectTrigger>
@@ -252,7 +252,7 @@ Thank you 🙏 — BrBr Management`;
         <p className="text-center text-muted-foreground py-16">No staff to show</p>
       ) : (
         <>
-          <Card className="calendar-card shadow-sm border-border">
+          <Card className="calendar-card border-border">
             <CardContent className="p-0 overflow-x-auto">
               <Table>
                 <TableHeader>

@@ -198,12 +198,12 @@ export default function ExpensesPage() {
 
   return (
     <div className="space-y-6">
-      <div className="calendar-card bg-card border border-border shadow-sm p-4 flex flex-wrap items-center gap-3">
+      <div className="calendar-card bg-card border border-border p-4 flex flex-wrap items-center gap-3">
         <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)}>
           <TabsList className="h-auto gap-1 bg-transparent p-0">
-            <TabsTrigger value="today" className="calendar-card text-xs transition-all duration-150 data-[state=active]:bg-gold data-[state=active]:text-black data-[state=active]:shadow-sm bg-secondary/50 border border-border text-muted-foreground hover:border-gold/30">Today</TabsTrigger>
-            <TabsTrigger value="week" className="calendar-card text-xs transition-all duration-150 data-[state=active]:bg-gold data-[state=active]:text-black data-[state=active]:shadow-sm bg-secondary/50 border border-border text-muted-foreground hover:border-gold/30">Last 7 Days</TabsTrigger>
-            <TabsTrigger value="month" className="calendar-card text-xs transition-all duration-150 data-[state=active]:bg-gold data-[state=active]:text-black data-[state=active]:shadow-sm bg-secondary/50 border border-border text-muted-foreground hover:border-gold/30">Last 30 Days</TabsTrigger>
+            <TabsTrigger value="today" className="calendar-card text-xs transition-all duration-150 data-[state=active]:bg-gold data-[state=active]:text-black data-[state=active]:bg-secondary/50 border border-border text-muted-foreground hover:border-gold/30">Today</TabsTrigger>
+            <TabsTrigger value="week" className="calendar-card text-xs transition-all duration-150 data-[state=active]:bg-gold data-[state=active]:text-black data-[state=active]:bg-secondary/50 border border-border text-muted-foreground hover:border-gold/30">Last 7 Days</TabsTrigger>
+            <TabsTrigger value="month" className="calendar-card text-xs transition-all duration-150 data-[state=active]:bg-gold data-[state=active]:text-black data-[state=active]:bg-secondary/50 border border-border text-muted-foreground hover:border-gold/30">Last 30 Days</TabsTrigger>
           </TabsList>
         </Tabs>
         <div className="ml-auto">
@@ -215,7 +215,7 @@ export default function ExpensesPage() {
 
       {/* Summary cards */}
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-        <Card className="calendar-card shadow-sm border-border">
+        <Card className="calendar-card border-border">
           <CardContent className="p-5 text-center">
             {loading ? <div className="calendar-card h-12 bg-muted animate-pulse" /> : (
               <>
@@ -225,7 +225,7 @@ export default function ExpensesPage() {
             )}
           </CardContent>
         </Card>
-        <Card className="calendar-card shadow-sm border-border">
+        <Card className="calendar-card border-border">
           <CardContent className="p-5 text-center">
             {loading ? <div className="calendar-card h-12 bg-muted animate-pulse" /> : (
               <>
@@ -236,7 +236,7 @@ export default function ExpensesPage() {
           </CardContent>
         </Card>
         {tab !== 'today' && (
-          <Card className="calendar-card shadow-sm border-border">
+          <Card className="calendar-card border-border">
             <CardContent className="p-5 text-center">
               {loading ? <div className="calendar-card h-12 bg-muted animate-pulse" /> : (
                 <>
@@ -251,7 +251,7 @@ export default function ExpensesPage() {
 
       {/* Category breakdown */}
       {sortedCategories.length > 0 && (
-        <Card className="calendar-card shadow-sm border-border">
+        <Card className="calendar-card border-border">
           <CardHeader className="pb-2"><CardTitle className="text-sm">By Category</CardTitle></CardHeader>
           <CardContent>
             <div className="space-y-2">
@@ -275,7 +275,7 @@ export default function ExpensesPage() {
           {[1, 2, 3].map((i) => <div key={i} className="calendar-card h-16 bg-muted animate-pulse" />)}
         </div>
       ) : expenses.length === 0 ? (
-        <Card className="calendar-card shadow-sm border-border">
+        <Card className="calendar-card border-border">
           <CardContent className="p-8 text-center">
             <Wallet className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
             <p className="text-muted-foreground">No expenses recorded for this period.</p>
@@ -286,7 +286,7 @@ export default function ExpensesPage() {
         </Card>
       ) : (
         Object.entries(groupedByDate).sort(([a], [b]) => b.localeCompare(a)).map(([date, dayExpenses]) => (
-          <Card key={date} className="calendar-card shadow-sm border-border">
+          <Card key={date} className="calendar-card border-border">
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-sm">{date === today ? 'Today' : formatPKDate(date)}</CardTitle>

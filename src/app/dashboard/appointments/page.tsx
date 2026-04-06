@@ -314,7 +314,7 @@ function AppointmentsContent() {
       </div>
 
       {loading && appointments.length === 0 ? (
-        <div className="calendar-card bg-card border border-border/50 p-6">
+        <div className="calendar-card bg-card border border-border p-6">
           <div className="space-y-3">
             {[1, 2, 3, 4, 5, 6].map((i) => (
               <div key={i} className="h-[52px] bg-muted/40 shimmer" />
@@ -322,7 +322,7 @@ function AppointmentsContent() {
           </div>
         </div>
       ) : !loading && stylists.length === 0 ? (
-        <div className="calendar-card bg-card border border-border/50">
+        <div className="calendar-card bg-card border border-border">
           <div className="flex flex-col items-center justify-center h-[400px] gap-4">
             <div className="w-16 h-16 bg-muted/40 flex items-center justify-center" style={{ borderRadius: '12px' }}>
               <Users className="w-8 h-8 text-muted-foreground/40" />

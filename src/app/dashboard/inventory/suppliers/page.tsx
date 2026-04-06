@@ -90,7 +90,7 @@ export default function SuppliersPage() {
         <span className="text-foreground font-medium">Suppliers</span>
       </div>
 
-      <div className="calendar-card bg-card border border-border shadow-sm p-4 flex items-center justify-between">
+      <div className="calendar-card bg-card border border-border p-4 flex items-center justify-between">
         <h2 className="font-heading text-xl font-bold">Suppliers</h2>
         <Button onClick={() => openForm()} className="calendar-card bg-gold hover:bg-gold/90 text-black font-bold" size="sm"><Plus className="w-4 h-4 mr-1" /> Add Supplier</Button>
       </div>
@@ -102,7 +102,7 @@ export default function SuppliersPage() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {suppliers.map((s) => (
-            <Card key={s.id} className="calendar-card shadow-sm border-border hover:shadow-md hover:border-gold/30 transition-shadow cursor-pointer" onClick={() => openForm(s)}>
+            <Card key={s.id} className="calendar-card border-border hover:shadow-md hover:border-gold/30 transition-shadow cursor-pointer" onClick={() => openForm(s)}>
               <CardContent className="p-4">
                 <div className="flex items-start justify-between">
                   <div>

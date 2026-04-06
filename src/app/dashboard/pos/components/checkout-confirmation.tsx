@@ -126,7 +126,7 @@ export function CheckoutConfirmation({
 
             <Separator />
 
-            <div className="calendar-card bg-card border border-border/30 p-4 space-y-0">
+            <div className="calendar-card bg-card border border-border p-4 space-y-0">
               {items.map((item) => (
                 <div key={item.id} className="flex justify-between text-sm py-2 border-b border-border/20 last:border-0">
                   <span>{item.name} {item.quantity > 1 ? `×${item.quantity}` : ''}</span>
@@ -135,7 +135,7 @@ export function CheckoutConfirmation({
               ))}
             </div>
 
-            <div className="calendar-card bg-card border border-border/30 p-4 space-y-1 text-sm">
+            <div className="calendar-card bg-card border border-border p-4 space-y-1 text-sm">
               <div className="flex justify-between">
                 <span>Subtotal</span>
                 <span>{formatPKR(subtotal)}</span>
@@ -164,7 +164,7 @@ export function CheckoutConfirmation({
               </div>
             </div>
 
-            <div className="calendar-card bg-card border border-border/30 p-4 text-sm space-y-1">
+            <div className="calendar-card bg-card border border-border p-4 text-sm space-y-1">
               <div className="flex justify-between">
                 <span>Payment</span>
                 <span className="capitalize">{paymentMethod.replace('_', ' ')}</span>

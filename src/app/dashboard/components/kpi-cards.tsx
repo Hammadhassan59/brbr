@@ -53,7 +53,7 @@ export function KPICards({ summary, appointmentsDone, appointmentsTotal, walkIns
       {cards.map((card) => (
         <div
           key={card.label}
-          className={`calendar-card bg-card border border-border/50 p-5 hover:border-b-gold/50 transition-all duration-200 ${!loading ? 'animate-fade-up' : ''}`}
+          className={`calendar-card bg-card border border-border p-5 hover:border-b-gold/50 transition-all duration-200 ${!loading ? 'animate-fade-up' : ''}`}
         >
           {loading ? (
             <div className="space-y-3">

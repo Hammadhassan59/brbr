@@ -34,7 +34,7 @@ export function PaymentBreakdown({ summary, loading }: PaymentBreakdownProps) {
   ].filter((d) => d.value > 0) : [];
 
   return (
-    <Card className="calendar-card bg-card border border-border/50">
+    <Card className="calendar-card bg-card border border-border">
       <CardHeader className="pb-3">
         <CardTitle className="text-base font-semibold">{t('paymentBreakdown')}</CardTitle>
       </CardHeader>
