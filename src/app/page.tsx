@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import { Scissors, ChevronDown, Star, Zap, Shield, Clock, Smartphone, Check } from 'lucide-react';
+import PublicLayout from '@/components/public-layout';
 
 const PLANS = [
   {
@@ -116,28 +117,7 @@ export default function LandingPage() {
   const [openFaq, setOpenFaq] = useState<number | null>(null);
 
   return (
-    <div className="min-h-screen bg-white">
-      {/* ── Nav Bar ── */}
-      <nav className="sticky top-0 z-50 bg-[#161616] border-b border-[#222]">
-        <div className="max-w-6xl mx-auto px-5 h-16 flex items-center">
-          <Link href="/" className="flex items-center gap-2 font-heading font-bold text-lg tracking-tight text-[#EFEFEF] touch-target">
-            <Scissors className="w-5 h-5 text-gold" />
-            BRBR
-          </Link>
-          <div className="hidden md:flex items-center gap-8 ml-12 text-sm">
-            <a href="#features" className="text-[#EFEFEF]/50 hover:text-[#EFEFEF] transition-colors py-3">Features</a>
-            <a href="#why-us" className="text-[#EFEFEF]/50 hover:text-[#EFEFEF] transition-colors py-3">Why Choose Us</a>
-            <a href="#pricing" className="text-[#EFEFEF]/50 hover:text-[#EFEFEF] transition-colors py-3">Pricing</a>
-            <a href="#reviews" className="text-[#EFEFEF]/50 hover:text-[#EFEFEF] transition-colors py-3">Reviews</a>
-            <a href="#faq" className="text-[#EFEFEF]/50 hover:text-[#EFEFEF] transition-colors py-3">FAQs</a>
-          </div>
-          <div className="ml-auto">
-            <Link href="/login" className="bg-gold text-black px-5 py-2.5 text-sm font-bold hover:bg-gold/90 transition-colors touch-target inline-flex items-center">
-              Start Free Trial
-            </Link>
-          </div>
-        </div>
-      </nav>
+    <PublicLayout showHomeNav>
 
       {/* ── Hero ── */}
       <section className="bg-[#161616] border-b border-[#222]">
@@ -423,23 +403,6 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── Footer ── */}
-      <footer className="bg-[#161616] border-t border-[#222] py-8">
-        <div className="max-w-6xl mx-auto px-5 flex flex-col md:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <Scissors className="w-4 h-4 text-gold" />
-            <p className="text-xs text-[#EFEFEF]/40">
-              © 2025 BrBr. All Rights Reserved.
-            </p>
-          </div>
-          <div className="flex items-center gap-2 text-xs text-[#EFEFEF]/40">
-            <a href="#" className="hover:text-[#EFEFEF] transition-colors px-2 py-3">LinkedIn</a>
-            <a href="#" className="hover:text-[#EFEFEF] transition-colors px-2 py-3">Instagram</a>
-            <a href="#" className="hover:text-[#EFEFEF] transition-colors px-2 py-3">Facebook</a>
-            <a href="#" className="hover:text-[#EFEFEF] transition-colors px-2 py-3">Twitter</a>
-          </div>
-        </div>
-      </footer>
-    </div>
+    </PublicLayout>
   );
 }
