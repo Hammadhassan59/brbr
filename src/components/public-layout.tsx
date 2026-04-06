@@ -25,16 +25,16 @@ export default function PublicLayout({ children, showHomeNav = false }: PublicLa
           <div className="hidden md:flex items-center gap-8 ml-12 text-sm">
             {showHomeNav ? (
               <>
-                <a href="#features" className="text-[#EFEFEF]/50 hover:text-[#EFEFEF] transition-colors py-3">Features</a>
-                <a href="#why-us" className="text-[#EFEFEF]/50 hover:text-[#EFEFEF] transition-colors py-3">Why Choose Us</a>
-                <a href="#pricing" className="text-[#EFEFEF]/50 hover:text-[#EFEFEF] transition-colors py-3">Pricing</a>
-                <a href="#reviews" className="text-[#EFEFEF]/50 hover:text-[#EFEFEF] transition-colors py-3">Reviews</a>
-                <a href="#faq" className="text-[#EFEFEF]/50 hover:text-[#EFEFEF] transition-colors py-3">FAQs</a>
+                <a href="#features" className="text-[#EFEFEF]/50 hover:text-[#EFEFEF] transition-colors px-2 py-3">Features</a>
+                <a href="#why-us" className="text-[#EFEFEF]/50 hover:text-[#EFEFEF] transition-colors px-2 py-3">Why Choose Us</a>
+                <a href="#pricing" className="text-[#EFEFEF]/50 hover:text-[#EFEFEF] transition-colors px-2 py-3">Pricing</a>
+                <a href="#reviews" className="text-[#EFEFEF]/50 hover:text-[#EFEFEF] transition-colors px-2 py-3">Reviews</a>
+                <a href="#faq" className="text-[#EFEFEF]/50 hover:text-[#EFEFEF] transition-colors px-2 py-3">FAQs</a>
               </>
             ) : (
               <>
-                <Link href="/about" className="text-[#EFEFEF]/50 hover:text-[#EFEFEF] transition-colors py-3">About</Link>
-                <Link href="/contact" className="text-[#EFEFEF]/50 hover:text-[#EFEFEF] transition-colors py-3">Contact</Link>
+                <Link href="/about" className="text-[#EFEFEF]/50 hover:text-[#EFEFEF] transition-colors px-2 py-3">About</Link>
+                <Link href="/contact" className="text-[#EFEFEF]/50 hover:text-[#EFEFEF] transition-colors px-2 py-3">Contact</Link>
               </>
             )}
           </div>
