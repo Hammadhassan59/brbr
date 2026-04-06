@@ -116,7 +116,7 @@ export default function StaffListPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center gap-3">
         <Tabs value={roleFilter} onValueChange={setRoleFilter}>
-          <TabsList className="h-auto gap-2 bg-transparent p-0">
+          <TabsList className="h-auto gap-0 bg-transparent p-0 border-b border-border">
             {[
               { value: 'all', label: 'All' },
               { value: 'stylists', label: 'Stylists' },
@@ -126,7 +126,7 @@ export default function StaffListPage() {
               <TabsTrigger
                 key={tab.value}
                 value={tab.value}
-                className="text-xs px-3.5 py-2 font-medium transition-all duration-150 data-[state=active]:bg-[#1A1A1A] data-[state=active]:text-white data-[state=active]:border-[#1A1A1A] border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30"
+                className="text-xs px-4 py-2.5 font-medium transition-all duration-150 border-b-2 -mb-px data-[state=active]:border-b-[#1A1A1A] data-[state=active]:text-[#1A1A1A] border-b-transparent text-muted-foreground hover:text-foreground"
               >
                 {tab.label}
               </TabsTrigger>
