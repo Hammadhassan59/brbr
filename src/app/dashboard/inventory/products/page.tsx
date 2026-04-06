@@ -233,10 +233,10 @@ function ProductsContent() {
 
         <Tabs value={tab} onValueChange={(v) => setTab(v as Tab)}>
           <TabsList className="h-auto gap-1 flex-wrap">
-            <TabsTrigger value="all" className="calendar-card text-xs data-[state=active]:bg-gold data-[state=active]:text-black data-[state=active]:shadow-sm">All ({products.length})</TabsTrigger>
-            <TabsTrigger value="backbar" className="calendar-card text-xs data-[state=active]:bg-gold data-[state=active]:text-black data-[state=active]:shadow-sm">Backbar</TabsTrigger>
-            <TabsTrigger value="retail" className="calendar-card text-xs data-[state=active]:bg-gold data-[state=active]:text-black data-[state=active]:shadow-sm">Retail</TabsTrigger>
-            <TabsTrigger value="low" className="calendar-card text-xs data-[state=active]:bg-gold data-[state=active]:text-black data-[state=active]:shadow-sm">Low Stock ({products.filter((p) => p.current_stock <= p.low_stock_threshold).length})</TabsTrigger>
+            <TabsTrigger value="all" className="text-xs px-3.5 py-2 font-medium transition-all duration-150 data-[state=active]:bg-[#1A1A1A] data-[state=active]:text-white data-[state=active]:border-[#1A1A1A] border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30">All ({products.length})</TabsTrigger>
+            <TabsTrigger value="backbar" className="text-xs px-3.5 py-2 font-medium transition-all duration-150 data-[state=active]:bg-[#1A1A1A] data-[state=active]:text-white data-[state=active]:border-[#1A1A1A] border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30">Backbar</TabsTrigger>
+            <TabsTrigger value="retail" className="text-xs px-3.5 py-2 font-medium transition-all duration-150 data-[state=active]:bg-[#1A1A1A] data-[state=active]:text-white data-[state=active]:border-[#1A1A1A] border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30">Retail</TabsTrigger>
+            <TabsTrigger value="low" className="text-xs px-3.5 py-2 font-medium transition-all duration-150 data-[state=active]:bg-[#1A1A1A] data-[state=active]:text-white data-[state=active]:border-[#1A1A1A] border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30">Low Stock ({products.filter((p) => p.current_stock <= p.low_stock_threshold).length})</TabsTrigger>
           </TabsList>
         </Tabs>
 

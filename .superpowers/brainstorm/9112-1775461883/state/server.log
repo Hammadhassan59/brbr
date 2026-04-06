@@ -1,0 +1,3 @@
+{"type":"server-started","port":56625,"host":"127.0.0.1","url_host":"localhost","url":"http://localhost:56625","screen_dir":"/Users/user1/brbr/.superpowers/brainstorm/9112-1775461883/content","state_dir":"/Users/user1/brbr/.superpowers/brainstorm/9112-1775461883/state"}
+{"type":"screen-added","file":"/Users/user1/brbr/.superpowers/brainstorm/9112-1775461883/content/tab-styles.html"}
+{"type":"server-stopped","reason":"idle timeout"}

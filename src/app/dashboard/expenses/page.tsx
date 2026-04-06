@@ -201,9 +201,9 @@ export default function ExpensesPage() {
       <div className="calendar-card bg-card border border-border p-4 flex flex-wrap items-center gap-3">
         <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)}>
           <TabsList className="h-auto gap-1 bg-transparent p-0">
-            <TabsTrigger value="today" className="calendar-card text-xs transition-all duration-150 data-[state=active]:bg-gold data-[state=active]:text-black data-[state=active]:bg-secondary/50 border border-border text-muted-foreground hover:border-gold/30">Today</TabsTrigger>
-            <TabsTrigger value="week" className="calendar-card text-xs transition-all duration-150 data-[state=active]:bg-gold data-[state=active]:text-black data-[state=active]:bg-secondary/50 border border-border text-muted-foreground hover:border-gold/30">Last 7 Days</TabsTrigger>
-            <TabsTrigger value="month" className="calendar-card text-xs transition-all duration-150 data-[state=active]:bg-gold data-[state=active]:text-black data-[state=active]:bg-secondary/50 border border-border text-muted-foreground hover:border-gold/30">Last 30 Days</TabsTrigger>
+            <TabsTrigger value="today" className="text-xs px-3.5 py-2 font-medium transition-all duration-150 data-[state=active]:bg-[#1A1A1A] data-[state=active]:text-white data-[state=active]:border-[#1A1A1A] border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30">Today</TabsTrigger>
+            <TabsTrigger value="week" className="text-xs px-3.5 py-2 font-medium transition-all duration-150 data-[state=active]:bg-[#1A1A1A] data-[state=active]:text-white data-[state=active]:border-[#1A1A1A] border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30">Last 7 Days</TabsTrigger>
+            <TabsTrigger value="month" className="text-xs px-3.5 py-2 font-medium transition-all duration-150 data-[state=active]:bg-[#1A1A1A] data-[state=active]:text-white data-[state=active]:border-[#1A1A1A] border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30">Last 30 Days</TabsTrigger>
           </TabsList>
         </Tabs>
         <div className="ml-auto">
