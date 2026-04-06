@@ -261,7 +261,7 @@ function AppointmentsContent() {
               variant={isToday ? 'default' : 'outline'}
               size="sm"
               onClick={() => setDate(getTodayPKT())}
-              className={`h-9 px-4 font-semibold transition-all duration-150 ${isToday ? 'bg-gold text-black border border-gold hover:bg-gold/90' : 'hover:bg-muted'}`}
+              className={`h-9 px-4 font-semibold transition-all duration-150 ${isToday ? 'bg-[#1A1A1A] text-white border border-[#1A1A1A]' : 'border border-border hover:bg-muted'}`}
             >
               Today
             </Button>
