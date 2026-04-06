@@ -114,9 +114,9 @@ export default function StaffListPage() {
 
   return (
     <div className="space-y-6">
-      <div className="calendar-card bg-card border border-border p-4 flex flex-wrap items-center gap-3">
+      <div className="flex flex-wrap items-center gap-3">
         <Tabs value={roleFilter} onValueChange={setRoleFilter}>
-          <TabsList className="h-auto gap-1 bg-transparent p-0">
+          <TabsList className="h-auto gap-0 bg-transparent p-0 border border-border overflow-hidden">
             {[
               { value: 'all', label: 'All' },
               { value: 'stylists', label: 'Stylists' },
@@ -126,7 +126,7 @@ export default function StaffListPage() {
               <TabsTrigger
                 key={tab.value}
                 value={tab.value}
-                className="text-xs calendar-card transition-all duration-150 data-[state=active]:bg-gold data-[state=active]:text-black data-[state=active]:bg-secondary/50 border border-border text-muted-foreground hover:border-gold/30"
+                className="text-xs px-4 py-2.5 font-medium transition-all duration-150 data-[state=active]:bg-[#1A1A1A] data-[state=active]:text-white text-muted-foreground hover:text-foreground hover:bg-secondary/50 border-r border-border last:border-r-0"
               >
                 {tab.label}
               </TabsTrigger>
@@ -140,17 +140,17 @@ export default function StaffListPage() {
             placeholder="Search staff..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="calendar-card h-10 w-52 pl-9 text-sm"
+            className="h-10 w-56 pl-9 text-sm border border-border bg-background"
           />
         </div>
 
         <div className="flex gap-2 ml-auto">
           <Link href="/dashboard/staff/payroll">
-            <Button variant="outline" size="sm" className="calendar-card h-10 px-4 font-medium transition-all duration-150 gap-1.5">
+            <Button variant="outline" size="sm" className="h-10 px-4 font-medium border border-border transition-all duration-150 gap-1.5 hover:bg-secondary/50">
               <DollarSign className="w-3.5 h-3.5" /> Payroll
             </Button>
           </Link>
-          <Button onClick={() => router.push('/dashboard/staff/new')} className="calendar-card bg-gold hover:bg-gold/90 text-black font-bold h-10 px-4 transition-all duration-150" size="sm">
+          <Button onClick={() => router.push('/dashboard/staff/new')} className="bg-[#1A1A1A] hover:bg-[#333] text-white font-semibold h-10 px-4 transition-all duration-150 border border-[#1A1A1A]" size="sm">
             <Plus className="w-4 h-4 mr-1" /> Add Staff
           </Button>
         </div>
