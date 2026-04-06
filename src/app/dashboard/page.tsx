@@ -422,7 +422,7 @@ export default function DashboardPage() {
             <button
               key={key}
               onClick={() => setFilter(key, d)}
-              className={`calendar-card px-3 py-1.5 text-xs font-medium transition-all duration-150 ${
+              className={`calendar-card px-3.5 py-2 text-xs font-medium transition-all duration-150 ${
                 activeFilter === key
                   ? 'bg-gold/10 text-gold'
                   : 'text-muted-foreground hover:text-foreground'
@@ -434,7 +434,7 @@ export default function DashboardPage() {
 
           <Popover open={customOpen} onOpenChange={(open) => { setCustomOpen(open); if (open) { setRangeFrom(undefined); setRangeTo(undefined); } }}>
             <PopoverTrigger
-              className={`calendar-card px-3 py-1.5 text-xs font-medium transition-all duration-150 flex items-center gap-1.5 outline-none ${
+              className={`calendar-card px-3.5 py-2 text-xs font-medium transition-all duration-150 flex items-center gap-1.5 outline-none ${
                 activeFilter === 'custom'
                   ? 'bg-gold/10 text-gold'
                   : 'text-muted-foreground hover:text-foreground'
