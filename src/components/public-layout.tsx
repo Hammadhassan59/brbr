@@ -74,7 +74,7 @@ export default function PublicLayout({ children, showHomeNav = false }: PublicLa
 
             {/* Column 2 — Product */}
             <div>
-              <h4 className="text-xs font-bold text-[#EFEFEF]/60 tracking-[0.12em] uppercase mb-4">Product</h4>
+              <h4 className="text-sm font-bold text-[#EFEFEF]/60 tracking-[0.12em] uppercase mb-4">Product</h4>
               <ul className="space-y-0.5">
                 <li>
                   <Link href="/#features" className="text-sm text-[#EFEFEF]/40 hover:text-[#EFEFEF] transition-colors block py-2.5">Features</Link>
@@ -90,7 +90,7 @@ export default function PublicLayout({ children, showHomeNav = false }: PublicLa
 
             {/* Column 3 — Company */}
             <div>
-              <h4 className="text-xs font-bold text-[#EFEFEF]/60 tracking-[0.12em] uppercase mb-4">Company</h4>
+              <h4 className="text-sm font-bold text-[#EFEFEF]/60 tracking-[0.12em] uppercase mb-4">Company</h4>
               <ul className="space-y-0.5">
                 <li>
                   <Link href="/about" className="text-sm text-[#EFEFEF]/40 hover:text-[#EFEFEF] transition-colors block py-2.5">About</Link>
@@ -103,7 +103,7 @@ export default function PublicLayout({ children, showHomeNav = false }: PublicLa
 
             {/* Column 4 — Legal */}
             <div>
-              <h4 className="text-xs font-bold text-[#EFEFEF]/60 tracking-[0.12em] uppercase mb-4">Legal</h4>
+              <h4 className="text-sm font-bold text-[#EFEFEF]/60 tracking-[0.12em] uppercase mb-4">Legal</h4>
               <ul className="space-y-0.5">
                 <li>
                   <Link href="/privacy" className="text-sm text-[#EFEFEF]/40 hover:text-[#EFEFEF] transition-colors block py-2.5">Privacy Policy</Link>
