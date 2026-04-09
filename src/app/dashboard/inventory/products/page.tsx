@@ -6,6 +6,7 @@ import { Search, Plus, Package as PackageIcon, Minus, X } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAppStore } from '@/store/app-store';
 import { formatPKR } from '@/lib/utils/currency';
+import { createProduct, updateProduct, syncProductServiceLinks, adjustStock } from '@/app/actions/inventory';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -150,34 +151,35 @@ function ProductsContent() {
     }
     setSaving(true);
     try {
-      const data = {
-        salon_id: salon.id, name: formName.trim(), brand: formBrand || null, category: formCategory || null,
-        inventory_type: formType, unit: formUnit,
-        content_per_unit: Number(formContentPerUnit) || 1, content_unit: formContentUnit,
-        purchase_price: Number(formPurchasePrice) || 0,
-        retail_price: Number(formRetailPrice) || 0, current_stock: Number(formStock) || 0, low_stock_threshold: Number(formThreshold) || 5,
-      };
       let productId: string;
       if (editProduct) {
-        const { error } = await supabase.from('products').update(data).eq('id', editProduct.id);
-        if (error) throw error;
+        const { error } = await updateProduct(editProduct.id, {
+          name: formName.trim(), brand: formBrand || null, category: formCategory || null,
+          inventory_type: formType, unit: formUnit,
+          content_per_unit: Number(formContentPerUnit) || 1, content_unit: formContentUnit,
+          purchase_price: Number(formPurchasePrice) || 0,
+          retail_price: Number(formRetailPrice) || 0, current_stock: Number(formStock) || 0, low_stock_threshold: Number(formThreshold) || 5,
+        });
+        if (error) throw new Error(error);
         productId = editProduct.id;
         toast.success('Product updated');
       } else {
-        const { data: newProd, error } = await supabase.from('products').insert(data).select().single();
-        if (error) throw error;
+        const { data: newProd, error } = await createProduct({
+          name: formName.trim(), brand: formBrand || null, category: formCategory || null,
+          inventoryType: formType, unit: formUnit,
+          contentPerUnit: Number(formContentPerUnit) || 1, contentUnit: formContentUnit,
+          purchasePrice: Number(formPurchasePrice) || 0,
+          retailPrice: Number(formRetailPrice) || 0, currentStock: Number(formStock) || 0, lowStockThreshold: Number(formThreshold) || 5,
+        });
+        if (error) throw new Error(error);
         productId = newProd.id;
         toast.success('Product added');
       }
 
-      // Sync service links: delete old, insert new
+      // Sync service links
       if (formType === 'backbar') {
-        await supabase.from('product_service_links').delete().eq('product_id', productId);
-        if (formLinks.length > 0) {
-          await supabase.from('product_service_links').insert(
-            formLinks.map(l => ({ product_id: productId, service_id: l.serviceId, quantity_per_use: l.qtyPerUse }))
-          );
-        }
+        const { error } = await syncProductServiceLinks(productId, formLinks.map(l => ({ serviceId: l.serviceId, qtyPerUse: l.qtyPerUse })));
+        if (error) throw new Error(error);
       }
 
       setShowForm(false);
@@ -191,12 +193,8 @@ function ProductsContent() {
     setSavingAdjust(true);
     try {
       const qty = Number(adjustQty);
-      const newStock = adjustProduct.current_stock + qty;
-      await supabase.from('products').update({ current_stock: Math.max(0, newStock) }).eq('id', adjustProduct.id);
-      await supabase.from('stock_movements').insert({
-        product_id: adjustProduct.id, branch_id: currentBranch.id,
-        movement_type: 'adjustment', quantity: qty, notes: adjustReason || null,
-      });
+      const { error } = await adjustStock(adjustProduct.id, currentBranch.id, qty, adjustReason || null);
+      if (error) throw new Error(error);
       toast.success('Stock adjusted');
       setShowAdjust(false); setAdjustQty(''); setAdjustReason('');
       fetchProducts();

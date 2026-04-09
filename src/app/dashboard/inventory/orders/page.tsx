@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabase';
 import { useAppStore } from '@/store/app-store';
 import { formatPKR } from '@/lib/utils/currency';
 import { formatPKDate } from '@/lib/utils/dates';
+import { createPurchaseOrder, updateOrderStatus } from '@/app/actions/inventory';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -71,10 +72,11 @@ export default function OrdersPage() {
         }
         items.push({ name, qty, price });
       }
-      await supabase.from('purchase_orders').insert({
-        supplier_id: formSupplierId, branch_id: currentBranch.id,
-        items: JSON.parse(JSON.stringify(items)), total_amount: Number(formTotal), notes: formNotes || null,
+      const { error } = await createPurchaseOrder({
+        supplierId: formSupplierId, branchId: currentBranch.id,
+        items, totalAmount: Number(formTotal), notes: formNotes || null,
       });
+      if (error) throw new Error(error);
       toast.success('Order created');
       setShowForm(false); setFormSupplierId(''); setFormItems(''); setFormTotal(''); setFormNotes('');
       fetch();
@@ -83,7 +85,8 @@ export default function OrdersPage() {
   }
 
   async function updateStatus(orderId: string, status: PurchaseOrderStatus) {
-    await supabase.from('purchase_orders').update({ status }).eq('id', orderId);
+    const { error } = await updateOrderStatus(orderId, status);
+    if (error) { toast.error(error); return; }
     toast.success(`Order marked as ${status}`);
     fetch();
   }

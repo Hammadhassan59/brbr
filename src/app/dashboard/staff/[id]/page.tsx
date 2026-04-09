@@ -8,6 +8,7 @@ import {
   CheckCircle, XCircle, AlertCircle, MinusCircle,
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import { upsertAttendance, recordAdvance } from '@/app/actions/staff';
 import { formatPKR } from '@/lib/utils/currency';
 import { formatPKDate, formatTime } from '@/lib/utils/dates';
 import { Button } from '@/components/ui/button';
@@ -95,18 +96,18 @@ export default function StaffProfilePage() {
   async function saveAttendance() {
     setSavingAtt(true);
     try {
-      const { error } = await supabase.from('attendance').upsert({
-        staff_id: staffId,
-        branch_id: staff?.branch_id,
+      const { error } = await upsertAttendance({
+        staffId,
+        branchId: staff?.branch_id || '',
         date: attDate,
         status: attStatus,
-        check_in: attCheckIn || null,
-        check_out: attCheckOut || null,
+        checkIn: attCheckIn || null,
+        checkOut: attCheckOut || null,
         notes: attNotes || null,
-        late_minutes: attStatus === 'late' ? 30 : 0,
-        deduction_amount: attStatus === 'late' ? 100 : attStatus === 'absent' ? 500 : 0,
-      }, { onConflict: 'staff_id,date' }).select().single();
-      if (error) throw error;
+        lateMinutes: attStatus === 'late' ? 30 : 0,
+        deductionAmount: attStatus === 'late' ? 100 : attStatus === 'absent' ? 500 : 0,
+      });
+      if (error) throw new Error(error);
       toast.success('Attendance saved');
       setShowAttModal(false);
       fetchData();
@@ -117,12 +118,8 @@ export default function StaffProfilePage() {
   async function saveAdvance() {
     setSavingAdv(true);
     try {
-      const { error } = await supabase.from('advances').insert({
-        staff_id: staffId,
-        amount: Number(advAmount),
-        reason: advReason || null,
-      }).select().single();
-      if (error) throw error;
+      const { error } = await recordAdvance(staffId, Number(advAmount), advReason || null);
+      if (error) throw new Error(error);
       toast.success('Advance recorded');
       setShowAdvModal(false);
       setAdvAmount(''); setAdvReason('');

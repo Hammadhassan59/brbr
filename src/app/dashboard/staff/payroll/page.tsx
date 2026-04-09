@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { Download, MessageCircle, ChevronRight } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import { createExpense, createExpenses, deleteSalaryExpenses } from '@/app/actions/expenses';
 import { useAppStore } from '@/store/app-store';
 import { formatPKR } from '@/lib/utils/currency';
 import { generateWhatsAppLink } from '@/lib/utils/whatsapp';
@@ -124,25 +125,19 @@ export default function PayrollPage() {
 
     if (!row.paid) {
       // Mark as paid — insert expense record
-      const { error } = await supabase.from('expenses').insert({
-        branch_id: currentBranch?.id || null,
+      const { error } = await createExpense({
+        branchId: currentBranch?.id || '',
         category: 'salary',
         amount: row.netPayable,
         description: salaryDesc,
         date: new Date().toISOString().split('T')[0],
-        created_by: currentStaff?.id || null,
+        createdBy: currentStaff?.id || null,
       });
       if (error) { toast.error('Failed to save payment'); return; }
       toast.success(`${row.staff.name} marked as paid`);
     } else {
       // Unmark — delete the expense record
-      const { error } = await supabase
-        .from('expenses')
-        .delete()
-        .eq('category', 'salary')
-        .eq('description', salaryDesc)
-        .gte('date', startDate)
-        .lte('date', endDate);
+      const { error } = await deleteSalaryExpenses(salaryDesc, startDate, endDate);
       if (error) { toast.error('Failed to undo payment'); return; }
       toast.success(`${row.staff.name} unmarked as paid`);
     }
@@ -161,17 +156,17 @@ export default function PayrollPage() {
       const monthLabel = new Date(year, month - 1).toLocaleString('default', { month: 'long' });
       const today = new Date().toISOString().split('T')[0];
 
-      const inserts = unpaid.map((row) => ({
-        branch_id: currentBranch?.id || null,
+      const items = unpaid.map((row) => ({
+        branchId: currentBranch?.id || '',
         category: 'salary',
         amount: row.netPayable,
         description: `Salary: ${row.staff.name} — ${monthLabel} ${year}`,
         date: today,
-        created_by: currentStaff?.id || null,
+        createdBy: currentStaff?.id || null,
       }));
 
-      const { error } = await supabase.from('expenses').insert(inserts);
-      if (error) throw error;
+      const { error } = await createExpenses(items);
+      if (error) throw new Error(error);
 
       setRows(rows.map((r) => ({ ...r, paid: r.paid || r.netPayable > 0 })));
       toast.success(`${unpaid.length} staff marked as paid`);

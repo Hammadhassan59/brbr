@@ -5,6 +5,7 @@ import { Plus, Phone as PhoneIcon } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAppStore } from '@/store/app-store';
 import { formatPKR } from '@/lib/utils/currency';
+import { createSupplier, updateSupplier, recordSupplierPayment } from '@/app/actions/inventory';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -52,12 +53,13 @@ export default function SuppliersPage() {
     if (!salon || !formName.trim()) { toast.error('Name required'); return; }
     setSaving(true);
     try {
-      const data = { salon_id: salon.id, name: formName.trim(), phone: formPhone || null, notes: formNotes || null };
       if (editSupplier) {
-        await supabase.from('suppliers').update(data).eq('id', editSupplier.id);
+        const { error } = await updateSupplier(editSupplier.id, { name: formName.trim(), phone: formPhone || null, notes: formNotes || null });
+        if (error) throw new Error(error);
         toast.success('Supplier updated');
       } else {
-        await supabase.from('suppliers').insert(data);
+        const { error } = await createSupplier({ name: formName.trim(), phone: formPhone || null, notes: formNotes || null });
+        if (error) throw new Error(error);
         toast.success('Supplier added');
       }
       setShowForm(false); fetch();
@@ -72,9 +74,8 @@ export default function SuppliersPage() {
     try {
       const amount = Number(payAmount);
       if (amount > paySupplier.udhaar_balance) { toast.error('Payment amount exceeds outstanding balance'); setSavingPay(false); return; }
-      await supabase.from('suppliers').update({
-        udhaar_balance: paySupplier.udhaar_balance - amount,
-      }).eq('id', paySupplier.id);
+      const { error } = await recordSupplierPayment(paySupplier.id, amount, paySupplier.udhaar_balance);
+      if (error) throw new Error(error);
       toast.success(`Payment of ${formatPKR(amount)} recorded`);
       setShowPayment(false); setPayAmount(''); fetch();
     } catch (err: unknown) { toast.error(err instanceof Error ? err.message : 'Failed'); }

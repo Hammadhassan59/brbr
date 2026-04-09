@@ -2,8 +2,8 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabase';
 import { useAppStore } from '@/store/app-store';
+import { createStaff, updateStaff } from '@/app/actions/staff';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -57,28 +57,35 @@ export function StaffForm({ staff, onSaved }: StaffFormProps) {
 
     setSaving(true);
     try {
-      const data: Record<string, unknown> = {
-        salon_id: salon.id,
-        branch_id: currentBranch.id,
-        name: name.trim(),
-        phone: phone || null,
-        role,
-        join_date: joinDate,
-        base_salary: Number(baseSalary) || 0,
-        commission_type: commissionType,
-        commission_rate: Number(commissionRate) || 0,
-      };
-      if (isEditing) data.is_active = isActive;
-      if (pin) data.pin_code = pin;
-
       if (isEditing && staff) {
-        const { error } = await supabase.from('staff').update(data).eq('id', staff.id);
-        if (error) throw error;
+        const data: Record<string, unknown> = {
+          name: name.trim(),
+          phone: phone || null,
+          role,
+          join_date: joinDate,
+          base_salary: Number(baseSalary) || 0,
+          commission_type: commissionType,
+          commission_rate: Number(commissionRate) || 0,
+          is_active: isActive,
+        };
+        if (pin) data.pin_code = pin;
+
+        const { error } = await updateStaff(staff.id, data);
+        if (error) throw new Error(error);
         toast.success('Staff updated');
       } else {
-        data.pin_code = pin;
-        const { data: newStaff, error } = await supabase.from('staff').insert(data).select().single();
-        if (error) throw error;
+        const { data: newStaff, error } = await createStaff({
+          branchId: currentBranch.id,
+          name: name.trim(),
+          phone: phone || null,
+          role,
+          joinDate,
+          baseSalary: Number(baseSalary) || 0,
+          commissionType,
+          commissionRate: Number(commissionRate) || 0,
+          pinCode: pin,
+        });
+        if (error) throw new Error(error);
         toast.success('Staff member added');
         router.push(`/dashboard/staff/${newStaff.id}`);
         return;

@@ -15,6 +15,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 
 import toast from 'react-hot-toast';
 import type { Expense } from '@/types/database';
+import { createExpense, updateExpense, deleteExpense as deleteExpenseAction, updateCashDrawerExpenses } from '@/app/actions/expenses';
 
 const CATEGORIES = [
   'Chai/Snacks',
@@ -95,11 +96,12 @@ export default function ExpensesPage() {
       if (editingExpense) {
         const oldAmount = editingExpense.amount;
         const newAmount = Number(amount);
-        await supabase.from('expenses').update({
+        const { error: updateError } = await updateExpense(editingExpense.id, {
           category: finalCategory || null,
           amount: newAmount,
           description: description || null,
-        }).eq('id', editingExpense.id);
+        });
+        if (updateError) throw new Error(updateError);
 
         if (oldAmount !== newAmount) {
           try {
@@ -112,10 +114,9 @@ export default function ExpensesPage() {
               .single();
 
             if (drawer) {
-              const { error: drawerError } = await supabase.from('cash_drawers').update({
-                total_expenses: (drawer.total_expenses || 0) - oldAmount + newAmount,
-              }).eq('id', drawer.id);
-              if (drawerError) throw drawerError;
+              const newTotal = (drawer.total_expenses || 0) - oldAmount + newAmount;
+              const { error: drawerError } = await updateCashDrawerExpenses(currentBranch.id, editingExpense.date, newTotal);
+              if (drawerError) throw new Error(drawerError);
             }
           } catch {
             toast.error('Expense saved but cash drawer not updated');
@@ -125,14 +126,15 @@ export default function ExpensesPage() {
         toast.success('Expense updated');
       } else {
         const createdBy = isPartner ? currentPartner?.id : currentStaff?.id;
-        await supabase.from('expenses').insert({
-          branch_id: currentBranch.id,
+        const { error: createError } = await createExpense({
+          branchId: currentBranch.id,
           category: finalCategory || null,
           amount: Number(amount),
           description: description || null,
           date: today,
-          created_by: createdBy || null,
+          createdBy: createdBy || null,
         });
+        if (createError) throw new Error(createError);
 
         try {
           const { data: drawer } = await supabase
@@ -144,10 +146,9 @@ export default function ExpensesPage() {
             .single();
 
           if (drawer) {
-            const { error: drawerError } = await supabase.from('cash_drawers').update({
-              total_expenses: (drawer.total_expenses || 0) + Number(amount),
-            }).eq('id', drawer.id);
-            if (drawerError) throw drawerError;
+            const newTotal = (drawer.total_expenses || 0) + Number(amount);
+            const { error: drawerError } = await updateCashDrawerExpenses(currentBranch.id, today, newTotal);
+            if (drawerError) throw new Error(drawerError);
           }
         } catch {
           toast.error('Expense saved but cash drawer not updated');
@@ -167,10 +168,11 @@ export default function ExpensesPage() {
     }
   }
 
-  async function deleteExpense(expense: Expense) {
+  async function handleDeleteExpense(expense: Expense) {
     if (!confirm('Delete this expense?')) return;
     try {
-      await supabase.from('expenses').delete().eq('id', expense.id);
+      const { error } = await deleteExpenseAction(expense.id);
+      if (error) throw new Error(error);
       toast.success('Expense deleted');
       fetchExpenses();
     } catch {
@@ -307,7 +309,7 @@ export default function ExpensesPage() {
                       </TableCell>
                       <TableCell className="text-right text-sm font-medium text-foreground">{formatPKR(expense.amount)}</TableCell>
                       <TableCell className="text-right pr-4 w-10">
-                        <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive" onClick={(e) => { e.stopPropagation(); deleteExpense(expense); }}>
+                        <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive" onClick={(e) => { e.stopPropagation(); handleDeleteExpense(expense); }}>
                           <Trash2 className="w-3.5 h-3.5" />
                         </Button>
                       </TableCell>
