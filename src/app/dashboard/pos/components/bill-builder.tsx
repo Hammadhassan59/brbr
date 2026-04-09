@@ -105,11 +105,11 @@ export function BillBuilder({
   return (
     <div className="flex h-full gap-0">
       <div className="flex-1 flex flex-col min-w-0 bg-background border-r border-border">
-        <div className="px-3 pt-2 pb-1">
-          <div className="flex flex-wrap gap-1">
+        <div className="px-3 pt-2 pb-1 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
+          <div className="flex gap-1 min-w-max">
             {SERVICE_TABS.map((t) => (
               <button key={t.value} onClick={() => setSvcCategory(t.value)}
-                className={`text-[11px] px-2.5 py-1.5 font-medium rounded-md transition-all duration-150 ${
+                className={`text-[11px] px-2.5 py-1.5 font-medium rounded-md transition-all duration-150 shrink-0 ${
                   svcCategory === t.value ? 'bg-foreground text-white' : 'text-muted-foreground hover:text-foreground'
                 }`}
               >{t.label}</button>
