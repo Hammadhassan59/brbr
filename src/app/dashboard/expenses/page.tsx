@@ -216,7 +216,7 @@ export default function ExpensesPage() {
       </div>
 
       {/* Summary cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 stagger-children">
         <Card className="border-border">
           <CardContent className="p-5 text-center">
             {loading ? <div className="h-12 bg-muted rounded-lg animate-pulse" /> : (
@@ -287,8 +287,9 @@ export default function ExpensesPage() {
           </CardContent>
         </Card>
       ) : (
-        Object.entries(groupedByDate).sort(([a], [b]) => b.localeCompare(a)).map(([date, dayExpenses]) => (
-          <Card key={date} className="border-border">
+        <div className="space-y-4 stagger-children">
+        {Object.entries(groupedByDate).sort(([a], [b]) => b.localeCompare(a)).map(([date, dayExpenses]) => (
+          <Card key={date} className="border-border animate-fade-up">
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-sm">{date === today ? 'Today' : formatPKDate(date)}</CardTitle>
@@ -316,7 +317,8 @@ export default function ExpensesPage() {
               </Table>
             </CardContent>
           </Card>
-        ))
+        ))}
+        </div>
       )}
 
       {/* Add Expense Dialog */}

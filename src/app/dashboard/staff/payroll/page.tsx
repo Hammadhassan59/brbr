@@ -269,9 +269,9 @@ Thank you 🙏 — BrBr Management`;
                     <TableHead className="text-center pr-4">Slip</TableHead>
                   </TableRow>
                 </TableHeader>
-                <TableBody>
+                <TableBody className="stagger-children">
                   {rows.map((row, i) => (
-                    <TableRow key={row.staff.id}>
+                    <TableRow key={row.staff.id} className="animate-fade-up">
                       <TableCell className="pl-4">
                         <p className="font-medium text-sm">{row.staff.name}</p>
                         <p className="text-[10px] text-muted-foreground capitalize">{row.staff.role.replace('_', ' ')}</p>

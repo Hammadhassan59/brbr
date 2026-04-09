@@ -168,9 +168,9 @@ export default function ReportsPage() {
       <div className="bg-card border border-border rounded-lg p-4">
         <h2 className="font-heading text-xl font-bold">Reports</h2>
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 stagger-children">
         {REPORTS.map((r) => (
-          <Link key={r.href} href={r.href} className="group">
+          <Link key={r.href} href={r.href} className="group animate-fade-up">
             <div className="flex items-center gap-4 p-4 border border-border bg-card hover:border-gold/40 transition-all">
               <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center shrink-0">
                 <r.icon className="w-5 h-5 text-muted-foreground" />
