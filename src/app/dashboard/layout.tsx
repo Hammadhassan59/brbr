@@ -234,7 +234,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </button>
 
           {/* Search bar */}
-          <div className="hidden sm:flex items-center gap-2 bg-accent rounded-lg px-3 h-10 w-72 border border-border">
+          <div className="hidden sm:flex items-center gap-2 bg-muted rounded-lg px-3 h-10 w-72 border border-border">
             <Search className="w-4 h-4 text-muted-foreground shrink-0" />
             <input
               type="text"
@@ -246,7 +246,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <div className="ml-auto flex items-center gap-3">
             {roleAccess === 'full' && (
               <DropdownMenu>
-                <DropdownMenuTrigger className="relative w-11 h-11 rounded-lg bg-accent hover:bg-accent/80 flex items-center justify-center transition-all duration-150 outline-none text-foreground" aria-label="Notifications">
+                <DropdownMenuTrigger className="relative w-11 h-11 rounded-lg bg-muted hover:bg-muted/80 flex items-center justify-center transition-all duration-150 outline-none text-foreground" aria-label="Notifications">
                   <Bell className="w-[18px] h-[18px]" />
                   <span className="absolute top-2 right-2 w-1.5 h-1.5 rounded-full bg-gold" />
                 </DropdownMenuTrigger>
@@ -295,7 +295,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
             {/* User avatar + name */}
             <div className="hidden lg:flex items-center gap-3 pl-3 border-l border-border">
-              <div className="w-9 h-9 rounded-full bg-gold/15 flex items-center justify-center text-xs font-bold text-gold">
+              <div className="w-9 h-9 rounded-full bg-muted flex items-center justify-center text-xs font-bold text-foreground">
                 {displayInitial}
               </div>
               <div className="flex flex-col">
