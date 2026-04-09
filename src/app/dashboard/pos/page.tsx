@@ -444,8 +444,8 @@ function POSContent() {
     <div className="h-[calc(100vh-3.5rem)] flex flex-col lg:flex-row gap-0 -m-4 lg:-m-6">
       {loading && (
         <div className="flex-1 flex items-center justify-center bg-background">
-          <div className="calendar-card bg-card border border-border p-8 text-center">
-            <div className="w-12 h-12 rounded-xl bg-gold/10 flex items-center justify-center mx-auto mb-3 shimmer">
+          <div className="bg-card border border-border rounded-lg p-8 text-center">
+            <div className="w-12 h-12 rounded-lg bg-gold/10 flex items-center justify-center mx-auto mb-3 shimmer">
               <span className="text-gold font-bold">POS</span>
             </div>
             <p className="text-sm text-muted-foreground">Loading services...</p>
@@ -461,7 +461,7 @@ function POSContent() {
 
           {selectedClient ? (
             <div className="flex items-center gap-2 flex-1 min-w-0">
-              <div className="w-7 h-7 rounded-xl bg-gold/20 text-gold text-xs font-bold flex items-center justify-center shrink-0">
+              <div className="w-7 h-7 rounded-lg bg-gold/20 text-gold text-xs font-bold flex items-center justify-center shrink-0">
                 {selectedClient.name.charAt(0)}
               </div>
               <span className="text-sm font-medium truncate">{selectedClient.name}</span>
@@ -477,10 +477,10 @@ function POSContent() {
                 value={clientSearch}
                 onChange={(e) => setClientSearch(e.target.value)}
                 placeholder="Search client..."
-                className="calendar-card pl-8 h-8 text-sm"
+                className="pl-8 h-8 text-sm"
               />
               {clientSearch.length >= 2 && (
-                <div className="absolute z-20 top-full left-0 right-0 mt-1 calendar-card bg-card border border-border max-h-40 overflow-y-auto" style={{ scrollbarWidth: 'none' }}>
+                <div className="absolute z-20 top-full left-0 right-0 mt-1 bg-card border border-border rounded-lg max-h-40 overflow-y-auto" style={{ scrollbarWidth: 'none' }}>
                   {clientResults.map((c) => (
                     <button key={c.id} onClick={() => { setSelectedClient(c); setClientSearch(''); setClientResults([]); }}
                       className="w-full text-left px-3 py-1.5 hover:bg-secondary text-sm transition-all duration-150"
@@ -510,14 +510,14 @@ function POSContent() {
                           value={newClientName}
                           onChange={(e) => setNewClientName(e.target.value)}
                           placeholder="Client name *"
-                          className="calendar-card h-7 text-xs"
+                          className="h-7 text-xs"
                           autoFocus
                         />
                         <Input
                           value={newClientPhone}
                           onChange={(e) => setNewClientPhone(e.target.value)}
                           placeholder="Phone (optional)"
-                          className="calendar-card h-7 text-xs"
+                          className="h-7 text-xs"
                         />
                         <div className="flex gap-1.5">
                           <Button variant="outline" size="sm" className="flex-1 h-7 text-xs transition-all duration-150" onClick={() => setShowNewClient(false)}>
@@ -536,14 +536,14 @@ function POSContent() {
           )}
 
           <Select value={selectedStaffId} onValueChange={(v) => { if (v) { setSelectedStaffId(v); if (!tipStaffId) setTipStaffId(v); } }}>
-            <SelectTrigger className="calendar-card h-8 text-xs w-[140px]">
+            <SelectTrigger className="h-8 text-xs w-[140px]">
               <SelectValue placeholder="Stylist" />
             </SelectTrigger>
             <SelectContent>
               {stylists.map((s) => (
                 <SelectItem key={s.id} value={s.id}>
                   <span className="flex items-center gap-1.5">
-                    <span className="w-5 h-5 rounded-xl bg-gold/20 text-gold text-[10px] font-bold flex items-center justify-center shrink-0">{s.name.charAt(0)}</span>
+                    <span className="w-5 h-5 rounded-lg bg-gold/20 text-gold text-[10px] font-bold flex items-center justify-center shrink-0">{s.name.charAt(0)}</span>
                     {s.name}
                   </span>
                 </SelectItem>
@@ -551,7 +551,7 @@ function POSContent() {
             </SelectContent>
           </Select>
 
-          <span className="calendar-card bg-background/50 px-3 py-1 text-xs text-muted-foreground font-mono hidden sm:block">{billNumber}</span>
+          <span className="bg-background/50 px-3 py-1 text-xs text-muted-foreground font-mono hidden sm:block">{billNumber}</span>
         </div>
 
         <div className="flex-1 overflow-hidden bg-background">

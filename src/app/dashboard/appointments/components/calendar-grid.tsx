@@ -164,7 +164,7 @@ export function CalendarGrid({
               key={stylist.id}
               className="flex-1 min-w-[160px] border-r border-border last:border-r-0"
             >
-              <div className="bg-secondary m-1.5 p-3 border border-border calendar-card flex items-center gap-3">
+              <div className="bg-secondary m-1.5 p-3 border border-border flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full bg-gold/15 text-gold text-sm font-bold flex items-center justify-center shrink-0 ring-2 ring-gold/20">
                   {stylist.name.charAt(0)}
                 </div>
@@ -231,7 +231,7 @@ export function CalendarGrid({
                         <button
                           onClick={() => onAppointmentClick(apt)}
                           className={`
-                            calendar-card w-full text-left p-3 border-l-4 border border-border/40
+                            w-full text-left p-3 border-l-4 border border-border/40
                             bg-card transition-all duration-150 hover:scale-[1.02] hover:shadow-lg
                             ${STATUS_STRIPE[apt.status]}
                             ${isCancelled ? 'line-through opacity-60' : ''}
@@ -254,7 +254,7 @@ export function CalendarGrid({
                     <div key={key} className="flex-1 min-w-[160px] border-r border-border last:border-r-0 p-0.5">
                       <button
                         onClick={() => onSlotClick(stylist.id, time)}
-                        className="w-full h-full min-h-[48px] border border-transparent hover:border-gold/20 hover:bg-card/80 hover:cursor-pointer transition-all duration-150 calendar-card"
+                        className="w-full h-full min-h-[48px] border border-transparent hover:border-gold/20 hover:bg-card/80 hover:cursor-pointer transition-all duration-150"
                         aria-label={`Book ${stylist.name} at ${time}`}
                       />
                     </div>

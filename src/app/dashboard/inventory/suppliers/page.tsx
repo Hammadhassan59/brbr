@@ -1,8 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import Link from 'next/link';
-import { Plus, Phone as PhoneIcon, ChevronRight } from 'lucide-react';
+import { Plus, Phone as PhoneIcon } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAppStore } from '@/store/app-store';
 import { formatPKR } from '@/lib/utils/currency';
@@ -84,25 +83,19 @@ export default function SuppliersPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-1 text-sm text-muted-foreground">
-        <Link href="/dashboard/inventory" className="hover:text-foreground transition-colors">Inventory</Link>
-        <ChevronRight className="w-3.5 h-3.5" />
-        <span className="text-foreground font-medium">Suppliers</span>
-      </div>
-
-      <div className="calendar-card bg-card border border-border p-4 flex items-center justify-between">
+      <div className="flex items-center justify-between">
         <h2 className="font-heading text-xl font-bold">Suppliers</h2>
-        <Button onClick={() => openForm()} className="calendar-card bg-gold hover:bg-gold/90 text-black font-bold" size="sm"><Plus className="w-4 h-4 mr-1" /> Add Supplier</Button>
+        <Button onClick={() => openForm()} className="bg-gold hover:bg-gold/90 text-black font-bold" size="sm"><Plus className="w-4 h-4 mr-1" /> Add Supplier</Button>
       </div>
 
       {loading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">{[1, 2, 3].map((i) => <div key={i} className="calendar-card h-24 bg-muted animate-pulse" />)}</div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">{[1, 2, 3].map((i) => <div key={i} className="h-24 bg-muted rounded-lg animate-pulse" />)}</div>
       ) : suppliers.length === 0 ? (
         <p className="text-center text-muted-foreground py-16">No suppliers yet</p>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {suppliers.map((s) => (
-            <Card key={s.id} className="calendar-card border-border hover:shadow-md hover:border-gold/30 transition-shadow cursor-pointer" onClick={() => openForm(s)}>
+            <Card key={s.id} className="border-border hover:shadow-md hover:border-gold/30 transition-shadow cursor-pointer" onClick={() => openForm(s)}>
               <CardContent className="p-4">
                 <div className="flex items-start justify-between">
                   <div>
@@ -127,12 +120,12 @@ export default function SuppliersPage() {
 
       {/* Supplier Form */}
       <Dialog open={showForm} onOpenChange={setShowForm}>
-        <DialogContent className="calendar-card max-w-sm">
+        <DialogContent className="max-w-sm">
           <DialogHeader><DialogTitle>{editSupplier ? 'Edit Supplier' : 'Add Supplier'}</DialogTitle></DialogHeader>
           <div className="space-y-3">
-            <div><Label className="text-xs">Name *</Label><Input value={formName} onChange={(e) => setFormName(e.target.value)} className="calendar-card mt-1" /></div>
-            <div><Label className="text-xs">Phone</Label><Input value={formPhone} onChange={(e) => setFormPhone(e.target.value)} placeholder="03XX-XXXXXXX" className="calendar-card mt-1" /></div>
-            <div><Label className="text-xs">Notes</Label><Textarea value={formNotes} onChange={(e) => setFormNotes(e.target.value)} rows={2} className="calendar-card mt-1" /></div>
+            <div><Label className="text-xs">Name *</Label><Input value={formName} onChange={(e) => setFormName(e.target.value)} className="mt-1" /></div>
+            <div><Label className="text-xs">Phone</Label><Input value={formPhone} onChange={(e) => setFormPhone(e.target.value)} placeholder="03XX-XXXXXXX" className="mt-1" /></div>
+            <div><Label className="text-xs">Notes</Label><Textarea value={formNotes} onChange={(e) => setFormNotes(e.target.value)} rows={2} className="mt-1" /></div>
             <Button onClick={saveSupplier} disabled={saving} className="w-full bg-gold text-black border border-gold">{saving ? 'Saving...' : 'Save'}</Button>
           </div>
         </DialogContent>
@@ -140,11 +133,11 @@ export default function SuppliersPage() {
 
       {/* Payment Modal */}
       <Dialog open={showPayment} onOpenChange={setShowPayment}>
-        <DialogContent className="calendar-card max-w-sm">
+        <DialogContent className="max-w-sm">
           <DialogHeader><DialogTitle>Pay {paySupplier?.name}</DialogTitle></DialogHeader>
           <div className="space-y-3">
             <p className="text-sm">Outstanding: <span className="font-bold text-red-600">{formatPKR(paySupplier?.udhaar_balance || 0)}</span></p>
-            <div><Label className="text-xs">Payment Amount (Rs)</Label><Input type="number" value={payAmount} onChange={(e) => setPayAmount(e.target.value)} className="calendar-card mt-1" inputMode="numeric" /></div>
+            <div><Label className="text-xs">Payment Amount (Rs)</Label><Input type="number" value={payAmount} onChange={(e) => setPayAmount(e.target.value)} className="mt-1" inputMode="numeric" /></div>
             <Button onClick={recordPayment} disabled={savingPay} className="w-full bg-gold text-black border border-gold">{savingPay ? 'Saving...' : 'Record Payment'}</Button>
           </div>
         </DialogContent>

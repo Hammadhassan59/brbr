@@ -22,29 +22,21 @@ export function KPICards({ summary, appointmentsDone, appointmentsTotal, walkIns
       label: t('todayRevenue'),
       value: formatPKR(summary?.total_revenue ?? 0),
       icon: DollarSign,
-      color: 'text-green-400',
-      bg: 'bg-green-500/15',
     },
     {
       label: t('totalAppointments'),
       value: `${appointmentsDone} / ${appointmentsTotal}`,
       icon: CalendarDays,
-      color: 'text-blue-400',
-      bg: 'bg-blue-500/15',
     },
     {
       label: t('walkIns'),
       value: String(walkIns),
       icon: Footprints,
-      color: 'text-amber-400',
-      bg: 'bg-amber-500/15',
     },
     {
       label: t('cashInDrawer'),
       value: formatPKR(cashInDrawer),
       icon: Wallet,
-      color: 'text-purple-400',
-      bg: 'bg-purple-500/15',
     },
   ];
 
@@ -53,7 +45,7 @@ export function KPICards({ summary, appointmentsDone, appointmentsTotal, walkIns
       {cards.map((card) => (
         <div
           key={card.label}
-          className={`calendar-card bg-card border border-border p-5 hover:border-b-gold/50 transition-all duration-200 ${!loading ? 'animate-fade-up' : ''}`}
+          className={`bg-card border border-border rounded-lg p-5 hover:border-b-gold/50 transition-all duration-200 ${!loading ? 'animate-fade-up' : ''}`}
         >
           {loading ? (
             <div className="space-y-3">
@@ -64,8 +56,8 @@ export function KPICards({ summary, appointmentsDone, appointmentsTotal, walkIns
             <>
               <div className="flex items-center justify-between mb-3">
                 <span className="text-xs text-muted-foreground uppercase tracking-wider font-medium">{card.label}</span>
-                <div className={`w-10 h-10 rounded-xl ${card.bg} flex items-center justify-center`}>
-                  <card.icon className={`w-5 h-5 ${card.color}`} />
+                <div>
+                  <card.icon className="w-5 h-5 text-foreground" />
                 </div>
               </div>
               <p className="text-2xl font-bold">{card.value}</p>

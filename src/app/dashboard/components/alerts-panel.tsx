@@ -32,7 +32,7 @@ export function AlertsPanel({ alerts, loading }: AlertsPanelProps) {
   const { t } = useLanguage();
 
   return (
-    <Card className="calendar-card bg-card border border-border">
+    <Card className="bg-card border border-border rounded-lg">
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <CardTitle className="text-base font-semibold">{t('alerts')}</CardTitle>
@@ -45,12 +45,12 @@ export function AlertsPanel({ alerts, loading }: AlertsPanelProps) {
         {loading ? (
           <div className="space-y-3">
             {[1, 2].map((i) => (
-              <div key={i} className="h-16 shimmer rounded-xl" />
+              <div key={i} className="h-16 shimmer rounded-lg" />
             ))}
           </div>
         ) : alerts.length === 0 ? (
           <div className="flex flex-col items-center justify-center gap-3 py-8">
-            <div className="w-12 h-12 rounded-xl bg-muted/50 flex items-center justify-center">
+            <div className="w-12 h-12 rounded-lg bg-muted/50 flex items-center justify-center">
               <ShieldCheck className="w-6 h-6 text-muted-foreground" />
             </div>
             <div className="text-center">
@@ -65,9 +65,9 @@ export function AlertsPanel({ alerts, loading }: AlertsPanelProps) {
               return (
                 <div
                   key={i}
-                  className="calendar-card flex items-center gap-3 bg-background/50 border border-border p-4 rounded-xl hover:border-border/60 transition-all duration-200 animate-fade-up"
+                  className="flex items-center gap-3 bg-background/50 border border-border p-4 rounded-lg hover:border-border/60 transition-all duration-200 animate-fade-up"
                 >
-                  <div className={`w-10 h-10 rounded-xl ${style.bg} flex items-center justify-center shrink-0`}>
+                  <div className={`w-10 h-10 rounded-lg ${style.bg} flex items-center justify-center shrink-0`}>
                     <style.icon className={`w-5 h-5 ${style.color}`} />
                   </div>
                   <div className="flex-1 min-w-0">
@@ -81,13 +81,13 @@ export function AlertsPanel({ alerts, loading }: AlertsPanelProps) {
                         target="_blank"
                         rel="noopener noreferrer"
                       >
-                        <Button size="sm" className="calendar-card text-xs shrink-0 bg-gold text-black border border-gold hover:bg-gold/90">
+                        <Button size="sm" className="text-xs shrink-0 bg-gold text-black border border-gold hover:bg-gold/90">
                           {alert.action.label}
                         </Button>
                       </a>
                     ) : alert.action.href ? (
                       <Link href={alert.action.href}>
-                        <Button size="sm" className="calendar-card text-xs shrink-0 bg-gold text-black border border-gold hover:bg-gold/90">
+                        <Button size="sm" className="text-xs shrink-0 bg-gold text-black border border-gold hover:bg-gold/90">
                           {alert.action.label}
                         </Button>
                       </Link>

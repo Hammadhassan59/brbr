@@ -87,7 +87,7 @@ export function PaymentPanel({
     <div className="flex flex-col h-full">
       {!hasItems ? (
         <div className="flex-1 flex flex-col items-center justify-center text-center px-4">
-          <div className="w-14 h-14 rounded-xl bg-gold/10 flex items-center justify-center mb-4">
+          <div className="w-14 h-14 rounded-lg bg-gold/10 flex items-center justify-center mb-4">
             <Banknote className="w-7 h-7 text-gold" />
           </div>
           <p className="font-heading font-semibold text-base mb-1">Ready for checkout</p>
@@ -117,7 +117,7 @@ export function PaymentPanel({
       {isSplit ? (
         <div className="space-y-2 mb-4 flex-1">
           {splitPayments.map((sp, i) => (
-            <div key={i} className="calendar-card bg-card border border-border p-3 flex items-center gap-1.5">
+            <div key={i} className="bg-card border border-border rounded-lg p-3 flex items-center gap-1.5">
               <Select value={sp.method} onValueChange={(v) => { if (v) updateSplit(i, 'method', v); }}>
                 <SelectTrigger className="h-8 text-xs w-[120px]"><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -130,14 +130,14 @@ export function PaymentPanel({
                 type="number"
                 value={sp.amount || ''}
                 onChange={(e) => updateSplit(i, 'amount', e.target.value)}
-                className="calendar-card h-8 text-xs flex-1"
+                className="h-8 text-xs flex-1"
                 placeholder="Rs 0"
                 inputMode="numeric"
               />
               <button onClick={() => removeSplit(i)} className="text-muted-foreground hover:text-destructive text-xs transition-all duration-150">×</button>
             </div>
           ))}
-          <Button variant="outline" size="sm" className="calendar-card w-full text-xs h-7" onClick={addSplitRow}>
+          <Button variant="outline" size="sm" className="w-full text-xs h-7" onClick={addSplitRow}>
             + Add Method
           </Button>
           <p className={`text-xs text-center font-medium ${Math.abs(splitRemaining) < 1 ? 'text-green-600' : 'text-destructive'}`}>
@@ -155,7 +155,7 @@ export function PaymentPanel({
                   key={m.method}
                   onClick={() => !disabled && onSelectMethod(m.method)}
                   disabled={disabled}
-                  className={`calendar-card bg-card border border-border flex flex-col items-center gap-1 p-4 h-auto text-xs font-medium transition-all duration-150 touch-target ${
+                  className={`bg-card border border-border rounded-lg flex flex-col items-center gap-1 p-4 h-auto text-xs font-medium transition-all duration-150 touch-target ${
                     isActive
                       ? 'border-gold bg-gold/10 text-foreground'
                       : disabled
@@ -179,22 +179,22 @@ export function PaymentPanel({
                   value={cashReceived || ''}
                   onChange={(e) => onCashReceived(Number(e.target.value))}
                   placeholder="Rs 0"
-                  className="calendar-card mt-1 text-2xl font-bold h-14"
+                  className="mt-1 text-2xl font-bold h-14"
                   inputMode="numeric"
                   autoFocus
                 />
                 <div className="flex gap-1.5 mt-2">
                   {[500, 1000, 2000, 5000].map((v) => (
-                    <Button key={v} variant="outline" size="sm" className="calendar-card bg-card border border-border flex-1 text-xs h-10 transition-all duration-150" onClick={() => onCashReceived(v)}>
+                    <Button key={v} variant="outline" size="sm" className="bg-card border border-border rounded-lg flex-1 text-xs h-10 transition-all duration-150" onClick={() => onCashReceived(v)}>
                       Rs {v.toLocaleString()}
                     </Button>
                   ))}
-                  <Button variant="outline" size="sm" className="calendar-card bg-card border border-border flex-1 text-xs h-10 border-gold text-gold transition-all duration-150" onClick={() => onCashReceived(total)}>
+                  <Button variant="outline" size="sm" className="bg-card border border-border rounded-lg flex-1 text-xs h-10 border-gold text-gold transition-all duration-150" onClick={() => onCashReceived(total)}>
                     Exact
                   </Button>
                 </div>
                 {cashReceived > 0 && change > 0 && (
-                  <div className="calendar-card bg-green-500/10 border border-green-500/20 p-3 text-center mt-2">
+                  <div className="bg-green-500/10 border border-green-500/20 p-3 text-center mt-2">
                     <p className="text-green-400 text-xl font-bold">
                       Change: {formatPKR(change)}
                     </p>
@@ -209,7 +209,7 @@ export function PaymentPanel({
                   Account: Salon&apos;s {selectedPaymentMethod === 'jazzcash' ? 'JazzCash' : 'EasyPaisa'} number
                 </p>
                 <Label className="text-xs">Reference # (optional)</Label>
-                <Input value={reference} onChange={(e) => onReferenceChange(e.target.value)} placeholder="Transaction ID" className="calendar-card mt-1" />
+                <Input value={reference} onChange={(e) => onReferenceChange(e.target.value)} placeholder="Transaction ID" className="mt-1" />
               </div>
             )}
 
@@ -217,7 +217,7 @@ export function PaymentPanel({
               <div>
                 <p className="text-xs text-muted-foreground mb-2">Bank account details from settings</p>
                 <Label className="text-xs">Reference #</Label>
-                <Input value={reference} onChange={(e) => onReferenceChange(e.target.value)} placeholder="IBFT reference" className="calendar-card mt-1" />
+                <Input value={reference} onChange={(e) => onReferenceChange(e.target.value)} placeholder="IBFT reference" className="mt-1" />
               </div>
             )}
 
@@ -236,7 +236,7 @@ export function PaymentPanel({
                   <span>{formatPKR(clientUdhaarLimit)}</span>
                 </div>
                 {overLimit && (
-                  <p className="calendar-card text-xs text-destructive font-medium p-3 bg-red-500/5 border border-red-500/20">
+                  <p className="text-xs text-destructive font-medium p-3 bg-red-500/5 border border-red-500/20">
                     Warning: This exceeds the client&apos;s udhaar limit!
                   </p>
                 )}
@@ -254,7 +254,7 @@ export function PaymentPanel({
       </button>
 
       {showTip && (
-        <div className="calendar-card bg-background/50 border border-border/20 space-y-2 mb-3 p-3">
+        <div className="bg-background/50 border border-border/20 space-y-2 mb-3 p-3">
           <div>
             <Label className="text-xs">Tip Amount</Label>
             <div className="flex gap-1.5 mt-1">
@@ -262,11 +262,11 @@ export function PaymentPanel({
                 type="number"
                 value={tipAmount || ''}
                 onChange={(e) => onTipChange(Number(e.target.value))}
-                className="calendar-card h-8 text-sm flex-1"
+                className="h-8 text-sm flex-1"
                 inputMode="numeric"
               />
               {[50, 100, 200].map((v) => (
-                <Button key={v} variant="outline" size="sm" className="calendar-card h-8 text-xs transition-all duration-150" onClick={() => onTipChange(v)}>
+                <Button key={v} variant="outline" size="sm" className="h-8 text-xs transition-all duration-150" onClick={() => onTipChange(v)}>
                   Rs{v}
                 </Button>
               ))}
@@ -289,7 +289,7 @@ export function PaymentPanel({
       <Button
         onClick={onCheckout}
         disabled={saving || total <= 0 || (!isSplit && !selectedPaymentMethod) || (isSplit && Math.abs(splitRemaining) >= 0.5)}
-        className="calendar-card w-full h-14 text-lg font-bold bg-gold hover:bg-gold/90 text-black border border-gold touch-target mt-auto transition-all duration-150"
+        className="w-full h-14 text-lg font-bold bg-gold hover:bg-gold/90 text-black border border-gold touch-target mt-auto transition-all duration-150"
       >
         {saving ? 'Processing...' : `Checkout · ${formatPKR(total)}`}
       </Button>

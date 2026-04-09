@@ -361,7 +361,7 @@ export default function SetupPage() {
                   <button
                     key={type}
                     onClick={() => setSalonType(type)}
-                    className={`p-4 rounded-xl border-2 text-center transition-all ${
+                    className={`p-4 rounded-lg border-2 text-center transition-all ${
                       salonType === type
                         ? 'border-gold bg-gold/5 shadow-sm'
                         : 'border-border hover:border-gold/50'
@@ -425,7 +425,7 @@ export default function SetupPage() {
             <div className="grid grid-cols-2 gap-4">
               <button
                 onClick={() => setOwnershipType('single')}
-                className={`p-6 rounded-xl border-2 text-center transition-all ${ownershipType === 'single' ? 'border-gold bg-gold/5 shadow-sm' : 'border-border hover:border-gold/50'}`}
+                className={`p-6 rounded-lg border-2 text-center transition-all ${ownershipType === 'single' ? 'border-gold bg-gold/5 shadow-sm' : 'border-border hover:border-gold/50'}`}
               >
                 <div className="text-3xl mb-2">1</div>
                 <div className="text-sm font-semibold">Single Owner</div>
@@ -433,7 +433,7 @@ export default function SetupPage() {
               </button>
               <button
                 onClick={() => setOwnershipType('multiple')}
-                className={`p-6 rounded-xl border-2 text-center transition-all ${ownershipType === 'multiple' ? 'border-gold bg-gold/5 shadow-sm' : 'border-border hover:border-gold/50'}`}
+                className={`p-6 rounded-lg border-2 text-center transition-all ${ownershipType === 'multiple' ? 'border-gold bg-gold/5 shadow-sm' : 'border-border hover:border-gold/50'}`}
               >
                 <div className="text-3xl mb-2">2+</div>
                 <div className="text-sm font-semibold">Multiple Owners</div>

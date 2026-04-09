@@ -475,7 +475,7 @@ export default function LoginPage() {
                       if (key === 'del') setPin(pin.slice(0, -1));
                       else if (key) handlePinInput(key);
                     }}
-                    className={`h-16 rounded-xl text-xl font-semibold transition-all duration-100 touch-target ${
+                    className={`h-16 rounded-lg text-xl font-semibold transition-all duration-100 touch-target ${
                       !key
                         ? 'invisible'
                         : key === 'del'

@@ -1,8 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import Link from 'next/link';
-import { Plus, ChevronRight } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAppStore } from '@/store/app-store';
 import { formatPKR } from '@/lib/utils/currency';
@@ -91,25 +90,19 @@ export default function OrdersPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-1 text-sm text-muted-foreground">
-        <Link href="/dashboard/inventory" className="hover:text-foreground transition-colors">Inventory</Link>
-        <ChevronRight className="w-3.5 h-3.5" />
-        <span className="text-foreground font-medium">Orders</span>
-      </div>
-
-      <div className="calendar-card bg-card border border-border p-4 flex items-center justify-between">
+      <div className="flex items-center justify-between">
         <h2 className="font-heading text-xl font-bold">Purchase Orders</h2>
-        <Button onClick={() => setShowForm(true)} className="calendar-card bg-gold hover:bg-gold/90 text-black font-bold" size="sm"><Plus className="w-4 h-4 mr-1" /> New Order</Button>
+        <Button onClick={() => setShowForm(true)} className="bg-gold hover:bg-gold/90 text-black font-bold" size="sm"><Plus className="w-4 h-4 mr-1" /> New Order</Button>
       </div>
 
       {loading ? (
-        <div className="space-y-3">{[1, 2, 3].map((i) => <div key={i} className="calendar-card h-20 bg-muted animate-pulse" />)}</div>
+        <div className="space-y-3">{[1, 2, 3].map((i) => <div key={i} className="h-20 bg-muted rounded-lg animate-pulse" />)}</div>
       ) : orders.length === 0 ? (
         <p className="text-center text-muted-foreground py-16">No purchase orders yet</p>
       ) : (
         <div className="space-y-3">
           {orders.map((o) => (
-            <Card key={o.id} className="calendar-card border-border">
+            <Card key={o.id} className="border-border">
               <CardContent className="p-4">
                 <div className="flex items-start justify-between mb-2">
                   <div>
@@ -136,22 +129,22 @@ export default function OrdersPage() {
 
       {/* Create Order Modal */}
       <Dialog open={showForm} onOpenChange={setShowForm}>
-        <DialogContent className="calendar-card max-w-md">
+        <DialogContent className="max-w-md">
           <DialogHeader><DialogTitle>New Purchase Order</DialogTitle></DialogHeader>
           <div className="space-y-3">
             <div><Label className="text-xs">Supplier *</Label>
               <Select value={formSupplierId} onValueChange={(v) => { if (v) setFormSupplierId(v); }}>
-                <SelectTrigger className="calendar-card mt-1"><SelectValue placeholder="Select supplier" /></SelectTrigger>
+                <SelectTrigger className="mt-1"><SelectValue placeholder="Select supplier" /></SelectTrigger>
                 <SelectContent>{suppliers.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}</SelectContent>
               </Select>
             </div>
             <div>
               <Label className="text-xs">Items (one per line: Name - Qty - Price)</Label>
               <textarea value={formItems} onChange={(e) => setFormItems(e.target.value)} rows={4} placeholder={"Keune Color - 10 - 800\nWella Shampoo - 5 - 450\nOPI Nail Polish - 12 - 350"}
-                className="calendar-card mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm" />
+                className="mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm" />
             </div>
-            <div><Label className="text-xs">Total Amount (Rs) *</Label><Input type="number" value={formTotal} onChange={(e) => setFormTotal(e.target.value)} className="calendar-card mt-1" inputMode="numeric" /></div>
-            <div><Label className="text-xs">Notes</Label><Input value={formNotes} onChange={(e) => setFormNotes(e.target.value)} className="calendar-card mt-1" /></div>
+            <div><Label className="text-xs">Total Amount (Rs) *</Label><Input type="number" value={formTotal} onChange={(e) => setFormTotal(e.target.value)} className="mt-1" inputMode="numeric" /></div>
+            <div><Label className="text-xs">Notes</Label><Input value={formNotes} onChange={(e) => setFormNotes(e.target.value)} className="mt-1" /></div>
             <Button onClick={createOrder} disabled={saving} className="w-full bg-gold text-black border border-gold">{saving ? 'Creating...' : 'Create Order'}</Button>
           </div>
         </DialogContent>

@@ -36,7 +36,7 @@ export function ClientCard({ client, selected, onSelect }: ClientCardProps) {
   const colorIndex = client.name.charCodeAt(0) % colors.length;
 
   return (
-    <div className={`calendar-card bg-card border p-4 group/card transition-all duration-200 hover:shadow-md ${selected ? 'ring-2 ring-gold border-gold/30' : 'border-border hover:border-gold/30'}`}>
+    <div className={`bg-card border p-4 group/card transition-all duration-200 hover:shadow-md ${selected ? 'ring-2 ring-gold border-gold/30' : 'border-border hover:border-gold/30'}`}>
       <div className="flex items-start gap-3">
         {onSelect && (
           <input
@@ -48,7 +48,7 @@ export function ClientCard({ client, selected, onSelect }: ClientCardProps) {
         )}
 
         <Link href={`/dashboard/clients/${client.id}`} className="flex items-start gap-3 flex-1 min-w-0">
-          <div className={`w-11 h-11 rounded-xl ${colors[colorIndex]} flex items-center justify-center text-sm font-bold shrink-0`}>
+          <div className={`w-11 h-11 rounded-lg ${colors[colorIndex]} flex items-center justify-center text-sm font-bold shrink-0`}>
             {initials}
           </div>
 
@@ -71,12 +71,12 @@ export function ClientCard({ client, selected, onSelect }: ClientCardProps) {
 
             <div className="flex items-center gap-2 mt-2 flex-wrap">
               {client.loyalty_points > 0 && (
-                <Badge variant="secondary" className="calendar-card text-[10px] gap-0.5">
+                <Badge variant="secondary" className="text-[10px] gap-0.5">
                   <Star className="w-2.5 h-2.5" /> {client.loyalty_points} pts
                 </Badge>
               )}
               {client.udhaar_balance > 0 && (
-                <Badge variant="destructive" className="calendar-card text-[10px]">
+                <Badge variant="destructive" className="text-[10px]">
                   {formatPKR(client.udhaar_balance)} owed
                 </Badge>
               )}
@@ -89,7 +89,7 @@ export function ClientCard({ client, selected, onSelect }: ClientCardProps) {
             <Button
               variant="ghost"
               size="icon"
-              className="calendar-card h-9 w-9 transition-all duration-150"
+              className="h-9 w-9 transition-all duration-150"
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
@@ -103,7 +103,7 @@ export function ClientCard({ client, selected, onSelect }: ClientCardProps) {
           <Button
             variant="ghost"
             size="icon"
-            className="calendar-card h-9 w-9 transition-all duration-150"
+            className="h-9 w-9 transition-all duration-150"
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();

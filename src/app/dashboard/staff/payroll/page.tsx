@@ -226,33 +226,33 @@ Thank you 🙏 — BrBr Management`;
         <span className="text-foreground font-medium">Payroll</span>
       </div>
 
-      <div className="calendar-card bg-card border border-border p-4 flex flex-wrap items-center gap-3">
+      <div className="bg-card border border-border rounded-lg p-4 flex flex-wrap items-center gap-3">
         <h2 className="font-heading text-xl font-bold">Payroll</h2>
         <Select value={String(month)} onValueChange={(v) => { if (v) setMonth(Number(v)); }}>
-          <SelectTrigger className="calendar-card w-[130px] h-9 text-xs"><SelectValue /></SelectTrigger>
+          <SelectTrigger className="w-[130px] h-9 text-xs"><SelectValue /></SelectTrigger>
           <SelectContent>{Array.from({ length: 12 }, (_, i) => <SelectItem key={i + 1} value={String(i + 1)}>{new Date(2000, i).toLocaleString('default', { month: 'long' })}</SelectItem>)}</SelectContent>
         </Select>
         <Select value={String(year)} onValueChange={(v) => { if (v) setYear(Number(v)); }}>
-          <SelectTrigger className="calendar-card w-[90px] h-9 text-xs"><SelectValue /></SelectTrigger>
+          <SelectTrigger className="w-[90px] h-9 text-xs"><SelectValue /></SelectTrigger>
           <SelectContent>{[2024, 2025, 2026].map((y) => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}</SelectContent>
         </Select>
         <div className="ml-auto flex gap-2">
-          <Button variant="outline" size="sm" className="calendar-card gap-1 text-xs transition-all duration-150" onClick={markAllPaid} disabled={markingPaid || loading}>
+          <Button variant="outline" size="sm" className="gap-1 text-xs transition-all duration-150" onClick={markAllPaid} disabled={markingPaid || loading}>
             {markingPaid ? 'Saving...' : 'Mark All Paid'}
           </Button>
-          <Button variant="outline" size="sm" className="calendar-card gap-1 text-xs transition-all duration-150" onClick={exportCSV}>
+          <Button variant="outline" size="sm" className="gap-1 text-xs transition-all duration-150" onClick={exportCSV}>
             <Download className="w-3 h-3" /> Export CSV
           </Button>
         </div>
       </div>
 
       {loading ? (
-        <div className="space-y-2">{[1, 2, 3].map((i) => <div key={i} className="calendar-card h-14 bg-muted animate-pulse" />)}</div>
+        <div className="space-y-2">{[1, 2, 3].map((i) => <div key={i} className="h-14 bg-muted rounded-lg animate-pulse" />)}</div>
       ) : rows.length === 0 ? (
         <p className="text-center text-muted-foreground py-16">No staff to show</p>
       ) : (
         <>
-          <Card className="calendar-card border-border">
+          <Card className="border-border">
             <CardContent className="p-0 overflow-x-auto">
               <Table>
                 <TableHeader>

@@ -113,7 +113,7 @@ export function CheckoutConfirmation({
   return (
     <>
       <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-        <DialogContent className="calendar-card max-w-md bg-card border-border">
+        <DialogContent className="max-w-md bg-card border-border">
           <DialogHeader>
             <DialogTitle className="font-heading text-center">Checkout Summary</DialogTitle>
           </DialogHeader>
@@ -126,7 +126,7 @@ export function CheckoutConfirmation({
 
             <Separator />
 
-            <div className="calendar-card bg-card border border-border p-4 space-y-0">
+            <div className="bg-card border border-border rounded-lg p-4 space-y-0">
               {items.map((item) => (
                 <div key={item.id} className="flex justify-between text-sm py-2 border-b border-border/20 last:border-0">
                   <span>{item.name} {item.quantity > 1 ? `×${item.quantity}` : ''}</span>
@@ -135,7 +135,7 @@ export function CheckoutConfirmation({
               ))}
             </div>
 
-            <div className="calendar-card bg-card border border-border p-4 space-y-1 text-sm">
+            <div className="bg-card border border-border rounded-lg p-4 space-y-1 text-sm">
               <div className="flex justify-between">
                 <span>Subtotal</span>
                 <span>{formatPKR(subtotal)}</span>
@@ -164,7 +164,7 @@ export function CheckoutConfirmation({
               </div>
             </div>
 
-            <div className="calendar-card bg-card border border-border p-4 text-sm space-y-1">
+            <div className="bg-card border border-border rounded-lg p-4 text-sm space-y-1">
               <div className="flex justify-between">
                 <span>Payment</span>
                 <span className="capitalize">{paymentMethod.replace('_', ' ')}</span>
@@ -190,11 +190,11 @@ export function CheckoutConfirmation({
             </div>
 
             <div className="flex gap-2">
-              <Button variant="outline" className="calendar-card flex-1 gap-1 text-xs transition-all duration-150" onClick={printReceipt}>
+              <Button variant="outline" className="flex-1 gap-1 text-xs transition-all duration-150" onClick={printReceipt}>
                 <Printer className="w-3.5 h-3.5" /> Print
               </Button>
               {clientPhone && (
-                <Button variant="outline" className="calendar-card flex-1 gap-1 text-xs transition-all duration-150" onClick={sendWhatsAppReceipt}>
+                <Button variant="outline" className="flex-1 gap-1 text-xs transition-all duration-150" onClick={sendWhatsAppReceipt}>
                   <MessageCircle className="w-3.5 h-3.5" /> WhatsApp
                 </Button>
               )}
@@ -203,7 +203,7 @@ export function CheckoutConfirmation({
             <Button
               onClick={onConfirm}
               disabled={saving}
-              className="calendar-card w-full h-12 bg-green-500 hover:bg-green-600 text-white text-lg font-bold gap-2 transition-all duration-150"
+              className="w-full h-12 bg-green-500 hover:bg-green-600 text-white text-lg font-bold gap-2 transition-all duration-150"
             >
               <Check className="w-5 h-5" /> {saving ? 'Saving...' : 'Confirm'}
             </Button>

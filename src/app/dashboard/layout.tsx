@@ -8,7 +8,7 @@ import {
   LayoutDashboard, CalendarDays, Users, Receipt, UserCog,
   Package, BarChart3, Settings, LogOut,
   Scissors, Bell, Plus, Menu, X, ChevronDown, Gift, Check, Wallet,
-  AlertTriangle, CreditCard, UserX,
+  AlertTriangle, CreditCard, UserX, Search,
 } from 'lucide-react';
 import { useLanguage } from '@/components/providers/language-provider';
 import { useAppStore } from '@/store/app-store';
@@ -35,7 +35,6 @@ const ALL_NAV_ITEMS: NavItem[] = [
   { href: '/dashboard/expenses', icon: Wallet, labelKey: 'expenses', access: ['full', 'front_desk'] },
   { href: '/dashboard/packages', icon: Gift, labelKey: 'more', access: ['full'] },
   { href: '/dashboard/reports', icon: BarChart3, labelKey: 'reports', access: ['full'] },
-  { href: '/dashboard/settings', icon: Settings, labelKey: 'settings', access: ['full'] },
 ];
 
 const ALL_MOBILE_NAV: NavItem[] = [
@@ -99,7 +98,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
       )}
 
-      {/* Sidebar */}
+      {/* Sidebar — dark navy, TaskPro style */}
       <aside
         className={`fixed inset-y-0 left-0 z-50 w-64 bg-sidebar text-sidebar-foreground flex flex-col transition-transform duration-300 ease-[cubic-bezier(0.2,0,0,1)] lg:relative lg:translate-x-0 ${
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
@@ -107,18 +106,18 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       >
         {/* Logo */}
         <div className="flex items-center gap-3 px-5 py-5 border-b border-sidebar-border">
-          <div className="w-9 h-9 rounded-xl bg-gold/15 flex items-center justify-center">
+          <div className="w-9 h-9 rounded-lg bg-gold/15 flex items-center justify-center">
             <Scissors className="w-5 h-5 text-gold" />
           </div>
           <div className="flex flex-col">
-            <span className="font-heading text-lg font-bold tracking-tight">BrBr</span>
+            <span className="font-heading text-lg font-bold tracking-tight text-white">BrBr</span>
             {salon && (
-              <span className="text-[11px] text-sidebar-foreground/50 truncate">
+              <span className="text-[11px] text-slate-400 truncate">
                 {salon.name}
               </span>
             )}
           </div>
-          <button onClick={() => setSidebarOpen(false)} className="lg:hidden ml-auto p-2 rounded-xl hover:bg-sidebar-accent/50 transition-colors" aria-label="Close menu">
+          <button onClick={() => setSidebarOpen(false)} className="lg:hidden ml-auto p-2 rounded-lg hover:bg-sidebar-accent transition-colors" aria-label="Close menu">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -128,7 +127,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <div className="px-5 py-3 border-b border-sidebar-border">
             {canSwitchBranch ? (
               <DropdownMenu>
-                <DropdownMenuTrigger className="flex items-center gap-2 text-sm text-sidebar-foreground/80 hover:text-sidebar-foreground w-full outline-none">
+                <DropdownMenuTrigger className="flex items-center gap-2 text-sm text-slate-400 hover:text-slate-200 w-full outline-none">
                   <div className="w-2 h-2 rounded-full bg-green-400" />
                   <span className="truncate">{currentBranch.name}</span>
                   <ChevronDown className="w-3 h-3 ml-auto" />
@@ -148,7 +147,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
-              <div className="flex items-center gap-2 text-sm text-sidebar-foreground/80">
+              <div className="flex items-center gap-2 text-sm text-slate-400">
                 <div className="w-2 h-2 rounded-full bg-green-400" />
                 <span className="truncate">{currentBranch.name}</span>
               </div>
@@ -163,7 +162,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             roleAccess === 'full' ? 'bg-gold/20 text-gold' :
             roleAccess === 'front_desk' ? 'bg-teal-500/20 text-teal-400' :
             roleAccess === 'stylist' ? 'bg-purple-500/20 text-purple-400' :
-            'bg-gray-500/20 text-gray-400'
+            'bg-slate-500/20 text-slate-400'
           }`}>
             {isPartner ? 'Owner' :
              roleAccess === 'full' ? 'Full Access' :
@@ -186,8 +185,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 onClick={() => setSidebarOpen(false)}
                 className={`flex items-center gap-3 px-3 py-3 rounded-lg text-sm transition-all duration-200 ${
                   isActive
-                    ? 'bg-gold/10 text-gold font-medium'
-                    : 'text-sidebar-foreground/50 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground'
+                    ? 'bg-gold/15 text-gold font-medium'
+                    : 'text-slate-400 hover:bg-sidebar-accent hover:text-slate-200'
                 }`}
               >
                 <item.icon className="w-5 h-5 shrink-0" />
@@ -197,50 +196,57 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           })}
         </nav>
 
-        {/* User info at bottom */}
-        <div className="px-4 py-4 border-t border-sidebar-border">
-          <div className="flex items-center gap-3 p-2 rounded-xl hover:bg-sidebar-accent/30 transition-colors">
-            <div className="w-9 h-9 rounded-xl flex items-center justify-center text-xs font-bold bg-gold/15 text-gold">
-              {displayInitial}
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold truncate">{displayName || 'Guest'}</p>
-              <p className="text-[11px] text-sidebar-foreground/50 capitalize">
-                {displayRole || 'Unknown'}
-              </p>
-            </div>
-            <button
-              onClick={() => {
-                document.cookie = 'brbr-session=; path=/; max-age=0';
-                document.cookie = 'brbr-role=; path=/; max-age=0';
-                useAppStore.getState().reset();
-                window.location.href = '/login';
-              }}
-              className="p-2 rounded-xl text-sidebar-foreground/40 hover:text-sidebar-foreground hover:bg-sidebar-accent/50 transition-all"
-            >
-              <LogOut className="w-4 h-4" />
-            </button>
-          </div>
+        {/* Settings + Logout at bottom */}
+        <div className="px-3 py-3 border-t border-sidebar-border space-y-0.5">
+          <Link
+            href="/dashboard/settings"
+            onClick={() => setSidebarOpen(false)}
+            className={`flex items-center gap-3 px-3 py-3 rounded-lg text-sm transition-all duration-200 ${
+              pathname.startsWith('/dashboard/settings')
+                ? 'bg-gold/15 text-gold font-medium'
+                : 'text-slate-400 hover:bg-sidebar-accent hover:text-slate-200'
+            }`}
+          >
+            <Settings className="w-5 h-5 shrink-0" />
+            <span>{t('settings')}</span>
+          </Link>
+          <button
+            onClick={() => {
+              document.cookie = 'brbr-session=; path=/; max-age=0';
+              document.cookie = 'brbr-role=; path=/; max-age=0';
+              useAppStore.getState().reset();
+              window.location.href = '/login';
+            }}
+            className="flex items-center gap-3 px-3 py-3 rounded-lg text-sm text-slate-400 hover:bg-sidebar-accent hover:text-slate-200 transition-all duration-200 w-full"
+          >
+            <LogOut className="w-5 h-5 shrink-0" />
+            <span>Log Out</span>
+          </button>
         </div>
       </aside>
 
       {/* Main content area */}
       <div className="flex-1 flex flex-col min-w-0">
-        {/* Topbar */}
-        <header className="sticky top-0 z-30 bg-sidebar text-sidebar-foreground border-b border-sidebar-border px-4 lg:px-6 h-16 flex items-center gap-4 no-print">
-          <button onClick={() => setSidebarOpen(true)} className="lg:hidden touch-target p-2 -ml-2 rounded-xl hover:bg-sidebar-accent/50 transition-colors" aria-label="Open menu">
+        {/* Topbar — light/white, TaskPro style */}
+        <header className="sticky top-0 z-30 bg-white border-b border-border px-4 lg:px-6 h-16 flex items-center gap-4 no-print">
+          <button onClick={() => setSidebarOpen(true)} className="lg:hidden touch-target p-2 -ml-2 rounded-lg hover:bg-accent transition-colors text-foreground" aria-label="Open menu">
             <Menu className="w-5 h-5" />
           </button>
 
-          <div className="flex flex-col">
-            <h1 className="font-heading text-lg font-bold tracking-tight text-sidebar-foreground">{pageTitle}</h1>
-            <span className="text-[11px] text-sidebar-foreground/50 hidden sm:block">{formatPKDate(getTodayPKT())}</span>
+          {/* Search bar */}
+          <div className="hidden sm:flex items-center gap-2 bg-accent rounded-lg px-3 h-10 w-72 border border-border">
+            <Search className="w-4 h-4 text-muted-foreground shrink-0" />
+            <input
+              type="text"
+              placeholder="Search..."
+              className="bg-transparent text-sm text-foreground placeholder:text-muted-foreground outline-none w-full"
+            />
           </div>
 
           <div className="ml-auto flex items-center gap-3">
             {roleAccess === 'full' && (
               <DropdownMenu>
-                <DropdownMenuTrigger className="relative w-10 h-10 rounded-xl bg-sidebar-accent hover:bg-sidebar-accent/80 flex items-center justify-center transition-all duration-150 outline-none text-sidebar-foreground" aria-label="Notifications">
+                <DropdownMenuTrigger className="relative w-10 h-10 rounded-lg bg-accent hover:bg-accent/80 flex items-center justify-center transition-all duration-150 outline-none text-foreground" aria-label="Notifications">
                   <Bell className="w-[18px] h-[18px]" />
                   <span className="absolute top-2 right-2 w-1.5 h-1.5 rounded-full bg-gold" />
                 </DropdownMenuTrigger>
@@ -265,7 +271,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     </div>
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => router.push('/dashboard/reports/daily')} className="flex items-center gap-3 p-3 cursor-pointer">
-                    <div className="w-8 h-8 rounded-lg bg-blue-500/15 flex items-center justify-center shrink-0">
+                    <div className="w-8 h-8 rounded-lg bg-gold/100/15 flex items-center justify-center shrink-0">
                       <BarChart3 className="w-4 h-4 text-blue-400" />
                     </div>
                     <div>
@@ -279,13 +285,25 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
             {showNewAppointment && (
               <Link href="/dashboard/appointments?new=true">
-                <Button size="sm" className="calendar-card bg-gold hover:bg-gold/90 text-black touch-target border border-gold/50 font-bold h-10 px-4 text-sm">
+                <Button size="sm" className="bg-gold hover:bg-gold/90 text-black touch-target font-semibold h-10 px-4 text-sm">
                   <Plus className="w-4 h-4 mr-1.5" />
                   <span className="hidden sm:inline">{t('newAppointment')}</span>
                   <span className="sm:hidden">Book</span>
                 </Button>
               </Link>
             )}
+
+            {/* User avatar + name */}
+            <div className="hidden lg:flex items-center gap-3 pl-3 border-l border-border">
+              <div className="w-9 h-9 rounded-full bg-gold/15 flex items-center justify-center text-xs font-bold text-gold">
+                {displayInitial}
+              </div>
+              <div className="flex flex-col">
+                <span className="text-sm font-semibold text-foreground">{displayName || 'Guest'}</span>
+                <span className="text-[11px] text-muted-foreground capitalize">{displayRole || 'Unknown'}</span>
+              </div>
+              <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
+            </div>
           </div>
         </header>
 
@@ -295,8 +313,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </main>
       </div>
 
-      {/* Mobile bottom nav */}
-      <nav className="fixed bottom-0 inset-x-0 z-30 bg-sidebar text-sidebar-foreground border-t border-sidebar-border flex lg:hidden no-print safe-area-bottom">
+      {/* Mobile bottom nav — light, TaskPro style */}
+      <nav className="fixed bottom-0 inset-x-0 z-30 bg-white border-t border-border flex lg:hidden no-print safe-area-bottom">
         {mobileNav.map((item) => {
           const isActive = item.href === '/dashboard'
             ? pathname === '/dashboard'
@@ -306,10 +324,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               key={item.href}
               href={item.href}
               className={`relative flex-1 flex flex-col items-center py-2.5 text-[11px] touch-target transition-all duration-150 ${
-                isActive ? 'text-gold' : 'text-sidebar-foreground/40'
+                isActive ? 'text-gold' : 'text-slate-400'
               }`}
             >
-              <div className={`p-1.5 rounded-xl mb-0.5 transition-colors ${isActive ? 'bg-gold/10' : ''}`}>
+              <div className={`p-1.5 rounded-lg mb-0.5 transition-colors ${isActive ? 'bg-gold/10' : ''}`}>
                 <item.icon className="w-5 h-5" />
               </div>
               <span className="font-medium">{t(item.labelKey)}</span>

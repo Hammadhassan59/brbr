@@ -96,7 +96,7 @@ export default function LoyaltyPage() {
         <Card>
           <CardHeader className="pb-2"><CardTitle className="text-sm">Configuration</CardTitle></CardHeader>
           <CardContent className="space-y-3">
-            {loading ? <div className="h-32 bg-muted rounded animate-pulse" /> : (
+            {loading ? <div className="h-32 bg-muted rounded-lg animate-pulse" /> : (
               <>
                 <div>
                   <Label className="text-xs">Points earned per Rs 100 spent</Label>

@@ -11,7 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
@@ -132,13 +132,15 @@ export default function PackagesPage() {
         <Button onClick={() => openForm()} className="bg-gold text-black border border-gold" size="sm"><Plus className="w-4 h-4 mr-1" /> Create Package</Button>
       </div>
 
-      <Tabs value={filter} onValueChange={(v) => setFilter(v as Filter)}>
-        <TabsList className="h-auto gap-1">
-          <TabsTrigger value="all" className="text-xs">All ({packages.length})</TabsTrigger>
-          <TabsTrigger value="active" className="text-xs">Active ({packages.filter((p) => p.is_active).length})</TabsTrigger>
-          <TabsTrigger value="inactive" className="text-xs">Inactive</TabsTrigger>
-        </TabsList>
-      </Tabs>
+      <div className="flex gap-1">
+        {([['all', `All (${packages.length})`], ['active', `Active (${packages.filter((p) => p.is_active).length})`], ['inactive', 'Inactive']] as const).map(([value, label]) => (
+          <button key={value} onClick={() => setFilter(value as Filter)}
+            className={`px-3.5 py-2 text-xs font-medium rounded-lg transition-all duration-150 ${
+              filter === value ? 'bg-foreground text-white' : 'text-muted-foreground hover:text-foreground border border-border'
+            }`}
+          >{label}</button>
+        ))}
+      </div>
 
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">{[1, 2, 3].map((i) => <div key={i} className="h-36 bg-muted rounded-lg animate-pulse" />)}</div>

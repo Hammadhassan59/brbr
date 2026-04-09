@@ -22,18 +22,18 @@ export function RevenueChart({ data, loading, title }: RevenueChartProps) {
   const { t } = useLanguage();
 
   return (
-    <Card className="calendar-card bg-card border border-border">
+    <Card className="bg-card border border-border rounded-lg">
       <CardHeader className="pb-3">
         <CardTitle className="text-base font-semibold">{title || t('hourlyRevenue')}</CardTitle>
       </CardHeader>
       <CardContent>
         {loading ? (
-          <div className="h-[280px] flex items-center justify-center calendar-card overflow-hidden">
-            <div className="shimmer h-full w-full rounded-xl" />
+          <div className="h-[280px] flex items-center justify-center overflow-hidden">
+            <div className="shimmer h-full w-full rounded-lg" />
           </div>
         ) : data.length === 0 ? (
           <div className="h-[280px] flex flex-col items-center justify-center gap-3">
-            <div className="w-12 h-12 rounded-xl bg-muted/50 flex items-center justify-center">
+            <div className="w-12 h-12 rounded-lg bg-muted/50 flex items-center justify-center">
               <TrendingUp className="w-6 h-6 text-muted-foreground" />
             </div>
             <div className="text-center">

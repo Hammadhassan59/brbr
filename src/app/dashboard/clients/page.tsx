@@ -116,19 +116,19 @@ function ClientsContent() {
 
   return (
     <div className="space-y-6">
-      <div className="calendar-card bg-card border border-border p-4 flex flex-wrap items-center gap-3">
+      <div className="bg-card border border-border rounded-lg p-4 flex flex-wrap items-center gap-3">
         <div className="relative flex-1 min-w-[200px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
           <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search by name or phone..."
-            className="calendar-card pl-10 h-11"
+            className="pl-10 h-11"
           />
         </div>
 
         <Select value={sortBy} onValueChange={(v) => { if (v) setSortBy(v as SortBy); }}>
-          <SelectTrigger className="calendar-card w-[150px] h-11">
+          <SelectTrigger className="w-[150px] h-11">
             <SelectValue placeholder="Sort by" />
           </SelectTrigger>
           <SelectContent>
@@ -142,7 +142,7 @@ function ClientsContent() {
 
         <Button
           onClick={() => router.push('/dashboard/clients/new')}
-          className="calendar-card bg-gold hover:bg-gold/90 text-black font-bold h-11 transition-all duration-150"
+          className="bg-gold hover:bg-gold/90 text-black font-bold h-11 transition-all duration-150"
         >
           <Plus className="w-4 h-4 mr-1" /> Add Client
         </Button>
@@ -153,10 +153,10 @@ function ClientsContent() {
           <button
             key={t.value}
             onClick={() => setTab(t.value)}
-            className={`calendar-card px-3.5 py-2 text-xs font-medium transition-all duration-150 ${
+            className={`px-3.5 py-2 text-xs font-medium transition-all duration-150 ${
               tab === t.value
-                ? 'bg-gold text-black'
-                : 'bg-card border border-border text-muted-foreground hover:text-foreground hover:border-gold/30'
+                ? 'bg-foreground text-white rounded-lg'
+                : 'bg-card border border-border rounded-lg text-muted-foreground hover:text-foreground'
             }`}
           >
             {t.label}{t.count !== undefined ? ` (${t.count})` : ''}
@@ -165,12 +165,12 @@ function ClientsContent() {
       </div>
 
       {selectedIds.size > 0 && (
-        <div className="calendar-card bg-card border border-gold/20 p-3 flex items-center gap-2 text-sm">
+        <div className="bg-card border border-gold/20 p-3 flex items-center gap-2 text-sm">
           <span className="font-medium">{selectedIds.size} selected</span>
-          <Button variant="outline" size="sm" className="calendar-card text-xs gap-1 transition-all duration-150" onClick={exportCSV}>
+          <Button variant="outline" size="sm" className="text-xs gap-1 transition-all duration-150" onClick={exportCSV}>
             <Download className="w-3 h-3" /> Export CSV
           </Button>
-          <Button variant="outline" size="sm" className="calendar-card text-xs gap-1 transition-all duration-150" onClick={() => toast('Tag management coming soon')}>
+          <Button variant="outline" size="sm" className="text-xs gap-1 transition-all duration-150" onClick={() => toast('Tag management coming soon')}>
             <Tag className="w-3 h-3" /> Add Tag
           </Button>
           <Button variant="ghost" size="sm" className="text-xs ml-auto transition-all duration-150" onClick={() => setSelectedIds(new Set())}>
@@ -182,11 +182,11 @@ function ClientsContent() {
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {[1, 2, 3, 4, 5, 6].map((i) => (
-            <div key={i} className="calendar-card h-32 bg-muted animate-pulse" />
+            <div key={i} className="h-32 bg-muted rounded-lg animate-pulse" />
           ))}
         </div>
       ) : sorted.length === 0 ? (
-        <div className="calendar-card bg-card border border-border p-12 flex flex-col items-center justify-center text-center">
+        <div className="bg-card border border-border rounded-lg p-12 flex flex-col items-center justify-center text-center">
           <Users className="w-12 h-12 text-muted-foreground/40 mb-4" />
           <p className="text-muted-foreground text-sm">
             {search ? 'No clients match your search' : 'No clients yet — add your first client'}

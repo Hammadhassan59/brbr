@@ -24,7 +24,7 @@ export function QuickActions() {
                 className="flex items-center gap-2 justify-end animate-fade-up"
                 style={{ animationDelay: `${i * 60}ms` }}
               >
-                <span className="calendar-card bg-card border border-border text-sm font-medium px-4 py-2 rounded-xl">
+                <span className="bg-card border border-border rounded-lg text-sm font-medium px-4 py-2 rounded-lg">
                   {action.label}
                 </span>
                 <div className={`w-12 h-12 rounded-full ${action.color} text-white flex items-center justify-center border border-black/10`}>
