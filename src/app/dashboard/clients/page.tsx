@@ -116,7 +116,7 @@ function ClientsContent() {
 
   return (
     <div className="space-y-6">
-      <div className="bg-card border border-border rounded-lg p-4 flex flex-wrap items-center gap-3">
+      <div className="flex flex-wrap items-center gap-3">
         <div className="relative flex-1 min-w-[200px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
           <Input
