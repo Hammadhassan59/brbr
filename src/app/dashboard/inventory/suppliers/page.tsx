@@ -93,9 +93,9 @@ export default function SuppliersPage() {
       ) : suppliers.length === 0 ? (
         <p className="text-center text-muted-foreground py-16">No suppliers yet</p>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 stagger-children">
           {suppliers.map((s) => (
-            <Card key={s.id} className="border-border hover:shadow-md hover:border-gold/30 transition-shadow cursor-pointer" onClick={() => openForm(s)}>
+            <Card key={s.id} className="border-border animate-fade-up hover:shadow-md hover:border-gold/30 transition-shadow cursor-pointer" onClick={() => openForm(s)}>
               <CardContent className="p-4">
                 <div className="flex items-start justify-between">
                   <div>

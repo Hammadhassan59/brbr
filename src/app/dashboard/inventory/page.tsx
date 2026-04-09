@@ -87,9 +87,9 @@ export default function InventoryDashboardPage() {
             {loading ? <div className="h-20 bg-muted rounded-lg animate-pulse" /> : lowStock.length === 0 ? (
               <p className="text-center text-muted-foreground text-sm py-4">All stock levels are OK</p>
             ) : (
-              <div className="space-y-2">
+              <div className="space-y-2 stagger-children">
                 {lowStock.slice(0, 5).map((p) => (
-                  <div key={p.id} className="flex items-center justify-between p-3 bg-card rounded-lg border border-border">
+                  <div key={p.id} className="flex items-center justify-between p-3 bg-card rounded-lg border border-border animate-fade-up">
                     <div>
                       <p className="text-sm font-medium">{p.name}</p>
                       <p className="text-xs text-muted-foreground">{p.brand}</p>
@@ -112,11 +112,11 @@ export default function InventoryDashboardPage() {
             {loading ? <div className="h-20 bg-muted rounded-lg animate-pulse" /> : movements.length === 0 ? (
               <p className="text-center text-muted-foreground text-sm py-4">No recent movements</p>
             ) : (
-              <div className="space-y-2">
+              <div className="space-y-2 stagger-children">
                 {movements.map((m) => {
                   const style = MOVE_LABELS[m.movement_type] || { label: m.movement_type, color: 'text-gray-600' };
                   return (
-                    <div key={m.id} className="flex items-center justify-between text-sm p-3 bg-card rounded-lg border border-border">
+                    <div key={m.id} className="flex items-center justify-between text-sm p-3 bg-card rounded-lg border border-border animate-fade-up">
                       <div>
                         <p className="font-medium">{m.product_name || 'Unknown'}</p>
                         <p className="text-[10px] text-muted-foreground">{formatDateTime(m.created_at)}</p>

@@ -100,9 +100,9 @@ export default function OrdersPage() {
       ) : orders.length === 0 ? (
         <p className="text-center text-muted-foreground py-16">No purchase orders yet</p>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-3 stagger-children">
           {orders.map((o) => (
-            <Card key={o.id} className="border-border">
+            <Card key={o.id} className="border-border animate-fade-up hover:-translate-y-0.5 hover:shadow-md transition-all duration-200">
               <CardContent className="p-4">
                 <div className="flex items-start justify-between mb-2">
                   <div>
