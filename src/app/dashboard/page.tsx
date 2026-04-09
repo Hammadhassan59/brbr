@@ -406,8 +406,8 @@ export default function DashboardPage() {
           </p>
         </div>
 
-        <div className="bg-card border border-border rounded-lg p-2 flex items-center gap-1 flex-wrap">
-          <Button variant="ghost" size="icon" onClick={() => navigateDate(-1)} className="h-9 w-9 transition-all duration-150">
+        <div className="flex items-center gap-1 flex-wrap">
+          <Button variant="ghost" size="icon" onClick={() => navigateDate(-1)} className="h-11 w-11 transition-all duration-150">
             <ChevronLeft className="w-4 h-4" />
           </Button>
 
@@ -422,7 +422,7 @@ export default function DashboardPage() {
             <button
               key={key}
               onClick={() => setFilter(key, d)}
-              className={`px-3.5 py-2 text-xs font-medium transition-all duration-150 ${
+              className={`px-3.5 py-2.5 text-xs font-medium rounded-lg transition-all duration-150 touch-target ${
                 activeFilter === key
                   ? 'bg-foreground text-white'
                   : 'text-muted-foreground hover:text-foreground'
@@ -434,7 +434,7 @@ export default function DashboardPage() {
 
           <Popover open={customOpen} onOpenChange={(open) => { setCustomOpen(open); if (open) { setRangeFrom(undefined); setRangeTo(undefined); } }}>
             <PopoverTrigger
-              className={`px-3.5 py-2 text-xs font-medium transition-all duration-150 flex items-center gap-1.5 outline-none ${
+              className={`px-3.5 py-2.5 text-xs font-medium rounded-lg transition-all duration-150 flex items-center gap-1.5 outline-none touch-target ${
                 activeFilter === 'custom'
                   ? 'bg-foreground text-white'
                   : 'text-muted-foreground hover:text-foreground'
@@ -458,7 +458,7 @@ export default function DashboardPage() {
             </PopoverContent>
           </Popover>
 
-          <Button variant="ghost" size="icon" onClick={() => navigateDate(1)} className="h-9 w-9 transition-all duration-150" disabled={isToday}>
+          <Button variant="ghost" size="icon" onClick={() => navigateDate(1)} className="h-11 w-11 transition-all duration-150" disabled={isToday}>
             <ChevronRight className="w-4 h-4" />
           </Button>
         </div>
