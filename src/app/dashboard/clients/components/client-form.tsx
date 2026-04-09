@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
+import { createClient as createClientAction, updateClient } from '@/app/actions/clients';
 import { useAppStore } from '@/store/app-store';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -45,7 +46,6 @@ export function ClientForm({ client, onSaved }: ClientFormProps) {
     setSaving(true);
     try {
       const data = {
-        salon_id: salon.id,
         name: name.trim(),
         phone: phone || null,
         whatsapp: sameAsPhone ? phone || null : whatsapp || null,
@@ -59,11 +59,8 @@ export function ClientForm({ client, onSaved }: ClientFormProps) {
       };
 
       if (isEditing && client) {
-        const { error } = await supabase
-          .from('clients')
-          .update(data)
-          .eq('id', client.id);
-        if (error) throw error;
+        const { error } = await updateClient(client.id, data);
+        if (error) throw new Error(error);
         toast.success('Client updated');
       } else {
         // Check for duplicate phone
@@ -81,12 +78,19 @@ export function ClientForm({ client, onSaved }: ClientFormProps) {
           }
         }
 
-        const { data: newClient, error } = await supabase
-          .from('clients')
-          .insert(data)
-          .select()
-          .single();
-        if (error) throw error;
+        const { data: newClient, error } = await createClientAction({
+          name: name.trim(),
+          phone: phone || null,
+          whatsapp: sameAsPhone ? phone || null : whatsapp || null,
+          gender: gender || null,
+          notes: notes || null,
+          hairNotes: hairNotes || null,
+          allergyNotes: allergyNotes || null,
+          isVip: isVip,
+          isBlacklisted: isBlacklisted,
+          udhaarLimit: udhaarLimit === '' ? 5000 : Number(udhaarLimit),
+        });
+        if (error) throw new Error(error);
         toast.success('Client added');
         router.push(`/dashboard/clients/${newClient.id}`);
       }

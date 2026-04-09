@@ -4,6 +4,9 @@ import { Suspense, useEffect, useState, useCallback } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { ArrowLeft, Search, UserPlus, X } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import { createClient, updateClientStats } from '@/app/actions/clients';
+import { createBill, createBillItems, recordTip, updateCashDrawer, updatePromoCodeUsage, rollbackBill } from '@/app/actions/bills';
+import { updateAppointmentStatus } from '@/app/actions/appointments';
 import { useAppStore } from '@/store/app-store';
 import { formatPKR } from '@/lib/utils/currency';
 import { Button } from '@/components/ui/button';
@@ -163,12 +166,11 @@ function POSContent() {
   async function createNewClient() {
     if (!salon || !newClientName.trim()) { toast.error('Client name is required'); return; }
     try {
-      const { data, error } = await supabase.from('clients').insert({
-        salon_id: salon.id,
+      const { data, error } = await createClient({
         name: newClientName.trim(),
-        phone: newClientPhone.trim() || null,
-      }).select().single();
-      if (error) throw error;
+        phone: newClientPhone?.trim() || null,
+      });
+      if (error) throw new Error(error);
       setSelectedClient(data as Client);
       setClientSearch('');
       setClientResults([]);
@@ -289,69 +291,58 @@ function POSContent() {
       const pointsEarned = Math.floor(total / 100) * 10; // 10 pts per Rs100
 
       // Create bill
-      const { data: bill, error: billErr } = await supabase
-        .from('bills')
-        .insert({
-          bill_number: billNumber,
-          branch_id: currentBranch.id,
-          salon_id: salon.id,
-          appointment_id: appointmentId,
-          client_id: selectedClient?.id || null,
-          staff_id: selectedStaffId || null,
-          subtotal,
-          discount_amount: totalDiscount,
-          discount_type: discountType,
-          tax_amount: taxAmount,
-          tip_amount: tipAmount,
-          total_amount: total,
-          paid_amount: total,
-          payment_method: actualMethod,
-          payment_details: isSplit ? JSON.parse(JSON.stringify(splitPayments)) : reference ? { reference } : null,
-          udhaar_added: actualMethod === 'udhaar' ? total : 0,
-          loyalty_points_used: loyaltyPointsUsed,
-          loyalty_points_earned: pointsEarned,
-          promo_code: promoCode || null,
-          status: 'paid',
-        })
-        .select()
-        .single();
-      if (billErr) throw billErr;
+      const { data: bill, error: billErr } = await createBill({
+        branchId: currentBranch.id,
+        billNumber,
+        appointmentId,
+        clientId: selectedClient?.id || null,
+        staffId: selectedStaffId || null,
+        subtotal,
+        discountAmount: totalDiscount,
+        discountType: discountType,
+        taxAmount,
+        tipAmount,
+        totalAmount: total,
+        paidAmount: total,
+        paymentMethod: actualMethod,
+        paymentDetails: isSplit ? JSON.parse(JSON.stringify(splitPayments)) : reference ? { reference } : null,
+        udhaarAdded: actualMethod === 'udhaar' ? total : 0,
+        loyaltyPointsUsed,
+        loyaltyPointsEarned: pointsEarned,
+        promoCode: promoCode || null,
+      });
+      if (billErr) throw new Error(billErr);
 
       try {
         // Create bill items
-        const { error: itemsErr } = await supabase.from('bill_items').insert(
-          items.map((i) => ({
-            bill_id: bill.id,
-            item_type: i.type,
-            service_id: i.serviceId || null,
-            product_id: i.productId || null,
-            name: i.name,
-            quantity: i.quantity,
-            unit_price: i.unitPrice,
-            total_price: i.totalPrice,
-          }))
-        );
-        if (itemsErr) throw itemsErr;
+        const { error: itemsErr } = await createBillItems(bill.id, items.map((i) => ({
+          type: i.type,
+          serviceId: i.serviceId || null,
+          productId: i.productId || null,
+          name: i.name,
+          quantity: i.quantity,
+          unitPrice: i.unitPrice,
+          totalPrice: i.totalPrice,
+        })));
+        if (itemsErr) throw new Error(itemsErr);
 
         // Update client stats
         if (selectedClient) {
-          await supabase.from('clients').update({
-            loyalty_points: selectedClient.loyalty_points - loyaltyPointsUsed + pointsEarned,
-            total_visits: selectedClient.total_visits + 1,
-            total_spent: selectedClient.total_spent + total,
-            udhaar_balance: actualMethod === 'udhaar'
+          const { error: statsErr } = await updateClientStats(selectedClient.id, {
+            loyaltyPoints: selectedClient.loyalty_points - loyaltyPointsUsed + pointsEarned,
+            totalVisits: selectedClient.total_visits + 1,
+            totalSpent: selectedClient.total_spent + total,
+            udhaarBalance: actualMethod === 'udhaar'
               ? selectedClient.udhaar_balance + total
               : selectedClient.udhaar_balance,
-          }).eq('id', selectedClient.id);
+          });
+          if (statsErr) throw new Error(statsErr);
         }
 
         // Record tip
         if (tipAmount > 0 && tipStaffId) {
-          await supabase.from('tips').insert({
-            staff_id: tipStaffId,
-            bill_id: bill.id,
-            amount: tipAmount,
-          });
+          const { error: tipErr } = await recordTip(tipStaffId, bill.id, tipAmount);
+          if (tipErr) throw new Error(tipErr);
         }
 
         // Update cash drawer
@@ -359,45 +350,25 @@ function POSContent() {
           const cashAmount = isSplit
             ? splitPayments.filter((s) => s.method === 'cash').reduce((sum, s) => sum + s.amount, 0)
             : total;
-          const today = new Date().toISOString().slice(0, 10);
-          const { data: drawer } = await supabase
-            .from('cash_drawers')
-            .select('*')
-            .eq('branch_id', currentBranch.id)
-            .eq('date', today)
-            .single();
-          if (drawer) {
-            await supabase.from('cash_drawers').update({
-              total_cash_sales: (drawer.total_cash_sales || 0) + cashAmount,
-            }).eq('id', drawer.id);
-          }
+          const { error: drawerErr } = await updateCashDrawer(currentBranch.id, cashAmount);
+          if (drawerErr) throw new Error(drawerErr);
         }
 
         // Update appointment status
         if (appointmentId) {
-          await supabase.from('appointments').update({ status: 'done' }).eq('id', appointmentId);
+          const { error: aptErr } = await updateAppointmentStatus(appointmentId, 'done');
+          if (aptErr) throw new Error(aptErr);
         }
 
         // Update promo used_count
         if (promoCode) {
           try {
-            const { data: promo } = await supabase
-              .from('promo_codes')
-              .select('used_count')
-              .eq('code', promoCode)
-              .single();
-            if (promo) {
-              await supabase.from('promo_codes')
-                .update({ used_count: (promo.used_count || 0) + 1 })
-                .eq('code', promoCode);
-            }
+            await updatePromoCodeUsage(promoCode);
           } catch { /* promo update is non-critical */ }
         }
       } catch (postBillErr: unknown) {
         try {
-          await supabase.from('bill_items').delete().eq('bill_id', bill.id);
-          await supabase.from('tips').delete().eq('bill_id', bill.id);
-          await supabase.from('bills').delete().eq('id', bill.id);
+          await rollbackBill(bill.id);
         } catch {
           // cleanup failed — manual review needed
         }

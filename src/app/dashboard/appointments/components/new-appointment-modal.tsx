@@ -13,6 +13,8 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import toast from 'react-hot-toast';
+import { createAppointment, createAppointmentServices } from '@/app/actions/appointments';
+import { createClient } from '@/app/actions/clients';
 import type { Client, Staff, Service, ServiceCategory, WorkingHours } from '@/types/database';
 
 interface NewAppointmentModalProps {
@@ -158,12 +160,9 @@ export function NewAppointmentModal({
       let clientId: string | null = null;
 
       if (isNewClient && newClientName) {
-        const { data: newClient, error } = await supabase
-          .from('clients')
-          .insert({ salon_id: salon.id, name: newClientName, phone: newClientPhone || null })
-          .select().single();
-        if (error) throw error;
-        clientId = newClient.id;
+        const { data: newClient, error } = await createClient({ name: newClientName, phone: newClientPhone || null });
+        if (error) throw new Error(error);
+        clientId = newClient!.id;
       } else if (selectedClient) {
         clientId = selectedClient.id;
       }
@@ -206,23 +205,17 @@ export function NewAppointmentModal({
         }
       }
 
-      const { data: apt, error: aptErr } = await supabase
-        .from('appointments')
-        .insert({
-          salon_id: salon.id, branch_id: currentBranch.id, client_id: clientId,
-          staff_id: selectedStaffId, appointment_date: date, start_time: time,
-          end_time: endTime, status: 'booked', is_walkin: isWalkin, notes: notes || null,
-        })
-        .select().single();
-      if (aptErr) throw aptErr;
+      const { data: apt, error: aptErr } = await createAppointment({
+        branchId: currentBranch.id, clientId, staffId: selectedStaffId,
+        date, startTime: time, endTime, isWalkin, notes: notes || null,
+      });
+      if (aptErr) throw new Error(aptErr);
 
-      const { error: svcErr } = await supabase
-        .from('appointment_services')
-        .insert(selectedServices.map((s) => ({
-          appointment_id: apt.id, service_id: s.id, service_name: s.name,
-          price: s.base_price, duration_minutes: s.duration_minutes,
-        })));
-      if (svcErr) throw svcErr;
+      const { error: svcErr } = await createAppointmentServices(apt!.id, selectedServices.map((s) => ({
+        serviceId: s.id, serviceName: s.name,
+        price: s.base_price, durationMinutes: s.duration_minutes,
+      })));
+      if (svcErr) throw new Error(svcErr);
 
       toast.success('Appointment booked!');
       reset(); onCreated(); onClose();

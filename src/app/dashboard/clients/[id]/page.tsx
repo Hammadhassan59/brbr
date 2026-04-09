@@ -8,6 +8,7 @@ import {
   Package, StickyNote, Award, MessageCircle,
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import { updateClientNotes, recordUdhaarPayment } from '@/app/actions/clients';
 import { formatPKR } from '@/lib/utils/currency';
 import { formatPKDate, formatDateTime } from '@/lib/utils/dates';
 import { generateWhatsAppLink } from '@/lib/utils/whatsapp';
@@ -49,11 +50,8 @@ export default function ClientProfilePage() {
     if (!client) return;
     setSavingNotes(true);
     try {
-      const { error } = await supabase
-        .from('clients')
-        .update({ [field]: editingNotesValue })
-        .eq('id', client.id);
-      if (error) throw error;
+      const { error } = await updateClientNotes(client.id, field, editingNotesValue);
+      if (error) throw new Error(error);
       setClient({ ...client, [field]: editingNotesValue });
       setEditingNotes(null);
       toast.success('Notes updated');
@@ -114,16 +112,8 @@ export default function ClientProfilePage() {
       const amount = Number(paymentAmount);
       if (amount <= 0) throw new Error('Invalid amount');
 
-      await supabase.from('udhaar_payments').insert({
-        client_id: client.id,
-        amount,
-        payment_method: paymentMethod,
-      });
-
-      await supabase
-        .from('clients')
-        .update({ udhaar_balance: Math.max(0, client.udhaar_balance - amount) })
-        .eq('id', client.id);
+      const { error } = await recordUdhaarPayment(client.id, amount, paymentMethod);
+      if (error) throw new Error(error);
 
       toast.success(`Payment of ${formatPKR(amount)} recorded`);
       setShowUdhaarModal(false);
