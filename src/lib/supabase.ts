@@ -13,7 +13,8 @@ export const supabase: any = isDemoMode
   : createClient(supabaseUrl, supabaseAnonKey);
 
 // Server-side client for use in Server Actions — uses service role key to bypass RLS
-export function createServerClient() {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function createServerClient(): any {
   if (isDemoMode) return createDemoClient();
   const key = supabaseServiceKey || supabaseAnonKey;
   return createClient(supabaseUrl, key, {

@@ -304,7 +304,7 @@ function POSContent() {
         tipAmount,
         totalAmount: total,
         paidAmount: total,
-        paymentMethod: actualMethod,
+        paymentMethod: actualMethod || 'cash',
         paymentDetails: isSplit ? JSON.parse(JSON.stringify(splitPayments)) : reference ? { reference } : null,
         udhaarAdded: actualMethod === 'udhaar' ? total : 0,
         loyaltyPointsUsed,

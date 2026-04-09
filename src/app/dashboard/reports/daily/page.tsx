@@ -17,6 +17,8 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
 import toast from 'react-hot-toast';
+import { createExpense, updateCashDrawerExpenses } from '@/app/actions/expenses';
+import { openCashDrawer as openCashDrawerAction, closeCashDrawer as closeCashDrawerAction } from '@/app/actions/cash-drawer';
 import type { DailySummary, Bill, BillItem, CashDrawer, Expense } from '@/types/database';
 
 const PIE_COLORS: Record<string, string> = {
@@ -96,10 +98,11 @@ export default function DailyReportPage() {
     if (!currentBranch) return;
     setSaving(true);
     try {
-      await supabase.from('cash_drawers').insert({
-        branch_id: currentBranch.id, date, opening_balance: Number(openingBalance) || 0,
-        opened_by: currentStaff?.id || null, status: 'open',
+      const result = await openCashDrawerAction({
+        branchId: currentBranch.id, date, openingBalance: Number(openingBalance) || 0,
+        openedBy: currentStaff?.id || null,
       });
+      if (result?.error) throw new Error(result.error);
       toast.success('Cash drawer opened');
       setShowOpenDrawer(false); fetchData();
     } catch (err: unknown) { toast.error(err instanceof Error ? err.message : 'Failed'); }
@@ -109,10 +112,9 @@ export default function DailyReportPage() {
   async function closeDay() {
     if (!drawer) return;
     const closingBalance = (drawer.opening_balance || 0) + (drawer.total_cash_sales || 0) - totalExpenses;
-    await supabase.from('cash_drawers').update({
-      closing_balance: closingBalance, closed_by: currentStaff?.id || null, status: 'closed',
-      total_expenses: totalExpenses,
-    }).eq('id', drawer.id);
+    await closeCashDrawerAction(drawer.id, {
+      closingBalance, closedBy: currentStaff?.id || null, totalExpenses,
+    });
     toast.success('Day closed');
     fetchData();
   }
@@ -121,16 +123,15 @@ export default function DailyReportPage() {
     if (!currentBranch || !expAmount) return;
     setSaving(true);
     try {
-      await supabase.from('expenses').insert({
-        branch_id: currentBranch.id, category: expCategory || null,
+      const { error: expError } = await createExpense({
+        branchId: currentBranch.id, category: expCategory || null,
         amount: Number(expAmount), description: expDesc || null, date,
-        created_by: currentStaff?.id || null,
+        createdBy: currentStaff?.id || null,
       });
+      if (expError) throw new Error(expError);
       // Update cash drawer expenses
       if (drawer) {
-        await supabase.from('cash_drawers').update({
-          total_expenses: (drawer.total_expenses || 0) + Number(expAmount),
-        }).eq('id', drawer.id);
+        await updateCashDrawerExpenses(currentBranch.id, date, (drawer.total_expenses || 0) + Number(expAmount));
       }
       toast.success('Expense added');
       setShowAddExpense(false); setExpCategory(''); setExpAmount(''); setExpDesc('');
