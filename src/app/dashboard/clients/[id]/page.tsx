@@ -201,11 +201,11 @@ export default function ClientProfilePage() {
 
       <Tabs defaultValue="visits">
         <TabsList className="flex-wrap h-auto gap-1.5 bg-transparent">
-          <TabsTrigger value="visits" className="text-xs px-3.5 py-2 gap-1 font-medium transition-all duration-150 data-[state=active]:bg-[#1A1A1A] data-[state=active]:text-white data-[state=active]:border-[#1A1A1A] border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30"><Calendar className="w-3 h-3" /> Visits</TabsTrigger>
-          <TabsTrigger value="udhaar" className="text-xs px-3.5 py-2 gap-1 font-medium transition-all duration-150 data-[state=active]:bg-[#1A1A1A] data-[state=active]:text-white data-[state=active]:border-[#1A1A1A] border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30"><CreditCard className="w-3 h-3" /> Udhaar</TabsTrigger>
-          <TabsTrigger value="packages" className="text-xs px-3.5 py-2 gap-1 font-medium transition-all duration-150 data-[state=active]:bg-[#1A1A1A] data-[state=active]:text-white data-[state=active]:border-[#1A1A1A] border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30"><Package className="w-3 h-3" /> Packages</TabsTrigger>
-          <TabsTrigger value="notes" className="text-xs px-3.5 py-2 gap-1 font-medium transition-all duration-150 data-[state=active]:bg-[#1A1A1A] data-[state=active]:text-white data-[state=active]:border-[#1A1A1A] border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30"><StickyNote className="w-3 h-3" /> Notes</TabsTrigger>
-          <TabsTrigger value="loyalty" className="text-xs px-3.5 py-2 gap-1 font-medium transition-all duration-150 data-[state=active]:bg-[#1A1A1A] data-[state=active]:text-white data-[state=active]:border-[#1A1A1A] border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30"><Award className="w-3 h-3" /> Loyalty</TabsTrigger>
+          <TabsTrigger value="visits" className="text-xs px-3.5 py-2 gap-1 font-medium transition-all duration-150 border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30"><Calendar className="w-3 h-3" /> Visits</TabsTrigger>
+          <TabsTrigger value="udhaar" className="text-xs px-3.5 py-2 gap-1 font-medium transition-all duration-150 border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30"><CreditCard className="w-3 h-3" /> Udhaar</TabsTrigger>
+          <TabsTrigger value="packages" className="text-xs px-3.5 py-2 gap-1 font-medium transition-all duration-150 border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30"><Package className="w-3 h-3" /> Packages</TabsTrigger>
+          <TabsTrigger value="notes" className="text-xs px-3.5 py-2 gap-1 font-medium transition-all duration-150 border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30"><StickyNote className="w-3 h-3" /> Notes</TabsTrigger>
+          <TabsTrigger value="loyalty" className="text-xs px-3.5 py-2 gap-1 font-medium transition-all duration-150 border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30"><Award className="w-3 h-3" /> Loyalty</TabsTrigger>
         </TabsList>
 
         <TabsContent value="visits" className="mt-4">

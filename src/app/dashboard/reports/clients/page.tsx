@@ -117,8 +117,8 @@ export default function ClientReportPage() {
 
       <Tabs defaultValue="new">
         <TabsList className="h-auto gap-1 flex-wrap">
-          <TabsTrigger value="new" className="text-xs px-3.5 py-2 gap-1 font-medium transition-all duration-150 data-[state=active]:bg-[#1A1A1A] data-[state=active]:text-white data-[state=active]:border-[#1A1A1A] border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30"><UserPlus className="w-3 h-3" /> New ({newClients.length})</TabsTrigger>
-          <TabsTrigger value="udhaar" className="text-xs px-3.5 py-2 gap-1 font-medium transition-all duration-150 data-[state=active]:bg-[#1A1A1A] data-[state=active]:text-white data-[state=active]:border-[#1A1A1A] border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30"><CreditCard className="w-3 h-3" /> Udhaar ({udhaarClients.length})</TabsTrigger>
+          <TabsTrigger value="new" className="text-xs px-3.5 py-2 gap-1 font-medium transition-all duration-150 border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30"><UserPlus className="w-3 h-3" /> New ({newClients.length})</TabsTrigger>
+          <TabsTrigger value="udhaar" className="text-xs px-3.5 py-2 gap-1 font-medium transition-all duration-150 border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30"><CreditCard className="w-3 h-3" /> Udhaar ({udhaarClients.length})</TabsTrigger>
         </TabsList>
 
         {/* New Clients */}

@@ -219,12 +219,12 @@ export default function SettingsPage() {
       <Tabs defaultValue="profile">
         <div className="bg-card border border-border rounded-lg p-4">
           <TabsList className="bg-transparent flex-wrap h-auto gap-1.5 p-0">
-            <TabsTrigger value="profile" className="text-xs px-3.5 py-2 font-medium transition-all duration-150 data-[state=active]:bg-[#1A1A1A] data-[state=active]:text-white data-[state=active]:border-[#1A1A1A] border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30">Salon Profile</TabsTrigger>
-            <TabsTrigger value="hours" className="text-xs px-3.5 py-2 font-medium transition-all duration-150 data-[state=active]:bg-[#1A1A1A] data-[state=active]:text-white data-[state=active]:border-[#1A1A1A] border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30">Working Hours</TabsTrigger>
-            <TabsTrigger value="services" className="text-xs px-3.5 py-2 font-medium transition-all duration-150 data-[state=active]:bg-[#1A1A1A] data-[state=active]:text-white data-[state=active]:border-[#1A1A1A] border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30">Services</TabsTrigger>
-            <TabsTrigger value="payment" className="text-xs px-3.5 py-2 font-medium transition-all duration-150 data-[state=active]:bg-[#1A1A1A] data-[state=active]:text-white data-[state=active]:border-[#1A1A1A] border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30">Payments</TabsTrigger>
-            <TabsTrigger value="tax" className="text-xs px-3.5 py-2 font-medium transition-all duration-150 data-[state=active]:bg-[#1A1A1A] data-[state=active]:text-white data-[state=active]:border-[#1A1A1A] border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30">Tax & Billing</TabsTrigger>
-            <TabsTrigger value="display" className="text-xs px-3.5 py-2 font-medium transition-all duration-150 data-[state=active]:bg-[#1A1A1A] data-[state=active]:text-white data-[state=active]:border-[#1A1A1A] border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30">Display</TabsTrigger>
+            <TabsTrigger value="profile" className="text-xs px-3.5 py-2 font-medium transition-all duration-150 border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30">Salon Profile</TabsTrigger>
+            <TabsTrigger value="hours" className="text-xs px-3.5 py-2 font-medium transition-all duration-150 border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30">Working Hours</TabsTrigger>
+            <TabsTrigger value="services" className="text-xs px-3.5 py-2 font-medium transition-all duration-150 border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30">Services</TabsTrigger>
+            <TabsTrigger value="payment" className="text-xs px-3.5 py-2 font-medium transition-all duration-150 border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30">Payments</TabsTrigger>
+            <TabsTrigger value="tax" className="text-xs px-3.5 py-2 font-medium transition-all duration-150 border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30">Tax & Billing</TabsTrigger>
+            <TabsTrigger value="display" className="text-xs px-3.5 py-2 font-medium transition-all duration-150 border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30">Display</TabsTrigger>
           </TabsList>
         </div>
 
