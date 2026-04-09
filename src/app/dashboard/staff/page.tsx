@@ -146,7 +146,7 @@ export default function StaffListPage() {
               <DollarSign className="w-3.5 h-3.5" /> Payroll
             </Button>
           </Link>
-          <Button onClick={() => router.push('/dashboard/staff/new')} className="bg-[#1A1A1A] hover:bg-[#333] text-white font-semibold h-10 px-4 transition-all duration-150 border border-[#1A1A1A]" size="sm">
+          <Button onClick={() => router.push('/dashboard/staff/new')} className="bg-gold hover:bg-gold/90 text-black font-bold h-10 px-4 transition-all duration-150" size="sm">
             <Plus className="w-4 h-4 mr-1" /> Add Staff
           </Button>
         </div>
