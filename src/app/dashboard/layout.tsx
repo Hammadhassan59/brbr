@@ -246,7 +246,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <div className="ml-auto flex items-center gap-3">
             {roleAccess === 'full' && (
               <DropdownMenu>
-                <DropdownMenuTrigger className="relative w-10 h-10 rounded-lg bg-accent hover:bg-accent/80 flex items-center justify-center transition-all duration-150 outline-none text-foreground" aria-label="Notifications">
+                <DropdownMenuTrigger className="relative w-11 h-11 rounded-lg bg-accent hover:bg-accent/80 flex items-center justify-center transition-all duration-150 outline-none text-foreground" aria-label="Notifications">
                   <Bell className="w-[18px] h-[18px]" />
                   <span className="absolute top-2 right-2 w-1.5 h-1.5 rounded-full bg-gold" />
                 </DropdownMenuTrigger>
