@@ -11,6 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import toast from 'react-hot-toast';
+import { saveLoyaltyRules } from '@/app/actions/packages';
 import type { LoyaltyRules, Client } from '@/types/database';
 
 export default function LoyaltyPage() {
@@ -49,16 +50,12 @@ export default function LoyaltyPage() {
     setSaving(true);
     try {
       const data = {
-        salon_id: salon.id,
-        points_per_100_pkr: Number(pointsPer100) || 10,
-        pkr_per_point_redemption: Number(pkrPerPoint) || 0.5,
-        birthday_bonus_multiplier: Number(bdayMultiplier) || 2,
+        pointsPer100Pkr: Number(pointsPer100) || 10,
+        pkrPerPointRedemption: Number(pkrPerPoint) || 0.5,
+        birthdayBonusMultiplier: Number(bdayMultiplier) || 2,
       };
-      if (rules) {
-        await supabase.from('loyalty_rules').update(data).eq('id', rules.id);
-      } else {
-        await supabase.from('loyalty_rules').insert(data);
-      }
+      const { error } = await saveLoyaltyRules(rules?.id ?? null, data);
+      if (error) throw new Error(error);
       toast.success('Loyalty settings saved');
       fetch();
     } catch (err: unknown) { toast.error(err instanceof Error ? err.message : 'Failed'); }

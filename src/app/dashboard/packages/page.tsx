@@ -16,6 +16,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import toast from 'react-hot-toast';
+import { createPackage, updatePackage } from '@/app/actions/packages';
 import type { Package as PkgType, Service } from '@/types/database';
 
 type Filter = 'all' | 'active' | 'inactive';
@@ -105,15 +106,17 @@ export default function PackagesPage() {
     setSaving(true);
     try {
       const data = {
-        salon_id: salon.id, name: formName.trim(), description: formDesc || null,
-        price: Number(formPrice), validity_days: Number(formValidity) || 30,
-        is_active: formActive, services: JSON.parse(JSON.stringify(formServices)),
+        name: formName.trim(), description: formDesc || null,
+        price: Number(formPrice), validityDays: Number(formValidity) || 30,
+        isActive: formActive, services: JSON.parse(JSON.stringify(formServices)),
       };
       if (editPkg) {
-        await supabase.from('packages').update(data).eq('id', editPkg.id);
+        const { error } = await updatePackage(editPkg.id, data);
+        if (error) throw new Error(error);
         toast.success('Package updated');
       } else {
-        await supabase.from('packages').insert(data);
+        const { error } = await createPackage(data);
+        if (error) throw new Error(error);
         toast.success('Package created');
       }
       setShowForm(false); fetch();

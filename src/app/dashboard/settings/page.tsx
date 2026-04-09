@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Plus, X } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import { updateSalon, updateBranchWorkingHours, createService, updateService, deleteService } from '@/app/actions/settings';
 import { useAppStore } from '@/store/app-store';
 import { useLanguage } from '@/components/providers/language-provider';
 import { Button } from '@/components/ui/button';
@@ -148,12 +149,12 @@ export default function SettingsPage() {
     if (!salonName.trim()) { toast.error('Salon name is required'); return; }
     setSaving(true);
     try {
-      const { data, error } = await supabase.from('salons').update({
+      const { data, error } = await updateSalon({
         name: salonName.trim(), type: salonType, city, address, phone, whatsapp,
         gst_enabled: gstEnabled, gst_number: gstNumber || null, gst_rate: Number(gstRate) || 0,
         prayer_block_enabled: prayerBlockEnabled,
         privacy_mode: privacyMode,
-      }).eq('id', salon.id).select().single();
+      });
       if (error) throw error;
       setSalon(data as Salon);
       toast.success('Salon profile saved');
@@ -171,8 +172,8 @@ export default function SettingsPage() {
       });
       // Save branch working hours + salon-level prayer block setting in parallel
       const [branchRes, salonRes] = await Promise.all([
-        supabase.from('branches').update({ working_hours: wh }).eq('id', currentBranch.id).select().single(),
-        salon ? supabase.from('salons').update({ prayer_block_enabled: prayerBlockEnabled }).eq('id', salon.id).select().single() : Promise.resolve({ data: null, error: null }),
+        updateBranchWorkingHours(currentBranch.id, wh),
+        salon ? updateSalon({ prayer_block_enabled: prayerBlockEnabled }) : Promise.resolve({ data: null, error: null }),
       ]);
       if (branchRes.error) throw branchRes.error;
       if (salonRes.error) throw salonRes.error;
@@ -187,13 +188,13 @@ export default function SettingsPage() {
     if (!salon) return;
     setSaving(true);
     try {
-      const { data, error } = await supabase.from('salons').update({
+      const { data, error } = await updateSalon({
         jazzcash_number: jazzcashNumber || null,
         easypaisa_number: easypaisaNumber || null,
         bank_name: bankName || null,
         bank_account: bankAccount || null,
         bank_title: bankTitle || null,
-      }).eq('id', salon.id).select().single();
+      });
       if (error) throw error;
       setSalon(data as Salon);
       toast.success('Payment settings saved');
@@ -202,13 +203,13 @@ export default function SettingsPage() {
   }
 
   async function toggleServiceActive(id: string, active: boolean) {
-    await supabase.from('services').update({ is_active: active }).eq('id', id);
+    await updateService(id, { is_active: active });
     setServices(services.map((s) => s.id === id ? { ...s, is_active: active } : s));
     toast.success(active ? 'Service activated' : 'Service deactivated');
   }
 
   async function updateServicePrice(id: string, price: number) {
-    await supabase.from('services').update({ base_price: price }).eq('id', id);
+    await updateService(id, { base_price: price });
     setServices(services.map((s) => s.id === id ? { ...s, base_price: price } : s));
   }
 
@@ -419,25 +420,23 @@ function ServiceManager({
     setSaving(true);
     try {
       if (editingId) {
-        const { data, error } = await supabase.from('services').update({
+        const { data, error } = await updateService(editingId, {
           name: name.trim(),
           category,
           duration_minutes: Number(duration) || 30,
           base_price: Number(price),
-        }).eq('id', editingId).select().single();
+        });
         if (error) throw error;
         onUpdated(data as Service);
         toast.success(`"${name.trim()}" updated`);
       } else {
-        const { data, error } = await supabase.from('services').insert({
-          salon_id: salonId,
+        const { data, error } = await createService({
           name: name.trim(),
           category,
-          duration_minutes: Number(duration) || 30,
-          base_price: Number(price),
-          is_active: true,
-          sort_order: services.length + 1,
-        }).select().single();
+          durationMinutes: Number(duration) || 30,
+          basePrice: Number(price),
+          sortOrder: services.length + 1,
+        });
         if (error) throw error;
         onAdded(data as Service);
         toast.success(`"${name.trim()}" added`);
@@ -453,7 +452,7 @@ function ServiceManager({
   async function removeService(svc: Service) {
     if (!confirm(`Remove "${svc.name}"? This cannot be undone.`)) return;
     try {
-      const { error } = await supabase.from('services').delete().eq('id', svc.id);
+      const { error } = await deleteService(svc.id);
       if (error) throw error;
       onRemoved(svc.id);
       toast.success(`"${svc.name}" removed`);
