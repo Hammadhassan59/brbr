@@ -81,13 +81,13 @@ export function AlertsPanel({ alerts, loading }: AlertsPanelProps) {
                         target="_blank"
                         rel="noopener noreferrer"
                       >
-                        <Button size="sm" className="text-xs shrink-0 bg-gold text-black border border-gold hover:bg-gold/90">
+                        <Button size="sm" className="text-xs shrink-0 bg-gold text-black border border-gold hover:bg-gold/90 touch-target">
                           {alert.action.label}
                         </Button>
                       </a>
                     ) : alert.action.href ? (
                       <Link href={alert.action.href}>
-                        <Button size="sm" className="text-xs shrink-0 bg-gold text-black border border-gold hover:bg-gold/90">
+                        <Button size="sm" className="text-xs shrink-0 bg-gold text-black border border-gold hover:bg-gold/90 touch-target">
                           {alert.action.label}
                         </Button>
                       </Link>
