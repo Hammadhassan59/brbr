@@ -53,7 +53,7 @@ export default function InventoryDashboardPage() {
   return (
     <div className="space-y-6">
       {/* Summary cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 animate-fade-in">
         {[
           { label: 'Total Products', value: String(products.length), icon: Package, color: 'text-muted-foreground', bg: 'bg-secondary', urgent: false },
           { label: 'Low Stock', value: String(lowStock.length), icon: AlertTriangle, color: 'text-amber-600', bg: 'bg-amber-500/10', urgent: lowStock.length > 0 },
@@ -76,7 +76,7 @@ export default function InventoryDashboardPage() {
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 animate-fade-in">
         {/* Low stock alerts */}
         <Card className="border-border">
           <CardHeader className="pb-2 flex flex-row items-center justify-between">

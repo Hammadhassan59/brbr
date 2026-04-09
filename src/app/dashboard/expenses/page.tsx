@@ -216,7 +216,7 @@ export default function ExpensesPage() {
       </div>
 
       {/* Summary cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 stagger-children">
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 stagger-children animate-fade-in">
         <Card className="border-border">
           <CardContent className="p-5 text-center">
             {loading ? <div className="h-12 bg-muted rounded-lg animate-pulse" /> : (
