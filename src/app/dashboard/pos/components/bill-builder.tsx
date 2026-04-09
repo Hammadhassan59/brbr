@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { Search, X, Plus, Minus, Tag, ShoppingBag, Package, Receipt } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+
 import { Separator } from '@/components/ui/separator';
 import { formatPKR } from '@/lib/utils/currency';
 import type { Service, Product, Package as PkgType } from '@/types/database';
@@ -104,17 +104,17 @@ export function BillBuilder({
 
   return (
     <div className="flex h-full gap-0">
-      <div className="flex-1 flex flex-col min-w-0 bg-background border-r border-border/30">
-        <div className="px-3 pt-2 pb-1">
-          <Tabs value={svcCategory} onValueChange={setSvcCategory}>
-            <TabsList className="flex-wrap h-auto gap-1 bg-transparent p-0">
-              {SERVICE_TABS.map((t) => (
-                <TabsTrigger key={t.value} value={t.value} className="calendar-card text-[11px] px-2.5 py-1.5 h-7 text-muted-foreground hover:text-foreground data-[state=active]:bg-gold/10 data-[state=active]:text-gold transition-all duration-150">
-                  {t.label}
-                </TabsTrigger>
-              ))}
-            </TabsList>
-          </Tabs>
+      <div className="flex-1 flex flex-col min-w-0 bg-background border-r border-border">
+        <div className="px-3 pt-2 pb-1 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
+          <div className="flex gap-1 min-w-max">
+            {SERVICE_TABS.map((t) => (
+              <button key={t.value} onClick={() => setSvcCategory(t.value)}
+                className={`text-[11px] px-2.5 py-1.5 font-medium rounded-md transition-all duration-150 shrink-0 ${
+                  svcCategory === t.value ? 'bg-foreground text-white' : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >{t.label}</button>
+            ))}
+          </div>
         </div>
 
         <div className="px-3 pb-2">
@@ -124,7 +124,7 @@ export function BillBuilder({
               value={svcSearch}
               onChange={(e) => setSvcSearch(e.target.value)}
               placeholder="Search services..."
-              className="calendar-card pl-8 h-8 text-sm"
+              className="pl-8 h-8 text-sm"
             />
           </div>
         </div>
@@ -135,7 +135,7 @@ export function BillBuilder({
               <button
                 key={svc.id}
                 onClick={() => onAddService(svc)}
-                className={`calendar-card aspect-square flex flex-col items-center justify-center text-center bg-card border border-border/30 p-2.5 hover:border-gold/30 hover:bg-gold/5 active:scale-[0.97] transition-all duration-150 touch-target border-t-[3px] ${CATEGORY_COLORS[svc.category] || 'border-t-gray-400'}`}
+                className={`aspect-square flex flex-col items-center justify-center text-center bg-card border border-border rounded-lg p-2.5 hover:border-gold/30 hover:bg-gold/5 active:scale-[0.97] transition-all duration-150 touch-target border-t-[3px] ${CATEGORY_COLORS[svc.category] || 'border-t-gray-400'}`}
               >
                 <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">{svc.category}</p>
                 <p className="text-sm font-semibold leading-tight">{svc.name}</p>
@@ -147,7 +147,7 @@ export function BillBuilder({
           <div className="mt-3">
             <button
               onClick={() => setShowProducts(!showProducts)}
-              className="calendar-card flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground py-1.5 px-2.5 transition-all duration-150"
+              className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground py-1.5 px-2.5 transition-all duration-150"
             >
               <ShoppingBag className="w-3 h-3" /> {showProducts ? 'Hide Products' : '+ Add Product'}
             </button>
@@ -156,11 +156,11 @@ export function BillBuilder({
               <div className="space-y-2 mt-2">
                 <div className="relative">
                   <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
-                  <Input value={prodSearch} onChange={(e) => setProdSearch(e.target.value)} placeholder="Search retail products..." className="calendar-card pl-8 h-8 text-sm" />
+                  <Input value={prodSearch} onChange={(e) => setProdSearch(e.target.value)} placeholder="Search retail products..." className="pl-8 h-8 text-sm" />
                 </div>
                 <div className="space-y-1 max-h-[120px] overflow-y-auto" style={{ scrollbarWidth: 'none' }}>
                   {filteredProducts.map((prod) => (
-                    <button key={prod.id} onClick={() => onAddProduct(prod)} className="calendar-card w-full text-left p-2 bg-card border border-border/30 text-xs hover:border-gold/30 flex items-center justify-between transition-all duration-150">
+                    <button key={prod.id} onClick={() => onAddProduct(prod)} className="w-full text-left p-2 bg-card border border-border rounded-lg text-xs hover:border-gold/30 flex items-center justify-between transition-all duration-150">
                       <div>
                         <p className="font-medium">{prod.name}</p>
                         <p className="text-muted-foreground">{prod.brand} · Stock: {prod.current_stock}</p>
@@ -177,7 +177,7 @@ export function BillBuilder({
             <div className="mt-2">
               <button
                 onClick={() => setShowPackages(!showPackages)}
-                className="calendar-card flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground py-1.5 px-2.5 transition-all duration-150"
+                className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground py-1.5 px-2.5 transition-all duration-150"
               >
                 <Package className="w-3 h-3" /> {showPackages ? 'Hide Packages' : '+ Add Package'}
               </button>
@@ -187,7 +187,7 @@ export function BillBuilder({
                   {packages.map((pkg) => {
                     const svcList = (pkg.services as unknown as { serviceName: string; quantity: number }[]) || [];
                     return (
-                      <button key={pkg.id} onClick={() => onAddPackage(pkg)} className="calendar-card w-full text-left p-3 bg-card border border-border/30 text-xs hover:border-gold/30 transition-all duration-150">
+                      <button key={pkg.id} onClick={() => onAddPackage(pkg)} className="w-full text-left p-3 bg-card border border-border rounded-lg text-xs hover:border-gold/30 transition-all duration-150">
                         <div className="flex items-center justify-between">
                           <p className="font-medium">{pkg.name}</p>
                           <span className="font-bold text-gold">{formatPKR(pkg.price)}</span>
@@ -212,14 +212,14 @@ export function BillBuilder({
         <div className="flex-1 overflow-y-auto px-3 py-2 space-y-2" style={{ scrollbarWidth: 'none' }}>
           {items.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-center px-4">
-              <div className="w-12 h-12 rounded-xl bg-gold/5 flex items-center justify-center mb-3">
+              <div className="w-12 h-12 rounded-lg bg-gold/5 flex items-center justify-center mb-3">
                 <Receipt className="w-5 h-5 text-muted-foreground/50" />
               </div>
               <p className="text-xs text-muted-foreground">Select services from the left to build the bill</p>
             </div>
           ) : (
             items.map((item) => (
-              <div key={item.id} className="calendar-card bg-card border border-border/30 p-3 flex items-center gap-2 text-sm group transition-all duration-150">
+              <div key={item.id} className="bg-card border border-border rounded-lg p-3 flex items-center gap-2 text-sm group transition-all duration-150">
                 <div className="flex-1 min-w-0">
                   <p className="font-medium truncate">{item.name}</p>
                   {item.stylistName && <p className="text-[10px] text-muted-foreground">{item.stylistName}</p>}
@@ -227,11 +227,11 @@ export function BillBuilder({
 
                 {item.type === 'product' && (
                   <div className="flex items-center gap-1">
-                    <button onClick={() => onUpdateItemQty(item.id, Math.max(1, item.quantity - 1))} className="w-6 h-6 calendar-card bg-background border border-border/30 flex items-center justify-center transition-all duration-150">
+                    <button onClick={() => onUpdateItemQty(item.id, Math.max(1, item.quantity - 1))} className="w-6 h-6 bg-background border border-border flex items-center justify-center transition-all duration-150">
                       <Minus className="w-3 h-3" />
                     </button>
                     <span className="text-xs w-5 text-center">{item.quantity}</span>
-                    <button onClick={() => onUpdateItemQty(item.id, item.quantity + 1)} className="w-6 h-6 calendar-card bg-background border border-border/30 flex items-center justify-center transition-all duration-150">
+                    <button onClick={() => onUpdateItemQty(item.id, item.quantity + 1)} className="w-6 h-6 bg-background border border-border flex items-center justify-center transition-all duration-150">
                       <Plus className="w-3 h-3" />
                     </button>
                   </div>
@@ -241,7 +241,7 @@ export function BillBuilder({
                   <Input
                     type="number"
                     defaultValue={item.unitPrice}
-                    className="calendar-card w-20 h-7 text-xs text-right"
+                    className="w-20 h-7 text-xs text-right"
                     autoFocus
                     min={0}
                     onBlur={(e) => { onUpdateItemPrice(item.id, Math.max(0, Number(e.target.value)) || item.unitPrice); setEditingPrice(null); }}
@@ -270,19 +270,19 @@ export function BillBuilder({
           </button>
 
           {showDiscount && (
-            <div className="calendar-card bg-background/50 p-3 border border-border/20 space-y-2">
+            <div className="bg-background/50 p-3 border border-border/20 space-y-2">
               <div className="flex gap-2">
                 <div className="flex-1">
                   <label className="text-[10px] text-muted-foreground">Flat (Rs)</label>
-                  <Input type="number" value={discountType === 'flat' ? discountValue : ''} onChange={(e) => onSetDiscount(e.target.value ? 'flat' : null, Math.min(Math.max(0, Number(e.target.value)), subtotal))} placeholder="0" className="calendar-card h-7 text-xs" inputMode="numeric" min={0} max={subtotal} />
+                  <Input type="number" value={discountType === 'flat' ? discountValue : ''} onChange={(e) => onSetDiscount(e.target.value ? 'flat' : null, Math.min(Math.max(0, Number(e.target.value)), subtotal))} placeholder="0" className="h-7 text-xs" inputMode="numeric" min={0} max={subtotal} />
                 </div>
                 <div className="flex-1">
                   <label className="text-[10px] text-muted-foreground">Percentage (%)</label>
-                  <Input type="number" value={discountType === 'percentage' ? discountValue : ''} onChange={(e) => onSetDiscount(e.target.value ? 'percentage' : null, Number(e.target.value))} placeholder="0" className="calendar-card h-7 text-xs" inputMode="numeric" max={100} />
+                  <Input type="number" value={discountType === 'percentage' ? discountValue : ''} onChange={(e) => onSetDiscount(e.target.value ? 'percentage' : null, Number(e.target.value))} placeholder="0" className="h-7 text-xs" inputMode="numeric" max={100} />
                 </div>
               </div>
               <div className="flex gap-1.5">
-                <Input value={promoInput} onChange={(e) => setPromoInput(e.target.value.toUpperCase())} placeholder="Promo code" className="calendar-card h-7 text-xs flex-1" />
+                <Input value={promoInput} onChange={(e) => setPromoInput(e.target.value.toUpperCase())} placeholder="Promo code" className="h-7 text-xs flex-1" />
                 <Button size="sm" variant="outline" className="h-7 text-xs transition-all duration-150" onClick={() => onApplyPromo(promoInput)}>Apply</Button>
               </div>
               {promoDiscount > 0 && <p className="text-xs text-green-600">Promo applied: -{formatPKR(promoDiscount)}</p>}

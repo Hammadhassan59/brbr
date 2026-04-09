@@ -202,56 +202,56 @@ export default function ProfitLossPage() {
       {canSeeAllBranches && (
         <div className="flex flex-wrap gap-1.5">
           <button onClick={() => setBranchScope('current')}
-            className={`calendar-card px-3 py-1.5 rounded-full text-xs font-medium transition-all ${branchScope === 'current' ? 'bg-gold text-black' : 'bg-secondary/50 border border-border text-muted-foreground hover:bg-secondary/80'}`}>
+            className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${branchScope === 'current' ? 'bg-gold text-black' : 'bg-secondary/50 border border-border text-muted-foreground hover:bg-secondary/80'}`}>
             {currentBranch?.name || 'Current'}
           </button>
           {branches.filter(b => b.id !== currentBranch?.id).map(b => (
             <button key={b.id} onClick={() => setBranchScope(b.id)}
-              className={`calendar-card px-3 py-1.5 rounded-full text-xs font-medium transition-all ${branchScope === b.id ? 'bg-gold text-black' : 'bg-secondary/50 border border-border text-muted-foreground hover:bg-secondary/80'}`}>
+              className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${branchScope === b.id ? 'bg-gold text-black' : 'bg-secondary/50 border border-border text-muted-foreground hover:bg-secondary/80'}`}>
               {b.name}
             </button>
           ))}
           <button onClick={() => setBranchScope('all')}
-            className={`calendar-card px-3 py-1.5 rounded-full text-xs font-medium transition-all ${branchScope === 'all' ? 'bg-gold text-black' : 'bg-secondary/50 border border-border text-muted-foreground hover:bg-secondary/80'}`}>
+            className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${branchScope === 'all' ? 'bg-gold text-black' : 'bg-secondary/50 border border-border text-muted-foreground hover:bg-secondary/80'}`}>
             All Branches
           </button>
         </div>
       )}
 
-      <div className="calendar-card bg-card border border-border shadow-sm p-4 flex items-center gap-3">
+      <div className="bg-card border border-border rounded-lg p-4 flex items-center gap-3">
         <h2 className="font-heading text-xl font-bold">Profit & Loss</h2>
         <Select value={String(month)} onValueChange={(v) => { if (v) setMonth(Number(v)); }}>
-          <SelectTrigger className="calendar-card w-[120px] h-8 text-xs"><SelectValue /></SelectTrigger>
+          <SelectTrigger className="w-[120px] h-8 text-xs"><SelectValue /></SelectTrigger>
           <SelectContent>{Array.from({ length: 12 }, (_, i) => <SelectItem key={i + 1} value={String(i + 1)}>{new Date(2000, i).toLocaleString('default', { month: 'long' })}</SelectItem>)}</SelectContent>
         </Select>
         <Select value={String(year)} onValueChange={(v) => { if (v) setYear(Number(v)); }}>
-          <SelectTrigger className="calendar-card w-[90px] h-8 text-xs"><SelectValue /></SelectTrigger>
+          <SelectTrigger className="w-[90px] h-8 text-xs"><SelectValue /></SelectTrigger>
           <SelectContent>{Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - 2 + i).map((y) => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}</SelectContent>
         </Select>
-        <Button variant="outline" size="sm" className="calendar-card ml-auto text-xs gap-1" onClick={exportCSV}>
+        <Button variant="outline" size="sm" className="ml-auto text-xs gap-1" onClick={exportCSV}>
           <Download className="w-3 h-3" /> Export
         </Button>
       </div>
 
       {loading ? (
-        <div className="space-y-3">{[1, 2, 3].map(i => <div key={i} className="calendar-card h-24 bg-muted rounded animate-pulse" />)}</div>
+        <div className="space-y-3">{[1, 2, 3].map(i => <div key={i} className="h-24 bg-muted rounded-lg animate-pulse" />)}</div>
       ) : (
         <>
           {/* KPI Cards */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-            <Card className="calendar-card shadow-sm border-border">
+            <Card className="border-border">
               <CardContent className="p-4 text-center">
                 <p className="text-xs text-muted-foreground uppercase tracking-wider">Total Revenue</p>
                 <p className="text-xl font-bold text-green-600">{formatPKR(totalRevenue)}</p>
               </CardContent>
             </Card>
-            <Card className="calendar-card shadow-sm border-border">
+            <Card className="border-border">
               <CardContent className="p-4 text-center">
                 <p className="text-xs text-muted-foreground uppercase tracking-wider">Total Costs</p>
                 <p className="text-xl font-bold text-red-600">{formatPKR(Math.round(totalCosts))}</p>
               </CardContent>
             </Card>
-            <Card className={`calendar-card shadow-sm border-border ${netProfit >= 0 ? 'border-green-500/25' : 'border-red-500/25'}`}>
+            <Card className={`border-border ${netProfit >= 0 ? 'border-green-500/25' : 'border-red-500/25'}`}>
               <CardContent className="p-4 text-center">
                 <p className="text-xs text-muted-foreground uppercase tracking-wider">Net Profit</p>
                 <div className="flex items-center justify-center gap-1">
@@ -260,7 +260,7 @@ export default function ProfitLossPage() {
                 </div>
               </CardContent>
             </Card>
-            <Card className="calendar-card shadow-sm border-border">
+            <Card className="border-border">
               <CardContent className="p-4 text-center">
                 <p className="text-xs text-muted-foreground uppercase tracking-wider">Profit Margin</p>
                 <p className={`text-xl font-bold ${profitMargin >= 0 ? 'text-green-600' : 'text-red-600'}`}>{profitMargin.toFixed(1)}%</p>
@@ -269,7 +269,7 @@ export default function ProfitLossPage() {
           </div>
 
           {/* Weekly Trend Chart */}
-          <Card className="calendar-card shadow-sm border-border">
+          <Card className="border-border">
             <CardHeader className="pb-2"><CardTitle className="text-sm">Weekly Trend — {monthName} {year}</CardTitle></CardHeader>
             <CardContent>
               <ResponsiveContainer width="100%" height={220}>
@@ -287,7 +287,7 @@ export default function ProfitLossPage() {
           </Card>
 
           {/* P&L Statement Table */}
-          <Card className="calendar-card shadow-sm border-border">
+          <Card className="border-border">
             <CardHeader className="pb-2"><CardTitle className="text-sm">Statement — {monthName} {year}</CardTitle></CardHeader>
             <CardContent className="px-0">
               <Table>

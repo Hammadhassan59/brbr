@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+
 import type { Staff, Attendance } from '@/types/database';
 
 const ROLE_COLORS: Record<string, string> = {
@@ -114,25 +114,21 @@ export default function StaffListPage() {
 
   return (
     <div className="space-y-6">
-      <div className="calendar-card bg-card border border-border shadow-sm p-4 flex flex-wrap items-center gap-3">
-        <Tabs value={roleFilter} onValueChange={setRoleFilter}>
-          <TabsList className="h-auto gap-1 bg-transparent p-0">
-            {[
-              { value: 'all', label: 'All' },
-              { value: 'stylists', label: 'Stylists' },
-              { value: 'receptionist', label: 'Receptionist' },
-              { value: 'helper', label: 'Helper' },
-            ].map((tab) => (
-              <TabsTrigger
-                key={tab.value}
-                value={tab.value}
-                className="text-xs calendar-card transition-all duration-150 data-[state=active]:bg-gold data-[state=active]:text-black data-[state=active]:shadow-sm bg-secondary/50 border border-border text-muted-foreground hover:border-gold/30"
-              >
-                {tab.label}
-              </TabsTrigger>
-            ))}
-          </TabsList>
-        </Tabs>
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="flex gap-1">
+          {[
+            { value: 'all', label: 'All' },
+            { value: 'stylists', label: 'Stylists' },
+            { value: 'receptionist', label: 'Receptionist' },
+            { value: 'helper', label: 'Helper' },
+          ].map((t) => (
+            <button key={t.value} onClick={() => setRoleFilter(t.value)}
+              className={`px-3.5 py-2 text-xs font-medium rounded-lg transition-all duration-150 ${
+                roleFilter === t.value ? 'bg-foreground text-white' : 'text-muted-foreground hover:text-foreground border border-border'
+              }`}
+            >{t.label}</button>
+          ))}
+        </div>
 
         <div className="relative">
           <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
@@ -140,17 +136,17 @@ export default function StaffListPage() {
             placeholder="Search staff..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="calendar-card h-10 w-52 pl-9 text-sm"
+            className="h-10 w-56 pl-9 text-sm border border-border bg-background"
           />
         </div>
 
         <div className="flex gap-2 ml-auto">
           <Link href="/dashboard/staff/payroll">
-            <Button variant="outline" size="sm" className="calendar-card h-10 px-4 font-medium transition-all duration-150 gap-1.5">
+            <Button variant="outline" size="sm" className="h-10 px-4 font-medium border border-border transition-all duration-150 gap-1.5 hover:bg-secondary/50">
               <DollarSign className="w-3.5 h-3.5" /> Payroll
             </Button>
           </Link>
-          <Button onClick={() => router.push('/dashboard/staff/new')} className="calendar-card bg-gold hover:bg-gold/90 text-black font-bold h-10 px-4 transition-all duration-150" size="sm">
+          <Button onClick={() => router.push('/dashboard/staff/new')} className="bg-gold hover:bg-gold/90 text-black font-bold h-10 px-4 transition-all duration-150" size="sm">
             <Plus className="w-4 h-4 mr-1" /> Add Staff
           </Button>
         </div>
@@ -158,21 +154,21 @@ export default function StaffListPage() {
 
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {[1, 2, 3, 4].map((i) => <div key={i} className="calendar-card h-32 bg-muted animate-pulse" />)}
+          {[1, 2, 3, 4].map((i) => <div key={i} className="h-32 bg-muted rounded-lg animate-pulse" />)}
         </div>
       ) : filteredStaff.length === 0 ? (
-        <div className="calendar-card bg-card shadow-sm border border-border p-12">
+        <div className="bg-card border border-border rounded-lg p-12">
           <p className="text-center text-muted-foreground">
             {staff.length === 0 ? 'No staff members yet' : 'No staff match your filters'}
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 stagger-children">
           {filteredStaff.map((s) => (
             <Link key={s.id} href={`/dashboard/staff/${s.id}`}>
-              <div className="calendar-card bg-card border border-border shadow-sm hover:shadow-lg hover:border-gold/40 hover:-translate-y-0.5 p-5 transition-all duration-200">
+              <div className="animate-fade-up bg-card border border-border rounded-lg hover:shadow-lg hover:border-gold/40 hover:-translate-y-0.5 p-5 transition-all duration-200">
                 <div className="flex items-center gap-4">
-                  <div className="w-14 h-14 rounded-xl bg-gold/20 text-gold font-bold flex items-center justify-center text-xl shrink-0 shadow-sm">
+                  <div className="w-14 h-14 rounded-full bg-accent text-foreground font-bold flex items-center justify-center text-xl shrink-0">
                     {s.name.charAt(0)}
                   </div>
                   <div className="flex-1 min-w-0">

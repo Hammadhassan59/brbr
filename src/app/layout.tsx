@@ -29,6 +29,17 @@ export const metadata: Metadata = {
     title: "BrBr — Pakistan's Smart Salon POS System",
     description: 'Bookings, Payments, Staff, Inventory — all in one place',
     siteName: 'BrBr',
+    images: [{ url: '/og-image.svg', width: 1200, height: 630, alt: "BrBr — Pakistan's Smart Salon System" }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: "BrBr — Pakistan's Smart Salon POS System",
+    description: 'Bookings, Payments, Staff, Inventory — all in one place',
+    images: ['/og-image.svg'],
+  },
+  icons: {
+    icon: '/favicon.svg',
+    apple: '/apple-touch-icon.svg',
   },
 };
 

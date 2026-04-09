@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { Download, MessageCircle, ChevronRight } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import { createExpense, createExpenses, deleteSalaryExpenses } from '@/app/actions/expenses';
 import { useAppStore } from '@/store/app-store';
 import { formatPKR } from '@/lib/utils/currency';
 import { generateWhatsAppLink } from '@/lib/utils/whatsapp';
@@ -124,25 +125,19 @@ export default function PayrollPage() {
 
     if (!row.paid) {
       // Mark as paid — insert expense record
-      const { error } = await supabase.from('expenses').insert({
-        branch_id: currentBranch?.id || null,
+      const { error } = await createExpense({
+        branchId: currentBranch?.id || '',
         category: 'salary',
         amount: row.netPayable,
         description: salaryDesc,
         date: new Date().toISOString().split('T')[0],
-        created_by: currentStaff?.id || null,
+        createdBy: currentStaff?.id || null,
       });
       if (error) { toast.error('Failed to save payment'); return; }
       toast.success(`${row.staff.name} marked as paid`);
     } else {
       // Unmark — delete the expense record
-      const { error } = await supabase
-        .from('expenses')
-        .delete()
-        .eq('category', 'salary')
-        .eq('description', salaryDesc)
-        .gte('date', startDate)
-        .lte('date', endDate);
+      const { error } = await deleteSalaryExpenses(salaryDesc, startDate, endDate);
       if (error) { toast.error('Failed to undo payment'); return; }
       toast.success(`${row.staff.name} unmarked as paid`);
     }
@@ -161,17 +156,17 @@ export default function PayrollPage() {
       const monthLabel = new Date(year, month - 1).toLocaleString('default', { month: 'long' });
       const today = new Date().toISOString().split('T')[0];
 
-      const inserts = unpaid.map((row) => ({
-        branch_id: currentBranch?.id || null,
+      const items = unpaid.map((row) => ({
+        branchId: currentBranch?.id || '',
         category: 'salary',
         amount: row.netPayable,
         description: `Salary: ${row.staff.name} — ${monthLabel} ${year}`,
         date: today,
-        created_by: currentStaff?.id || null,
+        createdBy: currentStaff?.id || null,
       }));
 
-      const { error } = await supabase.from('expenses').insert(inserts);
-      if (error) throw error;
+      const { error } = await createExpenses(items);
+      if (error) throw new Error(error);
 
       setRows(rows.map((r) => ({ ...r, paid: r.paid || r.netPayable > 0 })));
       toast.success(`${unpaid.length} staff marked as paid`);
@@ -226,33 +221,33 @@ Thank you 🙏 — BrBr Management`;
         <span className="text-foreground font-medium">Payroll</span>
       </div>
 
-      <div className="calendar-card bg-card border border-border shadow-sm p-4 flex flex-wrap items-center gap-3">
+      <div className="bg-card border border-border rounded-lg p-4 flex flex-wrap items-center gap-3">
         <h2 className="font-heading text-xl font-bold">Payroll</h2>
         <Select value={String(month)} onValueChange={(v) => { if (v) setMonth(Number(v)); }}>
-          <SelectTrigger className="calendar-card w-[130px] h-9 text-xs"><SelectValue /></SelectTrigger>
+          <SelectTrigger className="w-[130px] h-9 text-xs"><SelectValue /></SelectTrigger>
           <SelectContent>{Array.from({ length: 12 }, (_, i) => <SelectItem key={i + 1} value={String(i + 1)}>{new Date(2000, i).toLocaleString('default', { month: 'long' })}</SelectItem>)}</SelectContent>
         </Select>
         <Select value={String(year)} onValueChange={(v) => { if (v) setYear(Number(v)); }}>
-          <SelectTrigger className="calendar-card w-[90px] h-9 text-xs"><SelectValue /></SelectTrigger>
+          <SelectTrigger className="w-[90px] h-9 text-xs"><SelectValue /></SelectTrigger>
           <SelectContent>{[2024, 2025, 2026].map((y) => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}</SelectContent>
         </Select>
         <div className="ml-auto flex gap-2">
-          <Button variant="outline" size="sm" className="calendar-card gap-1 text-xs transition-all duration-150" onClick={markAllPaid} disabled={markingPaid || loading}>
+          <Button variant="outline" size="sm" className="gap-1 text-xs transition-all duration-150" onClick={markAllPaid} disabled={markingPaid || loading}>
             {markingPaid ? 'Saving...' : 'Mark All Paid'}
           </Button>
-          <Button variant="outline" size="sm" className="calendar-card gap-1 text-xs transition-all duration-150" onClick={exportCSV}>
+          <Button variant="outline" size="sm" className="gap-1 text-xs transition-all duration-150" onClick={exportCSV}>
             <Download className="w-3 h-3" /> Export CSV
           </Button>
         </div>
       </div>
 
       {loading ? (
-        <div className="space-y-2">{[1, 2, 3].map((i) => <div key={i} className="calendar-card h-14 bg-muted animate-pulse" />)}</div>
+        <div className="space-y-2">{[1, 2, 3].map((i) => <div key={i} className="h-14 bg-muted rounded-lg animate-pulse" />)}</div>
       ) : rows.length === 0 ? (
         <p className="text-center text-muted-foreground py-16">No staff to show</p>
       ) : (
         <>
-          <Card className="calendar-card shadow-sm border-border">
+          <Card className="border-border">
             <CardContent className="p-0 overflow-x-auto">
               <Table>
                 <TableHeader>
@@ -269,9 +264,9 @@ Thank you 🙏 — BrBr Management`;
                     <TableHead className="text-center pr-4">Slip</TableHead>
                   </TableRow>
                 </TableHeader>
-                <TableBody>
+                <TableBody className="stagger-children">
                   {rows.map((row, i) => (
-                    <TableRow key={row.staff.id}>
+                    <TableRow key={row.staff.id} className="animate-fade-up">
                       <TableCell className="pl-4">
                         <p className="font-medium text-sm">{row.staff.name}</p>
                         <p className="text-[10px] text-muted-foreground capitalize">{row.staff.role.replace('_', ' ')}</p>

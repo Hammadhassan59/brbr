@@ -11,11 +11,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import toast from 'react-hot-toast';
+import { createPackage, updatePackage } from '@/app/actions/packages';
 import type { Package as PkgType, Service } from '@/types/database';
 
 type Filter = 'all' | 'active' | 'inactive';
@@ -105,15 +106,17 @@ export default function PackagesPage() {
     setSaving(true);
     try {
       const data = {
-        salon_id: salon.id, name: formName.trim(), description: formDesc || null,
-        price: Number(formPrice), validity_days: Number(formValidity) || 30,
-        is_active: formActive, services: JSON.parse(JSON.stringify(formServices)),
+        name: formName.trim(), description: formDesc || null,
+        price: Number(formPrice), validityDays: Number(formValidity) || 30,
+        isActive: formActive, services: JSON.parse(JSON.stringify(formServices)),
       };
       if (editPkg) {
-        await supabase.from('packages').update(data).eq('id', editPkg.id);
+        const { error } = await updatePackage(editPkg.id, data);
+        if (error) throw new Error(error);
         toast.success('Package updated');
       } else {
-        await supabase.from('packages').insert(data);
+        const { error } = await createPackage(data);
+        if (error) throw new Error(error);
         toast.success('Package created');
       }
       setShowForm(false); fetch();
@@ -132,24 +135,26 @@ export default function PackagesPage() {
         <Button onClick={() => openForm()} className="bg-gold text-black border border-gold" size="sm"><Plus className="w-4 h-4 mr-1" /> Create Package</Button>
       </div>
 
-      <Tabs value={filter} onValueChange={(v) => setFilter(v as Filter)}>
-        <TabsList className="h-auto gap-1">
-          <TabsTrigger value="all" className="text-xs">All ({packages.length})</TabsTrigger>
-          <TabsTrigger value="active" className="text-xs">Active ({packages.filter((p) => p.is_active).length})</TabsTrigger>
-          <TabsTrigger value="inactive" className="text-xs">Inactive</TabsTrigger>
-        </TabsList>
-      </Tabs>
+      <div className="flex gap-1">
+        {([['all', `All (${packages.length})`], ['active', `Active (${packages.filter((p) => p.is_active).length})`], ['inactive', 'Inactive']] as const).map(([value, label]) => (
+          <button key={value} onClick={() => setFilter(value as Filter)}
+            className={`px-3.5 py-2 text-xs font-medium rounded-lg transition-all duration-150 ${
+              filter === value ? 'bg-foreground text-white' : 'text-muted-foreground hover:text-foreground border border-border'
+            }`}
+          >{label}</button>
+        ))}
+      </div>
 
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">{[1, 2, 3].map((i) => <div key={i} className="h-36 bg-muted rounded-lg animate-pulse" />)}</div>
       ) : filtered.length === 0 ? (
         <p className="text-center text-muted-foreground py-16">No packages yet — create your first package</p>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 stagger-children">
           {filtered.map((pkg) => {
             const svcList = Array.isArray(pkg.services) ? (pkg.services as unknown as PackageServiceEntry[]) : [];
             return (
-              <Card key={pkg.id} className={`cursor-pointer hover:shadow-md transition-shadow ${!pkg.is_active ? 'opacity-60' : ''}`} onClick={() => openForm(pkg)}>
+              <Card key={pkg.id} className={`animate-fade-up hover:-translate-y-0.5 hover:shadow-md transition-all duration-200 cursor-pointer ${!pkg.is_active ? 'opacity-60' : ''}`} onClick={() => openForm(pkg)}>
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between mb-2">
                     <div>
@@ -190,7 +195,7 @@ export default function PackagesPage() {
               <div className="relative mt-1">
                 <Input value={svcSearch} onChange={(e) => setSvcSearch(e.target.value)} placeholder="Search and add services..." className="h-8 text-sm" />
                 {filteredSvcSearch.length > 0 && (
-                  <div className="absolute z-10 top-full left-0 right-0 mt-1 bg-card border rounded-lg shadow-lg max-h-32 overflow-y-auto">
+                  <div className="absolute z-10 top-full left-0 right-0 mt-1 bg-card border rounded-lg max-h-32 overflow-y-auto">
                     {filteredSvcSearch.map((s) => (
                       <button key={s.id} onClick={() => addServiceToPackage(s)} className="w-full text-left px-3 py-1.5 hover:bg-secondary text-sm">
                         {s.name} — {formatPKR(s.base_price)}

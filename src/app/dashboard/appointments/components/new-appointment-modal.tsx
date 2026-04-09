@@ -13,6 +13,8 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import toast from 'react-hot-toast';
+import { createAppointment, createAppointmentServices } from '@/app/actions/appointments';
+import { createClient } from '@/app/actions/clients';
 import type { Client, Staff, Service, ServiceCategory, WorkingHours } from '@/types/database';
 
 interface NewAppointmentModalProps {
@@ -158,12 +160,9 @@ export function NewAppointmentModal({
       let clientId: string | null = null;
 
       if (isNewClient && newClientName) {
-        const { data: newClient, error } = await supabase
-          .from('clients')
-          .insert({ salon_id: salon.id, name: newClientName, phone: newClientPhone || null })
-          .select().single();
-        if (error) throw error;
-        clientId = newClient.id;
+        const { data: newClient, error } = await createClient({ name: newClientName, phone: newClientPhone || null });
+        if (error) throw new Error(error);
+        clientId = newClient!.id;
       } else if (selectedClient) {
         clientId = selectedClient.id;
       }
@@ -206,23 +205,17 @@ export function NewAppointmentModal({
         }
       }
 
-      const { data: apt, error: aptErr } = await supabase
-        .from('appointments')
-        .insert({
-          salon_id: salon.id, branch_id: currentBranch.id, client_id: clientId,
-          staff_id: selectedStaffId, appointment_date: date, start_time: time,
-          end_time: endTime, status: 'booked', is_walkin: isWalkin, notes: notes || null,
-        })
-        .select().single();
-      if (aptErr) throw aptErr;
+      const { data: apt, error: aptErr } = await createAppointment({
+        branchId: currentBranch.id, clientId, staffId: selectedStaffId,
+        date, startTime: time, endTime, isWalkin, notes: notes || null,
+      });
+      if (aptErr) throw new Error(aptErr);
 
-      const { error: svcErr } = await supabase
-        .from('appointment_services')
-        .insert(selectedServices.map((s) => ({
-          appointment_id: apt.id, service_id: s.id, service_name: s.name,
-          price: s.base_price, duration_minutes: s.duration_minutes,
-        })));
-      if (svcErr) throw svcErr;
+      const { error: svcErr } = await createAppointmentServices(apt!.id, selectedServices.map((s) => ({
+        serviceId: s.id, serviceName: s.name,
+        price: s.base_price, durationMinutes: s.duration_minutes,
+      })));
+      if (svcErr) throw new Error(svcErr);
 
       toast.success('Appointment booked!');
       reset(); onCreated(); onClose();
@@ -238,9 +231,9 @@ export function NewAppointmentModal({
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) { reset(); onClose(); } }}>
-      <DialogContent className="calendar-card sm:max-w-xl max-h-[85vh] p-0 flex flex-col overflow-hidden bg-card border-border">
+      <DialogContent className="sm:max-w-xl max-h-[85vh] p-0 flex flex-col overflow-hidden bg-background border-border rounded-lg">
         {/* Header */}
-        <div className="px-6 pt-6 pb-4 border-b border-border shrink-0">
+        <div className="px-6 pt-6 pb-4 border-b border-border shrink-0 bg-white">
           <DialogTitle className="font-heading text-lg font-bold text-foreground">
             {isWalkin ? 'Add Walk-in' : 'New Appointment'}
           </DialogTitle>
@@ -251,11 +244,11 @@ export function NewAppointmentModal({
         <div className="overflow-y-auto flex-1 min-h-0 px-6 py-5 space-y-5" style={{ scrollbarWidth: 'none' }}>
 
           {/* Client */}
-          <section className="calendar-card bg-secondary p-4 border border-border">
+          <section className="bg-white rounded-lg p-4 border border-border">
             <Label className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-3 block">Client (optional)</Label>
             {selectedClient ? (
-              <div className="flex items-center gap-3 p-2.5 border border-border bg-secondary">
-                <div className="w-8 h-8 bg-gold/20 text-gold text-xs font-bold flex items-center justify-center">{selectedClient.name.charAt(0)}</div>
+              <div className="flex items-center gap-3 p-2.5 rounded-lg border border-border bg-background">
+                <div className="w-8 h-8 rounded-full bg-gold/20 text-gold text-xs font-bold flex items-center justify-center">{selectedClient.name.charAt(0)}</div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium truncate">{selectedClient.name}</p>
                   <p className="text-xs text-muted-foreground">{selectedClient.phone}</p>
@@ -264,7 +257,7 @@ export function NewAppointmentModal({
                 <button onClick={() => setSelectedClient(null)} className="text-muted-foreground hover:text-foreground"><X className="w-4 h-4" /></button>
               </div>
             ) : isNewClient ? (
-              <div className="space-y-2 p-3 border bg-secondary/30">
+              <div className="space-y-2 p-3 rounded-lg border border-border bg-background">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-medium text-muted-foreground">New Client</span>
                   <button onClick={() => setIsNewClient(false)} className="text-xs text-gold hover:underline">Cancel</button>
@@ -277,20 +270,20 @@ export function NewAppointmentModal({
             ) : (
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input value={clientSearch} onChange={(e) => setClientSearch(e.target.value)} placeholder="Search by name or phone..." className="pl-9 h-10 calendar-card" />
+                <Input value={clientSearch} onChange={(e) => setClientSearch(e.target.value)} placeholder="Search by name or phone..." className="pl-9 h-10 rounded-lg" />
                 {clientSearch.length >= 2 && (
-                  <div className="absolute z-20 top-full left-0 right-0 mt-1 bg-secondary border border-border shadow-lg max-h-48 overflow-y-auto calendar-card">
+                  <div className="absolute z-20 top-full left-0 right-0 mt-1 bg-white border border-border max-h-48 overflow-y-auto rounded-lg shadow-lg">
                     {clientResults.map((client) => (
                       <button key={client.id} onClick={() => { setSelectedClient(client); setClientSearch(''); setClientResults([]); }}
-                        className="w-full text-left px-3 py-2 hover:bg-secondary text-sm flex items-center gap-2 border-b last:border-0">
-                        <div className="w-6 h-6 bg-gold/15 text-gold text-[10px] font-bold flex items-center justify-center shrink-0">{client.name.charAt(0)}</div>
+                        className="w-full text-left px-3 py-2 hover:bg-background text-sm flex items-center gap-2 border-b last:border-0">
+                        <div className="w-6 h-6 rounded-full bg-gold/15 text-gold text-[10px] font-bold flex items-center justify-center shrink-0">{client.name.charAt(0)}</div>
                         <span className="font-medium">{client.name}</span>
                         <span className="text-muted-foreground ml-auto text-xs">{client.phone}</span>
                       </button>
                     ))}
                     {clientResults.length === 0 && <p className="px-3 py-2 text-sm text-muted-foreground">No clients found</p>}
                     <button onClick={() => { setIsNewClient(true); setClientSearch(''); setClientResults([]); }}
-                      className="w-full text-left px-3 py-2 hover:bg-secondary text-sm text-gold border-t flex items-center gap-2">
+                      className="w-full text-left px-3 py-2 hover:bg-background text-sm text-gold border-t flex items-center gap-2">
                       <Plus className="w-3.5 h-3.5" /> Add new client
                     </button>
                   </div>
@@ -307,17 +300,17 @@ export function NewAppointmentModal({
 
           {/* Stylist + Date/Time row */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <section className="calendar-card bg-secondary p-4 border border-border">
+            <section className="bg-white rounded-lg p-4 border border-border">
               <Label className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-3 block">Stylist</Label>
               {stylists.length > 0 ? (
                 <div className="space-y-1.5">
                   {stylists.map((s) => (
                     <button key={s.id} onClick={() => setSelectedStaffId(s.id)}
-                      className={`w-full flex items-center gap-2.5 p-2.5 border text-left transition-all ${
+                      className={`w-full flex items-center gap-2.5 p-2.5 rounded-lg border text-left transition-all ${
                         selectedStaffId === s.id ? 'border-gold bg-gold/5' : 'border-border hover:border-gold/40'
                       }`}>
-                      <div className={`w-7 h-7 text-[10px] font-bold flex items-center justify-center shrink-0 ${
-                        selectedStaffId === s.id ? 'bg-gold text-black' : 'bg-secondary text-muted-foreground'
+                      <div className={`w-7 h-7 rounded-full text-[10px] font-bold flex items-center justify-center shrink-0 ${
+                        selectedStaffId === s.id ? 'bg-gold text-black' : 'bg-background text-muted-foreground'
                       }`}>{s.name.charAt(0)}</div>
                       <div className="min-w-0">
                         <p className="text-sm font-medium truncate">{s.name}</p>
@@ -327,7 +320,7 @@ export function NewAppointmentModal({
                   ))}
                 </div>
               ) : (
-                <div className="py-8 text-center calendar-card bg-secondary/60 border border-border">
+                <div className="py-8 text-center rounded-lg bg-background border border-border">
                   <User className="w-6 h-6 mx-auto mb-2 text-muted-foreground/50" />
                   <p className="text-xs text-muted-foreground">No stylists in this branch.</p>
                   <p className="text-[11px] text-muted-foreground/60 mt-0.5">Add staff in Settings first.</p>
@@ -335,7 +328,7 @@ export function NewAppointmentModal({
               )}
             </section>
 
-            <section className="calendar-card bg-secondary p-4 border border-border">
+            <section className="bg-white rounded-lg p-4 border border-border">
               <Label className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-3 block">Date & Time</Label>
               <div className="grid grid-cols-2 gap-2 mb-2">
                 <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="h-10 w-full" />
@@ -347,8 +340,8 @@ export function NewAppointmentModal({
                   const label = h === 0 ? '12a' : h < 12 ? `${h}a` : h === 12 ? '12p' : `${h - 12}p`;
                   return (
                     <button key={slot} onClick={() => setTime(slot)}
-                      className={`py-2.5 text-xs font-medium text-center transition-all calendar-card ${
-                        time === slot ? 'bg-gold text-black font-bold' : 'bg-secondary/80 border border-border text-muted-foreground hover:border-gold/40 hover:text-foreground'
+                      className={`py-2.5 text-xs font-medium text-center transition-all rounded-lg ${
+                        time === slot ? 'bg-gold text-black font-bold' : 'bg-background border border-border text-muted-foreground hover:border-gold/40 hover:text-foreground'
                       }`}>
                       {label}
                     </button>
@@ -359,7 +352,7 @@ export function NewAppointmentModal({
           </div>
 
           {/* Services */}
-          <section className="calendar-card bg-secondary p-4 border border-border">
+          <section className="bg-white rounded-lg p-4 border border-border">
             <Label className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-3 block">
               Services {selectedServices.length > 0 && <span className="text-gold">({selectedServices.length})</span>}
             </Label>
@@ -367,15 +360,15 @@ export function NewAppointmentModal({
             <div className="flex gap-1.5 mb-2 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>
               {CATEGORIES.map((cat) => (
                 <button key={cat.value} onClick={() => setServiceCategory(cat.value)}
-                  className={`px-3 py-1.5 text-xs font-medium shrink-0 transition-all calendar-card ${
-                    serviceCategory === cat.value ? 'bg-gold/15 text-gold' : 'bg-background/50 text-muted-foreground hover:text-foreground'
+                  className={`px-3 py-1.5 text-xs font-medium shrink-0 transition-all rounded-full ${
+                    serviceCategory === cat.value ? 'bg-foreground text-white' : 'bg-background text-muted-foreground hover:text-foreground'
                   }`}>{cat.label}</button>
               ))}
             </div>
 
             <div className="relative mb-2">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input value={serviceSearch} onChange={(e) => setServiceSearch(e.target.value)} placeholder="Search services..." className="pl-9 h-9 text-sm calendar-card" />
+              <Input value={serviceSearch} onChange={(e) => setServiceSearch(e.target.value)} placeholder="Search services..." className="pl-9 h-9 text-sm rounded-lg" />
             </div>
 
             {filteredServices.length > 0 ? (
@@ -384,7 +377,7 @@ export function NewAppointmentModal({
                   const isSelected = selectedServices.some((s) => s.id === svc.id);
                   return (
                     <button key={svc.id} onClick={() => toggleService(svc)}
-                      className={`flex items-center justify-between p-2.5 border text-left text-sm transition-all ${
+                      className={`flex items-center justify-between p-2.5 rounded-lg border text-left text-sm transition-all ${
                         isSelected ? 'border-gold bg-gold/5' : 'border-border hover:border-gold/30'
                       }`}>
                       <div className="min-w-0">
@@ -397,7 +390,7 @@ export function NewAppointmentModal({
                 })}
               </div>
             ) : (
-              <div className="py-8 text-center calendar-card bg-secondary/60 border border-border">
+              <div className="py-8 text-center rounded-lg bg-background border border-border">
                 <Scissors className="w-6 h-6 mx-auto mb-2 text-muted-foreground/50" />
                 <p className="text-xs text-muted-foreground">No services found.</p>
                 <p className="text-[11px] text-muted-foreground/60 mt-0.5">Add services in Settings first.</p>
@@ -416,11 +409,11 @@ export function NewAppointmentModal({
           </section>
 
           {/* Notes */}
-          <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Notes (optional)" rows={2} className="calendar-card text-sm bg-secondary border-border text-foreground" />
+          <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Notes (optional)" rows={2} className="rounded-lg text-sm bg-white border-border text-foreground" />
         </div>
 
         {/* Fixed bottom bar */}
-        <div className="border-t border-border px-6 py-4 flex items-center gap-3 shrink-0">
+        <div className="border-t border-border px-6 py-4 flex items-center gap-3 shrink-0 bg-white">
           <div className="flex-1 min-w-0">
             {selectedServices.length > 0 ? (
               <>
@@ -433,7 +426,7 @@ export function NewAppointmentModal({
           </div>
           <Button variant="ghost" onClick={() => { reset(); onClose(); }} className="text-muted-foreground hover:text-foreground shrink-0">Cancel</Button>
           <Button onClick={handleSave} disabled={saving || !isReady}
-            className="calendar-card bg-gold hover:bg-gold/90 text-black border border-gold/50 font-bold h-11 px-8 shrink-0 disabled:opacity-30">
+            className="bg-gold hover:bg-gold/90 text-black font-bold h-11 px-8 shrink-0 disabled:opacity-30 rounded-lg">
             {saving ? 'Booking...' : 'Book'}
           </Button>
         </div>

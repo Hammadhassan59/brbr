@@ -3,6 +3,8 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import { Scissors, ChevronDown, Star, Zap, Shield, Clock, Smartphone, Check } from 'lucide-react';
+import PublicLayout from '@/components/public-layout';
+import { DataNotice } from '@/components/data-notice';
 
 const PLANS = [
   {
@@ -116,64 +118,44 @@ export default function LandingPage() {
   const [openFaq, setOpenFaq] = useState<number | null>(null);
 
   return (
-    <div className="min-h-screen bg-white">
-      {/* ── Nav Bar ── */}
-      <nav className="sticky top-0 z-50 bg-white border-b border-[#E8E8E8]">
-        <div className="max-w-6xl mx-auto px-5 h-14 flex items-center">
-          <Link href="/" className="flex items-center gap-2 font-heading font-bold text-lg tracking-tight text-[#1A1A1A]">
-            <Scissors className="w-5 h-5 text-gold" />
-            BRBR
-          </Link>
-          <div className="hidden md:flex items-center gap-8 ml-12 text-sm">
-            <a href="#features" className="text-[#1A1A1A]/60 hover:text-[#1A1A1A] transition-colors">Features</a>
-            <a href="#why-us" className="text-[#1A1A1A]/60 hover:text-[#1A1A1A] transition-colors">Why Choose Us</a>
-            <a href="#pricing" className="text-[#1A1A1A]/60 hover:text-[#1A1A1A] transition-colors">Pricing</a>
-            <a href="#reviews" className="text-[#1A1A1A]/60 hover:text-[#1A1A1A] transition-colors">Reviews</a>
-            <a href="#faq" className="text-[#1A1A1A]/60 hover:text-[#1A1A1A] transition-colors">FAQs</a>
-          </div>
-          <div className="ml-auto">
-            <Link href="/login" className="bg-[#1A1A1A] text-white px-5 py-2.5 text-sm font-semibold hover:bg-[#333] transition-colors">
-              Start Free Trial
-            </Link>
-          </div>
-        </div>
-      </nav>
+    <PublicLayout showHomeNav>
+      <DataNotice />
 
       {/* ── Hero ── */}
-      <section className="bg-white">
+      <section className="bg-[#161616] border-b border-[#222]">
         <div className="max-w-6xl mx-auto px-5 pt-16 pb-20 md:pt-24 md:pb-28">
           <div className="grid md:grid-cols-2 gap-12 items-center">
             <div>
-              <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-[#F5F5F5] text-[#1A1A1A]/70 text-xs font-medium border border-[#E8E8E8] mb-6">
-                <span className="text-gold">&#9733;</span>
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-gold/10 text-gold text-xs font-medium border border-gold/20 mb-6">
+                <span>&#9733;</span>
                 Pakistan&apos;s #1 Salon POS
-                <span className="text-[#1A1A1A]/40">→</span>
+                <span className="text-gold/40">→</span>
               </div>
-              <h1 className="font-heading text-4xl md:text-5xl lg:text-[3.5rem] font-bold leading-[1.1] text-[#1A1A1A] mb-5 text-balance">
+              <h1 className="font-heading text-4xl md:text-5xl lg:text-[3.5rem] font-bold leading-[1.1] text-[#EFEFEF] mb-5 text-balance">
                 One app for your register, khata, and WhatsApp chaos
               </h1>
-              <p className="text-base text-[#1A1A1A]/50 mb-8 max-w-md leading-relaxed">
+              <p className="text-base text-[#EFEFEF]/50 mb-8 max-w-md leading-relaxed">
                 Bookings, billing, staff commission, inventory, udhaar tracking. All in one place. Works with cash, JazzCash, and EasyPaisa.
               </p>
               <div className="flex flex-wrap gap-3 mb-8">
-                <Link href="/login" className="bg-[#1A1A1A] text-white px-6 py-3.5 text-sm font-semibold hover:bg-[#333] transition-colors inline-flex items-center gap-2">
+                <Link href="/login" className="bg-gold text-black px-6 py-3.5 text-sm font-bold hover:bg-gold/90 transition-colors inline-flex items-center gap-2 touch-target">
                   <Scissors className="w-4 h-4" /> Try Free for 14 Days
                 </Link>
-                <a href="#features" className="bg-white text-[#1A1A1A] px-6 py-3.5 text-sm font-semibold border border-[#D4D4D4] hover:border-[#1A1A1A] transition-colors inline-flex items-center gap-2">
+                <a href="#features" className="text-[#EFEFEF] px-6 py-3.5 text-sm font-semibold border border-[#333] hover:border-[#EFEFEF] transition-colors inline-flex items-center gap-2 touch-target">
                   Watch Demo
                 </a>
               </div>
               <div className="flex items-center gap-3">
                 <div className="flex -space-x-2">
                   {[...'ASUF'].map((letter, i) => (
-                    <div key={i} className="w-8 h-8 bg-gold/15 text-gold font-bold text-xs flex items-center justify-center border-2 border-white rounded-full">
+                    <div key={i} className="w-8 h-8 bg-gold/15 text-gold font-bold text-xs flex items-center justify-center border-2 border-[#161616] rounded-full">
                       {letter}
                     </div>
                   ))}
                 </div>
                 <div className="text-sm">
-                  <span className="font-semibold text-[#1A1A1A]">200+</span>
-                  <span className="text-[#1A1A1A]/50"> salons across Pakistan</span>
+                  <span className="font-semibold text-[#EFEFEF]">200+</span>
+                  <span className="text-[#EFEFEF]/50"> salons across Pakistan</span>
                 </div>
               </div>
             </div>
@@ -309,7 +291,7 @@ export default function LandingPage() {
                     </li>
                   ))}
                 </ul>
-                <Link href="/login" className={`block text-center py-3 text-sm font-semibold transition-colors border ${
+                <Link href="/login" role="button" className={`block text-center py-3 text-sm font-semibold transition-colors border touch-target ${
                   plan.popular
                     ? 'bg-gold text-black border-gold hover:bg-gold/90'
                     : 'border-[#D4D4D4] text-[#1A1A1A] hover:border-[#1A1A1A]'
@@ -367,7 +349,7 @@ export default function LandingPage() {
       {/* ── FAQ ── */}
       <section id="faq" className="bg-[#FAFAFA] border-y border-[#E8E8E8] py-20 md:py-28">
         <div className="max-w-3xl mx-auto px-5">
-          <h2 className="font-heading text-2xl md:text-3xl font-bold text-[#1A1A1A] mb-8">
+          <h2 className="font-heading text-2xl md:text-3xl font-bold text-center text-[#1A1A1A] mb-8">
             FAQ
           </h2>
           <div className="border border-[#E8E8E8] divide-y divide-[#E8E8E8]">
@@ -409,10 +391,10 @@ export default function LandingPage() {
                   14 days free. No card needed. Set up in 5 minutes. If it doesn&apos;t help, don&apos;t pay.
                 </p>
                 <div className="flex flex-wrap gap-3">
-                  <Link href="/login" className="bg-[#1A1A1A] text-white px-6 py-3.5 text-sm font-semibold hover:bg-[#333] transition-colors inline-flex items-center gap-2">
+                  <Link href="/login" className="bg-[#1A1A1A] text-white px-6 py-3.5 text-sm font-semibold hover:bg-[#333] transition-colors inline-flex items-center gap-2 touch-target">
                     <Scissors className="w-4 h-4" /> Start Free Trial
                   </Link>
-                  <Link href="/login" className="bg-white text-[#1A1A1A] px-6 py-3.5 text-sm font-semibold border border-[#D4D4D4] hover:border-[#1A1A1A] transition-colors inline-flex items-center gap-2">
+                  <Link href="/login" className="bg-white text-[#1A1A1A] px-6 py-3.5 text-sm font-semibold border border-[#D4D4D4] hover:border-[#1A1A1A] transition-colors inline-flex items-center gap-2 touch-target">
                     Book a Demo
                   </Link>
                 </div>
@@ -423,20 +405,6 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── Footer ── */}
-      <footer className="border-t border-[#E8E8E8] py-8">
-        <div className="max-w-6xl mx-auto px-5 flex flex-col md:flex-row items-center justify-between gap-4">
-          <p className="text-xs text-[#1A1A1A]/40">
-            © 2025 BrBr. All Rights Reserved.
-          </p>
-          <div className="flex items-center gap-6 text-xs text-[#1A1A1A]/40">
-            <a href="#" className="hover:text-[#1A1A1A] transition-colors">LinkedIn</a>
-            <a href="#" className="hover:text-[#1A1A1A] transition-colors">Instagram</a>
-            <a href="#" className="hover:text-[#1A1A1A] transition-colors">Facebook</a>
-            <a href="#" className="hover:text-[#1A1A1A] transition-colors">Twitter</a>
-          </div>
-        </div>
-      </footer>
-    </div>
+    </PublicLayout>
   );
 }

@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import toast from 'react-hot-toast';
+import { updateAppointmentStatus } from '@/app/actions/appointments';
 import type { AppointmentWithDetails, AppointmentStatus } from '@/types/database';
 
 const STATUS_BADGE: Record<AppointmentStatus, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
@@ -39,11 +40,8 @@ export function AppointmentDetail({ appointment, open, onClose, onUpdated }: App
 
   async function updateStatus(status: AppointmentStatus) {
     try {
-      const { error } = await supabase
-        .from('appointments')
-        .update({ status })
-        .eq('id', apt.id);
-      if (error) throw error;
+      const { error } = await updateAppointmentStatus(apt.id, status);
+      if (error) throw new Error(error);
 
       toast.success(`Appointment ${status === 'done' ? 'completed' : status}`);
       onUpdated();

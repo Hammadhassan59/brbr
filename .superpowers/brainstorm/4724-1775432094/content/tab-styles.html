@@ -1,0 +1,100 @@
+<h2>Tab Filter Styles</h2>
+<p class="subtitle">Pick the one that feels right for the staff toolbar</p>
+
+<div class="cards">
+  <!-- Option A: Underline -->
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding:24px;background:#fff;">
+      <div style="display:flex;gap:0;border-bottom:2px solid #E8E8E8;">
+        <div style="padding:10px 16px;font-size:12px;font-weight:600;color:#1A1A1A;border-bottom:2px solid #1A1A1A;margin-bottom:-2px;">All</div>
+        <div style="padding:10px 16px;font-size:12px;color:#999;">Stylists</div>
+        <div style="padding:10px 16px;font-size:12px;color:#999;">Receptionist</div>
+        <div style="padding:10px 16px;font-size:12px;color:#999;">Helper</div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A) Underline</h3>
+      <p>Clean baseline with dark underline on active. No backgrounds, no borders. Like Linear or Google.</p>
+    </div>
+  </div>
+
+  <!-- Option B: Pill buttons -->
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding:24px;background:#fff;">
+      <div style="display:flex;gap:6px;">
+        <div style="padding:8px 14px;font-size:12px;font-weight:600;color:#fff;background:#1A1A1A;">All</div>
+        <div style="padding:8px 14px;font-size:12px;color:#999;border:1px solid #D4D4D4;">Stylists</div>
+        <div style="padding:8px 14px;font-size:12px;color:#999;border:1px solid #D4D4D4;">Receptionist</div>
+        <div style="padding:8px 14px;font-size:12px;color:#999;border:1px solid #D4D4D4;">Helper</div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B) Separate Pills</h3>
+      <p>Individual bordered buttons with gap. Active gets dark fill. Each tab is its own element.</p>
+    </div>
+  </div>
+
+  <!-- Option C: Background toggle -->
+  <div class="card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding:24px;background:#fff;">
+      <div style="display:flex;gap:0;background:#F2F2F2;padding:3px;">
+        <div style="padding:8px 14px;font-size:12px;font-weight:600;color:#1A1A1A;background:#fff;border:1px solid #D4D4D4;">All</div>
+        <div style="padding:8px 14px;font-size:12px;color:#999;">Stylists</div>
+        <div style="padding:8px 14px;font-size:12px;color:#999;">Receptionist</div>
+        <div style="padding:8px 14px;font-size:12px;color:#999;">Helper</div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C) Inset Toggle</h3>
+      <p>Grey tray with white active tab popping out. Like iOS segmented control or Vercel's tabs.</p>
+    </div>
+  </div>
+
+  <!-- Option D: Text only -->
+  <div class="card" data-choice="d" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding:24px;background:#fff;">
+      <div style="display:flex;gap:16px;">
+        <div style="font-size:12px;font-weight:700;color:#1A1A1A;">All</div>
+        <div style="font-size:12px;color:#999;">Stylists</div>
+        <div style="font-size:12px;color:#999;">Receptionist</div>
+        <div style="font-size:12px;color:#999;">Helper</div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>D) Text Only</h3>
+      <p>No chrome at all. Just bold text for active, muted for inactive. Maximum minimal. Like Notion sidebar filters.</p>
+    </div>
+  </div>
+
+  <!-- Option E: Chip/tag style -->
+  <div class="card" data-choice="e" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding:24px;background:#fff;">
+      <div style="display:flex;gap:6px;">
+        <div style="padding:6px 12px;font-size:11px;font-weight:600;color:#1A1A1A;background:#F2F2F2;border:1px solid #D4D4D4;">All</div>
+        <div style="padding:6px 12px;font-size:11px;color:#999;background:#FAFAFA;border:1px solid #E8E8E8;">Stylists</div>
+        <div style="padding:6px 12px;font-size:11px;color:#999;background:#FAFAFA;border:1px solid #E8E8E8;">Receptionist</div>
+        <div style="padding:6px 12px;font-size:11px;color:#999;background:#FAFAFA;border:1px solid #E8E8E8;">Helper</div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>E) Chips</h3>
+      <p>Small tag-style chips. Active gets darker background. Compact, works well with many filters. Like GitHub label filters.</p>
+    </div>
+  </div>
+
+  <!-- Option F: Connected dark -->
+  <div class="card" data-choice="f" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding:24px;background:#fff;">
+      <div style="display:flex;gap:0;border:1px solid #1A1A1A;overflow:hidden;">
+        <div style="padding:8px 14px;font-size:12px;font-weight:600;color:#fff;background:#1A1A1A;">All</div>
+        <div style="padding:8px 14px;font-size:12px;color:#1A1A1A;border-left:1px solid #1A1A1A;">Stylists</div>
+        <div style="padding:8px 14px;font-size:12px;color:#1A1A1A;border-left:1px solid #1A1A1A;">Receptionist</div>
+        <div style="padding:8px 14px;font-size:12px;color:#1A1A1A;border-left:1px solid #1A1A1A;">Helper</div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>F) Connected Dark</h3>
+      <p>Segmented control with dark border and dark active fill. Like the previous version but with a dark border instead of grey. More intentional.</p>
+    </div>
+  </div>
+</div>

@@ -41,15 +41,15 @@
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
   --color-gold: var(--gold);
-  --color-navy: #1A1A1A;
+  --color-navy: #161616;
   --color-warm-white: #FFFFFF;
-  --radius-sm: 0px;
-  --radius-md: 0px;
-  --radius-lg: 0px;
-  --radius-xl: 0px;
-  --radius-2xl: 0px;
-  --radius-3xl: 0px;
-  --radius-4xl: 0px;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+  --radius-2xl: 16px;
+  --radius-3xl: 24px;
+  --radius-4xl: 32px;
 }
 
 :root {
@@ -64,44 +64,44 @@
   --duration-dramatic: 600ms;
   --duration-landing: 800ms;
 
-  /* BrBr — Light content, dark chrome
+  /* BrBr — TaskPro style
      Content area: light backgrounds, white cards
-     Sidebar + Header: dark chrome (#161616) */
-  --gold: #F0B000;
-  --background: #F2F2F2;
+     Sidebar: dark navy, Topbar: white */
+  --gold: #FEBE10;
+  --background: #F9FAFB;
   --foreground: #1A1A1A;
   --card: #FFFFFF;
   --card-foreground: #1A1A1A;
   --popover: #FFFFFF;
   --popover-foreground: #1A1A1A;
   --primary: var(--gold);
-  --primary-foreground: #FFFFFF;
-  --accent: var(--gold);
-  --accent-foreground: #FFFFFF;
-  --secondary: #E8E8E8;
+  --primary-foreground: #1A1A1A;
+  --accent: #F3F3F3;
+  --accent-foreground: #1A1A1A;
+  --secondary: #F3F3F3;
   --secondary-foreground: #1A1A1A;
-  --muted: #E8E8E8;
-  --muted-foreground: #666666;
+  --muted: #F3F3F3;
+  --muted-foreground: #6B7280;
   --destructive: #DC2626;
-  --border: #D4D4D4;
-  --input: #D4D4D4;
-  --ring: var(--gold);
+  --border: #E5E7EB;
+  --input: #E5E7EB;
+  --ring: #1A1A1A;
   --chart-1: var(--gold);
   --chart-2: #16A34A;
-  --chart-3: #2563EB;
+  --chart-3: #F59E0B;
   --chart-4: #EA580C;
   --chart-5: #DC2626;
-  --radius: 0px;
+  --radius: 8px;
 
-  /* Dark chrome — sidebar + header stay dark */
+  /* Dark sidebar */
   --sidebar: #161616;
-  --sidebar-foreground: #EFEFEF;
-  --sidebar-primary: #FEBE10;
-  --sidebar-primary-foreground: #0C0C0C;
-  --sidebar-accent: #1E1E1E;
-  --sidebar-accent-foreground: #EFEFEF;
-  --sidebar-border: #222222;
-  --sidebar-ring: #FEBE10;
+  --sidebar-foreground: #E2E8F0;
+  --sidebar-primary: var(--gold);
+  --sidebar-primary-foreground: #1A1A1A;
+  --sidebar-accent: #222222;
+  --sidebar-accent-foreground: #E2E8F0;
+  --sidebar-border: #2A2A2A;
+  --sidebar-ring: var(--gold);
 }
 
 @layer base {
@@ -132,27 +132,16 @@
     font-variation-settings: 'opsz' 32;
   }
 
-  /* Force square corners everywhere */
-  * {
-    border-radius: 0 !important;
+  /* Pointer cursor on all clickable elements */
+  a, button, [role="button"], [type="button"], [type="submit"], [type="reset"],
+  select, summary, label[for], [tabindex]:not([tabindex="-1"]),
+  [onclick], .cursor-pointer {
+    cursor: pointer !important;
   }
 
-  /* Exception: avatar circles */
+  /* Avatar circles */
   .rounded-full {
     border-radius: 9999px !important;
-  }
-
-  /* Exception: buttons get subtle rounding */
-  button,
-  [role="button"],
-  a[class*="bg-gold"],
-  .btn {
-    border-radius: 6px !important;
-  }
-
-  /* Exception: calendar card containers get rounding */
-  .calendar-card {
-    border-radius: 12px !important;
   }
 }
 
@@ -190,6 +179,10 @@
   .stagger-children > :nth-child(6) { animation-delay: 250ms; }
   .stagger-children > :nth-child(7) { animation-delay: 300ms; }
   .stagger-children > :nth-child(8) { animation-delay: 350ms; }
+  .stagger-children > :nth-child(9) { animation-delay: 400ms; }
+  .stagger-children > :nth-child(10) { animation-delay: 450ms; }
+  .stagger-children > :nth-child(11) { animation-delay: 500ms; }
+  .stagger-children > :nth-child(12) { animation-delay: 550ms; }
 
   /* Wider stagger — 100ms steps (landing page) */
   .stagger-wide > * {
@@ -205,6 +198,18 @@
   /* Entrance animation helper */
   .animate-fade-up {
     animation: fade-up var(--duration-normal) var(--ease-snappy) both;
+  }
+
+  .animate-fade-in {
+    animation: fade-in var(--duration-normal) var(--ease-snappy) both;
+  }
+
+  .animate-slide-up {
+    animation: slide-up var(--duration-normal) var(--ease-snappy) both;
+  }
+
+  .animate-scale-in {
+    animation: scale-in var(--duration-fast) var(--ease-snappy) both;
   }
 
   /* Scroll-triggered reveal (progressive enhancement) */
@@ -236,6 +241,21 @@
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes scale-in {
+  from { opacity: 0; transform: scale(0.98); }
+  to { opacity: 1; transform: scale(1); }
 }
 
 @keyframes pin-dot-fill {

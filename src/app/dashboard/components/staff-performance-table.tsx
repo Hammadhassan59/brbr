@@ -23,7 +23,7 @@ export function StaffPerformanceTable({ data, loading }: StaffPerformanceTablePr
   const { t } = useLanguage();
 
   return (
-    <Card className="calendar-card bg-card border border-border/50">
+    <Card className="bg-card border border-border rounded-lg">
       <CardHeader className="pb-2 flex flex-row items-center justify-between">
         <CardTitle className="text-sm font-medium">{t('staffPerformance')}</CardTitle>
         <Link href="/dashboard/reports/staff" className="text-xs text-muted-foreground hover:text-gold transition-colors">
@@ -44,14 +44,14 @@ export function StaffPerformanceTable({ data, loading }: StaffPerformanceTablePr
             {data.map((staff, i) => (
               <div
                 key={staff.name}
-                className={`calendar-card flex items-center justify-between p-4 rounded-xl border hover:border-border/60 transition-all duration-200 animate-fade-up ${
+                className={`flex items-center justify-between p-4 rounded-lg border hover:border-border/60 transition-all duration-200 animate-fade-up ${
                   i === 0
                     ? 'border-gold/30 bg-gold/5'
-                    : 'bg-background/50 border-border/30'
+                    : 'bg-background/50 border-border'
                 }`}
               >
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-gold/20 flex items-center justify-center text-gold font-bold text-sm">
+                  <div className="w-10 h-10 rounded-lg bg-gold/20 flex items-center justify-center text-gold font-bold text-sm">
                     {staff.name.charAt(0).toUpperCase()}
                   </div>
                   <div className="flex items-center gap-2">

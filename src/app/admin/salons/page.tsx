@@ -76,7 +76,7 @@ export default function AdminSalonsPage() {
             <Card key={salon.id} className="hover:shadow-md transition-shadow">
               <CardContent className="p-5">
                 <div className="flex items-start gap-3 mb-3">
-                  <div className="w-12 h-12 rounded-xl bg-gold/10 text-gold font-bold flex items-center justify-center text-sm shrink-0">
+                  <div className="w-12 h-12 rounded-lg bg-gold/10 text-gold font-bold flex items-center justify-center text-sm shrink-0">
                     {salon.name.split(' ').map((w) => w[0]).join('').slice(0, 2)}
                   </div>
                   <div className="flex-1 min-w-0">

@@ -64,23 +64,23 @@ export default function StaffReportPage() {
         <span className="text-foreground font-medium">Staff</span>
       </div>
 
-      <div className="calendar-card bg-card border border-border shadow-sm p-4 flex flex-wrap items-center gap-3">
+      <div className="bg-card border border-border rounded-lg p-4 flex flex-wrap items-center gap-3">
         <h2 className="font-heading text-xl font-bold">Staff Report</h2>
         <Select value={selectedStaffId} onValueChange={(v) => { if (v) setSelectedStaffId(v); }}>
-          <SelectTrigger className="calendar-card w-[180px] h-8 text-xs"><SelectValue placeholder="Select staff" /></SelectTrigger>
+          <SelectTrigger className="w-[180px] h-8 text-xs"><SelectValue placeholder="Select staff" /></SelectTrigger>
           <SelectContent>{staffList.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}</SelectContent>
         </Select>
         <Select value={String(month)} onValueChange={(v) => { if (v) setMonth(Number(v)); }}>
-          <SelectTrigger className="calendar-card w-[120px] h-8 text-xs"><SelectValue /></SelectTrigger>
+          <SelectTrigger className="w-[120px] h-8 text-xs"><SelectValue /></SelectTrigger>
           <SelectContent>{Array.from({ length: 12 }, (_, i) => <SelectItem key={i + 1} value={String(i + 1)}>{new Date(2000, i).toLocaleString('default', { month: 'long' })}</SelectItem>)}</SelectContent>
         </Select>
         <Select value={String(year)} onValueChange={(v) => { if (v) setYear(Number(v)); }}>
-          <SelectTrigger className="calendar-card w-[90px] h-8 text-xs"><SelectValue /></SelectTrigger>
+          <SelectTrigger className="w-[90px] h-8 text-xs"><SelectValue /></SelectTrigger>
           <SelectContent>{Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - 2 + i).map((y) => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}</SelectContent>
         </Select>
       </div>
 
-      {loading ? <div className="calendar-card h-64 bg-muted rounded animate-pulse" /> : !commData ? <p className="text-center text-muted-foreground py-8">No data</p> : (
+      {loading ? <div className="h-64 bg-muted rounded-lg animate-pulse" /> : !commData ? <p className="text-center text-muted-foreground py-8">No data</p> : (
         <>
           {/* Earnings */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
@@ -90,12 +90,12 @@ export default function StaffReportPage() {
               { label: 'Commission', value: formatPKR(commData.commission_earned) },
               { label: 'Tips', value: formatPKR(commData.tips_total) },
             ].map((c) => (
-              <Card key={c.label} className="calendar-card shadow-sm border-border"><CardContent className="p-4 text-center"><p className="text-xs text-muted-foreground uppercase tracking-wider">{c.label}</p><p className="text-xl font-bold">{c.value}</p></CardContent></Card>
+              <Card key={c.label} className="border-border"><CardContent className="p-4 text-center"><p className="text-xs text-muted-foreground uppercase tracking-wider">{c.label}</p><p className="text-xl font-bold">{c.value}</p></CardContent></Card>
             ))}
           </div>
 
           {/* Net payable */}
-          <Card className="calendar-card shadow-sm border-border border-gold/30 bg-gold/5">
+          <Card className="border-border border-gold/30 bg-gold/5">
             <CardContent className="p-4">
               <Table>
                 <TableBody>
@@ -111,7 +111,7 @@ export default function StaffReportPage() {
           </Card>
 
           {/* Attendance summary */}
-          <Card className="calendar-card shadow-sm border-border">
+          <Card className="border-border">
             <CardHeader className="pb-2"><CardTitle className="text-sm">Attendance</CardTitle></CardHeader>
             <CardContent>
               <div className="grid grid-cols-4 gap-3 text-center">

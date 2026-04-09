@@ -8,6 +8,7 @@ import {
   Package, StickyNote, Award, MessageCircle,
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import { updateClientNotes, recordUdhaarPayment } from '@/app/actions/clients';
 import { formatPKR } from '@/lib/utils/currency';
 import { formatPKDate, formatDateTime } from '@/lib/utils/dates';
 import { generateWhatsAppLink } from '@/lib/utils/whatsapp';
@@ -49,11 +50,8 @@ export default function ClientProfilePage() {
     if (!client) return;
     setSavingNotes(true);
     try {
-      const { error } = await supabase
-        .from('clients')
-        .update({ [field]: editingNotesValue })
-        .eq('id', client.id);
-      if (error) throw error;
+      const { error } = await updateClientNotes(client.id, field, editingNotesValue);
+      if (error) throw new Error(error);
       setClient({ ...client, [field]: editingNotesValue });
       setEditingNotes(null);
       toast.success('Notes updated');
@@ -114,16 +112,8 @@ export default function ClientProfilePage() {
       const amount = Number(paymentAmount);
       if (amount <= 0) throw new Error('Invalid amount');
 
-      await supabase.from('udhaar_payments').insert({
-        client_id: client.id,
-        amount,
-        payment_method: paymentMethod,
-      });
-
-      await supabase
-        .from('clients')
-        .update({ udhaar_balance: Math.max(0, client.udhaar_balance - amount) })
-        .eq('id', client.id);
+      const { error } = await recordUdhaarPayment(client.id, amount, paymentMethod);
+      if (error) throw new Error(error);
 
       toast.success(`Payment of ${formatPKR(amount)} recorded`);
       setShowUdhaarModal(false);
@@ -145,8 +135,8 @@ export default function ClientProfilePage() {
   if (loading) {
     return (
       <div className="space-y-4">
-        <div className="h-32 bg-muted calendar-card animate-pulse" />
-        <div className="h-64 bg-muted calendar-card animate-pulse" />
+        <div className="h-32 bg-muted rounded-lg animate-pulse" />
+        <div className="h-64 bg-muted rounded-lg animate-pulse" />
       </div>
     );
   }
@@ -165,14 +155,14 @@ export default function ClientProfilePage() {
           <ChevronRight className="w-3.5 h-3.5" />
           <span className="text-foreground font-medium">{client.name}</span>
         </div>
-        <Button variant="outline" size="sm" onClick={() => router.push(`/dashboard/clients/${client.id}/edit`)} className="calendar-card transition-all duration-150">
+        <Button variant="outline" size="sm" onClick={() => router.push(`/dashboard/clients/${client.id}/edit`)} className="transition-all duration-150">
           <Edit className="w-4 h-4 mr-1" /> Edit
         </Button>
       </div>
 
-      <div className="calendar-card bg-card p-6 border border-border shadow-sm">
+      <div className="bg-card p-6 border border-border">
         <div className="flex items-start gap-4">
-          <div className="w-16 h-16 rounded-xl bg-gold/20 text-gold text-xl font-bold flex items-center justify-center shrink-0 shadow-sm">
+          <div className="w-16 h-16 rounded-lg bg-gold/20 text-gold text-xl font-bold flex items-center justify-center shrink-0">
             {initials}
           </div>
           <div className="flex-1 min-w-0">
@@ -187,13 +177,13 @@ export default function ClientProfilePage() {
               </a>
             )}
             <div className="flex flex-wrap items-center gap-2 mt-3 text-sm">
-              <span className="calendar-card bg-secondary border border-border px-3 py-1.5 text-xs font-medium flex items-center gap-1">
+              <span className="bg-secondary border border-border px-3 py-1.5 text-xs font-medium flex items-center gap-1">
                 <Award className="w-3.5 h-3.5 text-gold" />
                 {client.loyalty_points} points ({formatPKR(client.loyalty_points * 0.5)})
               </span>
-              <span className="calendar-card bg-secondary border border-border px-3 py-1.5 text-xs font-medium">{client.total_visits} visits</span>
-              <span className="calendar-card bg-secondary border border-border px-3 py-1.5 text-xs font-medium">{formatPKR(client.total_spent)} spent</span>
-              <span className="calendar-card bg-secondary border border-border px-3 py-1.5 text-xs font-medium">Since {formatPKDate(client.created_at)}</span>
+              <span className="bg-secondary border border-border px-3 py-1.5 text-xs font-medium">{client.total_visits} visits</span>
+              <span className="bg-secondary border border-border px-3 py-1.5 text-xs font-medium">{formatPKR(client.total_spent)} spent</span>
+              <span className="bg-secondary border border-border px-3 py-1.5 text-xs font-medium">Since {formatPKDate(client.created_at)}</span>
             </div>
           </div>
         </div>
@@ -201,22 +191,22 @@ export default function ClientProfilePage() {
 
       <Tabs defaultValue="visits">
         <TabsList className="flex-wrap h-auto gap-1.5 bg-transparent">
-          <TabsTrigger value="visits" className="calendar-card text-xs gap-1 transition-all duration-150 data-[state=active]:bg-gold data-[state=active]:text-black data-[state=active]:shadow-sm text-muted-foreground hover:text-foreground"><Calendar className="w-3 h-3" /> Visits</TabsTrigger>
-          <TabsTrigger value="udhaar" className="calendar-card text-xs gap-1 transition-all duration-150 data-[state=active]:bg-gold data-[state=active]:text-black data-[state=active]:shadow-sm text-muted-foreground hover:text-foreground"><CreditCard className="w-3 h-3" /> Udhaar</TabsTrigger>
-          <TabsTrigger value="packages" className="calendar-card text-xs gap-1 transition-all duration-150 data-[state=active]:bg-gold data-[state=active]:text-black data-[state=active]:shadow-sm text-muted-foreground hover:text-foreground"><Package className="w-3 h-3" /> Packages</TabsTrigger>
-          <TabsTrigger value="notes" className="calendar-card text-xs gap-1 transition-all duration-150 data-[state=active]:bg-gold data-[state=active]:text-black data-[state=active]:shadow-sm text-muted-foreground hover:text-foreground"><StickyNote className="w-3 h-3" /> Notes</TabsTrigger>
-          <TabsTrigger value="loyalty" className="calendar-card text-xs gap-1 transition-all duration-150 data-[state=active]:bg-gold data-[state=active]:text-black data-[state=active]:shadow-sm text-muted-foreground hover:text-foreground"><Award className="w-3 h-3" /> Loyalty</TabsTrigger>
+          <TabsTrigger value="visits" className="text-xs px-3.5 py-2 gap-1 font-medium transition-all duration-150 border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30"><Calendar className="w-3 h-3" /> Visits</TabsTrigger>
+          <TabsTrigger value="udhaar" className="text-xs px-3.5 py-2 gap-1 font-medium transition-all duration-150 border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30"><CreditCard className="w-3 h-3" /> Udhaar</TabsTrigger>
+          <TabsTrigger value="packages" className="text-xs px-3.5 py-2 gap-1 font-medium transition-all duration-150 border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30"><Package className="w-3 h-3" /> Packages</TabsTrigger>
+          <TabsTrigger value="notes" className="text-xs px-3.5 py-2 gap-1 font-medium transition-all duration-150 border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30"><StickyNote className="w-3 h-3" /> Notes</TabsTrigger>
+          <TabsTrigger value="loyalty" className="text-xs px-3.5 py-2 gap-1 font-medium transition-all duration-150 border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30"><Award className="w-3 h-3" /> Loyalty</TabsTrigger>
         </TabsList>
 
         <TabsContent value="visits" className="mt-4">
           {bills.length === 0 ? (
-            <div className="calendar-card bg-card p-4 border border-border/30">
+            <div className="bg-card p-4 border border-border">
               <p className="text-center text-muted-foreground py-8">No visit history yet</p>
             </div>
           ) : (
             <div className="space-y-3">
               {bills.map((bill) => (
-                <div key={bill.id} className="calendar-card bg-background/50 border border-border/20 p-4">
+                <div key={bill.id} className="bg-background/50 border border-border/20 p-4">
                   <div className="flex items-start justify-between mb-2">
                     <div>
                       <p className="text-sm font-medium">{formatDateTime(bill.created_at)}</p>
@@ -239,7 +229,7 @@ export default function ClientProfilePage() {
         </TabsContent>
 
         <TabsContent value="udhaar" className="mt-4 space-y-4">
-          <div className={`calendar-card p-4 text-center ${client.udhaar_balance > 0 ? 'border-red-500/20 bg-red-500/10 border' : 'border-green-500/20 bg-green-500/10 border'}`}>
+          <div className={`p-4 text-center ${client.udhaar_balance > 0 ? 'border-red-500/20 bg-red-500/10 border' : 'border-green-500/20 bg-green-500/10 border'}`}>
             <p className="text-sm text-muted-foreground mb-1">Outstanding Balance</p>
             <p className={`text-3xl font-heading font-bold ${client.udhaar_balance > 0 ? 'text-red-600' : 'text-green-600'}`}>
               {formatPKR(client.udhaar_balance)}
@@ -247,17 +237,17 @@ export default function ClientProfilePage() {
           </div>
 
           <div className="flex gap-2">
-            <Button onClick={() => setShowUdhaarModal(true)} className="calendar-card bg-gold text-black border border-gold transition-all duration-150">
+            <Button onClick={() => setShowUdhaarModal(true)} className="bg-gold text-black border border-gold transition-all duration-150">
               + Record Payment
             </Button>
             {client.udhaar_balance > 0 && client.phone && (
-              <Button variant="outline" onClick={sendUdhaarReminder} className="calendar-card gap-1 transition-all duration-150">
+              <Button variant="outline" onClick={sendUdhaarReminder} className="gap-1 transition-all duration-150">
                 <MessageCircle className="w-4 h-4" /> Send Reminder
               </Button>
             )}
           </div>
 
-          <div className="calendar-card bg-card border border-border/30">
+          <div className="bg-card border border-border rounded-lg">
             <div className="p-4 pb-2">
               <h3 className="text-sm font-medium">Transaction History</h3>
             </div>
@@ -291,13 +281,13 @@ export default function ClientProfilePage() {
 
         <TabsContent value="packages" className="mt-4">
           {clientPackages.length === 0 ? (
-            <div className="calendar-card bg-card p-4 border border-border/30">
+            <div className="bg-card p-4 border border-border">
               <p className="text-center text-muted-foreground py-8">No packages assigned</p>
             </div>
           ) : (
             <div className="space-y-3">
               {clientPackages.map((cp) => (
-                <div key={cp.id} className={`calendar-card bg-card p-4 border border-border/30 ${cp.is_active ? '' : 'opacity-50'}`}>
+                <div key={cp.id} className={`bg-card p-4 border border-border ${cp.is_active ? '' : 'opacity-50'}`}>
                   <div className="flex items-center justify-between mb-2">
                     <div>
                       <p className="font-medium">{cp.package?.name || 'Package'}</p>
@@ -317,12 +307,12 @@ export default function ClientProfilePage() {
         </TabsContent>
 
         <TabsContent value="notes" className="mt-4 space-y-4">
-          <div className={`calendar-card bg-background/50 border p-4 ${client.allergy_notes ? 'border-red-500/20 bg-red-500/10' : 'border-border/20'}`}>
+          <div className={`bg-background/50 border p-4 ${client.allergy_notes ? 'border-red-500/20 bg-red-500/10' : 'border-border/20'}`}>
             <div className="flex items-center justify-between mb-1">
               <h4 className={`text-sm font-medium ${client.allergy_notes ? 'text-red-600' : ''}`}>Allergy / Sensitivity</h4>
               <button
                 onClick={() => { setEditingNotes('allergy_notes'); setEditingNotesValue(client.allergy_notes || ''); }}
-                className="calendar-card text-muted-foreground hover:text-foreground transition-all duration-150 p-1"
+                className="text-muted-foreground hover:text-foreground transition-all duration-150 p-1"
                 aria-label="Edit allergy notes"
               >
                 <Edit className="w-3.5 h-3.5" />
@@ -334,14 +324,14 @@ export default function ClientProfilePage() {
                   value={editingNotesValue}
                   onChange={(e) => setEditingNotesValue(e.target.value)}
                   rows={3}
-                  className="text-sm calendar-card"
+                  className="text-sm"
                   placeholder="e.g. Allergic to ammonia-based dyes"
                 />
                 <div className="flex gap-2">
-                  <Button size="sm" onClick={() => saveNotes('allergy_notes')} disabled={savingNotes} className="calendar-card bg-gold text-black border border-gold text-xs h-7 transition-all duration-150">
+                  <Button size="sm" onClick={() => saveNotes('allergy_notes')} disabled={savingNotes} className="bg-gold text-black border border-gold text-xs h-7 transition-all duration-150">
                     {savingNotes ? 'Saving...' : 'Save'}
                   </Button>
-                  <Button size="sm" variant="ghost" onClick={() => setEditingNotes(null)} className="calendar-card text-xs h-7 transition-all duration-150">
+                  <Button size="sm" variant="ghost" onClick={() => setEditingNotes(null)} className="text-xs h-7 transition-all duration-150">
                     Cancel
                   </Button>
                 </div>
@@ -350,12 +340,12 @@ export default function ClientProfilePage() {
               <p className={`text-sm ${client.allergy_notes ? 'text-red-600' : 'text-muted-foreground'}`}>{client.allergy_notes || 'None recorded'}</p>
             )}
           </div>
-          <div className="calendar-card bg-background/50 border border-border/20 p-4">
+          <div className="bg-background/50 border border-border/20 p-4">
             <div className="flex items-center justify-between mb-1">
               <h4 className="text-sm font-medium">General Notes</h4>
               <button
                 onClick={() => { setEditingNotes('notes'); setEditingNotesValue(client.notes || ''); }}
-                className="calendar-card text-muted-foreground hover:text-foreground transition-all duration-150 p-1"
+                className="text-muted-foreground hover:text-foreground transition-all duration-150 p-1"
                 aria-label="Edit general notes"
               >
                 <Edit className="w-3.5 h-3.5" />
@@ -367,14 +357,14 @@ export default function ClientProfilePage() {
                   value={editingNotesValue}
                   onChange={(e) => setEditingNotesValue(e.target.value)}
                   rows={3}
-                  className="text-sm calendar-card"
+                  className="text-sm"
                   placeholder="General notes about this client"
                 />
                 <div className="flex gap-2">
-                  <Button size="sm" onClick={() => saveNotes('notes')} disabled={savingNotes} className="calendar-card bg-gold text-black border border-gold text-xs h-7 transition-all duration-150">
+                  <Button size="sm" onClick={() => saveNotes('notes')} disabled={savingNotes} className="bg-gold text-black border border-gold text-xs h-7 transition-all duration-150">
                     {savingNotes ? 'Saving...' : 'Save'}
                   </Button>
-                  <Button size="sm" variant="ghost" onClick={() => setEditingNotes(null)} className="calendar-card text-xs h-7 transition-all duration-150">
+                  <Button size="sm" variant="ghost" onClick={() => setEditingNotes(null)} className="text-xs h-7 transition-all duration-150">
                     Cancel
                   </Button>
                 </div>
@@ -383,12 +373,12 @@ export default function ClientProfilePage() {
               <p className="text-sm text-muted-foreground">{client.notes || 'No notes'}</p>
             )}
           </div>
-          <div className="calendar-card bg-background/50 border border-border/20 p-4">
+          <div className="bg-background/50 border border-border/20 p-4">
             <div className="flex items-center justify-between mb-1">
               <h4 className="text-sm font-medium">Hair Notes</h4>
               <button
                 onClick={() => { setEditingNotes('hair_notes'); setEditingNotesValue(client.hair_notes || ''); }}
-                className="calendar-card text-muted-foreground hover:text-foreground transition-all duration-150 p-1"
+                className="text-muted-foreground hover:text-foreground transition-all duration-150 p-1"
                 aria-label="Edit hair notes"
               >
                 <Edit className="w-3.5 h-3.5" />
@@ -400,14 +390,14 @@ export default function ClientProfilePage() {
                   value={editingNotesValue}
                   onChange={(e) => setEditingNotesValue(e.target.value)}
                   rows={3}
-                  className="text-sm calendar-card"
+                  className="text-sm"
                   placeholder="Hair type, preferred styles, etc."
                 />
                 <div className="flex gap-2">
-                  <Button size="sm" onClick={() => saveNotes('hair_notes')} disabled={savingNotes} className="calendar-card bg-gold text-black border border-gold text-xs h-7 transition-all duration-150">
+                  <Button size="sm" onClick={() => saveNotes('hair_notes')} disabled={savingNotes} className="bg-gold text-black border border-gold text-xs h-7 transition-all duration-150">
                     {savingNotes ? 'Saving...' : 'Save'}
                   </Button>
-                  <Button size="sm" variant="ghost" onClick={() => setEditingNotes(null)} className="calendar-card text-xs h-7 transition-all duration-150">
+                  <Button size="sm" variant="ghost" onClick={() => setEditingNotes(null)} className="text-xs h-7 transition-all duration-150">
                     Cancel
                   </Button>
                 </div>
@@ -417,7 +407,7 @@ export default function ClientProfilePage() {
             )}
           </div>
           {stats && (
-            <div className="calendar-card bg-background/50 border border-border/20 p-4">
+            <div className="bg-background/50 border border-border/20 p-4">
               <h4 className="text-sm font-medium mb-2">Preferences</h4>
               <div className="space-y-1 text-sm">
                 {stats.favourite_service && <p>Favourite service: <span className="font-medium">{stats.favourite_service}</span></p>}
@@ -429,13 +419,13 @@ export default function ClientProfilePage() {
         </TabsContent>
 
         <TabsContent value="loyalty" className="mt-4 space-y-4">
-          <div className="calendar-card bg-gold/5 border border-gold/20 p-5 text-center">
+          <div className="bg-gold/5 border border-gold/20 p-5 text-center">
             <Award className="w-8 h-8 text-gold mx-auto mb-2" />
             <p className="text-3xl font-heading font-bold">{client.loyalty_points}</p>
             <p className="text-sm text-muted-foreground">= {formatPKR(client.loyalty_points * 0.5)} value</p>
           </div>
 
-          <div className="calendar-card bg-card border border-border/30">
+          <div className="bg-card border border-border rounded-lg">
             <div className="p-4 pb-2">
               <h3 className="text-sm font-medium">Points History</h3>
             </div>
@@ -463,7 +453,7 @@ export default function ClientProfilePage() {
       </Tabs>
 
       <Dialog open={showUdhaarModal} onOpenChange={setShowUdhaarModal}>
-        <DialogContent className="max-w-sm calendar-card">
+        <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle>Record Udhaar Payment</DialogTitle>
           </DialogHeader>
@@ -476,13 +466,13 @@ export default function ClientProfilePage() {
                 onChange={(e) => setPaymentAmount(e.target.value)}
                 placeholder="0"
                 inputMode="numeric"
-                className="mt-1 text-lg calendar-card"
+                className="mt-1 text-lg"
               />
             </div>
             <div>
               <Label>Payment Method</Label>
               <Select value={paymentMethod} onValueChange={(v) => { if (v) setPaymentMethod(v); }}>
-                <SelectTrigger className="mt-1 calendar-card"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="cash">Cash</SelectItem>
                   <SelectItem value="jazzcash">JazzCash</SelectItem>
@@ -492,8 +482,8 @@ export default function ClientProfilePage() {
               </Select>
             </div>
             <div className="flex gap-2">
-              <Button variant="ghost" onClick={() => setShowUdhaarModal(false)} className="flex-1 calendar-card transition-all duration-150">Cancel</Button>
-              <Button onClick={recordPayment} disabled={savingPayment} className="flex-1 calendar-card bg-gold text-black border border-gold transition-all duration-150">
+              <Button variant="ghost" onClick={() => setShowUdhaarModal(false)} className="flex-1 transition-all duration-150">Cancel</Button>
+              <Button onClick={recordPayment} disabled={savingPayment} className="flex-1 bg-gold text-black border border-gold transition-all duration-150">
                 {savingPayment ? 'Saving...' : 'Record Payment'}
               </Button>
             </div>

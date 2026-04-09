@@ -17,3 +17,14 @@ Key routing rules:
 - Design system, brand → invoke design-consultation
 - Visual audit, design polish → invoke design-review
 - Architecture review → invoke plan-eng-review
+
+## Testing
+
+- Run: `npm test` (vitest, test directory: `test/`)
+- See TESTING.md for conventions
+- 100% test coverage is the goal
+- When writing new functions, write a corresponding test
+- When fixing a bug, write a regression test
+- When adding error handling, write a test that triggers the error
+- When adding a conditional, write tests for both paths
+- Never commit code that makes existing tests fail

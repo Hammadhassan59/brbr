@@ -1,0 +1,4 @@
+{"type":"server-started","port":59138,"host":"127.0.0.1","url_host":"localhost","url":"http://localhost:59138","screen_dir":"/Users/user1/brbr/.superpowers/brainstorm/4724-1775432094/content","state_dir":"/Users/user1/brbr/.superpowers/brainstorm/4724-1775432094/state"}
+{"type":"screen-added","file":"/Users/user1/brbr/.superpowers/brainstorm/4724-1775432094/content/contact-about-layout.html"}
+{"type":"screen-added","file":"/Users/user1/brbr/.superpowers/brainstorm/4724-1775432094/content/footer-layout.html"}
+{"type":"server-stopped","reason":"idle timeout"}

@@ -2,15 +2,14 @@
 
 import { Suspense, useEffect, useState, useCallback } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import Link from 'next/link';
-import { Search, Plus, Package as PackageIcon, Minus, X, ChevronRight } from 'lucide-react';
+import { Search, Plus, Package as PackageIcon, Minus, X } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAppStore } from '@/store/app-store';
 import { formatPKR } from '@/lib/utils/currency';
+import { createProduct, updateProduct, syncProductServiceLinks, adjustStock } from '@/app/actions/inventory';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -152,34 +151,35 @@ function ProductsContent() {
     }
     setSaving(true);
     try {
-      const data = {
-        salon_id: salon.id, name: formName.trim(), brand: formBrand || null, category: formCategory || null,
-        inventory_type: formType, unit: formUnit,
-        content_per_unit: Number(formContentPerUnit) || 1, content_unit: formContentUnit,
-        purchase_price: Number(formPurchasePrice) || 0,
-        retail_price: Number(formRetailPrice) || 0, current_stock: Number(formStock) || 0, low_stock_threshold: Number(formThreshold) || 5,
-      };
       let productId: string;
       if (editProduct) {
-        const { error } = await supabase.from('products').update(data).eq('id', editProduct.id);
-        if (error) throw error;
+        const { error } = await updateProduct(editProduct.id, {
+          name: formName.trim(), brand: formBrand || null, category: formCategory || null,
+          inventory_type: formType, unit: formUnit,
+          content_per_unit: Number(formContentPerUnit) || 1, content_unit: formContentUnit,
+          purchase_price: Number(formPurchasePrice) || 0,
+          retail_price: Number(formRetailPrice) || 0, current_stock: Number(formStock) || 0, low_stock_threshold: Number(formThreshold) || 5,
+        });
+        if (error) throw new Error(error);
         productId = editProduct.id;
         toast.success('Product updated');
       } else {
-        const { data: newProd, error } = await supabase.from('products').insert(data).select().single();
-        if (error) throw error;
+        const { data: newProd, error } = await createProduct({
+          name: formName.trim(), brand: formBrand || null, category: formCategory || null,
+          inventoryType: formType, unit: formUnit,
+          contentPerUnit: Number(formContentPerUnit) || 1, contentUnit: formContentUnit,
+          purchasePrice: Number(formPurchasePrice) || 0,
+          retailPrice: Number(formRetailPrice) || 0, currentStock: Number(formStock) || 0, lowStockThreshold: Number(formThreshold) || 5,
+        });
+        if (error) throw new Error(error);
         productId = newProd.id;
         toast.success('Product added');
       }
 
-      // Sync service links: delete old, insert new
+      // Sync service links
       if (formType === 'backbar') {
-        await supabase.from('product_service_links').delete().eq('product_id', productId);
-        if (formLinks.length > 0) {
-          await supabase.from('product_service_links').insert(
-            formLinks.map(l => ({ product_id: productId, service_id: l.serviceId, quantity_per_use: l.qtyPerUse }))
-          );
-        }
+        const { error } = await syncProductServiceLinks(productId, formLinks.map(l => ({ serviceId: l.serviceId, qtyPerUse: l.qtyPerUse })));
+        if (error) throw new Error(error);
       }
 
       setShowForm(false);
@@ -193,12 +193,8 @@ function ProductsContent() {
     setSavingAdjust(true);
     try {
       const qty = Number(adjustQty);
-      const newStock = adjustProduct.current_stock + qty;
-      await supabase.from('products').update({ current_stock: Math.max(0, newStock) }).eq('id', adjustProduct.id);
-      await supabase.from('stock_movements').insert({
-        product_id: adjustProduct.id, branch_id: currentBranch.id,
-        movement_type: 'adjustment', quantity: qty, notes: adjustReason || null,
-      });
+      const { error } = await adjustStock(adjustProduct.id, currentBranch.id, qty, adjustReason || null);
+      if (error) throw new Error(error);
       toast.success('Stock adjusted');
       setShowAdjust(false); setAdjustQty(''); setAdjustReason('');
       fetchProducts();
@@ -216,46 +212,42 @@ function ProductsContent() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-1 text-sm text-muted-foreground">
-        <Link href="/dashboard/inventory" className="hover:text-foreground transition-colors">Inventory</Link>
-        <ChevronRight className="w-3.5 h-3.5" />
-        <span className="text-foreground font-medium">Products</span>
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="relative flex-1 min-w-[180px]">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+          <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search products..." className="pl-8 h-9 bg-card" />
+        </div>
+        <Button onClick={() => openForm()} className="bg-gold hover:bg-gold/90 text-black font-bold" size="sm"><Plus className="w-4 h-4 mr-1" /> Add Product</Button>
       </div>
 
-      <div className="calendar-card bg-card border border-border shadow-sm p-4 space-y-4">
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="relative flex-1 min-w-[180px]">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
-            <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search products..." className="calendar-card pl-8 h-9" />
-          </div>
-          <Button onClick={() => openForm()} className="calendar-card bg-gold hover:bg-gold/90 text-black font-bold" size="sm"><Plus className="w-4 h-4 mr-1" /> Add Product</Button>
-        </div>
-
-        <Tabs value={tab} onValueChange={(v) => setTab(v as Tab)}>
-          <TabsList className="h-auto gap-1 flex-wrap">
-            <TabsTrigger value="all" className="calendar-card text-xs data-[state=active]:bg-gold data-[state=active]:text-black data-[state=active]:shadow-sm">All ({products.length})</TabsTrigger>
-            <TabsTrigger value="backbar" className="calendar-card text-xs data-[state=active]:bg-gold data-[state=active]:text-black data-[state=active]:shadow-sm">Backbar</TabsTrigger>
-            <TabsTrigger value="retail" className="calendar-card text-xs data-[state=active]:bg-gold data-[state=active]:text-black data-[state=active]:shadow-sm">Retail</TabsTrigger>
-            <TabsTrigger value="low" className="calendar-card text-xs data-[state=active]:bg-gold data-[state=active]:text-black data-[state=active]:shadow-sm">Low Stock ({products.filter((p) => p.current_stock <= p.low_stock_threshold).length})</TabsTrigger>
-          </TabsList>
-        </Tabs>
+      <div className="flex flex-wrap items-center gap-2">
+        {(['all', 'backbar', 'retail', 'low'] as Tab[]).map((t) => {
+          const label = t === 'all' ? `All (${products.length})` : t === 'low' ? `Low Stock (${products.filter((p) => p.current_stock <= p.low_stock_threshold).length})` : t === 'backbar' ? 'Backbar' : 'Retail';
+          return (
+            <button key={t} onClick={() => setTab(t)}
+              className={`px-3.5 py-2 text-xs font-medium rounded-lg transition-all duration-150 ${
+                tab === t ? 'bg-foreground text-white' : 'text-muted-foreground hover:text-foreground border border-border'
+              }`}
+            >{label}</button>
+          );
+        })}
 
         {/* Brand filters */}
-        <div className="flex flex-wrap gap-1">
+        <div className="ml-2 flex flex-wrap gap-1">
           {[...new Set(products.map((p) => p.brand).filter(Boolean))].slice(0, 8).map((b) => (
             <button key={b} onClick={() => setBrandFilter(brandFilter === b ? '' : b!)}
-              className={`calendar-card text-[10px] px-2 py-1 rounded-full border transition-all ${brandFilter === b ? 'bg-gold/10 border-gold text-foreground' : 'border-border text-muted-foreground hover:border-gold/50'}`}
+              className={`text-[10px] px-2 py-1 rounded-full border transition-all ${brandFilter === b ? 'bg-foreground text-white border-foreground' : 'border-border text-muted-foreground hover:border-foreground/50'}`}
             >{b}</button>
           ))}
         </div>
       </div>
 
       {loading ? (
-        <div className="space-y-2">{[1, 2, 3, 4].map((i) => <div key={i} className="h-12 bg-muted rounded animate-pulse" />)}</div>
+        <div className="space-y-2">{[1, 2, 3, 4].map((i) => <div key={i} className="h-12 bg-muted rounded-lg animate-pulse" />)}</div>
       ) : filtered.length === 0 ? (
         <p className="text-center text-muted-foreground py-16">No products found</p>
       ) : (
-        <div className="calendar-card shadow-sm border-border overflow-hidden overflow-x-auto">
+        <div className="bg-card border border-border rounded-lg overflow-hidden overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
@@ -299,18 +291,18 @@ function ProductsContent() {
 
       {/* Product Form Modal */}
       <Dialog open={showForm} onOpenChange={setShowForm}>
-        <DialogContent className="calendar-card max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>{editProduct ? 'Edit Product' : 'Add Product'}</DialogTitle></DialogHeader>
           <div className="space-y-3">
-            <div><Label className="text-xs">Product Name *</Label><Input value={formName} onChange={(e) => setFormName(e.target.value)} className="calendar-card mt-1" /></div>
+            <div><Label className="text-xs">Product Name *</Label><Input value={formName} onChange={(e) => setFormName(e.target.value)} className="mt-1" /></div>
             <div className="grid grid-cols-2 gap-3">
               <div><Label className="text-xs">Brand</Label>
-                <select value={formBrand} onChange={(e) => setFormBrand(e.target.value)} className="calendar-card mt-1 w-full h-9 rounded-md border bg-background px-3 text-sm">
+                <select value={formBrand} onChange={(e) => setFormBrand(e.target.value)} className="mt-1 w-full h-9 rounded-md border bg-background px-3 text-sm">
                   <option value="">Select</option>{BRANDS.map((b) => <option key={b} value={b}>{b}</option>)}
                 </select>
               </div>
               <div><Label className="text-xs">Category</Label>
-                <select value={formCategory} onChange={(e) => setFormCategory(e.target.value)} className="calendar-card mt-1 w-full h-9 rounded-md border bg-background px-3 text-sm">
+                <select value={formCategory} onChange={(e) => setFormCategory(e.target.value)} className="mt-1 w-full h-9 rounded-md border bg-background px-3 text-sm">
                   <option value="">Select</option>{CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
                 </select>
               </div>
@@ -319,14 +311,14 @@ function ProductsContent() {
               <div><Label className="text-xs">Inventory Type</Label>
                 <div className="flex gap-2 mt-1">
                   {(['backbar', 'retail'] as InventoryType[]).map((t) => (
-                    <button key={t} onClick={() => setFormType(t)} className={`calendar-card flex-1 py-2 border text-xs font-medium ${formType === t ? 'border-gold bg-gold/10' : 'border-border'}`}>
+                    <button key={t} onClick={() => setFormType(t)} className={`flex-1 py-2 border text-xs font-medium ${formType === t ? 'border-gold bg-gold/10' : 'border-border'}`}>
                       {t === 'backbar' ? 'Backbar' : 'Retail'}
                     </button>
                   ))}
                 </div>
               </div>
               <div><Label className="text-xs">Packaging Unit</Label>
-                <select value={formUnit} onChange={(e) => setFormUnit(e.target.value)} className="calendar-card mt-1 w-full h-9 rounded-md border bg-background px-3 text-sm">
+                <select value={formUnit} onChange={(e) => setFormUnit(e.target.value)} className="mt-1 w-full h-9 rounded-md border bg-background px-3 text-sm">
                   {UNITS.map((u) => <option key={u} value={u}>{u}</option>)}
                 </select>
               </div>
@@ -334,11 +326,11 @@ function ProductsContent() {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label className="text-xs">Content per {formUnit}</Label>
-                <Input type="number" value={formContentPerUnit} onChange={(e) => setFormContentPerUnit(e.target.value)} placeholder="e.g. 60" className="calendar-card mt-1" inputMode="decimal" step="0.1" />
+                <Input type="number" value={formContentPerUnit} onChange={(e) => setFormContentPerUnit(e.target.value)} placeholder="e.g. 60" className="mt-1" inputMode="decimal" step="0.1" />
               </div>
               <div>
                 <Label className="text-xs">Content Unit</Label>
-                <select value={formContentUnit} onChange={(e) => setFormContentUnit(e.target.value)} className="calendar-card mt-1 w-full h-9 rounded-md border bg-background px-3 text-sm">
+                <select value={formContentUnit} onChange={(e) => setFormContentUnit(e.target.value)} className="mt-1 w-full h-9 rounded-md border bg-background px-3 text-sm">
                   {CONTENT_UNITS.map((u) => <option key={u} value={u}>{u}</option>)}
                 </select>
               </div>
@@ -349,14 +341,14 @@ function ProductsContent() {
               </p>
             )}
             <div className="grid grid-cols-2 gap-3">
-              <div><Label className="text-xs">Purchase Price (Rs)</Label><Input type="number" value={formPurchasePrice} onChange={(e) => setFormPurchasePrice(e.target.value)} className="calendar-card mt-1" inputMode="numeric" /></div>
-              {formType === 'retail' && <div><Label className="text-xs">Retail Price (Rs)</Label><Input type="number" value={formRetailPrice} onChange={(e) => setFormRetailPrice(e.target.value)} className="calendar-card mt-1" inputMode="numeric" />
+              <div><Label className="text-xs">Purchase Price (Rs)</Label><Input type="number" value={formPurchasePrice} onChange={(e) => setFormPurchasePrice(e.target.value)} className="mt-1" inputMode="numeric" /></div>
+              {formType === 'retail' && <div><Label className="text-xs">Retail Price (Rs)</Label><Input type="number" value={formRetailPrice} onChange={(e) => setFormRetailPrice(e.target.value)} className="mt-1" inputMode="numeric" />
                 {Number(formPurchasePrice) > 0 && Number(formRetailPrice) > 0 && <p className="text-xs text-green-600 mt-0.5">Margin: {Math.round((Number(formRetailPrice) - Number(formPurchasePrice)) / Number(formPurchasePrice) * 100)}%</p>}
               </div>}
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <div><Label className="text-xs">Current Stock</Label><Input type="number" value={formStock} onChange={(e) => setFormStock(e.target.value)} className="calendar-card mt-1" inputMode="numeric" /></div>
-              <div><Label className="text-xs">Low Stock Threshold</Label><Input type="number" value={formThreshold} onChange={(e) => setFormThreshold(e.target.value)} className="calendar-card mt-1" inputMode="numeric" /></div>
+              <div><Label className="text-xs">Current Stock</Label><Input type="number" value={formStock} onChange={(e) => setFormStock(e.target.value)} className="mt-1" inputMode="numeric" /></div>
+              <div><Label className="text-xs">Low Stock Threshold</Label><Input type="number" value={formThreshold} onChange={(e) => setFormThreshold(e.target.value)} className="mt-1" inputMode="numeric" /></div>
             </div>
             {/* Service Usage — only for backbar */}
             {formType === 'backbar' && (
@@ -387,7 +379,7 @@ function ProductsContent() {
 
                 <div className="flex gap-2 items-end">
                   <div className="flex-1">
-                    <select value={formLinkSvcId} onChange={(e) => setFormLinkSvcId(e.target.value)} className="calendar-card w-full h-9 rounded-md border bg-background px-3 text-sm">
+                    <select value={formLinkSvcId} onChange={(e) => setFormLinkSvcId(e.target.value)} className="w-full h-9 rounded-md border bg-background px-3 text-sm">
                       <option value="">Select service...</option>
                       {services.filter(s => !formLinks.some(l => l.serviceId === s.id)).map(s => (
                         <option key={s.id} value={s.id}>{s.name}</option>
@@ -395,7 +387,7 @@ function ProductsContent() {
                     </select>
                   </div>
                   <div className="w-24">
-                    <Input type="number" value={formLinkQty} onChange={(e) => setFormLinkQty(e.target.value)} placeholder={formContentUnit} className="calendar-card h-9" step="0.1" inputMode="decimal" />
+                    <Input type="number" value={formLinkQty} onChange={(e) => setFormLinkQty(e.target.value)} placeholder={formContentUnit} className="h-9" step="0.1" inputMode="decimal" />
                   </div>
                   <Button variant="outline" size="sm" onClick={addFormLink} disabled={!formLinkSvcId || !formLinkQty} className="h-9">
                     <Plus className="w-4 h-4" />
@@ -414,13 +406,13 @@ function ProductsContent() {
 
       {/* Stock Adjustment Modal */}
       <Dialog open={showAdjust} onOpenChange={setShowAdjust}>
-        <DialogContent className="calendar-card max-w-sm">
+        <DialogContent className="max-w-sm">
           <DialogHeader><DialogTitle>Adjust Stock — {adjustProduct?.name}</DialogTitle></DialogHeader>
           <div className="space-y-3">
             <p className="text-sm">Current stock: <span className="font-bold">{adjustProduct?.current_stock} {adjustProduct?.unit}</span></p>
-            <div><Label className="text-xs">Quantity Change (+ or -)</Label><Input type="number" value={adjustQty} onChange={(e) => setAdjustQty(e.target.value)} placeholder="+10 or -5" className="calendar-card mt-1" /></div>
+            <div><Label className="text-xs">Quantity Change (+ or -)</Label><Input type="number" value={adjustQty} onChange={(e) => setAdjustQty(e.target.value)} placeholder="+10 or -5" className="mt-1" /></div>
             {adjustQty && <p className="text-xs text-muted-foreground">New stock: {(adjustProduct?.current_stock || 0) + Number(adjustQty)}</p>}
-            <div><Label className="text-xs">Reason *</Label><Textarea value={adjustReason} onChange={(e) => setAdjustReason(e.target.value)} placeholder="e.g. Damaged, Recount, Wastage" rows={2} className="calendar-card mt-1" /></div>
+            <div><Label className="text-xs">Reason *</Label><Textarea value={adjustReason} onChange={(e) => setAdjustReason(e.target.value)} placeholder="e.g. Damaged, Recount, Wastage" rows={2} className="mt-1" /></div>
             <Button onClick={saveAdjustment} disabled={savingAdjust || !adjustQty || !adjustReason} className="w-full bg-gold text-black border border-gold">{savingAdjust ? 'Saving...' : 'Save Adjustment'}</Button>
           </div>
         </DialogContent>

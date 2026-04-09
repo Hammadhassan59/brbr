@@ -246,7 +246,7 @@ function AppointmentsContent() {
 
   return (
     <div className="space-y-4">
-      <div className="calendar-card bg-card text-foreground border border-border p-3">
+      <div className="bg-card text-foreground border border-border p-3">
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-2">
             <Button
@@ -261,7 +261,7 @@ function AppointmentsContent() {
               variant={isToday ? 'default' : 'outline'}
               size="sm"
               onClick={() => setDate(getTodayPKT())}
-              className={`h-9 px-4 font-semibold transition-all duration-150 ${isToday ? 'bg-gold text-black border border-gold hover:bg-gold/90' : 'hover:bg-muted'}`}
+              className={`h-9 px-4 font-semibold transition-all duration-150 ${isToday ? 'bg-[#1A1A1A] text-white border border-[#1A1A1A]' : 'border border-border hover:bg-muted'}`}
             >
               Today
             </Button>
@@ -283,7 +283,7 @@ function AppointmentsContent() {
           <div className="flex items-center gap-2 ml-auto">
             <Filter className="w-4 h-4 text-muted-foreground" />
             <Select value={filterStaffId || 'all'} onValueChange={(v) => setFilterStaffId(v === 'all' ? null : v)}>
-              <SelectTrigger className="calendar-card h-10 w-[180px] bg-secondary border-border text-foreground transition-all duration-150">
+              <SelectTrigger className="h-10 w-[180px] bg-secondary border-border text-foreground transition-all duration-150">
                 <SelectValue placeholder="All stylists" />
               </SelectTrigger>
               <SelectContent>
@@ -314,7 +314,7 @@ function AppointmentsContent() {
       </div>
 
       {loading && appointments.length === 0 ? (
-        <div className="calendar-card bg-card border border-border/50 p-6">
+        <div className="bg-card border border-border rounded-lg p-6">
           <div className="space-y-3">
             {[1, 2, 3, 4, 5, 6].map((i) => (
               <div key={i} className="h-[52px] bg-muted/40 shimmer" />
@@ -322,7 +322,7 @@ function AppointmentsContent() {
           </div>
         </div>
       ) : !loading && stylists.length === 0 ? (
-        <div className="calendar-card bg-card border border-border/50">
+        <div className="bg-card border border-border rounded-lg">
           <div className="flex flex-col items-center justify-center h-[400px] gap-4">
             <div className="w-16 h-16 bg-muted/40 flex items-center justify-center" style={{ borderRadius: '12px' }}>
               <Users className="w-8 h-8 text-muted-foreground/40" />
@@ -334,7 +334,7 @@ function AppointmentsContent() {
           </div>
         </div>
       ) : (
-        <div className="calendar-card bg-card border border-border overflow-hidden">
+        <div className="bg-card border border-border rounded-lg overflow-hidden">
           <CalendarGrid
             date={date}
             stylists={stylists}

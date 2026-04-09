@@ -383,8 +383,8 @@ export default function DashboardPage() {
   if (!loading && !salon) {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-center">
-        <div className="calendar-card bg-card border border-border/50 p-8 flex flex-col items-center gap-4">
-          <div className="w-14 h-14 rounded-xl bg-gold/10 flex items-center justify-center">
+        <div className="bg-card border border-border rounded-lg p-8 flex flex-col items-center gap-4">
+          <div className="w-14 h-14 rounded-lg bg-gold/10 flex items-center justify-center">
             <Store className="w-7 h-7 text-gold" />
           </div>
           <p className="text-muted-foreground text-sm">Please log in to see your dashboard.</p>
@@ -406,8 +406,8 @@ export default function DashboardPage() {
           </p>
         </div>
 
-        <div className="calendar-card bg-card border border-border/30 p-2 flex items-center gap-1 flex-wrap">
-          <Button variant="ghost" size="icon" onClick={() => navigateDate(-1)} className="h-9 w-9 transition-all duration-150">
+        <div className="flex items-center gap-1 flex-wrap">
+          <Button variant="ghost" size="icon" onClick={() => navigateDate(-1)} className="h-11 w-11 transition-all duration-150">
             <ChevronLeft className="w-4 h-4" />
           </Button>
 
@@ -422,9 +422,9 @@ export default function DashboardPage() {
             <button
               key={key}
               onClick={() => setFilter(key, d)}
-              className={`calendar-card px-3 py-1.5 text-xs font-medium transition-all duration-150 ${
+              className={`px-3.5 py-2.5 text-xs font-medium rounded-lg transition-all duration-150 touch-target ${
                 activeFilter === key
-                  ? 'bg-gold/10 text-gold'
+                  ? 'bg-foreground text-white'
                   : 'text-muted-foreground hover:text-foreground'
               }`}
             >
@@ -434,16 +434,16 @@ export default function DashboardPage() {
 
           <Popover open={customOpen} onOpenChange={(open) => { setCustomOpen(open); if (open) { setRangeFrom(undefined); setRangeTo(undefined); } }}>
             <PopoverTrigger
-              className={`calendar-card px-3 py-1.5 text-xs font-medium transition-all duration-150 flex items-center gap-1.5 outline-none ${
+              className={`px-3.5 py-2.5 text-xs font-medium rounded-lg transition-all duration-150 flex items-center gap-1.5 outline-none touch-target ${
                 activeFilter === 'custom'
-                  ? 'bg-gold/10 text-gold'
+                  ? 'bg-foreground text-white'
                   : 'text-muted-foreground hover:text-foreground'
               }`}
             >
               <Calendar className="w-3 h-3" />
               Custom
             </PopoverTrigger>
-            <PopoverContent className="calendar-card w-auto p-3" align="end">
+            <PopoverContent className="w-auto p-3" align="end">
               <div className="text-xs text-muted-foreground mb-2 px-1">
                 {!rangeFrom ? 'Select start date' : !rangeTo ? 'Select end date' : `${formatPKDate(rangeFrom.toISOString().slice(0, 10))} — ${formatPKDate(rangeTo.toISOString().slice(0, 10))}`}
               </div>
@@ -458,7 +458,7 @@ export default function DashboardPage() {
             </PopoverContent>
           </Popover>
 
-          <Button variant="ghost" size="icon" onClick={() => navigateDate(1)} className="h-9 w-9 transition-all duration-150" disabled={isToday}>
+          <Button variant="ghost" size="icon" onClick={() => navigateDate(1)} className="h-11 w-11 transition-all duration-150" disabled={isToday}>
             <ChevronRight className="w-4 h-4" />
           </Button>
         </div>

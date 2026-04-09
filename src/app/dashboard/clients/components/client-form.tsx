@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
+import { createClient as createClientAction, updateClient } from '@/app/actions/clients';
 import { useAppStore } from '@/store/app-store';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -45,7 +46,6 @@ export function ClientForm({ client, onSaved }: ClientFormProps) {
     setSaving(true);
     try {
       const data = {
-        salon_id: salon.id,
         name: name.trim(),
         phone: phone || null,
         whatsapp: sameAsPhone ? phone || null : whatsapp || null,
@@ -59,11 +59,8 @@ export function ClientForm({ client, onSaved }: ClientFormProps) {
       };
 
       if (isEditing && client) {
-        const { error } = await supabase
-          .from('clients')
-          .update(data)
-          .eq('id', client.id);
-        if (error) throw error;
+        const { error } = await updateClient(client.id, data);
+        if (error) throw new Error(error);
         toast.success('Client updated');
       } else {
         // Check for duplicate phone
@@ -81,12 +78,19 @@ export function ClientForm({ client, onSaved }: ClientFormProps) {
           }
         }
 
-        const { data: newClient, error } = await supabase
-          .from('clients')
-          .insert(data)
-          .select()
-          .single();
-        if (error) throw error;
+        const { data: newClient, error } = await createClientAction({
+          name: name.trim(),
+          phone: phone || null,
+          whatsapp: sameAsPhone ? phone || null : whatsapp || null,
+          gender: gender || null,
+          notes: notes || null,
+          hairNotes: hairNotes || null,
+          allergyNotes: allergyNotes || null,
+          isVip: isVip,
+          isBlacklisted: isBlacklisted,
+          udhaarLimit: udhaarLimit === '' ? 5000 : Number(udhaarLimit),
+        });
+        if (error) throw new Error(error);
         toast.success('Client added');
         router.push(`/dashboard/clients/${newClient.id}`);
       }
@@ -105,25 +109,25 @@ export function ClientForm({ client, onSaved }: ClientFormProps) {
         {isEditing ? 'Edit Client' : 'Add New Client'}
       </h2>
 
-      <section className="calendar-card bg-card p-5 border border-border/30 space-y-4">
+      <section className="bg-card p-5 border border-border space-y-4">
         <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-4">Personal Info</h3>
 
         <div>
           <Label>Full Name *</Label>
-          <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Client name" className="mt-1 calendar-card" />
+          <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Client name" className="mt-1" />
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <Label>Phone Number *</Label>
-            <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="03XX-XXXXXXX" className="mt-1 calendar-card" />
+            <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="03XX-XXXXXXX" className="mt-1" />
           </div>
           <div>
             <Label>WhatsApp</Label>
             {sameAsPhone ? (
-              <Input value={phone} disabled className="mt-1 calendar-card" />
+              <Input value={phone} disabled className="mt-1" />
             ) : (
-              <Input value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)} placeholder="03XX-XXXXXXX" className="mt-1 calendar-card" />
+              <Input value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)} placeholder="03XX-XXXXXXX" className="mt-1" />
             )}
             <label className="flex items-center gap-2 mt-1.5 text-xs text-muted-foreground cursor-pointer">
               <input type="checkbox" checked={sameAsPhone} onChange={(e) => setSameAsPhone(e.target.checked)} className="rounded" />
@@ -139,8 +143,8 @@ export function ClientForm({ client, onSaved }: ClientFormProps) {
               <button
                 key={g.value}
                 onClick={() => setGender(g.value)}
-                className={`flex-1 py-2.5 calendar-card border text-sm font-medium transition-all duration-150 ${
-                  gender === g.value ? 'border-gold bg-gold/10' : 'border-border/30 hover:border-gold/40'
+                className={`flex-1 py-2.5 border text-sm font-medium transition-all duration-150 ${
+                  gender === g.value ? 'border-gold bg-gold/10' : 'border-border hover:border-gold/40'
                 }`}
               >
                 {g.label}
@@ -151,17 +155,17 @@ export function ClientForm({ client, onSaved }: ClientFormProps) {
 
       </section>
 
-      <section className="calendar-card bg-card p-5 border border-border/30 space-y-4">
+      <section className="bg-card p-5 border border-border space-y-4">
         <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-4">Preferences & Notes</h3>
 
         <div>
           <Label>General Notes</Label>
-          <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Any notes about this client..." rows={2} className="mt-1 calendar-card" />
+          <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Any notes about this client..." rows={2} className="mt-1" />
         </div>
 
         <div>
           <Label>Hair Type Notes</Label>
-          <Textarea value={hairNotes} onChange={(e) => setHairNotes(e.target.value)} placeholder="e.g. Thick hair, tends to frizz" rows={2} className="mt-1 calendar-card" />
+          <Textarea value={hairNotes} onChange={(e) => setHairNotes(e.target.value)} placeholder="e.g. Thick hair, tends to frizz" rows={2} className="mt-1" />
         </div>
 
         <div>
@@ -171,7 +175,7 @@ export function ClientForm({ client, onSaved }: ClientFormProps) {
             onChange={(e) => setAllergyNotes(e.target.value)}
             placeholder="Any allergies or sensitivities..."
             rows={2}
-            className="mt-1 calendar-card border-destructive/30 focus-visible:ring-destructive/30"
+            className="mt-1 border-destructive/30 focus-visible:ring-destructive/30"
           />
           {allergyNotes && (
             <p className="text-xs text-destructive mt-1">This will show as a warning on appointments</p>
@@ -179,10 +183,10 @@ export function ClientForm({ client, onSaved }: ClientFormProps) {
         </div>
       </section>
 
-      <section className="calendar-card bg-card p-5 border border-border/30 space-y-4">
+      <section className="bg-card p-5 border border-border space-y-4">
         <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-4">Settings</h3>
 
-        <div className="calendar-card bg-background/50 p-4 border border-border/20 flex items-center justify-between">
+        <div className="bg-background/50 p-4 border border-border/20 flex items-center justify-between">
           <div>
             <p className="text-sm font-medium">VIP Client</p>
             <p className="text-xs text-muted-foreground">Mark this client as VIP</p>
@@ -196,12 +200,12 @@ export function ClientForm({ client, onSaved }: ClientFormProps) {
             type="number"
             value={udhaarLimit}
             onChange={(e) => setUdhaarLimit(e.target.value)}
-            className="mt-1 w-40 calendar-card"
+            className="mt-1 w-40"
             inputMode="numeric"
           />
         </div>
 
-        <div className="calendar-card bg-red-500/5 border border-red-500/20 p-4 flex items-center justify-between">
+        <div className="bg-red-500/5 border border-red-500/20 p-4 flex items-center justify-between">
           <div>
             <p className="text-sm font-medium text-red-600">Blacklist Client</p>
             <p className="text-xs text-red-600">Block this client from bookings</p>
@@ -211,8 +215,8 @@ export function ClientForm({ client, onSaved }: ClientFormProps) {
       </section>
 
       <div className="flex gap-3 pt-4 border-t">
-        <Button variant="ghost" onClick={() => router.back()} className="calendar-card transition-all duration-150">Cancel</Button>
-        <Button onClick={handleSave} disabled={saving} className="calendar-card bg-gold hover:bg-gold/90 text-black font-bold h-11 px-6 transition-all duration-150">
+        <Button variant="ghost" onClick={() => router.back()} className="transition-all duration-150">Cancel</Button>
+        <Button onClick={handleSave} disabled={saving} className="bg-gold hover:bg-gold/90 text-black font-bold h-11 px-6 transition-all duration-150">
           {saving ? 'Saving...' : isEditing ? 'Save Changes' : 'Add Client'}
         </Button>
       </div>

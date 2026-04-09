@@ -15,6 +15,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import toast from 'react-hot-toast';
+import { createPromo, updatePromo } from '@/app/actions/packages';
 import type { PromoCode, DiscountType } from '@/types/database';
 
 export default function PromosPage() {
@@ -70,16 +71,17 @@ export default function PromosPage() {
     setSaving(true);
     try {
       const data = {
-        salon_id: salon.id, code: formCode.toUpperCase(), discount_type: formDiscountType,
-        discount_value: Number(formDiscountValue), min_bill_amount: Number(formMinBill) || 0,
-        max_uses: formMaxUses ? Number(formMaxUses) : null, expiry_date: formExpiry || null, is_active: formActive,
+        code: formCode.toUpperCase(), discountType: formDiscountType,
+        discountValue: Number(formDiscountValue), minBillAmount: Number(formMinBill) || 0,
+        maxUses: formMaxUses ? Number(formMaxUses) : null, expiryDate: formExpiry || null, isActive: formActive,
       };
       if (editPromo) {
-        await supabase.from('promo_codes').update(data).eq('id', editPromo.id);
+        const { error } = await updatePromo(editPromo.id, data);
+        if (error) throw new Error(error);
         toast.success('Promo updated');
       } else {
-        data.salon_id = salon.id;
-        await supabase.from('promo_codes').insert({ ...data, used_count: 0 });
+        const { error } = await createPromo(data);
+        if (error) throw new Error(error);
         toast.success('Promo created');
       }
       setShowForm(false); fetch();

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Scissors, ChevronRight, ChevronLeft, Check, Plus, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { supabase } from '@/lib/supabase';
+import { setupSalon } from '@/app/actions/setup';
 import { useLanguage } from '@/components/providers/language-provider';
 import { useAppStore } from '@/store/app-store';
 import { Button } from '@/components/ui/button';
@@ -195,27 +196,7 @@ export default function SetupPage() {
       const user = (await supabase.auth.getUser()).data.user;
       const slug = salonName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
 
-      // Create salon
-      const { data: newSalon, error: salonErr } = await supabase
-        .from('salons')
-        .upsert({
-          ...(salon?.id ? { id: salon.id } : {}),
-          name: salonName,
-          slug,
-          type: salonType,
-          city,
-          address,
-          phone,
-          whatsapp: sameAsPhone ? phone : whatsapp,
-          owner_id: user?.id,
-          setup_complete: true,
-          prayer_block_enabled: prayerBlocks,
-        })
-        .select()
-        .single();
-      if (salonErr) throw salonErr;
-
-      // Create main branch
+      // Build working hours
       const workingHours: Record<string, unknown> = {};
       DAYS.forEach((d) => {
         workingHours[d] = {
@@ -226,65 +207,26 @@ export default function SetupPage() {
         };
       });
 
-      const { data: branch, error: branchErr } = await supabase
-        .from('branches')
-        .insert({
-          salon_id: newSalon.id,
-          name: `${city || 'Main'} Branch`,
-          address,
-          phone,
-          is_main: true,
-          working_hours: workingHours,
-        })
-        .select()
-        .single();
-      if (branchErr) throw branchErr;
+      const result = await setupSalon({
+        existingSalonId: salon?.id,
+        name: salonName,
+        slug,
+        type: salonType,
+        city,
+        address,
+        phone,
+        whatsapp: sameAsPhone ? phone : whatsapp,
+        ownerId: user?.id,
+        prayerBlockEnabled: prayerBlocks,
+        workingHours,
+        services: selectedServices.map(s => ({ name: s.name, category: s.category, price: s.price, duration: s.duration })),
+        partners: validPartners.map(p => ({ name: p.name, phone: p.phone, pin: p.pin })),
+        staff: validStaff.map(s => ({ name: s.name, phone: s.phone, role: s.role, pin: s.pin })),
+      });
+      if (result.error) throw new Error(result.error);
 
-      // Create services
-      if (selectedServices.length > 0) {
-        const { error: svcErr } = await supabase.from('services').insert(
-          selectedServices.map((s, i) => ({
-            salon_id: newSalon.id,
-            name: s.name,
-            category: s.category,
-            base_price: s.price,
-            duration_minutes: s.duration,
-            sort_order: i,
-          }))
-        );
-        if (svcErr) throw svcErr;
-      }
-
-      // Create partners (if multiple ownership)
-      if (ownershipType === 'multiple' && validPartners.length > 0) {
-        const { error: partnerErr } = await supabase.from('salon_partners').insert(
-          validPartners.map((p) => ({
-            salon_id: newSalon.id,
-            name: p.name,
-            phone: p.phone,
-            pin_code: p.pin,
-          }))
-        );
-        if (partnerErr) throw partnerErr;
-      }
-
-      // Create staff
-      if (validStaff.length > 0) {
-        const { error: staffErr } = await supabase.from('staff').insert(
-          validStaff.map((s) => ({
-            salon_id: newSalon.id,
-            branch_id: branch.id,
-            name: s.name,
-            phone: s.phone,
-            role: s.role,
-            pin_code: s.pin,
-          }))
-        );
-        if (staffErr) throw staffErr;
-      }
-
-      setSalon(newSalon);
-      setCurrentBranch(branch);
+      setSalon(result.data!.salon);
+      setCurrentBranch(result.data!.branch);
       toast.success('Salon setup complete!');
       router.push('/dashboard');
     } catch (err: unknown) {
@@ -361,7 +303,7 @@ export default function SetupPage() {
                   <button
                     key={type}
                     onClick={() => setSalonType(type)}
-                    className={`p-4 rounded-xl border-2 text-center transition-all ${
+                    className={`p-4 rounded-lg border-2 text-center transition-all ${
                       salonType === type
                         ? 'border-gold bg-gold/5 shadow-sm'
                         : 'border-border hover:border-gold/50'
@@ -425,7 +367,7 @@ export default function SetupPage() {
             <div className="grid grid-cols-2 gap-4">
               <button
                 onClick={() => setOwnershipType('single')}
-                className={`p-6 rounded-xl border-2 text-center transition-all ${ownershipType === 'single' ? 'border-gold bg-gold/5 shadow-sm' : 'border-border hover:border-gold/50'}`}
+                className={`p-6 rounded-lg border-2 text-center transition-all ${ownershipType === 'single' ? 'border-gold bg-gold/5 shadow-sm' : 'border-border hover:border-gold/50'}`}
               >
                 <div className="text-3xl mb-2">1</div>
                 <div className="text-sm font-semibold">Single Owner</div>
@@ -433,7 +375,7 @@ export default function SetupPage() {
               </button>
               <button
                 onClick={() => setOwnershipType('multiple')}
-                className={`p-6 rounded-xl border-2 text-center transition-all ${ownershipType === 'multiple' ? 'border-gold bg-gold/5 shadow-sm' : 'border-border hover:border-gold/50'}`}
+                className={`p-6 rounded-lg border-2 text-center transition-all ${ownershipType === 'multiple' ? 'border-gold bg-gold/5 shadow-sm' : 'border-border hover:border-gold/50'}`}
               >
                 <div className="text-3xl mb-2">2+</div>
                 <div className="text-sm font-semibold">Multiple Owners</div>
