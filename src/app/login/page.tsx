@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { DataNotice } from '@/components/data-notice';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { signSession } from '@/app/actions/auth';
 import {
   DEMO_SALON, DEMO_BRANCH, DEMO_STAFF_OWNER, DEMO_STAFF_STYLIST, DEMO_STAFF_RECEPTIONIST,
   DEMO_SALON_GENTS, DEMO_BRANCH_GENTS, DEMO_BRANCH_GENTS_2,
@@ -92,6 +93,13 @@ export default function LoginPage() {
       if (mainBranch) setCurrentBranch(mainBranch);
 
       setSessionCookie('owner');
+      await signSession({
+        salonId: salon.id,
+        staffId: data.user.id,
+        role: 'owner',
+        branchId: mainBranch?.id || '',
+        name: 'Owner',
+      });
 
       if (!salon.setup_complete) {
         router.push('/setup');
@@ -210,6 +218,15 @@ export default function LoginPage() {
         setBranches(data.branches || []);
         const mainBranch = data.branches?.find((b: Branch) => b.is_main) || data.branches?.[0];
         if (mainBranch) setCurrentBranch(mainBranch);
+
+        const person = data.type === 'partner' ? data.partner : data.staff;
+        await signSession({
+          salonId: data.salon.id,
+          staffId: person.id,
+          role: data.type === 'partner' ? 'partner' : person.role,
+          branchId: mainBranch?.id || '',
+          name: person.name,
+        });
       }
 
       router.push('/dashboard');
@@ -229,7 +246,7 @@ export default function LoginPage() {
     }
   }
 
-  function demoLoginSuperAdmin() {
+  async function demoLoginSuperAdmin() {
     if (!IS_DEV) return;
     const { setIsSuperAdmin } = useAppStore.getState();
     setIsSuperAdmin(true);
@@ -240,11 +257,12 @@ export default function LoginPage() {
     setCurrentPartner(null);
     setIsPartner(false);
     setSessionCookie('super_admin');
+    await signSession({ salonId: 'super-admin', staffId: DEMO_STAFF_SUPERADMIN.id, role: 'super_admin', branchId: '', name: 'Super Admin' });
     toast.success('Super Admin mode activated');
     router.push('/admin');
   }
 
-  function demoLoginAs(salonData: Salon, branchData: Branch, staffData: Staff, allBranches?: Branch[]) {
+  async function demoLoginAs(salonData: Salon, branchData: Branch, staffData: Staff, allBranches?: Branch[]) {
     if (!IS_DEV) return;
     const { setIsSuperAdmin } = useAppStore.getState();
     setIsSuperAdmin(false);
@@ -255,11 +273,12 @@ export default function LoginPage() {
     setCurrentPartner(null);
     setIsPartner(false);
     setSessionCookie('staff');
+    await signSession({ salonId: salonData.id, staffId: staffData.id, role: staffData.role, branchId: branchData.id, name: staffData.name });
     toast.success(`Logged in as ${staffData.name} (${staffData.role.replace('_', ' ')}) — ${salonData.name}`);
     router.push('/dashboard');
   }
 
-  function demoLoginAsPartner(salonData: Salon, partnerData: SalonPartner, allBranches: Branch[]) {
+  async function demoLoginAsPartner(salonData: Salon, partnerData: SalonPartner, allBranches: Branch[]) {
     if (!IS_DEV) return;
     const { setIsSuperAdmin } = useAppStore.getState();
     setIsSuperAdmin(false);
@@ -271,6 +290,7 @@ export default function LoginPage() {
     setCurrentPartner(partnerData);
     setIsPartner(true);
     setSessionCookie('partner');
+    await signSession({ salonId: salonData.id, staffId: partnerData.id, role: 'partner', branchId: mainBranch?.id || '', name: partnerData.name });
     toast.success(`Logged in as ${partnerData.name} (Owner) — ${salonData.name}`);
     router.push('/dashboard');
   }

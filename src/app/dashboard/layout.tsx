@@ -17,6 +17,7 @@ import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { getTodayPKT, formatPKDate } from '@/lib/utils/dates';
 import type { Branch } from '@/types/database';
+import { destroySession } from '@/app/actions/auth';
 
 interface NavItem {
   href: string;
@@ -211,9 +212,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <span>{t('settings')}</span>
           </Link>
           <button
-            onClick={() => {
+            onClick={async () => {
               document.cookie = 'brbr-session=; path=/; max-age=0';
               document.cookie = 'brbr-role=; path=/; max-age=0';
+              await destroySession();
               useAppStore.getState().reset();
               window.location.href = '/login';
             }}
