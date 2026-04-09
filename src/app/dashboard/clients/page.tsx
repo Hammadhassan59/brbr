@@ -193,7 +193,7 @@ function ClientsContent() {
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 stagger-children">
           {sorted.map((client) => (
             <ClientCard
               key={client.id}

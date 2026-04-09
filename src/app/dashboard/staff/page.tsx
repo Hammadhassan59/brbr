@@ -163,10 +163,10 @@ export default function StaffListPage() {
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 stagger-children">
           {filteredStaff.map((s) => (
             <Link key={s.id} href={`/dashboard/staff/${s.id}`}>
-              <div className="bg-card border border-border rounded-lg hover:shadow-lg hover:border-gold/40 hover:-translate-y-0.5 p-5 transition-all duration-200">
+              <div className="animate-fade-up bg-card border border-border rounded-lg hover:shadow-lg hover:border-gold/40 hover:-translate-y-0.5 p-5 transition-all duration-200">
                 <div className="flex items-center gap-4">
                   <div className="w-14 h-14 rounded-full bg-accent text-foreground font-bold flex items-center justify-center text-xl shrink-0">
                     {s.name.charAt(0)}

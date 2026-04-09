@@ -147,11 +147,11 @@ export default function PackagesPage() {
       ) : filtered.length === 0 ? (
         <p className="text-center text-muted-foreground py-16">No packages yet — create your first package</p>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 stagger-children">
           {filtered.map((pkg) => {
             const svcList = Array.isArray(pkg.services) ? (pkg.services as unknown as PackageServiceEntry[]) : [];
             return (
-              <Card key={pkg.id} className={`cursor-pointer hover:shadow-md transition-shadow ${!pkg.is_active ? 'opacity-60' : ''}`} onClick={() => openForm(pkg)}>
+              <Card key={pkg.id} className={`animate-fade-up hover:-translate-y-0.5 hover:shadow-md transition-all duration-200 cursor-pointer ${!pkg.is_active ? 'opacity-60' : ''}`} onClick={() => openForm(pkg)}>
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between mb-2">
                     <div>
