@@ -234,7 +234,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </button>
 
           {/* Search bar */}
-          <div className="hidden sm:flex items-center gap-2 bg-muted rounded-lg px-3 h-10 w-72 border border-border">
+          <div className="hidden sm:flex items-center gap-2 bg-muted rounded-lg px-3 h-10 w-72 focus-within:w-80 border border-border transition-all duration-300">
             <Search className="w-4 h-4 text-muted-foreground shrink-0" />
             <input
               type="text"
