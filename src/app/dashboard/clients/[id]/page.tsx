@@ -11,7 +11,7 @@ import { supabase } from '@/lib/supabase';
 import { updateClientNotes, recordUdhaarPayment } from '@/app/actions/clients';
 import { formatPKR } from '@/lib/utils/currency';
 import { formatPKDate, formatDateTime } from '@/lib/utils/dates';
-import { generateWhatsAppLink } from '@/lib/utils/whatsapp';
+import { useWhatsAppCompose } from '@/components/whatsapp-compose/provider';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -28,6 +28,7 @@ import type { Client, Bill, BillItem, UdhaarPayment, ClientPackage, Package as P
 export default function ClientProfilePage() {
   const params = useParams();
   const router = useRouter();
+  const { open: openWhatsApp } = useWhatsAppCompose();
   const clientId = params.id as string;
 
   const [client, setClient] = useState<Client | null>(null);
@@ -128,8 +129,11 @@ export default function ClientProfilePage() {
 
   function sendUdhaarReminder() {
     if (!client?.phone) return;
-    const msg = `Dear ${client.name}, your outstanding balance is ${formatPKR(client.udhaar_balance)}. Please clear it on your next visit. Thank you! — BrBr`;
-    window.open(generateWhatsAppLink(client.phone, msg), '_blank');
+    openWhatsApp({
+      recipient: { name: client.name, phone: client.phone },
+      template: 'udhaar_reminder',
+      variables: { name: client.name, amount: formatPKR(client.udhaar_balance) },
+    });
   }
 
   if (loading) {
@@ -172,9 +176,12 @@ export default function ClientProfilePage() {
               {client.is_blacklisted && <Badge variant="destructive">Blacklisted</Badge>}
             </div>
             {client.phone && (
-              <a href={`https://wa.me/92${client.phone.replace(/[-\s]/g, '').replace(/^0/, '')}`} target="_blank" rel="noopener noreferrer" className="text-sm text-muted-foreground flex items-center gap-1 hover:text-gold transition-all duration-150">
+              <button
+                onClick={() => openWhatsApp({ recipient: { name: client.name, phone: client.phone! }, template: 'custom', variables: { name: client.name } })}
+                className="text-sm text-muted-foreground flex items-center gap-1 hover:text-gold transition-all duration-150"
+              >
                 <Phone className="w-3 h-3" /> {client.phone}
-              </a>
+              </button>
             )}
             <div className="flex flex-wrap items-center gap-2 mt-3 text-sm">
               <span className="bg-secondary border border-border px-3 py-1.5 text-xs font-medium flex items-center gap-1">

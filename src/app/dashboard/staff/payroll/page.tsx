@@ -7,7 +7,7 @@ import { supabase } from '@/lib/supabase';
 import { createExpense, createExpenses, deleteSalaryExpenses } from '@/app/actions/expenses';
 import { useAppStore } from '@/store/app-store';
 import { formatPKR } from '@/lib/utils/currency';
-import { generateWhatsAppLink } from '@/lib/utils/whatsapp';
+import { useWhatsAppCompose } from '@/components/whatsapp-compose/provider';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -32,6 +32,7 @@ interface PayrollRow {
 
 export default function PayrollPage() {
   const { salon, currentBranch, currentStaff } = useAppStore();
+  const { open: openWhatsApp } = useWhatsAppCompose();
   const now = new Date();
   const [month, setMonth] = useState(now.getMonth() + 1);
   const [year, setYear] = useState(now.getFullYear());
@@ -195,7 +196,11 @@ Late Deductions:   -${formatPKR(row.lateDeductions)}
 
 Thank you 🙏 — BrBr Management`;
 
-    window.open(generateWhatsAppLink(row.staff.phone, msg), '_blank');
+    openWhatsApp({
+      recipient: { name: row.staff.name, phone: row.staff.phone },
+      template: 'receipt',
+      variables: { receipt_text: msg },
+    });
   }
 
   function exportCSV() {

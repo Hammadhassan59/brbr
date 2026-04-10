@@ -5,7 +5,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { formatPKR } from '@/lib/utils/currency';
-import { generateWhatsAppLink, encodeMessage } from '@/lib/utils/whatsapp';
+import { encodeMessage } from '@/lib/utils/whatsapp';
+import { useWhatsAppCompose } from '@/components/whatsapp-compose/provider';
 import type { BillLineItem } from './bill-builder';
 
 interface CheckoutConfirmationProps {
@@ -53,6 +54,7 @@ export function CheckoutConfirmation({
   items, subtotal, discountAmount, taxAmount, total,
   paymentMethod, cashReceived, change, pointsEarned, tipAmount,
 }: CheckoutConfirmationProps) {
+  const { open: openWhatsApp } = useWhatsAppCompose();
 
   const dateStr = new Date().toLocaleDateString('en-PK', {
     day: 'numeric', month: 'short', year: 'numeric',
@@ -82,8 +84,11 @@ export function CheckoutConfirmation({
 
   function sendWhatsAppReceipt() {
     if (!clientPhone) return;
-    const text = getReceiptText();
-    window.open(generateWhatsAppLink(clientPhone, text), '_blank');
+    openWhatsApp({
+      recipient: { name: clientName || 'Customer', phone: clientPhone },
+      template: 'receipt',
+      variables: { receipt_text: getReceiptText() },
+    });
   }
 
   function printReceipt() {

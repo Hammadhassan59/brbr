@@ -7,7 +7,7 @@ import { supabase } from '@/lib/supabase';
 import { useAppStore } from '@/store/app-store';
 import { formatPKR } from '@/lib/utils/currency';
 import { formatPKDate } from '@/lib/utils/dates';
-import { generateWhatsAppLink } from '@/lib/utils/whatsapp';
+import { useWhatsAppCompose } from '@/components/whatsapp-compose/provider';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
@@ -20,6 +20,7 @@ import type { Client } from '@/types/database';
 
 export default function ClientReportPage() {
   const { salon } = useAppStore();
+  const { open: openWhatsApp } = useWhatsAppCompose();
   const [loading, setLoading] = useState(true);
   const [clients, setClients] = useState<Client[]>([]);
   const [showUdhaarDialog, setShowUdhaarDialog] = useState(false);
@@ -58,28 +59,8 @@ export default function ClientReportPage() {
   function sendUdhaarAllSequentially() {
     const clientsWithPhone = udhaarClients.filter((c) => c.phone);
     if (clientsWithPhone.length === 0) { toast.error('No clients have phone numbers'); return; }
-
-    if (clientsWithPhone.length > 5) {
-      const confirmed = window.confirm(
-        `This will open ${clientsWithPhone.length} browser tabs one at a time with a 2-second delay between each. Continue?`
-      );
-      if (!confirmed) return;
-    }
-
-    setIsBulkSending(true);
-    setBulkSendIndex(0);
-
-    clientsWithPhone.forEach((client, index) => {
-      setTimeout(() => {
-        window.open(generateWhatsAppLink(client.phone!, getUdhaarMessage(client)), '_blank');
-        setUdhaarSentSet((prev) => new Set([...prev, client.id]));
-        setBulkSendIndex(index + 1);
-        if (index === clientsWithPhone.length - 1) {
-          setIsBulkSending(false);
-          toast.success(`Opened ${clientsWithPhone.length} WhatsApp windows`);
-        }
-      }, index * 2000);
-    });
+    // Open compose for first client - owner sends one at a time
+    sendSingleUdhaar(clientsWithPhone[0]);
   }
 
   function copyAllUdhaarMessages() {
@@ -99,7 +80,11 @@ export default function ClientReportPage() {
 
   function sendSingleUdhaar(c: Client) {
     if (!c.phone) return;
-    window.open(generateWhatsAppLink(c.phone, getUdhaarMessage(c)), '_blank');
+    openWhatsApp({
+      recipient: { name: c.name, phone: c.phone },
+      template: 'udhaar_reminder',
+      variables: { name: c.name, amount: formatPKR(c.udhaar_balance) },
+    });
     setUdhaarSentSet((prev) => new Set([...prev, c.id]));
   }
 
@@ -160,10 +145,7 @@ export default function ClientReportPage() {
                       <TableCell className="text-sm">{c.phone || '—'}</TableCell>
                       <TableCell className="text-right text-sm font-bold text-red-600">{formatPKR(c.udhaar_balance)}</TableCell>
                       <TableCell className="text-center pr-4">
-                        <Button variant="ghost" size="sm" className="h-7 text-xs gap-1" onClick={() => {
-                          if (!c.phone) return;
-                          window.open(generateWhatsAppLink(c.phone, getUdhaarMessage(c)), '_blank');
-                        }}><Send className="w-3 h-3" /> Remind</Button>
+                        <Button variant="ghost" size="sm" className="h-7 text-xs gap-1" onClick={() => sendSingleUdhaar(c)}><Send className="w-3 h-3" /> Remind</Button>
                       </TableCell>
                     </TableRow>
                   ))}</TableBody>

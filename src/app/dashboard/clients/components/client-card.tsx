@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { formatPKR } from '@/lib/utils/currency';
 import { formatPKDate } from '@/lib/utils/dates';
-import { generateWhatsAppLink } from '@/lib/utils/whatsapp';
+import { useWhatsAppCompose } from '@/components/whatsapp-compose/provider';
 import type { Client } from '@/types/database';
 
 interface ClientCardProps {
@@ -18,6 +18,7 @@ interface ClientCardProps {
 
 export function ClientCard({ client, selected, onSelect }: ClientCardProps) {
   const router = useRouter();
+  const { open: openWhatsApp } = useWhatsAppCompose();
   const initials = client.name
     .split(' ')
     .map((w) => w[0])
@@ -93,7 +94,11 @@ export function ClientCard({ client, selected, onSelect }: ClientCardProps) {
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                window.open(generateWhatsAppLink(client.phone!, `Hi ${client.name}!`), '_blank');
+                openWhatsApp({
+                  recipient: { name: client.name, phone: client.phone! },
+                  template: 'custom',
+                  variables: { name: client.name },
+                });
               }}
               title="WhatsApp"
             >

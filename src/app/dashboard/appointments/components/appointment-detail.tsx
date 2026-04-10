@@ -5,7 +5,7 @@ import { Phone, AlertTriangle, CreditCard, MessageCircle } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { formatPKR } from '@/lib/utils/currency';
 import { formatTime, formatPKDate } from '@/lib/utils/dates';
-import { generateWhatsAppLink } from '@/lib/utils/whatsapp';
+import { useWhatsAppCompose } from '@/components/whatsapp-compose/provider';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -32,6 +32,7 @@ interface AppointmentDetailProps {
 
 export function AppointmentDetail({ appointment, open, onClose, onUpdated }: AppointmentDetailProps) {
   const router = useRouter();
+  const { open: openWhatsApp } = useWhatsAppCompose();
   if (!appointment) return null;
 
   const apt = appointment;
@@ -57,9 +58,11 @@ export function AppointmentDetail({ appointment, open, onClose, onUpdated }: App
 
   function sendReminder() {
     if (!apt.client?.phone) { toast.error('No phone number'); return; }
-    const message = `Reminder: Your appointment is at ${formatTime(apt.start_time)}. ${apt.staff?.name || ''} is waiting for you!`;
-    const link = generateWhatsAppLink(apt.client.phone, message);
-    window.open(link, '_blank');
+    openWhatsApp({
+      recipient: { name: apt.client.name, phone: apt.client.phone },
+      template: 'appointment_reminder',
+      variables: { time: formatTime(apt.start_time), staff_name: apt.staff?.name || '' },
+    });
   }
 
   return (
