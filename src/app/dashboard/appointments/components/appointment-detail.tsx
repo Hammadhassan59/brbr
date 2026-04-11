@@ -1,7 +1,8 @@
 'use client';
 
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Phone, AlertTriangle, CreditCard, MessageCircle } from 'lucide-react';
+import { Phone, AlertTriangle, CreditCard, MessageCircle, Pencil } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { formatPKR } from '@/lib/utils/currency';
 import { formatTime, formatPKDate } from '@/lib/utils/dates';
@@ -28,18 +29,23 @@ interface AppointmentDetailProps {
   open: boolean;
   onClose: () => void;
   onUpdated: () => void;
+  onEdit?: (appointment: AppointmentWithDetails) => void;
 }
 
-export function AppointmentDetail({ appointment, open, onClose, onUpdated }: AppointmentDetailProps) {
+export function AppointmentDetail({ appointment, open, onClose, onUpdated, onEdit }: AppointmentDetailProps) {
   const router = useRouter();
   const { open: openWhatsApp } = useWhatsAppCompose();
+  const [updatingStatus, setUpdatingStatus] = useState(false);
   if (!appointment) return null;
 
   const apt = appointment;
   const totalPrice = apt.services?.reduce((sum, s) => sum + s.price, 0) || 0;
   const statusInfo = STATUS_BADGE[apt.status];
+  const canEdit = apt.status !== 'done' && apt.status !== 'cancelled';
 
   async function updateStatus(status: AppointmentStatus) {
+    if (updatingStatus) return;
+    setUpdatingStatus(true);
     try {
       const { error } = await updateAppointmentStatus(apt.id, status);
       if (error) throw new Error(error);
@@ -51,8 +57,11 @@ export function AppointmentDetail({ appointment, open, onClose, onUpdated }: App
         // Redirect to POS for checkout
         router.push(`/dashboard/pos?appointment=${apt.id}`);
       }
-    } catch {
-      toast.error('Failed to update status');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to update status';
+      toast.error(message);
+    } finally {
+      setUpdatingStatus(false);
     }
   }
 
@@ -175,26 +184,26 @@ export function AppointmentDetail({ appointment, open, onClose, onUpdated }: App
           {/* Status action buttons */}
           <div className="space-y-2">
             {apt.status === 'booked' && (
-              <Button onClick={() => updateStatus('confirmed')} className="w-full bg-green-600 hover:bg-green-700 text-white">
+              <Button disabled={updatingStatus} onClick={() => updateStatus('confirmed')} className="w-full bg-green-600 hover:bg-green-700 text-white">
                 Confirm Appointment
               </Button>
             )}
             {(apt.status === 'booked' || apt.status === 'confirmed') && (
-              <Button onClick={() => updateStatus('in_progress')} className="w-full bg-amber-500 hover:bg-amber-600 text-white">
+              <Button disabled={updatingStatus} onClick={() => updateStatus('in_progress')} className="w-full bg-amber-500 hover:bg-amber-600 text-white">
                 Start Service
               </Button>
             )}
             {apt.status === 'in_progress' && (
-              <Button onClick={() => updateStatus('done')} className="w-full bg-gold hover:bg-gold/90 text-black border border-gold">
+              <Button disabled={updatingStatus} onClick={() => updateStatus('done')} className="w-full bg-gold hover:bg-gold/90 text-black border border-gold">
                 Complete → Go to Checkout
               </Button>
             )}
             {apt.status !== 'done' && apt.status !== 'cancelled' && apt.status !== 'no_show' && (
               <>
-                <Button onClick={() => updateStatus('no_show')} variant="outline" className="w-full text-red-600 border-red-500/20 hover:bg-red-500/10">
+                <Button disabled={updatingStatus} onClick={() => updateStatus('no_show')} variant="outline" className="w-full text-red-600 border-red-500/20 hover:bg-red-500/10">
                   No Show
                 </Button>
-                <Button onClick={() => updateStatus('cancelled')} variant="outline" className="w-full text-muted-foreground">
+                <Button disabled={updatingStatus} onClick={() => updateStatus('cancelled')} variant="outline" className="w-full text-muted-foreground">
                   Cancel Appointment
                 </Button>
               </>
@@ -203,6 +212,16 @@ export function AppointmentDetail({ appointment, open, onClose, onUpdated }: App
 
           {/* Other actions */}
           <div className="space-y-2">
+            {canEdit && onEdit && (
+              <Button
+                variant="outline"
+                onClick={() => { onEdit(apt); onClose(); }}
+                className="w-full gap-2"
+                aria-label="Edit appointment"
+              >
+                <Pencil className="w-4 h-4" aria-hidden="true" /> Edit Appointment
+              </Button>
+            )}
             {apt.client?.phone && (
               <Button variant="outline" onClick={sendReminder} className="w-full gap-2">
                 <MessageCircle className="w-4 h-4" /> Send Reminder (WhatsApp)

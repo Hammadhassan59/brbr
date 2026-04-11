@@ -111,6 +111,143 @@ export async function createAppointment(data: {
   return { data: result, error: null };
 }
 
+export async function updateAppointment(id: string, data: {
+  branchId: string;
+  clientId?: string | null;
+  staffId: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  notes?: string | null;
+}) {
+  const session = await verifySession();
+  const supabase = createServerClient();
+
+  // Ownership: the appointment must already belong to this salon
+  const { data: existing } = await supabase
+    .from('appointments')
+    .select('id, status')
+    .eq('id', id)
+    .eq('salon_id', session.salonId)
+    .maybeSingle();
+  if (!existing) return { data: null, error: 'Invalid appointment' };
+
+  // Refuse to edit terminal statuses
+  if (existing.status === 'done' || existing.status === 'cancelled') {
+    return { data: null, error: 'Cannot edit a ' + existing.status + ' appointment' };
+  }
+
+  // Same ownership checks as createAppointment for the new target
+  const { data: branch } = await supabase
+    .from('branches')
+    .select('id')
+    .eq('id', data.branchId)
+    .eq('salon_id', session.salonId)
+    .maybeSingle();
+  if (!branch) return { data: null, error: 'Invalid branch' };
+
+  const { data: staff } = await supabase
+    .from('staff')
+    .select('id')
+    .eq('id', data.staffId)
+    .eq('salon_id', session.salonId)
+    .eq('branch_id', data.branchId)
+    .maybeSingle();
+  if (!staff) return { data: null, error: 'Invalid staff for branch' };
+
+  if (data.clientId) {
+    const { data: client } = await supabase
+      .from('clients')
+      .select('id')
+      .eq('id', data.clientId)
+      .eq('salon_id', session.salonId)
+      .maybeSingle();
+    if (!client) return { data: null, error: 'Invalid client' };
+  }
+
+  // Conflict detection — exclude the appointment being edited so moving it
+  // within its own existing window isn't flagged as conflicting with itself.
+  const { data: sameDay, error: conflictErr } = await supabase
+    .from('appointments')
+    .select('id, start_time, end_time')
+    .eq('salon_id', session.salonId)
+    .eq('staff_id', data.staffId)
+    .eq('appointment_date', data.date)
+    .neq('id', id)
+    .not('status', 'in', '("cancelled","no_show")');
+  if (conflictErr) return { data: null, error: conflictErr.message };
+
+  const newStart = toMinutes(data.startTime);
+  const newEnd = toMinutes(data.endTime);
+  const conflict = (sameDay || []).find((apt: { start_time: string; end_time: string | null }) => {
+    const aStart = toMinutes(apt.start_time);
+    const aEnd = toMinutes(apt.end_time || '23:59');
+    return aStart < newEnd && aEnd > newStart;
+  });
+  if (conflict) return { data: null, error: 'This slot is already booked' };
+
+  const { data: result, error } = await supabase
+    .from('appointments')
+    .update({
+      branch_id: data.branchId,
+      client_id: data.clientId || null,
+      staff_id: data.staffId,
+      appointment_date: data.date,
+      start_time: data.startTime,
+      end_time: data.endTime,
+      notes: data.notes || null,
+    })
+    .eq('id', id)
+    .eq('salon_id', session.salonId)
+    .select()
+    .single();
+
+  if (error) return { data: null, error: error.message };
+  return { data: result, error: null };
+}
+
+export async function replaceAppointmentServices(appointmentId: string, services: Array<{
+  serviceId: string;
+  serviceName: string;
+  price: number;
+  durationMinutes: number;
+}>) {
+  const session = await verifySession();
+  const supabase = createServerClient();
+
+  const { data: apt } = await supabase
+    .from('appointments')
+    .select('id')
+    .eq('id', appointmentId)
+    .eq('salon_id', session.salonId)
+    .maybeSingle();
+  if (!apt) return { error: 'Invalid appointment' };
+
+  // Replace service list atomically: delete existing, then insert new.
+  // A Postgres transaction via RPC would be cleaner; documenting as a TODO
+  // alongside the exclusion-constraint migration.
+  const { error: delErr } = await supabase
+    .from('appointment_services')
+    .delete()
+    .eq('appointment_id', appointmentId);
+  if (delErr) return { error: delErr.message };
+
+  if (services.length === 0) return { error: null };
+
+  const { error } = await supabase
+    .from('appointment_services')
+    .insert(services.map((s) => ({
+      appointment_id: appointmentId,
+      service_id: s.serviceId,
+      service_name: s.serviceName,
+      price: s.price,
+      duration_minutes: s.durationMinutes,
+    })));
+
+  if (error) return { error: error.message };
+  return { error: null };
+}
+
 export async function createAppointmentServices(appointmentId: string, services: Array<{
   serviceId: string;
   serviceName: string;

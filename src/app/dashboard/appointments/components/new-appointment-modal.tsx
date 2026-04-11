@@ -13,9 +13,9 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import toast from 'react-hot-toast';
-import { createAppointment, createAppointmentServices } from '@/app/actions/appointments';
+import { createAppointment, createAppointmentServices, updateAppointment, replaceAppointmentServices } from '@/app/actions/appointments';
 import { createClient } from '@/app/actions/clients';
-import type { Client, Staff, Service, ServiceCategory, WorkingHours } from '@/types/database';
+import type { AppointmentWithDetails, Client, Staff, Service, ServiceCategory, WorkingHours } from '@/types/database';
 
 interface NewAppointmentModalProps {
   open: boolean;
@@ -26,6 +26,7 @@ interface NewAppointmentModalProps {
   prefillDate?: string | null;
   isWalkin?: boolean;
   prefillNotes?: string;
+  editing?: AppointmentWithDetails | null;
 }
 
 const CATEGORIES: { value: ServiceCategory | 'all'; label: string }[] = [
@@ -51,8 +52,10 @@ export function NewAppointmentModal({
   prefillDate,
   isWalkin = false,
   prefillNotes,
+  editing = null,
 }: NewAppointmentModalProps) {
   const { salon, currentBranch } = useAppStore();
+  const isEditing = !!editing;
 
   const [clientSearch, setClientSearch] = useState('');
   const [clientResults, setClientResults] = useState<Client[]>([]);
@@ -104,6 +107,36 @@ export function NewAppointmentModal({
     if (prefillDate) setDate(prefillDate);
     if (prefillNotes) setNotes(prefillNotes);
   }, [prefillStaffId, prefillTime, prefillDate, prefillNotes]);
+
+  // Hydrate form from the appointment being edited
+  useEffect(() => {
+    if (!open || !editing) return;
+    setSelectedStaffId(editing.staff_id || '');
+    setDate(editing.appointment_date);
+    setTime(editing.start_time.slice(0, 5));
+    setNotes(editing.notes || '');
+    if (editing.client) {
+      setSelectedClient(editing.client as Client);
+    }
+    if (editing.services && editing.services.length > 0) {
+      // Rebuild Service[] shape from the stored snapshot. Duration fields in
+      // appointment_services are the per-booking snapshot, not the current
+      // catalog price/duration.
+      setSelectedServices(
+        editing.services.map((s) => ({
+          id: s.service_id,
+          salon_id: salon?.id || '',
+          name: s.service_name,
+          category: 'other' as ServiceCategory,
+          base_price: s.price,
+          duration_minutes: s.duration_minutes,
+          is_active: true,
+          sort_order: 0,
+          created_at: '',
+        } as Service))
+      );
+    }
+  }, [open, editing, salon?.id]);
 
   const searchClients = useCallback(async (query: string) => {
     if (!salon || query.length < 2) { setClientResults([]); return; }
@@ -187,19 +220,35 @@ export function NewAppointmentModal({
         }
       }
 
-      const { data: apt, error: aptErr } = await createAppointment({
-        branchId: currentBranch.id, clientId, staffId: selectedStaffId,
-        date, startTime: time, endTime, isWalkin, notes: notes || null,
-      });
-      if (aptErr) throw new Error(aptErr);
+      if (isEditing && editing) {
+        const { error: aptErr } = await updateAppointment(editing.id, {
+          branchId: currentBranch.id, clientId, staffId: selectedStaffId,
+          date, startTime: time, endTime, notes: notes || null,
+        });
+        if (aptErr) throw new Error(aptErr);
 
-      const { error: svcErr } = await createAppointmentServices(apt!.id, selectedServices.map((s) => ({
-        serviceId: s.id, serviceName: s.name,
-        price: s.base_price, durationMinutes: s.duration_minutes,
-      })));
-      if (svcErr) throw new Error(svcErr);
+        const { error: svcErr } = await replaceAppointmentServices(editing.id, selectedServices.map((s) => ({
+          serviceId: s.id, serviceName: s.name,
+          price: s.base_price, durationMinutes: s.duration_minutes,
+        })));
+        if (svcErr) throw new Error(svcErr);
 
-      toast.success('Appointment booked!');
+        toast.success('Appointment updated');
+      } else {
+        const { data: apt, error: aptErr } = await createAppointment({
+          branchId: currentBranch.id, clientId, staffId: selectedStaffId,
+          date, startTime: time, endTime, isWalkin, notes: notes || null,
+        });
+        if (aptErr) throw new Error(aptErr);
+
+        const { error: svcErr } = await createAppointmentServices(apt!.id, selectedServices.map((s) => ({
+          serviceId: s.id, serviceName: s.name,
+          price: s.base_price, durationMinutes: s.duration_minutes,
+        })));
+        if (svcErr) throw new Error(svcErr);
+
+        toast.success('Appointment booked!');
+      }
       reset(); onCreated(); onClose();
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Failed to create appointment');
@@ -217,7 +266,7 @@ export function NewAppointmentModal({
         {/* Header */}
         <div className="px-6 pt-6 pb-4 border-b border-border shrink-0 bg-white">
           <DialogTitle className="font-heading text-lg font-bold text-foreground">
-            {isWalkin ? 'Add Walk-in' : 'New Appointment'}
+            {isEditing ? 'Edit Appointment' : isWalkin ? 'Add Walk-in' : 'New Appointment'}
           </DialogTitle>
           <p className="text-xs text-muted-foreground mt-1">{new Date(date + 'T00:00:00').toLocaleDateString('en-PK', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}{time ? ` at ${formatTime(time)}` : ''}</p>
         </div>
@@ -423,7 +472,7 @@ export function NewAppointmentModal({
           <Button variant="ghost" onClick={() => { reset(); onClose(); }} className="text-muted-foreground hover:text-foreground shrink-0">Cancel</Button>
           <Button onClick={handleSave} disabled={saving || !isReady}
             className="bg-gold hover:bg-gold/90 text-black font-bold h-11 px-8 shrink-0 disabled:opacity-30 rounded-lg">
-            {saving ? 'Booking...' : 'Book'}
+            {saving ? (isEditing ? 'Saving...' : 'Booking...') : isEditing ? 'Save Changes' : 'Book'}
           </Button>
         </div>
       </DialogContent>

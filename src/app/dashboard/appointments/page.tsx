@@ -55,6 +55,7 @@ function AppointmentsContent() {
   }>({});
   const [selectedAppointment, setSelectedAppointment] = useState<AppointmentWithDetails | null>(null);
   const [showDetail, setShowDetail] = useState(false);
+  const [editingAppointment, setEditingAppointment] = useState<AppointmentWithDetails | null>(null);
 
   // Walk-in queue
   const [walkInQueue, setWalkInQueue] = useState<WalkInEntry[]>(() => {
@@ -372,13 +373,14 @@ function AppointmentsContent() {
 
       <NewAppointmentModal
         open={showNewModal}
-        onClose={() => { setShowNewModal(false); setNewModalPrefill({}); }}
+        onClose={() => { setShowNewModal(false); setNewModalPrefill({}); setEditingAppointment(null); }}
         onCreated={fetchData}
         prefillStaffId={newModalPrefill.staffId}
         prefillTime={newModalPrefill.time}
         prefillDate={newModalPrefill.date}
         isWalkin={newModalPrefill.isWalkin}
         prefillNotes={newModalPrefill.notes}
+        editing={editingAppointment}
       />
 
       <AppointmentDetail
@@ -386,6 +388,7 @@ function AppointmentsContent() {
         open={showDetail}
         onClose={() => { setShowDetail(false); setSelectedAppointment(null); }}
         onUpdated={fetchData}
+        onEdit={(apt) => { setEditingAppointment(apt); setShowNewModal(true); }}
       />
     </div>
   );
