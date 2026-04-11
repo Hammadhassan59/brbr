@@ -94,7 +94,8 @@ export function CalendarGrid({
   onAppointmentClick,
   filterStaffId,
 }: CalendarGridProps) {
-  const dayOfWeek = new Date(date).getDay();
+  // Parse as local midnight so getDay() returns the intended day regardless of browser TZ
+  const dayOfWeek = new Date(date + 'T00:00:00').getDay();
   const dayKey = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'][dayOfWeek] as keyof WorkingHours;
   const dayHours = workingHours?.[dayKey];
   const openTime = dayHours?.open || '09:00';
@@ -197,30 +198,14 @@ export function CalendarGrid({
                   const apts = appointmentMap[key];
                   const isOccupied = occupiedSlots.has(key) && !apts;
 
-                  if (isBlocked) {
-                    return (
-                      <div
-                        key={key}
-                        className="flex-1 min-w-[160px] border-r border-border last:border-r-0 bg-[repeating-linear-gradient(45deg,transparent,transparent_6px,var(--muted)_6px,var(--muted)_7px)] flex items-center justify-center opacity-40"
-                      >
-                        <span className="text-xs text-muted-foreground font-medium px-2 py-0.5 bg-card/60">
-                          {prayerName || 'Jummah'}
-                        </span>
-                      </div>
-                    );
-                  }
-
-                  if (isOccupied) {
-                    return (
-                      <div key={key} className="flex-1 min-w-[160px] border-r border-border last:border-r-0" />
-                    );
-                  }
-
+                  // Existing appointments always render, even during prayer/Jummah blocks.
+                  // Hiding them behind the block overlay caused them to silently disappear (ISSUE-014).
                   if (apts && apts.length > 0) {
                     const apt = apts[0];
                     const span = getAppointmentSpan(apt);
                     const totalPrice = apt.services?.reduce((sum, s) => sum + s.price, 0) || 0;
                     const isCancelled = apt.status === 'cancelled';
+                    const blockLabel = prayerName || (jummah ? 'Jummah' : null);
 
                     return (
                       <div
@@ -245,8 +230,32 @@ export function CalendarGrid({
                           {totalPrice > 0 && (
                             <p className="text-xs font-medium text-foreground/70 mt-1">{formatPKR(totalPrice)}</p>
                           )}
+                          {blockLabel && (
+                            <p className="text-[10px] font-semibold text-red-600 mt-1 uppercase tracking-wide">
+                              Conflict: {blockLabel}
+                            </p>
+                          )}
                         </button>
                       </div>
+                    );
+                  }
+
+                  if (isBlocked) {
+                    return (
+                      <div
+                        key={key}
+                        className="flex-1 min-w-[160px] border-r border-border last:border-r-0 bg-[repeating-linear-gradient(45deg,transparent,transparent_6px,var(--muted)_6px,var(--muted)_7px)] flex items-center justify-center opacity-40"
+                      >
+                        <span className="text-xs text-muted-foreground font-medium px-2 py-0.5 bg-card/60">
+                          {prayerName || 'Jummah'}
+                        </span>
+                      </div>
+                    );
+                  }
+
+                  if (isOccupied) {
+                    return (
+                      <div key={key} className="flex-1 min-w-[160px] border-r border-border last:border-r-0" />
                     );
                   }
 
