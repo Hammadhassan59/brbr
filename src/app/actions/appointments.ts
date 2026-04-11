@@ -17,6 +17,11 @@ function isValidStatus(v: string): v is AppointmentStatus {
   return (VALID_STATUSES as readonly string[]).includes(v);
 }
 
+function toMinutes(time: string): number {
+  const [h, m] = time.split(':').map(Number);
+  return h * 60 + m;
+}
+
 export async function createAppointment(data: {
   branchId: string;
   clientId?: string | null;
@@ -58,6 +63,31 @@ export async function createAppointment(data: {
       .eq('salon_id', session.salonId)
       .maybeSingle();
     if (!client) return { data: null, error: 'Invalid client' };
+  }
+
+  // Conflict detection. Running server-side closes the client-side round-trip
+  // gap (ISSUE-018) but two concurrent server-action invocations can still
+  // race — the only true fix is a Postgres exclusion constraint on
+  // (staff_id, tsrange(start_time, end_time)) which requires a migration.
+  // TODO: add that migration and drop this JS check.
+  const { data: sameDay, error: conflictErr } = await supabase
+    .from('appointments')
+    .select('id, start_time, end_time, status')
+    .eq('salon_id', session.salonId)
+    .eq('staff_id', data.staffId)
+    .eq('appointment_date', data.date)
+    .not('status', 'in', '("cancelled","no_show")');
+  if (conflictErr) return { data: null, error: conflictErr.message };
+
+  const newStart = toMinutes(data.startTime);
+  const newEnd = toMinutes(data.endTime);
+  const conflict = (sameDay || []).find((apt: { start_time: string; end_time: string | null }) => {
+    const aStart = toMinutes(apt.start_time);
+    const aEnd = toMinutes(apt.end_time || '23:59');
+    return aStart < newEnd && aEnd > newStart;
+  });
+  if (conflict) {
+    return { data: null, error: 'This slot is already booked' };
   }
 
   const { data: result, error } = await supabase

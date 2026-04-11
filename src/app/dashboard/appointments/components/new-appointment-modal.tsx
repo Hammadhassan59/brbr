@@ -173,26 +173,8 @@ export function NewAppointmentModal({
       const endM = endMinutes % 60;
       const endTime = `${String(endH).padStart(2, '0')}:${String(endM).padStart(2, '0')}`;
 
-      const { data: existingApts } = await supabase
-        .from('appointments')
-        .select('*, client:clients(name)')
-        .eq('staff_id', selectedStaffId)
-        .eq('appointment_date', date)
-        .not('status', 'in', '("cancelled","no_show")');
-
-      if (existingApts && existingApts.length > 0) {
-        const toMin = (t: string) => { const [h, m] = t.split(':').map(Number); return h * 60 + m; };
-        const conflict = existingApts.find((c: { start_time: string; end_time: string | null }) => {
-          return toMin(c.start_time) < toMin(endTime) && toMin(c.end_time || '23:59') > toMin(time);
-        });
-        if (conflict) {
-          const stylistName = stylists.find((s) => s.id === selectedStaffId)?.name || 'This stylist';
-          const conflictClient = (conflict as { client?: { name?: string } }).client?.name || 'Walk-in';
-          toast.error(`${stylistName} is booked at ${formatTime(conflict.start_time)} — ${conflictClient}`);
-          setSaving(false);
-          return;
-        }
-      }
+      // Conflict detection now runs inside createAppointment (ISSUE-018),
+      // eliminating the client-side round-trip race window.
 
       if (currentBranch?.working_hours) {
         const dayNames: (keyof WorkingHours)[] = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
