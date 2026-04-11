@@ -275,19 +275,39 @@ export async function getClients(salonId: string) {
 }
 
 export async function searchClients(salonId: string, query: string) {
-  // Sanitize: strip filter metacharacters, limit length
-  const sanitized = query.replace(/[%_.,()]/g, '').trim().slice(0, 100);
-  if (!sanitized) return [] as Client[];
+  const trimmed = query.trim().slice(0, 100);
+  if (!trimmed) return [] as Client[];
 
-  const { data, error } = await supabase
-    .from('clients')
-    .select('*')
-    .eq('salon_id', salonId)
-    .or(`name.ilike.%${sanitized}%,phone.ilike.%${sanitized}%`)
-    .order('name')
-    .limit(20);
-  if (error) throw error;
-  return data as Client[];
+  // Two typed queries + merge. Using .ilike() with a pattern string keeps the
+  // user input as a parameter instead of templating it into PostgREST's .or()
+  // filter expression, which would interpret commas and parentheses as
+  // operators (ISSUE-008).
+  const pattern = `%${trimmed}%`;
+  const [nameRes, phoneRes] = await Promise.all([
+    supabase
+      .from('clients')
+      .select('*')
+      .eq('salon_id', salonId)
+      .ilike('name', pattern)
+      .order('name')
+      .limit(20),
+    supabase
+      .from('clients')
+      .select('*')
+      .eq('salon_id', salonId)
+      .ilike('phone', pattern)
+      .order('name')
+      .limit(20),
+  ]);
+  if (nameRes.error) throw nameRes.error;
+  if (phoneRes.error) throw phoneRes.error;
+
+  const merged = new Map<string, Client>();
+  for (const row of (nameRes.data || []) as Client[]) merged.set(row.id, row);
+  for (const row of (phoneRes.data || []) as Client[]) merged.set(row.id, row);
+  return Array.from(merged.values())
+    .sort((a, b) => a.name.localeCompare(b.name))
+    .slice(0, 20);
 }
 
 export async function getClient(id: string) {

@@ -18,19 +18,24 @@ vi.mock('@/store/app-store', () => ({
     selector({ salon: MOCK_SALON }),
 }))
 
+// The sheet now fires two .ilike() queries (name + phone) in parallel instead
+// of one string-templated .or() call (ISSUE-008). Both chains terminate in
+// .limit() and must be thenable so Promise.all resolves.
+const MOCK_CLIENTS = [
+  { id: 'c1', name: 'Ayesha Khan', phone: '0321-1234567', whatsapp: null },
+  { id: 'c2', name: 'Ali Raza', phone: '0300-9876543', whatsapp: '0333-9876543' },
+]
+
 vi.mock('@/lib/supabase', () => ({
   supabase: {
     from: () => ({
       select: () => ({
         eq: () => ({
+          ilike: () => ({
+            limit: () => Promise.resolve({ data: MOCK_CLIENTS }),
+          }),
           or: () => ({
-            limit: () =>
-              Promise.resolve({
-                data: [
-                  { id: 'c1', name: 'Ayesha Khan', phone: '0321-1234567', whatsapp: null },
-                  { id: 'c2', name: 'Ali Raza', phone: '0300-9876543', whatsapp: '0333-9876543' },
-                ],
-              }),
+            limit: () => Promise.resolve({ data: MOCK_CLIENTS }),
           }),
         }),
       }),

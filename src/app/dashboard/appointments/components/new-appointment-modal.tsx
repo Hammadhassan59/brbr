@@ -13,7 +13,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import toast from 'react-hot-toast';
-import { createAppointment, createAppointmentServices, updateAppointment, replaceAppointmentServices } from '@/app/actions/appointments';
+import { createAppointmentWithServices, updateAppointment, replaceAppointmentServices } from '@/app/actions/appointments';
 import { createClient } from '@/app/actions/clients';
 import type { AppointmentWithDetails, Client, Staff, Service, ServiceCategory, WorkingHours } from '@/types/database';
 
@@ -140,15 +140,21 @@ export function NewAppointmentModal({
 
   const searchClients = useCallback(async (query: string) => {
     if (!salon || query.length < 2) { setClientResults([]); return; }
-    const safe = query.replace(/[%_.,()]/g, '');
-    if (!safe) { setClientResults([]); return; }
-    const { data } = await supabase
-      .from('clients')
-      .select('*')
-      .eq('salon_id', salon.id)
-      .or(`name.ilike.%${safe}%,phone.ilike.%${safe}%`)
-      .limit(10);
-    if (data) setClientResults(data as Client[]);
+    const trimmed = query.trim().slice(0, 100);
+    if (!trimmed) { setClientResults([]); return; }
+
+    // Two typed queries rather than string-templated .or() — keeps user input
+    // as a parameter so commas/parens don't get interpreted as filter
+    // operators (ISSUE-008).
+    const pattern = `%${trimmed}%`;
+    const [nameRes, phoneRes] = await Promise.all([
+      supabase.from('clients').select('*').eq('salon_id', salon.id).ilike('name', pattern).limit(10),
+      supabase.from('clients').select('*').eq('salon_id', salon.id).ilike('phone', pattern).limit(10),
+    ]);
+    const merged = new Map<string, Client>();
+    for (const row of (nameRes.data || []) as Client[]) merged.set(row.id, row);
+    for (const row of (phoneRes.data || []) as Client[]) merged.set(row.id, row);
+    setClientResults(Array.from(merged.values()).slice(0, 10));
   }, [salon]);
 
   useEffect(() => {
@@ -235,17 +241,19 @@ export function NewAppointmentModal({
 
         toast.success('Appointment updated');
       } else {
-        const { data: apt, error: aptErr } = await createAppointment({
-          branchId: currentBranch.id, clientId, staffId: selectedStaffId,
-          date, startTime: time, endTime, isWalkin, notes: notes || null,
-        });
+        // Atomic create: rolls back the appointment if service insert fails
+        // so we don't leave orphans (ISSUE-019).
+        const { error: aptErr } = await createAppointmentWithServices(
+          {
+            branchId: currentBranch.id, clientId, staffId: selectedStaffId,
+            date, startTime: time, endTime, isWalkin, notes: notes || null,
+          },
+          selectedServices.map((s) => ({
+            serviceId: s.id, serviceName: s.name,
+            price: s.base_price, durationMinutes: s.duration_minutes,
+          }))
+        );
         if (aptErr) throw new Error(aptErr);
-
-        const { error: svcErr } = await createAppointmentServices(apt!.id, selectedServices.map((s) => ({
-          serviceId: s.id, serviceName: s.name,
-          price: s.base_price, durationMinutes: s.duration_minutes,
-        })));
-        if (svcErr) throw new Error(svcErr);
 
         toast.success('Appointment booked!');
       }

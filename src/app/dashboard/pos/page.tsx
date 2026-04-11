@@ -151,16 +151,20 @@ function POSContent() {
     loadAppointment();
   }, [searchParams]);
 
-  // Client search
+  // Client search (ISSUE-008: typed .ilike() calls, no .or() string templating)
   const searchClients = useCallback(async (query: string) => {
     if (!salon || query.length < 2) { setClientResults([]); return; }
-    const { data } = await supabase
-      .from('clients')
-      .select('*')
-      .eq('salon_id', salon.id)
-      .or(`name.ilike.%${query.replace(/[%_.,()]/g, '').trim().slice(0, 100)}%,phone.ilike.%${query.replace(/[%_.,()]/g, '').trim().slice(0, 100)}%`)
-      .limit(10);
-    if (data) setClientResults(data as Client[]);
+    const trimmed = query.trim().slice(0, 100);
+    if (!trimmed) { setClientResults([]); return; }
+    const pattern = `%${trimmed}%`;
+    const [nameRes, phoneRes] = await Promise.all([
+      supabase.from('clients').select('*').eq('salon_id', salon.id).ilike('name', pattern).limit(10),
+      supabase.from('clients').select('*').eq('salon_id', salon.id).ilike('phone', pattern).limit(10),
+    ]);
+    const merged = new Map<string, Client>();
+    for (const row of (nameRes.data || []) as Client[]) merged.set(row.id, row);
+    for (const row of (phoneRes.data || []) as Client[]) merged.set(row.id, row);
+    setClientResults(Array.from(merged.values()).slice(0, 10));
   }, [salon]);
 
   async function createNewClient() {

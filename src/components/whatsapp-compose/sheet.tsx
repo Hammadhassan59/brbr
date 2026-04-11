@@ -64,16 +64,19 @@ export function WhatsAppComposeSheet() {
     }
 
     const timer = setTimeout(async () => {
-      const { data } = await supabase
-        .from('clients')
-        .select('id, name, phone, whatsapp')
-        .eq('salon_id', salon.id)
-        .or(`name.ilike.%${searchQuery}%,phone.ilike.%${searchQuery}%`)
-        .limit(5);
-
-      const results: ClientResult[] = (data ?? []).filter(
-        (c: ClientResult) => c.phone || c.whatsapp
-      );
+      // ISSUE-008: typed .ilike() calls, no .or() string templating
+      const trimmed = searchQuery.trim().slice(0, 100);
+      const pattern = `%${trimmed}%`;
+      const [nameRes, phoneRes] = await Promise.all([
+        supabase.from('clients').select('id, name, phone, whatsapp').eq('salon_id', salon.id).ilike('name', pattern).limit(5),
+        supabase.from('clients').select('id, name, phone, whatsapp').eq('salon_id', salon.id).ilike('phone', pattern).limit(5),
+      ]);
+      const merged = new Map<string, ClientResult>();
+      for (const row of (nameRes.data || []) as ClientResult[]) merged.set(row.id, row);
+      for (const row of (phoneRes.data || []) as ClientResult[]) merged.set(row.id, row);
+      const results = Array.from(merged.values())
+        .filter((c) => c.phone || c.whatsapp)
+        .slice(0, 5);
       setSearchResults(results);
       setShowResults(true);
     }, 300);
