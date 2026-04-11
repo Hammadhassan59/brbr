@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { rateLimit, resetRateLimit, getClientIp } from '../src/lib/rate-limit';
+import { rateLimit, resetRateLimit, getClientIp, isBodyTooLarge } from '../src/lib/rate-limit';
 
 describe('rateLimit', () => {
   beforeEach(() => {
@@ -50,6 +50,44 @@ describe('rateLimit', () => {
     expect(rateLimit('test-key', 5, 60_000).allowed).toBe(false);
     resetRateLimit('test-key');
     expect(rateLimit('test-key', 5, 60_000).allowed).toBe(true);
+  });
+});
+
+// Content-Length is a forbidden header name — the Request constructor
+// silently ignores it. Build a minimal fake with a headers.get() shim so the
+// tests can exercise isBodyTooLarge directly.
+function fakeReq(contentLength: string | null): Request {
+  return {
+    headers: {
+      get: (name: string) =>
+        name.toLowerCase() === 'content-length' ? contentLength : null,
+    },
+  } as unknown as Request;
+}
+
+describe('isBodyTooLarge', () => {
+  it('returns false when body is within limit', () => {
+    expect(isBodyTooLarge(fakeReq('500'), 1024)).toBe(false);
+  });
+
+  it('returns true when body exceeds limit', () => {
+    expect(isBodyTooLarge(fakeReq('2048'), 1024)).toBe(true);
+  });
+
+  it('returns false when header is missing (callers must check after read)', () => {
+    expect(isBodyTooLarge(fakeReq(null), 1024)).toBe(false);
+  });
+
+  it('returns true for an unparseable header', () => {
+    expect(isBodyTooLarge(fakeReq('not-a-number'), 1024)).toBe(true);
+  });
+
+  it('returns true for a negative content-length', () => {
+    expect(isBodyTooLarge(fakeReq('-1'), 1024)).toBe(true);
+  });
+
+  it('handles exact-limit body as within limit', () => {
+    expect(isBodyTooLarge(fakeReq('1024'), 1024)).toBe(false);
   });
 });
 

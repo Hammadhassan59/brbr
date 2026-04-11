@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
-import { rateLimit, getClientIp } from '@/lib/rate-limit';
+import { rateLimit, getClientIp, isBodyTooLarge } from '@/lib/rate-limit';
 import { hashPin, isHashedPin, verifyPin } from '@/lib/pin-hash';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -8,6 +8,7 @@ const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
 const PHONE_MAX_LEN = 20;
 const PIN_LEN = 4;
+const MAX_BODY_BYTES = 1024;
 
 function isValidPhone(v: unknown): v is string {
   return typeof v === 'string' && v.length > 0 && v.length <= PHONE_MAX_LEN;
@@ -54,6 +55,10 @@ function stripPartner(row: Record<string, unknown>): SafePartner {
 }
 
 export async function POST(req: NextRequest) {
+  if (isBodyTooLarge(req, MAX_BODY_BYTES)) {
+    return NextResponse.json({ error: 'Payload too large' }, { status: 413 });
+  }
+
   const ip = getClientIp(req);
 
   let body: unknown;

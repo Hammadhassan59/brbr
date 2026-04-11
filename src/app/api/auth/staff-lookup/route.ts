@@ -1,17 +1,22 @@
 import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
-import { rateLimit, getClientIp } from '@/lib/rate-limit';
+import { rateLimit, getClientIp, isBodyTooLarge } from '@/lib/rate-limit';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
 const PHONE_MAX_LEN = 20;
+const MAX_BODY_BYTES = 1024; // auth lookup payloads are tiny by design
 
 function isValidPhone(v: unknown): v is string {
   return typeof v === 'string' && v.length > 0 && v.length <= PHONE_MAX_LEN;
 }
 
 export async function POST(req: NextRequest) {
+  if (isBodyTooLarge(req, MAX_BODY_BYTES)) {
+    return NextResponse.json({ error: 'Payload too large' }, { status: 413 });
+  }
+
   const ip = getClientIp(req);
   const rl = rateLimit(`lookup:${ip}`, 30, 60_000);
   if (!rl.allowed) {

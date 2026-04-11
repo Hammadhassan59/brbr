@@ -73,3 +73,17 @@ export function getClientIp(req: Request): string {
   if (xri) return xri.trim();
   return 'unknown';
 }
+
+/**
+ * Returns true if the request's Content-Length header indicates a body
+ * larger than `maxBytes`, or if the header is present but unparseable.
+ * Missing header returns false — callers that require a limit should combine
+ * this with their own body-length check after reading.
+ */
+export function isBodyTooLarge(req: Request, maxBytes: number): boolean {
+  const header = req.headers.get('content-length');
+  if (header === null) return false;
+  const parsed = Number(header);
+  if (!Number.isFinite(parsed) || parsed < 0) return true;
+  return parsed > maxBytes;
+}
