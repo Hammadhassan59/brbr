@@ -3,6 +3,20 @@
 import { verifySession } from './auth';
 import { createServerClient } from '@/lib/supabase';
 
+const VALID_STATUSES = [
+  'booked',
+  'confirmed',
+  'in_progress',
+  'done',
+  'no_show',
+  'cancelled',
+] as const;
+type AppointmentStatus = (typeof VALID_STATUSES)[number];
+
+function isValidStatus(v: string): v is AppointmentStatus {
+  return (VALID_STATUSES as readonly string[]).includes(v);
+}
+
 export async function createAppointment(data: {
   branchId: string;
   clientId?: string | null;
@@ -15,6 +29,36 @@ export async function createAppointment(data: {
 }) {
   const session = await verifySession();
   const supabase = createServerClient();
+
+  // Verify the branch belongs to this salon
+  const { data: branch } = await supabase
+    .from('branches')
+    .select('id')
+    .eq('id', data.branchId)
+    .eq('salon_id', session.salonId)
+    .maybeSingle();
+  if (!branch) return { data: null, error: 'Invalid branch' };
+
+  // Verify the staff belongs to this salon AND this branch
+  const { data: staff } = await supabase
+    .from('staff')
+    .select('id')
+    .eq('id', data.staffId)
+    .eq('salon_id', session.salonId)
+    .eq('branch_id', data.branchId)
+    .maybeSingle();
+  if (!staff) return { data: null, error: 'Invalid staff for branch' };
+
+  // If a client was provided, verify it belongs to this salon
+  if (data.clientId) {
+    const { data: client } = await supabase
+      .from('clients')
+      .select('id')
+      .eq('id', data.clientId)
+      .eq('salon_id', session.salonId)
+      .maybeSingle();
+    if (!client) return { data: null, error: 'Invalid client' };
+  }
 
   const { data: result, error } = await supabase
     .from('appointments')
@@ -43,8 +87,17 @@ export async function createAppointmentServices(appointmentId: string, services:
   price: number;
   durationMinutes: number;
 }>) {
-  await verifySession();
+  const session = await verifySession();
   const supabase = createServerClient();
+
+  // Verify the appointment belongs to this salon before attaching services
+  const { data: apt } = await supabase
+    .from('appointments')
+    .select('id')
+    .eq('id', appointmentId)
+    .eq('salon_id', session.salonId)
+    .maybeSingle();
+  if (!apt) return { error: 'Invalid appointment' };
 
   const { error } = await supabase
     .from('appointment_services')
@@ -62,6 +115,11 @@ export async function createAppointmentServices(appointmentId: string, services:
 
 export async function updateAppointmentStatus(id: string, status: string) {
   const session = await verifySession();
+
+  if (!isValidStatus(status)) {
+    return { error: 'Invalid status' };
+  }
+
   const supabase = createServerClient();
 
   const { error } = await supabase
