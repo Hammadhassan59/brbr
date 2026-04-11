@@ -258,10 +258,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
           {/* Search bar */}
           <div className="hidden sm:flex items-center gap-2 bg-muted rounded-lg px-3 h-10 w-72 focus-within:w-80 border border-border transition-all duration-300">
-            <Search className="w-4 h-4 text-muted-foreground shrink-0" />
+            <Search className="w-4 h-4 text-muted-foreground shrink-0" aria-hidden="true" />
             <input
               type="text"
               placeholder="Search..."
+              aria-label="Search"
               className="bg-transparent text-sm text-foreground placeholder:text-muted-foreground outline-none w-full"
             />
           </div>

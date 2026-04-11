@@ -40,7 +40,7 @@ const CATEGORIES: { value: ServiceCategory | 'all'; label: string }[] = [
   { value: 'other', label: 'Other' },
 ];
 
-const TIME_SLOTS = ['09:00','10:00','11:00','12:00','14:00','15:00','16:00','17:00','18:00','19:00','20:00','21:00'];
+const TIME_SLOTS = ['09:00','10:00','11:00','12:00','13:00','14:00','15:00','16:00','17:00','18:00','19:00','20:00','21:00'];
 
 export function NewAppointmentModal({
   open,
@@ -196,7 +196,7 @@ export function NewAppointmentModal({
 
       if (currentBranch?.working_hours) {
         const dayNames: (keyof WorkingHours)[] = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
-        const selectedDay = dayNames[new Date(date).getDay()];
+        const selectedDay = dayNames[new Date(date + 'T00:00:00').getDay()];
         const daySchedule = currentBranch.working_hours[selectedDay];
         if (daySchedule && !daySchedule.off && endTime > daySchedule.close) {
           toast(`This appointment would end at ${formatTime(endTime)}, after closing time (${formatTime(daySchedule.close)})`, {
@@ -237,7 +237,7 @@ export function NewAppointmentModal({
           <DialogTitle className="font-heading text-lg font-bold text-foreground">
             {isWalkin ? 'Add Walk-in' : 'New Appointment'}
           </DialogTitle>
-          <p className="text-xs text-muted-foreground mt-1">{new Date(date).toLocaleDateString('en-PK', { weekday: 'long', day: 'numeric', month: 'long' })}{time ? ` at ${formatTime(time)}` : ''}</p>
+          <p className="text-xs text-muted-foreground mt-1">{new Date(date + 'T00:00:00').toLocaleDateString('en-PK', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}{time ? ` at ${formatTime(time)}` : ''}</p>
         </div>
 
         {/* Scrollable form */}
@@ -305,7 +305,8 @@ export function NewAppointmentModal({
               {stylists.length > 0 ? (
                 <div className="space-y-1.5">
                   {stylists.map((s) => (
-                    <button key={s.id} onClick={() => setSelectedStaffId(s.id)}
+                    <button key={s.id} type="button" onClick={() => setSelectedStaffId(s.id)}
+                      aria-pressed={selectedStaffId === s.id}
                       className={`w-full flex items-center gap-2.5 p-2.5 rounded-lg border text-left transition-all ${
                         selectedStaffId === s.id ? 'border-gold bg-gold/5' : 'border-border hover:border-gold/40'
                       }`}>
@@ -339,10 +340,16 @@ export function NewAppointmentModal({
                   const h = parseInt(slot.split(':')[0]);
                   const label = h === 0 ? '12a' : h < 12 ? `${h}a` : h === 12 ? '12p' : `${h - 12}p`;
                   return (
-                    <button key={slot} onClick={() => setTime(slot)}
-                      className={`py-2.5 text-xs font-medium text-center transition-all rounded-lg ${
+                    <button
+                      key={slot}
+                      type="button"
+                      onClick={() => setTime(slot)}
+                      aria-pressed={time === slot}
+                      aria-label={`Select ${label}`}
+                      className={`min-h-[44px] py-2.5 text-xs font-medium text-center transition-all rounded-lg ${
                         time === slot ? 'bg-gold text-black font-bold' : 'bg-background border border-border text-muted-foreground hover:border-gold/40 hover:text-foreground'
-                      }`}>
+                      }`}
+                    >
                       {label}
                     </button>
                   );
@@ -359,10 +366,16 @@ export function NewAppointmentModal({
 
             <div className="flex gap-1.5 mb-2 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>
               {CATEGORIES.map((cat) => (
-                <button key={cat.value} onClick={() => setServiceCategory(cat.value)}
+                <button
+                  key={cat.value}
+                  type="button"
+                  onClick={() => setServiceCategory(cat.value)}
                   className={`px-3 py-1.5 text-xs font-medium shrink-0 transition-all rounded-full ${
                     serviceCategory === cat.value ? 'bg-foreground text-white' : 'bg-background text-muted-foreground hover:text-foreground'
-                  }`}>{cat.label}</button>
+                  }`}
+                >
+                  {cat.label}
+                </button>
               ))}
             </div>
 
@@ -376,7 +389,8 @@ export function NewAppointmentModal({
                 {filteredServices.map((svc) => {
                   const isSelected = selectedServices.some((s) => s.id === svc.id);
                   return (
-                    <button key={svc.id} onClick={() => toggleService(svc)}
+                    <button key={svc.id} type="button" onClick={() => toggleService(svc)}
+                      aria-pressed={isSelected}
                       className={`flex items-center justify-between p-2.5 rounded-lg border text-left text-sm transition-all ${
                         isSelected ? 'border-gold bg-gold/5' : 'border-border hover:border-gold/30'
                       }`}>

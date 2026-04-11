@@ -163,14 +163,15 @@ export function CalendarGrid({
           {filteredStylists.map((stylist) => (
             <div
               key={stylist.id}
+              role="columnheader"
               className="flex-1 min-w-[160px] border-r border-border last:border-r-0"
             >
               <div className="bg-secondary m-1.5 p-3 border border-border flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-gold/15 text-gold text-sm font-bold flex items-center justify-center shrink-0 ring-2 ring-gold/20">
+                <div aria-hidden="true" className="w-10 h-10 rounded-full bg-gold/15 text-gold text-sm font-bold flex items-center justify-center shrink-0 ring-2 ring-gold/20">
                   {stylist.name.charAt(0)}
                 </div>
                 <div className="min-w-0">
-                  <p className="text-sm font-semibold truncate text-foreground">{stylist.name}</p>
+                  <h3 className="text-sm font-semibold truncate text-foreground m-0">{stylist.name}</h3>
                   <p className="text-xs text-muted-foreground capitalize">{stylist.role.replace('_', ' ')}</p>
                 </div>
               </div>

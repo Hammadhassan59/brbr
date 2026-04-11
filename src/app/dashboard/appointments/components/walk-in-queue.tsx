@@ -52,8 +52,14 @@ export function WalkInQueue({ queue, onAddWalkIn, onAssign, onRemove }: WalkInQu
 
   return (
     <>
-      <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setSheetOpen(true)}>
-        <UserPlus className="w-4 h-4" />
+      <Button
+        variant="outline"
+        size="sm"
+        className="gap-1.5 h-11 px-4 touch-target"
+        onClick={() => setSheetOpen(true)}
+        aria-label={`Walk-in queue, ${queue.length} waiting`}
+      >
+        <UserPlus className="w-4 h-4" aria-hidden="true" />
         Walk-ins ({queue.length})
       </Button>
       <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>

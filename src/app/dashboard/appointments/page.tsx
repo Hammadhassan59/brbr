@@ -246,6 +246,7 @@ function AppointmentsContent() {
 
   return (
     <div className="space-y-4">
+      <h1 className="sr-only">Appointments — {formattedDate}</h1>
       <div className="bg-card text-foreground border border-border p-3">
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-2">
@@ -253,6 +254,7 @@ function AppointmentsContent() {
               variant="ghost"
               size="icon"
               onClick={() => navigateDate(-1)}
+              aria-label="Previous day"
               className="h-11 w-11 touch-target transition-all duration-150 hover:bg-muted"
             >
               <ChevronLeft className="w-5 h-5" />
@@ -261,7 +263,8 @@ function AppointmentsContent() {
               variant={isToday ? 'default' : 'outline'}
               size="sm"
               onClick={() => setDate(getTodayPKT())}
-              className={`h-9 px-4 font-semibold transition-all duration-150 ${isToday ? 'bg-[#1A1A1A] text-white border border-[#1A1A1A]' : 'border border-border hover:bg-muted'}`}
+              aria-label="Jump to today"
+              className={`h-11 px-4 font-semibold transition-all duration-150 ${isToday ? 'bg-[#1A1A1A] text-white border border-[#1A1A1A]' : 'border border-border hover:bg-muted'}`}
             >
               Today
             </Button>
@@ -269,6 +272,7 @@ function AppointmentsContent() {
               variant="ghost"
               size="icon"
               onClick={() => navigateDate(1)}
+              aria-label="Next day"
               className="h-11 w-11 touch-target transition-all duration-150 hover:bg-muted"
             >
               <ChevronRight className="w-5 h-5" />
@@ -276,14 +280,14 @@ function AppointmentsContent() {
           </div>
 
           <div className="flex items-center gap-2">
-            <CalendarIcon className="w-4 h-4 text-muted-foreground" />
-            <span className="text-lg font-semibold tracking-tight text-foreground">{formattedDate}</span>
+            <CalendarIcon className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
+            <h2 className="text-lg font-semibold tracking-tight text-foreground m-0">{formattedDate}</h2>
           </div>
 
           <div className="flex items-center gap-2 ml-auto">
-            <Filter className="w-4 h-4 text-muted-foreground" />
+            <Filter className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
             <Select value={filterStaffId || 'all'} onValueChange={(v) => setFilterStaffId(v === 'all' ? null : v)}>
-              <SelectTrigger className="h-10 w-[180px] bg-secondary border-border text-foreground transition-all duration-150">
+              <SelectTrigger aria-label="Filter by stylist" className="h-11! w-[180px] bg-secondary border-border text-foreground transition-all duration-150">
                 <SelectValue placeholder="All stylists" />
               </SelectTrigger>
               <SelectContent>
@@ -305,9 +309,10 @@ function AppointmentsContent() {
               variant="ghost"
               size="icon"
               onClick={fetchData}
-              className="h-10 w-10 text-muted-foreground hover:text-foreground transition-all duration-150"
+              aria-label="Refresh appointments"
+              className="h-11 w-11 text-muted-foreground hover:text-foreground transition-all duration-150"
             >
-              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} aria-hidden="true" />
             </Button>
           </div>
         </div>
