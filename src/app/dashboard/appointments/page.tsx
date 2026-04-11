@@ -7,6 +7,7 @@ import toast from 'react-hot-toast';
 import { supabase } from '@/lib/supabase';
 import { useAppStore } from '@/store/app-store';
 import { getTodayPKT } from '@/lib/utils/dates';
+import { isDemoBranchId, getDemoBranchFixture } from '@/lib/demo-branch-fixtures';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { CalendarGrid } from './components/calendar-grid';
@@ -87,6 +88,21 @@ function AppointmentsContent() {
     if (!currentBranch || !salon) return;
     setLoading(true);
 
+    // Demo mode: skip Supabase entirely for known demo branch IDs.
+    // The DB has no rows for these IDs; hitting it produces 406 errors
+    // and a broken empty state (ISSUE-002).
+    if (isDemoBranchId(currentBranch.id)) {
+      const fixture = getDemoBranchFixture(currentBranch.id);
+      if (fixture) {
+        setAppointments([]);
+        setStylists(fixture.stylists);
+        setWorkingHours(fixture.branch.working_hours as WorkingHours);
+        setPrayerBlocks(fixture.branch.prayer_blocks as PrayerBlocks);
+      }
+      setLoading(false);
+      return;
+    }
+
     try {
       const [aptsRes, staffRes, branchRes] = await Promise.all([
         supabase
@@ -106,7 +122,7 @@ function AppointmentsContent() {
           .from('branches')
           .select('working_hours, prayer_blocks')
           .eq('id', currentBranch.id)
-          .single(),
+          .maybeSingle(),
       ]);
 
       if (aptsRes.data) setAppointments(aptsRes.data as AppointmentWithDetails[]);
