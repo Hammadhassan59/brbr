@@ -67,24 +67,12 @@ function AppointmentsContent() {
     } catch {}
     return [];
   });
-  const [nextToken, setNextToken] = useState(() => {
-    if (typeof window === 'undefined') return 1;
-    try {
-      const stored = localStorage.getItem('brbr_walkin_queue');
-      if (stored) {
-        const parsed = JSON.parse(stored) as WalkInEntry[];
-        if (parsed.length > 0) {
-          return Math.max(...parsed.map((e) => e.tokenNumber)) + 1;
-        }
-      }
-    } catch {}
-    return 1;
-  });
-
   useEffect(() => {
     try {
       localStorage.setItem('brbr_walkin_queue', JSON.stringify(walkInQueue));
-    } catch {}
+    } catch {
+      toast.error('Walk-in queue is too large to save locally');
+    }
   }, [walkInQueue]);
 
   // Working hours
@@ -191,9 +179,14 @@ function AppointmentsContent() {
 
   // Date navigation
   function navigateDate(delta: number) {
-    const d = new Date(date);
-    d.setDate(d.getDate() + delta);
-    setDate(d.toISOString().slice(0, 10));
+    setDate((prev) => {
+      const d = new Date(prev + 'T00:00:00');
+      d.setDate(d.getDate() + delta);
+      const y = d.getFullYear();
+      const mo = String(d.getMonth() + 1).padStart(2, '0');
+      const da = String(d.getDate()).padStart(2, '0');
+      return `${y}-${mo}-${da}`;
+    });
   }
 
   // Calendar slot click
@@ -209,15 +202,22 @@ function AppointmentsContent() {
   }
 
   // Walk-in queue handlers
+  const WALK_IN_MAX = 200;
   function handleAddWalkIn(entry: Omit<WalkInEntry, 'id' | 'tokenNumber' | 'addedAt'>) {
-    const newEntry: WalkInEntry = {
-      ...entry,
-      id: crypto.randomUUID(),
-      tokenNumber: nextToken,
-      addedAt: new Date(),
-    };
-    setWalkInQueue([...walkInQueue, newEntry]);
-    setNextToken(nextToken + 1);
+    setWalkInQueue((prev) => {
+      if (prev.length >= WALK_IN_MAX) {
+        toast.error(`Walk-in queue is full (${WALK_IN_MAX} max)`);
+        return prev;
+      }
+      const maxToken = prev.reduce((m, e) => Math.max(m, e.tokenNumber), 0);
+      const newEntry: WalkInEntry = {
+        ...entry,
+        id: crypto.randomUUID(),
+        tokenNumber: maxToken + 1,
+        addedAt: new Date(),
+      };
+      return [...prev, newEntry];
+    });
   }
 
   function handleAssignWalkIn(entry: WalkInEntry) {
