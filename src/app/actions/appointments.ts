@@ -297,12 +297,22 @@ export async function createAppointmentServices(appointmentId: string, services:
 }
 
 /**
- * Atomic create: insert the appointment, then attach its services. If the
- * services insert fails, the appointment is deleted so we don't leave an
- * orphan row with no services (ISSUE-019). This hand-rolled rollback can
- * itself fail if the delete call fails; the correct long-term fix is a
- * Postgres RPC that wraps both inserts in a real transaction — documented
- * as a TODO alongside the exclusion-constraint work.
+ * Atomic appointment + services create.
+ *
+ * Preferred path: calls the book_appointment_with_services RPC from migration
+ * 008, which wraps both inserts in a real Postgres transaction and uses an
+ * EXCLUDE constraint to block overlapping slots at the database layer. This
+ * closes both ISSUE-018 (server-server conflict race) and ISSUE-019 (orphan
+ * appointments on partial failure).
+ *
+ * Fallback path: if the RPC isn't present (developer hasn't applied the
+ * migration yet), we hand-roll the same thing — create appointment, attach
+ * services, delete the appointment if the services insert fails. The
+ * hand-rolled rollback can itself fail and leave an orphan; that's the risk
+ * that motivates migration 008.
+ *
+ * Ownership checks (branch/staff/client belong to session.salonId) always run
+ * up front regardless of which path the write takes.
  */
 export async function createAppointmentWithServices(
   data: {
@@ -317,6 +327,80 @@ export async function createAppointmentWithServices(
   },
   services: AppointmentServiceInput[]
 ) {
+  const session = await verifySession();
+  const supabase = createServerClient();
+
+  // Ownership: branch must belong to this salon
+  const { data: branch } = await supabase
+    .from('branches')
+    .select('id')
+    .eq('id', data.branchId)
+    .eq('salon_id', session.salonId)
+    .maybeSingle();
+  if (!branch) return { data: null, error: 'Invalid branch' };
+
+  // Ownership: staff must belong to this salon AND this branch
+  const { data: staff } = await supabase
+    .from('staff')
+    .select('id')
+    .eq('id', data.staffId)
+    .eq('salon_id', session.salonId)
+    .eq('branch_id', data.branchId)
+    .maybeSingle();
+  if (!staff) return { data: null, error: 'Invalid staff for branch' };
+
+  // Ownership: client (if any) must belong to this salon
+  if (data.clientId) {
+    const { data: client } = await supabase
+      .from('clients')
+      .select('id')
+      .eq('id', data.clientId)
+      .eq('salon_id', session.salonId)
+      .maybeSingle();
+    if (!client) return { data: null, error: 'Invalid client' };
+  }
+
+  // Preferred path: atomic RPC from migration 008
+  const { data: rpcApptId, error: rpcErr } = await supabase.rpc('book_appointment_with_services', {
+    p_salon_id: session.salonId,
+    p_branch_id: data.branchId,
+    p_client_id: data.clientId || null,
+    p_staff_id: data.staffId,
+    p_date: data.date,
+    p_start_time: data.startTime,
+    p_end_time: data.endTime,
+    p_is_walkin: data.isWalkin || false,
+    p_notes: data.notes || null,
+    p_services: services.map((s) => ({
+      serviceId: s.serviceId,
+      serviceName: s.serviceName,
+      price: s.price,
+      durationMinutes: s.durationMinutes,
+    })),
+  });
+
+  if (!rpcErr && rpcApptId) {
+    return { data: { id: rpcApptId as string }, error: null };
+  }
+
+  // Exclusion constraint fired — someone else booked this slot first
+  if (rpcErr?.code === '23P01' || /exclusion constraint|overlap/i.test(rpcErr?.message || '')) {
+    return { data: null, error: 'This slot is already booked' };
+  }
+
+  // Function missing (42883) or schema cache miss (PGRST202) → migration 008
+  // hasn't been applied to this database yet. Fall through to the hand-rolled
+  // path so dev environments still work.
+  const rpcMissing = rpcErr && (
+    rpcErr.code === '42883' ||
+    (rpcErr as { code?: string }).code === 'PGRST202' ||
+    /could not find the function|function .* does not exist/i.test(rpcErr.message || '')
+  );
+  if (rpcErr && !rpcMissing) {
+    return { data: null, error: rpcErr.message };
+  }
+
+  // Fallback: hand-rolled create + rollback. Same flow as before migration 008.
   const { data: apt, error: aptErr } = await createAppointment(data);
   if (aptErr || !apt) return { data: null, error: aptErr || 'Failed to create appointment' };
 
