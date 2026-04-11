@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { ErrorBoundary } from '@/components/error-boundary';
@@ -54,6 +54,25 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const { t } = useLanguage();
   const { salon, branches, currentBranch, currentStaff, currentPartner, isPartner, isSuperAdmin, setCurrentBranch } = useAppStore();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  // Wait for Zustand persist to finish rehydrating from localStorage before
+  // running the auth check. Without this, the first render sees empty state
+  // and redirects to /login even though the user has a valid session.
+  const [isHydrated, setIsHydrated] = useState(() => useAppStore.persist.hasHydrated());
+  useEffect(() => {
+    if (isHydrated) return;
+    const unsub = useAppStore.persist.onFinishHydration(() => setIsHydrated(true));
+    if (useAppStore.persist.hasHydrated()) setIsHydrated(true);
+    return unsub;
+  }, [isHydrated]);
+
+  if (!isHydrated) {
+    return (
+      <div className="h-screen flex items-center justify-center bg-background">
+        <div className="w-8 h-8 border-2 border-gold border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   // Redirect to login if no session
   const hasSession = !!(currentStaff || currentPartner || isSuperAdmin);
