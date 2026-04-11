@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { UserPlus, Clock, ArrowRight, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -31,6 +31,16 @@ export function WalkInQueue({ queue, onAddWalkIn, onAssign, onRemove }: WalkInQu
   const [name, setName] = useState('');
   const [services, setServices] = useState('');
   const [stylist, setStylist] = useState('');
+
+  // Tick every 30s while the sheet is open so the "waiting X min" labels
+  // advance without needing a parent re-render (ISSUE-011). Only runs while
+  // the sheet is actually visible — no wasted work on a closed sheet.
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    if (!sheetOpen) return;
+    const id = setInterval(() => setTick((n) => n + 1), 30_000);
+    return () => clearInterval(id);
+  }, [sheetOpen]);
 
   function handleAdd() {
     if (!services.trim()) {
