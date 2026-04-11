@@ -248,12 +248,28 @@ export async function replaceAppointmentServices(appointmentId: string, services
   return { error: null };
 }
 
-export async function createAppointmentServices(appointmentId: string, services: Array<{
+export interface AppointmentServiceInput {
   serviceId: string;
   serviceName: string;
   price: number;
   durationMinutes: number;
-}>) {
+}
+
+export async function deleteAppointment(id: string) {
+  const session = await verifySession();
+  const supabase = createServerClient();
+
+  const { error } = await supabase
+    .from('appointments')
+    .delete()
+    .eq('id', id)
+    .eq('salon_id', session.salonId);
+
+  if (error) return { error: error.message };
+  return { error: null };
+}
+
+export async function createAppointmentServices(appointmentId: string, services: AppointmentServiceInput[]) {
   const session = await verifySession();
   const supabase = createServerClient();
 
@@ -278,6 +294,44 @@ export async function createAppointmentServices(appointmentId: string, services:
 
   if (error) return { error: error.message };
   return { error: null };
+}
+
+/**
+ * Atomic create: insert the appointment, then attach its services. If the
+ * services insert fails, the appointment is deleted so we don't leave an
+ * orphan row with no services (ISSUE-019). This hand-rolled rollback can
+ * itself fail if the delete call fails; the correct long-term fix is a
+ * Postgres RPC that wraps both inserts in a real transaction — documented
+ * as a TODO alongside the exclusion-constraint work.
+ */
+export async function createAppointmentWithServices(
+  data: {
+    branchId: string;
+    clientId?: string | null;
+    staffId: string;
+    date: string;
+    startTime: string;
+    endTime: string;
+    isWalkin?: boolean;
+    notes?: string | null;
+  },
+  services: AppointmentServiceInput[]
+) {
+  const { data: apt, error: aptErr } = await createAppointment(data);
+  if (aptErr || !apt) return { data: null, error: aptErr || 'Failed to create appointment' };
+
+  if (services.length === 0) return { data: apt, error: null };
+
+  const { error: svcErr } = await createAppointmentServices(apt.id, services);
+  if (svcErr) {
+    const { error: delErr } = await deleteAppointment(apt.id);
+    if (delErr) {
+      return { data: null, error: `${svcErr} (rollback failed: ${delErr})` };
+    }
+    return { data: null, error: svcErr };
+  }
+
+  return { data: apt, error: null };
 }
 
 export async function updateAppointmentStatus(id: string, status: string) {
