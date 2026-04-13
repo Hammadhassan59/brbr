@@ -35,9 +35,10 @@ export default function ExpensesPage() {
   const { salon, currentBranch, currentStaff, currentPartner, isPartner } = useAppStore();
   const [loading, setLoading] = useState(true);
   const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [income, setIncome] = useState(0);
   const [showAdd, setShowAdd] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [tab, setTab] = useState<'today' | 'week' | 'month'>('today');
+  const [activeFilter, setActiveFilter] = useState<string>('today');
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
 
   // Advances display
@@ -58,32 +59,42 @@ export default function ExpensesPage() {
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
 
-  const today = getTodayPKT();
+  const todayPKT = getTodayPKT();
+
+  function daysAgoStr(n: number) { const d = new Date(todayPKT); d.setDate(d.getDate() - n); return d.toISOString().slice(0, 10); }
+  function getMonthStr(monthsAgo: number) { const d = new Date(todayPKT); d.setMonth(d.getMonth() - monthsAgo, 1); return d.toISOString().slice(0, 10); }
+  function getMonthLabel(monthsAgo: number) { const d = new Date(todayPKT); d.setMonth(d.getMonth() - monthsAgo); return d.toLocaleDateString('en-US', { month: 'short' }); }
+
+  const dateRange = (() => {
+    switch (activeFilter) {
+      case 'today': return { start: todayPKT, end: todayPKT };
+      case '7d': return { start: daysAgoStr(6), end: todayPKT };
+      case '30d': return { start: daysAgoStr(29), end: todayPKT };
+      default:
+        if (activeFilter.startsWith('mon-')) {
+          const monthsAgo = Number(activeFilter.split('-')[1]);
+          const d = new Date(todayPKT); d.setMonth(d.getMonth() - monthsAgo);
+          const lastDay = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+          const end = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${lastDay}`;
+          return { start: getMonthStr(monthsAgo), end: end > todayPKT ? todayPKT : end };
+        }
+        return { start: todayPKT, end: todayPKT };
+    }
+  })();
 
   const fetchExpenses = useCallback(async () => {
     if (!currentBranch) return;
     setLoading(true);
 
-    let startDate = today;
-    if (tab === 'week') {
-      const d = new Date(today);
-      d.setDate(d.getDate() - 7);
-      startDate = d.toISOString().split('T')[0];
-    } else if (tab === 'month') {
-      const d = new Date(today);
-      d.setDate(d.getDate() - 30);
-      startDate = d.toISOString().split('T')[0];
-    }
+    const { start, end } = dateRange;
 
-    const { data } = await supabase
-      .from('expenses')
-      .select('*')
-      .eq('branch_id', currentBranch.id)
-      .gte('date', startDate)
-      .lte('date', today)
-      .order('date', { ascending: false });
+    const [expenseRes, billsRes] = await Promise.all([
+      supabase.from('expenses').select('*').eq('branch_id', currentBranch.id).gte('date', start).lte('date', end).order('date', { ascending: false }),
+      supabase.from('bills').select('total_amount').eq('branch_id', currentBranch.id).eq('status', 'paid').gte('created_at', `${start}T00:00:00`).lte('created_at', `${end}T23:59:59`),
+    ]);
 
-    if (data) setExpenses(data as Expense[]);
+    if (expenseRes.data) setExpenses(expenseRes.data as Expense[]);
+    setIncome(billsRes.data?.reduce((s: number, b: { total_amount: number }) => s + b.total_amount, 0) || 0);
 
     // Fetch advances for the same period
     if (salon) {
@@ -94,8 +105,8 @@ export default function ExpensesPage() {
       const { data: advData } = await supabase
         .from('advances').select('*')
         .in('staff_id', Array.from(staffMap.keys()))
-        .gte('date', startDate)
-        .lte('date', today)
+        .gte('date', start)
+        .lte('date', end)
         .order('date', { ascending: false });
 
       if (advData) {
@@ -104,7 +115,8 @@ export default function ExpensesPage() {
     }
 
     setLoading(false);
-  }, [currentBranch, salon, today, tab]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentBranch, salon, activeFilter]);
 
   useEffect(() => { fetchExpenses(); }, [fetchExpenses]);
 
@@ -201,7 +213,7 @@ export default function ExpensesPage() {
           category: finalCategory || null,
           amount: Number(amount),
           description: description || null,
-          date: today,
+          date: todayPKT,
           createdBy: createdBy || null,
         });
         if (createError) throw new Error(createError);
@@ -272,11 +284,18 @@ export default function ExpensesPage() {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center gap-3">
-        <div className="flex gap-1">
-          {([['today', 'Today'], ['week', 'Last 7 Days'], ['month', 'Last 30 Days']] as const).map(([value, label]) => (
-            <button key={value} onClick={() => setTab(value)}
-              className={`px-3.5 py-2 text-xs font-medium rounded-lg transition-all duration-150 ${
-                tab === value ? 'bg-foreground text-white' : 'text-muted-foreground hover:text-foreground border border-border'
+        <div className="flex flex-wrap gap-1">
+          {([
+            { key: 'today', label: 'Today' },
+            { key: '7d', label: '7 Days' },
+            { key: '30d', label: '30 Days' },
+            { key: 'mon-0', label: getMonthLabel(0) },
+            { key: 'mon-1', label: getMonthLabel(1) },
+            { key: 'mon-2', label: getMonthLabel(2) },
+          ]).map(({ key, label }) => (
+            <button key={key} onClick={() => setActiveFilter(key)}
+              className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all duration-150 ${
+                activeFilter === key ? 'bg-foreground text-white' : 'text-muted-foreground hover:text-foreground'
               }`}
             >{label}</button>
           ))}
@@ -292,12 +311,22 @@ export default function ExpensesPage() {
       </div>
 
       {/* Summary cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 stagger-children animate-fade-in">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 stagger-children animate-fade-in">
         <Card className="border-border">
           <CardContent className="p-5 text-center">
             {loading ? <div className="h-12 bg-muted rounded-lg animate-pulse" /> : (
               <>
-                <p className="text-xs text-muted-foreground uppercase tracking-wider">Total Expenses</p>
+                <p className="text-xs text-muted-foreground uppercase tracking-wider">Income</p>
+                <p className="text-2xl font-bold text-green-600 mt-1">{formatPKR(income)}</p>
+              </>
+            )}
+          </CardContent>
+        </Card>
+        <Card className="border-border">
+          <CardContent className="p-5 text-center">
+            {loading ? <div className="h-12 bg-muted rounded-lg animate-pulse" /> : (
+              <>
+                <p className="text-xs text-muted-foreground uppercase tracking-wider">Expenses</p>
                 <p className="text-2xl font-bold text-foreground mt-1">{formatPKR(totalAmount)}</p>
               </>
             )}
@@ -307,24 +336,22 @@ export default function ExpensesPage() {
           <CardContent className="p-5 text-center">
             {loading ? <div className="h-12 bg-muted rounded-lg animate-pulse" /> : (
               <>
-                <p className="text-xs text-muted-foreground uppercase tracking-wider">Entries</p>
-                <p className="text-2xl font-bold mt-1">{expenses.length}</p>
+                <p className="text-xs text-muted-foreground uppercase tracking-wider">Advances</p>
+                <p className="text-2xl font-bold text-orange-600 mt-1">{formatPKR(totalAdvances)}</p>
               </>
             )}
           </CardContent>
         </Card>
-        {tab !== 'today' && (
-          <Card className="border-border">
-            <CardContent className="p-5 text-center">
-              {loading ? <div className="h-12 bg-muted rounded-lg animate-pulse" /> : (
-                <>
-                  <p className="text-xs text-muted-foreground uppercase tracking-wider">Daily Average</p>
-                  <p className="text-2xl font-bold mt-1">{formatPKR(Math.round(totalAmount / (tab === 'week' ? 7 : 30)))}</p>
-                </>
-              )}
-            </CardContent>
-          </Card>
-        )}
+        <Card className="border-border">
+          <CardContent className="p-5 text-center">
+            {loading ? <div className="h-12 bg-muted rounded-lg animate-pulse" /> : (
+              <>
+                <p className="text-xs text-muted-foreground uppercase tracking-wider">Net Profit</p>
+                <p className={`text-2xl font-bold mt-1 ${income - totalAmount - totalAdvances >= 0 ? 'text-green-600' : 'text-destructive'}`}>{formatPKR(income - totalAmount - totalAdvances)}</p>
+              </>
+            )}
+          </CardContent>
+        </Card>
       </div>
 
       {/* Category breakdown */}
@@ -405,7 +432,7 @@ export default function ExpensesPage() {
           <Card key={date} className="border-border animate-fade-up">
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between">
-                <CardTitle className="text-sm">{date === today ? 'Today' : formatPKDate(date)}</CardTitle>
+                <CardTitle className="text-sm">{date === todayPKT ? 'Today' : formatPKDate(date)}</CardTitle>
                 <span className="text-sm font-medium text-foreground">{formatPKR(dayExpenses.reduce((s, e) => s + e.amount, 0))}</span>
               </div>
             </CardHeader>

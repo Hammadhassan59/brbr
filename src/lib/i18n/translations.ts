@@ -59,7 +59,7 @@ export const translations = {
     pos: 'POS / Checkout',
     staff: 'Staff',
     inventory: 'Inventory',
-    expenses: 'Expenses',
+    expenses: 'Finance',
     reports: 'Reports',
     settings: 'Settings',
     logout: 'Logout',
