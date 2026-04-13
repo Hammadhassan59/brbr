@@ -159,7 +159,7 @@ export default function LandingPage() {
       {/* ══════════════════════════════════════ */}
       {/* FEATURES (Bento 2x2)                  */}
       {/* ══════════════════════════════════════ */}
-      <section id="features" className="py-20 md:py-28" style={{ background: '#FAFAF8' }}>
+      <section id="features" className="py-14 md:py-20" style={{ background: '#FAFAF8' }}>
         <div className="max-w-5xl mx-auto px-5">
           <Reveal className="text-center mb-12">
             <p className="text-[11px] font-bold text-gold uppercase tracking-[1.5px] mb-3">What it does</p>

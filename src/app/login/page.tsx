@@ -256,7 +256,7 @@ export default function LoginPage() {
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@example.com"
                 required
-                className="mt-1.5"
+                className="mt-1.5 border-border bg-white"
               />
             </div>
             <div>
@@ -291,7 +291,7 @@ export default function LoginPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 minLength={6}
-                className="mt-1.5"
+                className="mt-1.5 border-border bg-white"
               />
             </div>
             <Button type="submit" className="w-full bg-gold hover:bg-gold/90 text-black border border-gold" disabled={loading}>

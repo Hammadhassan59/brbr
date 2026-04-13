@@ -41,9 +41,9 @@ export default function PublicLayout({ children, showHomeNav = false }: PublicLa
           <div className="hidden md:flex items-center gap-0 mx-auto text-[13px]" style={{ letterSpacing: '-0.01em', fontWeight: 450 }}>
             {navLinks.map((link) =>
               link.href.startsWith('#') ? (
-                <a key={link.href} href={link.href} className="text-[#6B7280] hover:bg-black/[0.04] transition-colors px-3.5 py-2" style={{ borderRadius: '8px' }}>{link.label}</a>
+                <a key={link.href} href={link.href} className="text-[#6B7280] hover:bg-black/[0.04] transition-colors px-4 py-3" style={{ borderRadius: '8px' }}>{link.label}</a>
               ) : (
-                <Link key={link.href} href={link.href} className="text-[#6B7280] hover:bg-black/[0.04] transition-colors px-3.5 py-2" style={{ borderRadius: '8px' }}>{link.label}</Link>
+                <Link key={link.href} href={link.href} className="text-[#6B7280] hover:bg-black/[0.04] transition-colors px-4 py-3" style={{ borderRadius: '8px' }}>{link.label}</Link>
               )
             )}
           </div>
@@ -62,7 +62,7 @@ export default function PublicLayout({ children, showHomeNav = false }: PublicLa
           <Link
             href="/login"
             className="bg-[#1A1A1A] text-white text-[13px] font-semibold rounded-full hover:bg-[#333] transition-all shrink-0 inline-flex items-center"
-            style={{ padding: '8px 18px' }}
+            style={{ padding: '10px 20px' }}
           >
             Start Free
           </Link>
@@ -101,7 +101,7 @@ export default function PublicLayout({ children, showHomeNav = false }: PublicLa
                 </div>
                 <span className="font-heading font-extrabold text-base text-white tracking-tight">iCut</span>
               </div>
-              <p className="text-xs text-white/30 leading-relaxed">
+              <p className="text-xs text-white/45 leading-relaxed">
                 Pakistan&apos;s Smart Salon System — bookings, billing, staff commission, udhaar, and JazzCash. All in one place.
               </p>
             </div>
@@ -110,9 +110,9 @@ export default function PublicLayout({ children, showHomeNav = false }: PublicLa
             <div>
               <h4 className="text-[11px] font-bold text-white/50 tracking-[0.15em] uppercase mb-4">Product</h4>
               <ul className="space-y-0.5">
-                <li><Link href="/#features" className="text-[13px] text-white/30 hover:text-white transition-colors block py-2">Features</Link></li>
-                <li><Link href="/#pricing" className="text-[13px] text-white/30 hover:text-white transition-colors block py-2">Pricing</Link></li>
-                <li><Link href="/login" className="text-[13px] text-white/30 hover:text-white transition-colors block py-2">Login</Link></li>
+                <li><Link href="/#features" className="text-[13px] text-white/50 hover:text-white transition-colors block py-2">Features</Link></li>
+                <li><Link href="/#pricing" className="text-[13px] text-white/50 hover:text-white transition-colors block py-2">Pricing</Link></li>
+                <li><Link href="/login" className="text-[13px] text-white/50 hover:text-white transition-colors block py-2">Login</Link></li>
               </ul>
             </div>
 
@@ -120,8 +120,8 @@ export default function PublicLayout({ children, showHomeNav = false }: PublicLa
             <div>
               <h4 className="text-[11px] font-bold text-white/50 tracking-[0.15em] uppercase mb-4">Company</h4>
               <ul className="space-y-0.5">
-                <li><Link href="/about" className="text-[13px] text-white/30 hover:text-white transition-colors block py-2">About</Link></li>
-                <li><Link href="/contact" className="text-[13px] text-white/30 hover:text-white transition-colors block py-2">Contact</Link></li>
+                <li><Link href="/about" className="text-[13px] text-white/50 hover:text-white transition-colors block py-2">About</Link></li>
+                <li><Link href="/contact" className="text-[13px] text-white/50 hover:text-white transition-colors block py-2">Contact</Link></li>
               </ul>
             </div>
 
@@ -129,9 +129,9 @@ export default function PublicLayout({ children, showHomeNav = false }: PublicLa
             <div>
               <h4 className="text-[11px] font-bold text-white/50 tracking-[0.15em] uppercase mb-4">Legal</h4>
               <ul className="space-y-0.5">
-                <li><Link href="/privacy" className="text-[13px] text-white/30 hover:text-white transition-colors block py-2">Privacy Policy</Link></li>
-                <li><Link href="/terms" className="text-[13px] text-white/30 hover:text-white transition-colors block py-2">Terms of Service</Link></li>
-                <li><Link href="/refund" className="text-[13px] text-white/30 hover:text-white transition-colors block py-2">Refund Policy</Link></li>
+                <li><Link href="/privacy" className="text-[13px] text-white/50 hover:text-white transition-colors block py-2">Privacy Policy</Link></li>
+                <li><Link href="/terms" className="text-[13px] text-white/50 hover:text-white transition-colors block py-2">Terms of Service</Link></li>
+                <li><Link href="/refund" className="text-[13px] text-white/50 hover:text-white transition-colors block py-2">Refund Policy</Link></li>
               </ul>
             </div>
           </div>

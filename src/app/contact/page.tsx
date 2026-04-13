@@ -25,10 +25,10 @@ export default function ContactPage() {
             href="https://wa.me/923001234567"
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-start gap-4 p-6 border border-[#E8E8E8] hover:border-green-200 hover:bg-green-50/30 transition-colors block"
+            className="flex items-start gap-4 p-6 border border-[#E8E8E8] hover:border-gold/30 hover:bg-gold/5 transition-colors block"
           >
             <div className="mt-0.5 shrink-0">
-              <MessageCircle className="w-5 h-5 text-green-500" />
+              <MessageCircle className="w-5 h-5 text-gold" />
             </div>
             <div>
               <p className="text-sm font-bold text-[#1A1A1A] mb-0.5">+92 300 123 4567</p>
