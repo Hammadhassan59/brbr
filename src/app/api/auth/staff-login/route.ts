@@ -25,6 +25,7 @@ type SafeStaff = {
   phone: string;
   salon_id: string;
   branch_id: string | null;
+  first_login_seen: boolean;
 };
 
 type SafePartner = {
@@ -42,6 +43,7 @@ function stripStaff(row: Record<string, unknown>): SafeStaff {
     phone: String(row.phone),
     salon_id: String(row.salon_id),
     branch_id: row.branch_id ? String(row.branch_id) : null,
+    first_login_seen: Boolean(row.first_login_seen),
   };
 }
 
@@ -112,6 +114,9 @@ export async function POST(req: NextRequest) {
       const newHash = hashPin(pin);
       await supabase.from('staff').update({ pin_code: newHash }).eq('id', staffRow.id);
     }
+
+    // Track login time for onboarding checklist
+    await supabase.from('staff').update({ last_login_at: new Date().toISOString() }).eq('id', staffRow.id);
 
     const { data: salon } = await supabase
       .from('salons')
