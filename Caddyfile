@@ -1,3 +1,26 @@
 icut.pk, www.icut.pk {
+	# Static public pages — cache at Cloudflare edge (1 hour)
+	@public_pages {
+		path / /login /about /contact /privacy /terms /refund /setup
+	}
+	header @public_pages Cache-Control "public, s-maxage=3600, stale-while-revalidate=86400"
+	header @public_pages CDN-Cache-Control "public, max-age=3600"
+
+	# Next.js static assets — cache aggressively (1 year, immutable)
+	@static_assets {
+		path /_next/static/*
+	}
+	header @static_assets Cache-Control "public, max-age=31536000, immutable"
+
+	# Dashboard/API — never cache
+	@no_cache {
+		path /dashboard/* /api/*
+	}
+	header @no_cache Cache-Control "private, no-cache, no-store"
+	header @no_cache CDN-Cache-Control "no-store"
+
+	# Compression
+	encode gzip zstd
+
 	reverse_proxy app:3000
 }
