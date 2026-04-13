@@ -74,6 +74,7 @@ export const translations = {
     cashInDrawer: 'Cash in Drawer',
     hourlyRevenue: "Today's Revenue — Hour by Hour",
     paymentBreakdown: 'Payment Breakdown',
+    topServices: 'Top Services',
     staffPerformance: 'Staff Performance',
     todayAppointments: "Today's Appointments",
     alerts: 'Alerts',
@@ -95,6 +96,37 @@ export const translations = {
     confirm: 'Confirm',
     today: 'Today',
     yesterday: 'Yesterday',
+
+    // Onboarding
+    gettingStarted: 'Getting Started',
+    complete: 'complete',
+    dismiss: 'Dismiss',
+    allSet: "You're all set!",
+    addFirstClient: 'Add first client',
+    bookAppointment: 'Book appointment',
+    completeSale: 'Complete a sale',
+    paymentMethods: 'Payment methods',
+    inviteStaff: 'Invite staff',
+
+    // Staff Welcome
+    welcomeGreeting: 'Welcome, {name}!',
+    roleAt: "You're logged in as {role} at {salon}",
+    letsGo: "Got it, let's go",
+
+    // Empty States
+    noClientsYet: 'No clients yet',
+    noAppointmentsYet: 'No appointments yet',
+    noProductsYet: 'No products yet',
+    noExpensesYet: 'No expenses yet',
+    noStaffYet: 'No staff yet',
+    noPackagesYet: 'No packages yet',
+    noDataYet: 'No data yet',
+    addClient: 'Add Client',
+    bookAppointmentCta: 'Book Appointment',
+    addProduct: 'Add Product',
+    addExpense: 'Add Expense',
+    addStaff: 'Add Staff',
+    addPackage: 'Add Package',
   },
   ur: {
     // App
@@ -171,6 +203,7 @@ export const translations = {
     cashInDrawer: 'کیش ڈراور میں',
     hourlyRevenue: 'آج کی آمدنی — گھنٹے کے حساب سے',
     paymentBreakdown: 'ادائیگی کی تفصیل',
+    topServices: 'مقبول خدمات',
     staffPerformance: 'سٹاف کی کارکردگی',
     todayAppointments: 'آج کی اپائنٹمنٹس',
     alerts: 'الرٹس',
@@ -192,6 +225,37 @@ export const translations = {
     confirm: 'تصدیق',
     today: 'آج',
     yesterday: 'کل',
+
+    // Onboarding
+    gettingStarted: 'شروع کریں',
+    complete: 'مکمل',
+    dismiss: 'ہٹائیں',
+    allSet: 'سب تیار ہے!',
+    addFirstClient: 'پہلا کلائنٹ شامل کریں',
+    bookAppointment: 'اپائنٹمنٹ بک کریں',
+    completeSale: 'سیل مکمل کریں',
+    paymentMethods: 'ادائیگی کے طریقے',
+    inviteStaff: 'سٹاف کو مدعو کریں',
+
+    // Staff Welcome
+    welcomeGreeting: '!خوش آمدید، {name}',
+    roleAt: '{salon} میں {role} کے طور پر لاگ ان ہیں',
+    letsGo: 'چلیں شروع کرتے ہیں',
+
+    // Empty States
+    noClientsYet: 'ابھی کوئی کلائنٹ نہیں',
+    noAppointmentsYet: 'ابھی کوئی اپائنٹمنٹ نہیں',
+    noProductsYet: 'ابھی کوئی پروڈکٹ نہیں',
+    noExpensesYet: 'ابھی کوئی اخراجات نہیں',
+    noStaffYet: 'ابھی کوئی سٹاف نہیں',
+    noPackagesYet: 'ابھی کوئی پیکیج نہیں',
+    noDataYet: 'ابھی کوئی ڈیٹا نہیں',
+    addClient: 'کلائنٹ شامل کریں',
+    bookAppointmentCta: 'اپائنٹمنٹ بک کریں',
+    addProduct: 'پروڈکٹ شامل کریں',
+    addExpense: 'اخراجات شامل کریں',
+    addStaff: 'سٹاف شامل کریں',
+    addPackage: 'پیکیج شامل کریں',
   },
 } as const;
 
