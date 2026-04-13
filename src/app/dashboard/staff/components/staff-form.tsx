@@ -98,7 +98,7 @@ export function StaffForm({ staff, onSaved }: StaffFormProps) {
   }
 
   return (
-    <div className="max-w-2xl space-y-6">
+    <div className="max-w-4xl space-y-6">
       <h2 className="font-heading text-xl font-bold">{isEditing ? 'Edit Staff Member' : 'Add Staff Member'}</h2>
 
       <div className="bg-card border border-border rounded-lg p-5 space-y-4">
