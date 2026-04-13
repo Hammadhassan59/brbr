@@ -501,18 +501,11 @@ function POSContent() {
             </div>
           )}
 
-          <Select value={selectedStaffId} onValueChange={(v) => { if (v) { setSelectedStaffId(v); if (!tipStaffId) setTipStaffId(v); } }}>
-            <SelectTrigger className="h-8 text-xs w-[140px]">
-              <SelectValue placeholder="Stylist" />
-            </SelectTrigger>
-            <SelectContent>
+          <select value={selectedStaffId} onChange={(e) => { const v = e.target.value; if (v) { setSelectedStaffId(v); if (!tipStaffId) setTipStaffId(v); } }}
+            className="h-8 text-xs w-[140px] border border-border bg-background rounded-md px-2">
+              <option value="">Stylist</option>
               {stylists.map((s) => (
-                <SelectItem key={s.id} value={s.id}>
-                  <span className="flex items-center gap-1.5">
-                    <span className="w-5 h-5 rounded-lg bg-gold/20 text-gold text-[10px] font-bold flex items-center justify-center shrink-0">{s.name.charAt(0)}</span>
-                    {s.name}
-                  </span>
-                </SelectItem>
+                <option key={s.id} value={s.id}>{s.name}</option>
               ))}
             </SelectContent>
           </Select>

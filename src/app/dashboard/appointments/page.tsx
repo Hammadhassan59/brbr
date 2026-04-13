@@ -304,17 +304,13 @@ function AppointmentsContent() {
 
           <div className="flex items-center gap-2 ml-auto">
             <Filter className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
-            <Select value={filterStaffId || 'all'} onValueChange={(v) => setFilterStaffId(v === 'all' ? null : v)}>
-              <SelectTrigger aria-label="Filter by stylist" className="h-11! w-[180px] bg-secondary border-border text-foreground transition-all duration-150">
-                <SelectValue placeholder="All stylists" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Stylists</SelectItem>
-                {stylists.map((s) => (
-                  <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <select value={filterStaffId || 'all'} onChange={(e) => setFilterStaffId(e.target.value === 'all' ? null : e.target.value)}
+              aria-label="Filter by stylist" className="h-11 w-[180px] bg-secondary border border-border text-foreground rounded-md px-3 text-sm transition-all duration-150">
+              <option value="all">All Stylists</option>
+              {stylists.map((s) => (
+                <option key={s.id} value={s.id}>{s.name}</option>
+              ))}
+            </select>
 
             <WalkInQueue
               queue={walkInQueue}

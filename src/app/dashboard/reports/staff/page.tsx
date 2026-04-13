@@ -66,10 +66,11 @@ export default function StaffReportPage() {
 
       <div className="bg-card border border-border rounded-lg p-4 flex flex-wrap items-center gap-3">
         <h2 className="font-heading text-xl font-bold">Staff Report</h2>
-        <Select value={selectedStaffId} onValueChange={(v) => { if (v) setSelectedStaffId(v); }}>
-          <SelectTrigger className="w-[180px] h-8 text-xs"><SelectValue placeholder="Select staff" /></SelectTrigger>
-          <SelectContent>{staffList.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}</SelectContent>
-        </Select>
+        <select value={selectedStaffId} onChange={(e) => { if (e.target.value) setSelectedStaffId(e.target.value); }}
+          className="w-[180px] h-8 text-xs border border-border bg-background rounded-md px-2">
+          <option value="">Select staff</option>
+          {staffList.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+        </select>
         <Select value={String(month)} onValueChange={(v) => { if (v) setMonth(Number(v)); }}>
           <SelectTrigger className="w-[120px] h-8 text-xs"><SelectValue /></SelectTrigger>
           <SelectContent>{Array.from({ length: 12 }, (_, i) => <SelectItem key={i + 1} value={String(i + 1)}>{new Date(2000, i).toLocaleString('default', { month: 'long' })}</SelectItem>)}</SelectContent>

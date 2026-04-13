@@ -136,10 +136,11 @@ export default function OrdersPage() {
           <DialogHeader><DialogTitle>New Purchase Order</DialogTitle></DialogHeader>
           <div className="space-y-3">
             <div><Label className="text-xs">Supplier *</Label>
-              <Select value={formSupplierId} onValueChange={(v) => { if (v) setFormSupplierId(v); }}>
-                <SelectTrigger className="mt-1"><SelectValue placeholder="Select supplier" /></SelectTrigger>
-                <SelectContent>{suppliers.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}</SelectContent>
-              </Select>
+              <select value={formSupplierId} onChange={(e) => { if (e.target.value) setFormSupplierId(e.target.value); }}
+                className="mt-1 w-full h-9 border border-border bg-background rounded-md px-3 text-sm">
+                <option value="">Select supplier</option>
+                {suppliers.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+              </select>
             </div>
             <div>
               <Label className="text-xs">Items (one per line: Name - Qty - Price)</Label>

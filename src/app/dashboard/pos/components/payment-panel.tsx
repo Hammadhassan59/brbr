@@ -275,12 +275,11 @@ export function PaymentPanel({
           {stylists.length > 0 && (
             <div>
               <Label className="text-xs">Assign tip to</Label>
-              <Select value={tipStaffId} onValueChange={(v) => { if (v) onTipStaffChange(v); }}>
-                <SelectTrigger className="h-8 text-xs mt-1"><SelectValue placeholder="Select stylist" /></SelectTrigger>
-                <SelectContent>
-                  {stylists.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
+              <select value={tipStaffId} onChange={(e) => { if (e.target.value) onTipStaffChange(e.target.value); }}
+                className="h-8 text-xs mt-1 w-full border border-border bg-background rounded-md px-2">
+                <option value="">Select stylist</option>
+                {stylists.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+              </select>
             </div>
           )}
         </div>
