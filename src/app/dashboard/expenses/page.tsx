@@ -361,7 +361,7 @@ export default function ExpensesPage() {
           <div className="space-y-4">
             <div>
               <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Staff Member *</Label>
-              <Select value={advStaffId} onValueChange={setAdvStaffId}>
+              <Select value={advStaffId} onValueChange={(v) => { if (v) setAdvStaffId(v); }}>
                 <SelectTrigger className="mt-1"><SelectValue placeholder="Select staff" /></SelectTrigger>
                 <SelectContent>
                   {staffList.map((s) => (
