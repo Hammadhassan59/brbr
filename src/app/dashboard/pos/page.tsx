@@ -507,8 +507,7 @@ function POSContent() {
               {stylists.map((s) => (
                 <option key={s.id} value={s.id}>{s.name}</option>
               ))}
-            </SelectContent>
-          </Select>
+          </select>
 
           <span className="bg-background/50 px-3 py-1 text-xs text-muted-foreground font-mono hidden sm:block">{billNumber}</span>
         </div>
