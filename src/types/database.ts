@@ -74,6 +74,7 @@ export interface Salon {
   bank_title: string | null;
   privacy_mode: boolean;
   setup_complete: boolean;
+  onboarding_dismissed: boolean;
   owner_id: string | null;
   created_at: string;
 }
@@ -104,7 +105,18 @@ export interface Staff {
   commission_rate: number;
   join_date: string;
   is_active: boolean;
+  last_login_at: string | null;
+  first_login_seen: boolean;
   created_at: string;
+}
+
+export interface OnboardingStatus {
+  has_clients: boolean;
+  has_appointments: boolean;
+  has_sale: boolean;
+  has_payment_methods: boolean;
+  staff_logged_in: boolean;
+  onboarding_dismissed: boolean;
 }
 
 export interface Service {
