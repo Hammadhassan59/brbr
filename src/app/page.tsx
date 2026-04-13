@@ -8,18 +8,23 @@ import { DataNotice } from '@/components/data-notice';
 import { DashboardHeroPreview } from './components/dashboard-hero-preview';
 
 // ── Scroll reveal ──
+// Starts visible (opacity-100) so SSR/prerender shows content.
+// On hydration, resets to hidden, then animates in on intersection.
 function Reveal({ children, className = '' }: { children: React.ReactNode; className?: string }) {
   const ref = useRef<HTMLDivElement>(null);
+  const [hydrated, setHydrated] = useState(false);
   const [visible, setVisible] = useState(false);
   useEffect(() => {
+    setHydrated(true);
     const el = ref.current;
     if (!el) return;
     const obs = new IntersectionObserver(([e]) => { if (e.isIntersecting) { setVisible(true); obs.disconnect(); } }, { threshold: 0.12 });
     obs.observe(el);
     return () => obs.disconnect();
   }, []);
+  const show = !hydrated || visible;
   return (
-    <div ref={ref} className={`transition-all duration-700 ease-out ${visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-5'} ${className}`}>
+    <div ref={ref} className={`transition-all duration-700 ease-out ${show ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-5'} ${className}`}>
       {children}
     </div>
   );
