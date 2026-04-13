@@ -14,7 +14,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 import toast from 'react-hot-toast';
-import type { Expense, Staff } from '@/types/database';
+import type { Expense, Staff, Advance } from '@/types/database';
 import { createExpense, updateExpense, deleteExpense as deleteExpenseAction, updateCashDrawerExpenses } from '@/app/actions/expenses';
 import { recordAdvance } from '@/app/actions/staff';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -39,6 +39,9 @@ export default function ExpensesPage() {
   const [saving, setSaving] = useState(false);
   const [tab, setTab] = useState<'today' | 'week' | 'month'>('today');
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
+
+  // Advances display
+  const [recentAdvances, setRecentAdvances] = useState<(Advance & { staff_name?: string })[]>([]);
 
   // Advance state
   const [showAdvance, setShowAdvance] = useState(false);
@@ -80,8 +83,27 @@ export default function ExpensesPage() {
       .order('date', { ascending: false });
 
     if (data) setExpenses(data as Expense[]);
+
+    // Fetch advances for the same period
+    if (salon) {
+      const { data: staffData } = await supabase
+        .from('staff').select('id, name').eq('salon_id', salon.id);
+      const staffMap = new Map((staffData || []).map((s: { id: string; name: string }) => [s.id, s.name]));
+
+      const { data: advData } = await supabase
+        .from('advances').select('*')
+        .in('staff_id', Array.from(staffMap.keys()))
+        .gte('date', startDate)
+        .lte('date', today)
+        .order('date', { ascending: false });
+
+      if (advData) {
+        setRecentAdvances(advData.map((a: Advance) => ({ ...a, staff_name: staffMap.get(a.staff_id) || 'Unknown' })));
+      }
+    }
+
     setLoading(false);
-  }, [currentBranch, today, tab]);
+  }, [currentBranch, salon, today, tab]);
 
   useEffect(() => { fetchExpenses(); }, [fetchExpenses]);
 
@@ -103,6 +125,7 @@ export default function ExpensesPage() {
       toast.success(`Advance of Rs ${advAmount} recorded for ${staffName}`);
       setShowAdvance(false);
       setAdvStaffId(''); setAdvAmount(''); setAdvReason('');
+      fetchExpenses();
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Failed to record advance');
     } finally {
@@ -217,6 +240,7 @@ export default function ExpensesPage() {
   }
 
   const totalAmount = expenses.reduce((s, e) => s + e.amount, 0);
+  const totalAdvances = recentAdvances.reduce((s, a) => s + a.amount, 0);
 
   // Group by date
   const groupedByDate = expenses.reduce<Record<string, Expense[]>>((acc, e) => {
@@ -308,6 +332,33 @@ export default function ExpensesPage() {
                 </div>
               ))}
             </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Staff Advances */}
+      {recentAdvances.length > 0 && (
+        <Card className="border-border">
+          <CardHeader className="pb-2">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-sm">Staff Advances</CardTitle>
+              <span className="text-sm font-medium text-foreground">{formatPKR(recentAdvances.reduce((s, a) => s + a.amount, 0))}</span>
+            </div>
+          </CardHeader>
+          <CardContent className="px-0">
+            <Table>
+              <TableBody>
+                {recentAdvances.map((adv) => (
+                  <TableRow key={adv.id}>
+                    <TableCell className="pl-4">
+                      <p className="text-sm font-medium">{adv.staff_name}</p>
+                      <p className="text-xs text-muted-foreground">{formatPKDate(adv.date)}{adv.reason ? ` — ${adv.reason}` : ''}</p>
+                    </TableCell>
+                    <TableCell className="text-right text-sm font-medium text-orange-600 pr-4">{formatPKR(adv.amount)}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           </CardContent>
         </Card>
       )}
