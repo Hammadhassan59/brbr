@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { MessageCircle, X, Search, Send } from 'lucide-react';
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { useAppStore } from '@/store/app-store';
@@ -125,29 +125,15 @@ export function WhatsAppComposeSheet() {
     );
 
   return (
-    <Sheet open={isOpen} onOpenChange={(open) => { if (!open) close(); }}>
-      <SheetContent side="bottom" showCloseButton={false} className="rounded-t-2xl p-0 gap-0">
-        {/* Drag handle */}
-        <div className="flex justify-center pt-3 pb-1">
-          <div className="w-10 h-1 rounded-full bg-muted-foreground/30" />
-        </div>
-
+    <Dialog open={isOpen} onOpenChange={(open) => { if (!open) close(); }}>
+      <DialogContent className="sm:max-w-md p-0 gap-0">
         {/* Header */}
-        <SheetHeader className="flex-row items-center justify-between px-4 py-3 border-b border-border">
-          <div className="flex items-center gap-2">
-            <MessageCircle className="size-5 text-[var(--color-gold,#C9A84C)]" />
-            <SheetTitle className="text-base font-semibold">Send WhatsApp Message</SheetTitle>
-          </div>
-          <button
-            onClick={close}
-            className="flex items-center justify-center size-11 rounded-none hover:bg-muted text-muted-foreground"
-            aria-label="Close"
-          >
-            <X className="size-5" />
-          </button>
-        </SheetHeader>
+        <DialogHeader className="flex-row items-center gap-2 px-4 py-3 border-b border-border">
+          <MessageCircle className="size-5 text-[var(--color-gold,#C9A84C)]" />
+          <DialogTitle className="text-base font-semibold">Send WhatsApp Message</DialogTitle>
+        </DialogHeader>
 
-        <div className="flex flex-col gap-4 px-4 py-4 overflow-y-auto max-h-[80dvh]">
+        <div className="flex flex-col gap-4 px-4 py-4 overflow-y-auto max-h-[70dvh]">
           {/* To: field */}
           <div>
             <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1.5 block">
@@ -267,7 +253,7 @@ export function WhatsAppComposeSheet() {
             Open in WhatsApp
           </Button>
         </div>
-      </SheetContent>
-    </Sheet>
+      </DialogContent>
+    </Dialog>
   );
 }
