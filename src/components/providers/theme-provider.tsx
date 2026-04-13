@@ -13,7 +13,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setTheme] = useState<Theme>('dark');
 
   useEffect(() => {
-    const stored = localStorage.getItem('brbr-theme') as Theme | null;
+    const stored = localStorage.getItem('icut-theme') as Theme | null;
     const initial = stored || 'dark';
     setTheme(initial);
     document.documentElement.classList.toggle('dark', initial === 'dark');
@@ -22,7 +22,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   function toggle() {
     const next = theme === 'dark' ? 'light' : 'dark';
     setTheme(next);
-    localStorage.setItem('brbr-theme', next);
+    localStorage.setItem('icut-theme', next);
     document.documentElement.classList.toggle('dark', next === 'dark');
   }
 

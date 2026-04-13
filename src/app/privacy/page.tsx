@@ -2,8 +2,8 @@ import { Metadata } from 'next';
 import PublicLayout from '@/components/public-layout';
 
 export const metadata: Metadata = {
-  title: 'Privacy Policy — BrBr',
-  description: 'How BrBr collects, stores, and protects your salon data.',
+  title: 'Privacy Policy — iCut',
+  description: 'How iCut collects, stores, and protects your salon data.',
 };
 
 export default function PrivacyPage() {
@@ -18,13 +18,13 @@ export default function PrivacyPage() {
           <section>
             <h2 className="text-base font-bold text-[#1A1A1A] mb-3">Who We Are</h2>
             <p>
-              BrBr is a salon management system built and operated by <strong>Inparlor Technologies Pvt Ltd</strong>, a company registered in Pakistan. When we say &ldquo;BrBr,&rdquo; &ldquo;we,&rdquo; &ldquo;us,&rdquo; or &ldquo;our,&rdquo; we mean Inparlor Technologies Pvt Ltd.
+              iCut is a salon management system built and operated by <strong>Inparlor Technologies Pvt Ltd</strong>, a company registered in Pakistan. When we say &ldquo;iCut,&rdquo; &ldquo;we,&rdquo; &ldquo;us,&rdquo; or &ldquo;our,&rdquo; we mean Inparlor Technologies Pvt Ltd.
             </p>
           </section>
 
           <section>
             <h2 className="text-base font-bold text-[#1A1A1A] mb-3">What We Collect</h2>
-            <p className="mb-3">When you use BrBr, we collect the following types of information:</p>
+            <p className="mb-3">When you use iCut, we collect the following types of information:</p>
             <ul className="list-disc list-inside space-y-1.5 pl-2">
               <li><strong>Salon information</strong> — your salon name, branch details, and business settings</li>
               <li><strong>Owner information</strong> — your name, phone number, and login credentials</li>
@@ -38,7 +38,7 @@ export default function PrivacyPage() {
           <section>
             <h2 className="text-base font-bold text-[#1A1A1A] mb-3">Why We Collect It</h2>
             <p>
-              We collect this data solely to operate BrBr — to give you bookings, billing, payroll, inventory, and reporting features. We do not collect data for advertising or profiling purposes.
+              We collect this data solely to operate iCut — to give you bookings, billing, payroll, inventory, and reporting features. We do not collect data for advertising or profiling purposes.
             </p>
           </section>
 
@@ -75,8 +75,8 @@ export default function PrivacyPage() {
             <h2 className="text-base font-bold text-[#1A1A1A] mb-3">Questions?</h2>
             <p>
               If you have any questions about this policy or your data, email us at{' '}
-              <a href="mailto:support@brbr.pk" className="text-gold hover:underline">
-                support@brbr.pk
+              <a href="mailto:support@icut.pk" className="text-gold hover:underline">
+                support@icut.pk
               </a>
               . We will respond within 3 business days.
             </p>

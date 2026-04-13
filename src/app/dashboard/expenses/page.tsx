@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2, Wallet } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAppStore } from '@/store/app-store';
 import { formatPKR } from '@/lib/utils/currency';
@@ -280,7 +280,7 @@ export default function ExpensesPage() {
           {[1, 2, 3].map((i) => <div key={i} className="h-16 bg-muted rounded-lg animate-pulse" />)}
         </div>
       ) : expenses.length === 0 ? (
-        <EmptyState icon="💰" text="noExpensesYet" ctaLabel="addExpense" ctaHref="/dashboard/expenses?action=new" />
+        <EmptyState icon={Wallet} text="noExpensesYet" ctaLabel="addExpense" ctaHref="/dashboard/expenses?action=new" />
       ) : (
         <div className="space-y-4 stagger-children">
         {Object.entries(groupedByDate).sort(([a], [b]) => b.localeCompare(a)).map(([date, dayExpenses]) => (

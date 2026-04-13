@@ -84,19 +84,19 @@ describe('fillTemplate', () => {
     const result = fillTemplate('appointment_reminder', {
       time: '3:00 PM',
       staff_name: 'Amna',
-      salon_name: 'BrBr',
+      salon_name: 'iCut',
     })
-    expect(result).toBe('Reminder: Your appointment is at 3:00 PM. Amna is waiting for you! — BrBr')
+    expect(result).toBe('Reminder: Your appointment is at 3:00 PM. Amna is waiting for you! — iCut')
   })
 
   it('fills udhaar_reminder variables', () => {
     const result = fillTemplate('udhaar_reminder', {
       name: 'Bilal',
       amount: 'Rs. 500',
-      salon_name: 'BrBr',
+      salon_name: 'iCut',
     })
     expect(result).toBe(
-      'Dear Bilal, your outstanding balance is Rs. 500. Please clear it on your next visit. Thank you! — BrBr'
+      'Dear Bilal, your outstanding balance is Rs. 500. Please clear it on your next visit. Thank you! — iCut'
     )
   })
 
@@ -111,9 +111,9 @@ describe('fillTemplate', () => {
   })
 
   it('birthday fills variables', () => {
-    const result = fillTemplate('birthday', { name: 'Sara', salon_name: 'BrBr' })
+    const result = fillTemplate('birthday', { name: 'Sara', salon_name: 'iCut' })
     expect(result).toBe(
-      "Happy Birthday Sara! Visit BrBr today for a special treat. We'd love to see you!"
+      "Happy Birthday Sara! Visit iCut today for a special treat. We'd love to see you!"
     )
   })
 
@@ -121,17 +121,17 @@ describe('fillTemplate', () => {
     const result = fillTemplate('no_show', {
       name: 'Hassan',
       time: '11:00 AM',
-      salon_name: 'BrBr',
+      salon_name: 'iCut',
     })
     expect(result).toBe(
-      'Hi Hassan, we missed you at your 11:00 AM appointment today. Would you like to reschedule? — BrBr'
+      'Hi Hassan, we missed you at your 11:00 AM appointment today. Would you like to reschedule? — iCut'
     )
   })
 
   it('thank_you fills variables', () => {
-    const result = fillTemplate('thank_you', { salon_name: 'BrBr', name: 'Zara' })
+    const result = fillTemplate('thank_you', { salon_name: 'iCut', name: 'Zara' })
     expect(result).toBe(
-      'Thank you for visiting BrBr, Zara! We hope you loved your experience. See you next time!'
+      'Thank you for visiting iCut, Zara! We hope you loved your experience. See you next time!'
     )
   })
 

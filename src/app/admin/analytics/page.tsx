@@ -7,7 +7,6 @@ import toast from 'react-hot-toast';
 import { supabase } from '@/lib/supabase';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatPKR } from '@/lib/utils/currency';
-import { DEMO_ALL_SALONS } from '@/lib/demo-data';
 import type { Salon } from '@/types/database';
 
 const DEMO_MONTHLY_REVENUE = [
@@ -60,7 +59,7 @@ export default function AdminAnalyticsPage() {
           .select('*')
           .order('created_at', { ascending: false });
 
-        const salons: Salon[] = (salonsData && salonsData.length > 0) ? salonsData as Salon[] : DEMO_ALL_SALONS;
+        const salons: Salon[] = (salonsData || []) as Salon[];
 
         // City distribution
         const cityCounts: Record<string, number> = {};
@@ -136,11 +135,7 @@ export default function AdminAnalyticsPage() {
           ]);
         }
       } catch {
-        setMonthlyRevenue(DEMO_MONTHLY_REVENUE);
-        setSalonRevenue(DEMO_SALON_REVENUE);
-        setCityDist(DEMO_CITY_DIST);
-        setKeyMetrics(DEMO_KEY_METRICS);
-        toast.error('Could not load live data — showing demo');
+        toast.error('Could not load analytics data');
       } finally {
         setLoading(false);
       }

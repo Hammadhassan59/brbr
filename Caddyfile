@@ -1,0 +1,3 @@
+icut.pk, www.icut.pk {
+	reverse_proxy app:3000
+}

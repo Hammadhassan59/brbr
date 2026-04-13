@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════
-// BrBr Database Types
+// iCut Database Types
 // Auto-generated from Supabase schema
 // ═══════════════════════════════════════
 
@@ -97,9 +97,11 @@ export interface Staff {
   branch_id: string | null;
   name: string;
   phone: string | null;
+  email: string | null;
+  auth_user_id: string | null;
   role: StaffRole;
   photo_url: string | null;
-  pin_code: string;
+  pin_code: string | null;
   base_salary: number;
   commission_type: CommissionType;
   commission_rate: number;
@@ -400,7 +402,9 @@ export interface SalonPartner {
   salon_id: string;
   name: string;
   phone: string;
-  pin_code: string;
+  email: string | null;
+  auth_user_id: string | null;
+  pin_code: string | null;
   is_active: boolean;
   created_at: string;
 }

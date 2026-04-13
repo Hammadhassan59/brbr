@@ -14,7 +14,7 @@ export default function Error({
       {/* Dark chrome header */}
       <header className="bg-[#1A1A1A] px-6 py-4 flex items-center gap-3">
         <Scissors className="text-[#F0B000] w-5 h-5" />
-        <span className="font-bold text-white text-lg tracking-tight">BrBr</span>
+        <span className="font-bold text-white text-lg tracking-tight">iCut</span>
       </header>
 
       {/* Content */}

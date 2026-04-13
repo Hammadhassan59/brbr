@@ -46,7 +46,7 @@ export default function ClientReportPage() {
   const totalUdhaar = udhaarClients.reduce((s, c) => s + c.udhaar_balance, 0);
 
   function getUdhaarMessage(c: Client): string {
-    return `Dear ${c.name}, your outstanding balance is ${formatPKR(c.udhaar_balance)}. Please clear it on your next visit. Thank you! — BrBr`;
+    return `Dear ${c.name}, your outstanding balance is ${formatPKR(c.udhaar_balance)}. Please clear it on your next visit. Thank you! — iCut`;
   }
 
   function sendUdhaarAll() {

@@ -52,37 +52,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const pathname = usePathname();
   const router = useRouter();
   const { t } = useLanguage();
-  const { salon, branches, currentBranch, currentStaff, currentPartner, isPartner, isSuperAdmin, setCurrentBranch } = useAppStore();
+  const { salon, branches, currentBranch, currentStaff, currentPartner, isOwner, isPartner, isSuperAdmin, setCurrentBranch } = useAppStore();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  // Wait for Zustand persist to finish rehydrating from localStorage before
-  // running the auth check. Without this, the first render sees empty state
-  // and redirects to /login even though the user has a valid session.
-  const [isHydrated, setIsHydrated] = useState(() => useAppStore.persist.hasHydrated());
-  useEffect(() => {
-    if (isHydrated) return;
-    const unsub = useAppStore.persist.onFinishHydration(() => setIsHydrated(true));
-    if (useAppStore.persist.hasHydrated()) setIsHydrated(true);
-    return unsub;
-  }, [isHydrated]);
+  // Zustand 5 persist hydrates synchronously from localStorage on the client,
+  // but during SSR there is no localStorage so the first render has empty state.
+  // Wait one tick so the client-side store is populated before running the auth check.
+  const [isHydrated, setIsHydrated] = useState(false);
+  useEffect(() => { setIsHydrated(true); }, []);
 
-  if (!isHydrated) {
-    return (
-      <div className="h-screen flex items-center justify-center bg-background">
-        <div className="w-8 h-8 border-2 border-gold border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
-  }
-
-  // Redirect to login if no session
-  const hasSession = !!(currentStaff || currentPartner || isSuperAdmin);
-  if (!hasSession && typeof window !== 'undefined') {
-    window.location.href = '/login?redirect=' + encodeURIComponent(pathname);
-    return null;
-  }
-
-  const roleAccess: StaffRoleAccess = isPartner ? 'full' : getRoleAccess(currentStaff?.role || 'helper');
-  const canSwitchBranch = branches.length > 1 && (roleAccess === 'full' || isPartner);
+  const roleAccess: StaffRoleAccess = (isOwner || isPartner) ? 'full' : getRoleAccess(currentStaff?.role || 'helper');
+  const canSwitchBranch = branches.length > 1 && (roleAccess === 'full' || isOwner || isPartner);
 
   const navItems = useMemo(
     () => ALL_NAV_ITEMS.filter((item) => item.access.includes(roleAccess)),
@@ -94,6 +74,23 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     [roleAccess]
   );
 
+  // --- Early returns AFTER all hooks ---
+
+  if (!isHydrated) {
+    return (
+      <div className="h-screen flex items-center justify-center bg-background">
+        <div className="w-8 h-8 border-2 border-gold border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  // Redirect to login if no session
+  const hasSession = !!(salon || currentStaff || currentPartner || isSuperAdmin);
+  if (!hasSession && typeof window !== 'undefined') {
+    window.location.href = '/login?redirect=' + encodeURIComponent(pathname);
+    return null;
+  }
+
   const currentNav = navItems.find((item) =>
     item.href === '/dashboard'
       ? pathname === '/dashboard'
@@ -103,8 +100,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   const showNewAppointment = roleAccess === 'full' || roleAccess === 'front_desk';
 
-  const displayName = isPartner ? currentPartner?.name : currentStaff?.name;
-  const displayRole = isPartner ? 'Owner' : currentStaff?.role?.replace('_', ' ');
+  const displayName = isOwner ? (salon?.name || 'Owner') : isPartner ? currentPartner?.name : currentStaff?.name;
+  const displayRole = isOwner ? 'Owner' : isPartner ? 'Owner' : currentStaff?.role?.replace('_', ' ');
   const displayInitial = displayName?.charAt(0) || 'U';
 
   function switchBranch(branch: Branch) {
@@ -132,7 +129,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <Scissors className="w-5 h-5 text-gold" />
           </div>
           <div className="flex flex-col">
-            <span className="font-heading text-lg font-bold tracking-tight text-white">BrBr</span>
+            <span className="font-heading text-lg font-bold tracking-tight text-white">iCut</span>
             {salon && (
               <span className="text-[11px] text-slate-400 truncate">
                 {salon.name}
@@ -234,8 +231,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </Link>
           <button
             onClick={async () => {
-              document.cookie = 'brbr-session=; path=/; max-age=0';
-              document.cookie = 'brbr-role=; path=/; max-age=0';
+              document.cookie = 'icut-session=; path=/; max-age=0';
+              document.cookie = 'icut-role=; path=/; max-age=0';
               await destroySession();
               useAppStore.getState().reset();
               window.location.href = '/login';
@@ -318,16 +315,37 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             )}
 
             {/* User avatar + name */}
-            <div className="hidden lg:flex items-center gap-3 pl-3 border-l border-border">
-              <div className="w-9 h-9 rounded-full bg-muted flex items-center justify-center text-xs font-bold text-foreground">
-                {displayInitial}
-              </div>
-              <div className="flex flex-col">
-                <span className="text-sm font-semibold text-foreground">{displayName || 'Guest'}</span>
-                <span className="text-[11px] text-muted-foreground capitalize">{displayRole || 'Unknown'}</span>
-              </div>
-              <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
-            </div>
+            <DropdownMenu>
+              <DropdownMenuTrigger className="hidden lg:flex items-center gap-3 pl-3 border-l border-border outline-none cursor-pointer hover:opacity-80 transition-opacity">
+                <div className="w-9 h-9 rounded-full bg-muted flex items-center justify-center text-xs font-bold text-foreground">
+                  {displayInitial}
+                </div>
+                <div className="flex flex-col text-left">
+                  <span className="text-sm font-semibold text-foreground">{displayName || 'Guest'}</span>
+                  <span className="text-[11px] text-muted-foreground capitalize">{displayRole || 'Unknown'}</span>
+                </div>
+                <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuItem onClick={() => router.push('/dashboard/settings')} className="flex items-center gap-3 p-3 cursor-pointer">
+                  <Settings className="w-4 h-4" />
+                  <span>{t('settings')}</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={async () => {
+                    document.cookie = 'icut-session=; path=/; max-age=0';
+                    document.cookie = 'icut-role=; path=/; max-age=0';
+                    await destroySession();
+                    useAppStore.getState().reset();
+                    window.location.href = '/login';
+                  }}
+                  className="flex items-center gap-3 p-3 cursor-pointer text-red-600"
+                >
+                  <LogOut className="w-4 h-4" />
+                  <span>Log Out</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </header>
 

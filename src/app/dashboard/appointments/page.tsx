@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useState, useCallback } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { ChevronLeft, ChevronRight, CalendarIcon, RefreshCw, Filter } from 'lucide-react';
+import { ChevronLeft, ChevronRight, CalendarIcon, RefreshCw, Filter, CalendarDays } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { supabase } from '@/lib/supabase';
 import { useAppStore } from '@/store/app-store';
@@ -62,7 +62,7 @@ function AppointmentsContent() {
   const [walkInQueue, setWalkInQueue] = useState<WalkInEntry[]>(() => {
     if (typeof window === 'undefined') return [];
     try {
-      const stored = localStorage.getItem('brbr_walkin_queue');
+      const stored = localStorage.getItem('icut_walkin_queue');
       if (stored) {
         const parsed = JSON.parse(stored) as WalkInEntry[];
         return parsed.map((e) => ({ ...e, addedAt: new Date(e.addedAt) }));
@@ -72,7 +72,7 @@ function AppointmentsContent() {
   });
   useEffect(() => {
     try {
-      localStorage.setItem('brbr_walkin_queue', JSON.stringify(walkInQueue));
+      localStorage.setItem('icut_walkin_queue', JSON.stringify(walkInQueue));
     } catch {
       toast.error('Walk-in queue is too large to save locally');
     }
@@ -345,7 +345,7 @@ function AppointmentsContent() {
           </div>
         </div>
       ) : !loading && stylists.length === 0 ? (
-        <EmptyState icon="📅" text="noAppointmentsYet" ctaLabel="bookAppointmentCta" ctaHref="/dashboard/appointments?action=new" />
+        <EmptyState icon={CalendarDays} text="noAppointmentsYet" ctaLabel="bookAppointmentCta" ctaHref="/dashboard/appointments?action=new" />
       ) : (
         <div className="bg-card border border-border rounded-lg overflow-hidden">
           <CalendarGrid

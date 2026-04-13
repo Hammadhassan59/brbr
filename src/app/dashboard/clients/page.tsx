@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { Search, Plus, Download, Tag } from 'lucide-react';
+import { Search, Plus, Download, Tag, UserRound } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { supabase } from '@/lib/supabase';
 import { useAppStore } from '@/store/app-store';
@@ -102,7 +102,7 @@ function ClientsContent() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'brbr-clients.csv';
+    a.download = 'icut-clients.csv';
     a.click();
     URL.revokeObjectURL(url);
   }
@@ -187,7 +187,7 @@ function ClientsContent() {
           ))}
         </div>
       ) : sorted.length === 0 ? (
-        <EmptyState icon="👤" text="noClientsYet" ctaLabel="addClient" ctaHref="/dashboard/clients?action=new" />
+        <EmptyState icon={UserRound} text="noClientsYet" ctaLabel="addClient" ctaHref="/dashboard/clients?action=new" />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 stagger-children">
           {sorted.map((client) => (

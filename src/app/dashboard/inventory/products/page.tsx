@@ -148,7 +148,7 @@ function ProductsContent() {
     if (!salon) return;
     if (!formName.trim()) { toast.error('Name required'); return; }
     if (Number(formPurchasePrice) > 0 && Number(formRetailPrice) > 0 && Number(formPurchasePrice) > Number(formRetailPrice)) {
-      toast('Purchase price exceeds retail price — check your values', { icon: '⚠️' });
+      toast('Purchase price exceeds retail price — check your values');
     }
     setSaving(true);
     try {
@@ -246,7 +246,7 @@ function ProductsContent() {
       {loading ? (
         <div className="space-y-2">{[1, 2, 3, 4].map((i) => <div key={i} className="h-12 bg-muted rounded-lg animate-pulse" />)}</div>
       ) : filtered.length === 0 ? (
-        <EmptyState icon="📦" text="noProductsYet" ctaLabel="addProduct" ctaHref="/dashboard/inventory/products?action=new" />
+        <EmptyState icon={PackageIcon} text="noProductsYet" ctaLabel="addProduct" ctaHref="/dashboard/inventory/products?action=new" />
       ) : (
         <div className="bg-card border border-border rounded-lg overflow-hidden overflow-x-auto">
           <Table>

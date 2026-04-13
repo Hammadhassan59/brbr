@@ -26,6 +26,7 @@ export const DEMO_SALON: Salon = {
   bank_title: null,
   privacy_mode: false,
   setup_complete: true,
+  onboarding_dismissed: true,
   owner_id: null,
   created_at: '2025-01-01T00:00:00Z',
 };
@@ -57,6 +58,8 @@ export const DEMO_STAFF_OWNER: Staff = {
   branch_id: '22222222-2222-2222-2222-222222222222',
   name: 'Fatima Khan',
   phone: '0300-1234567',
+  email: null,
+  auth_user_id: null,
   role: 'manager',
   photo_url: null,
   pin_code: '1234',
@@ -65,6 +68,8 @@ export const DEMO_STAFF_OWNER: Staff = {
   commission_rate: 10,
   join_date: '2024-06-01',
   is_active: true,
+  last_login_at: null,
+  first_login_seen: true,
   created_at: '2024-06-01T00:00:00Z',
 };
 
@@ -74,6 +79,8 @@ export const DEMO_STAFF_STYLIST: Staff = {
   branch_id: '22222222-2222-2222-2222-222222222222',
   name: 'Sadia Ahmed',
   phone: '0312-9876543',
+  email: null,
+  auth_user_id: null,
   role: 'senior_stylist',
   photo_url: null,
   pin_code: '2345',
@@ -82,6 +89,8 @@ export const DEMO_STAFF_STYLIST: Staff = {
   commission_rate: 30,
   join_date: '2024-07-15',
   is_active: true,
+  last_login_at: null,
+  first_login_seen: true,
   created_at: '2024-07-15T00:00:00Z',
 };
 
@@ -91,6 +100,8 @@ export const DEMO_STAFF_RECEPTIONIST: Staff = {
   branch_id: '22222222-2222-2222-2222-222222222222',
   name: 'Zainab Bibi',
   phone: '0301-2345678',
+  email: null,
+  auth_user_id: null,
   role: 'receptionist',
   photo_url: null,
   pin_code: '5678',
@@ -99,6 +110,8 @@ export const DEMO_STAFF_RECEPTIONIST: Staff = {
   commission_rate: 0,
   join_date: '2024-08-01',
   is_active: true,
+  last_login_at: null,
+  first_login_seen: true,
   created_at: '2024-08-01T00:00:00Z',
 };
 
@@ -128,6 +141,7 @@ export const DEMO_SALON_GENTS: Salon = {
   bank_title: null,
   privacy_mode: false,
   setup_complete: true,
+  onboarding_dismissed: true,
   owner_id: null,
   created_at: '2025-02-10T00:00:00Z',
 };
@@ -159,6 +173,8 @@ export const DEMO_GENTS_OWNER: Staff = {
   branch_id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaab',
   name: 'Ahmed Raza',
   phone: '0333-1112233',
+  email: null,
+  auth_user_id: null,
   role: 'owner',
   photo_url: null,
   pin_code: '0000',
@@ -167,6 +183,8 @@ export const DEMO_GENTS_OWNER: Staff = {
   commission_rate: 0,
   join_date: '2025-02-10',
   is_active: true,
+  last_login_at: null,
+  first_login_seen: true,
   created_at: '2025-02-10T00:00:00Z',
 };
 
@@ -176,6 +194,8 @@ export const DEMO_GENTS_BARBER_SENIOR: Staff = {
   branch_id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaab',
   name: 'Usman Ghani',
   phone: '0345-5551234',
+  email: null,
+  auth_user_id: null,
   role: 'senior_stylist',
   photo_url: null,
   pin_code: '1111',
@@ -184,6 +204,8 @@ export const DEMO_GENTS_BARBER_SENIOR: Staff = {
   commission_rate: 25,
   join_date: '2025-02-15',
   is_active: true,
+  last_login_at: null,
+  first_login_seen: true,
   created_at: '2025-02-15T00:00:00Z',
 };
 
@@ -193,6 +215,8 @@ export const DEMO_GENTS_BARBER_JUNIOR: Staff = {
   branch_id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaab',
   name: 'Bilal Saeed',
   phone: '0300-7778899',
+  email: null,
+  auth_user_id: null,
   role: 'junior_stylist',
   photo_url: null,
   pin_code: '2222',
@@ -201,6 +225,8 @@ export const DEMO_GENTS_BARBER_JUNIOR: Staff = {
   commission_rate: 50,
   join_date: '2025-03-01',
   is_active: true,
+  last_login_at: null,
+  first_login_seen: true,
   created_at: '2025-03-01T00:00:00Z',
 };
 
@@ -210,6 +236,8 @@ export const DEMO_GENTS_HELPER: Staff = {
   branch_id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaab',
   name: 'Hamza Ali',
   phone: '0301-4445566',
+  email: null,
+  auth_user_id: null,
   role: 'helper',
   photo_url: null,
   pin_code: '3333',
@@ -218,6 +246,8 @@ export const DEMO_GENTS_HELPER: Staff = {
   commission_rate: 0,
   join_date: '2025-03-01',
   is_active: true,
+  last_login_at: null,
+  first_login_seen: true,
   created_at: '2025-03-01T00:00:00Z',
 };
 
@@ -252,6 +282,8 @@ export const DEMO_GENTS_BRANCH2_SENIOR: Staff = {
   branch_id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaac',
   name: 'Nadeem Khan',
   phone: '0345-7771234',
+  email: null,
+  auth_user_id: null,
   role: 'senior_stylist',
   photo_url: null,
   pin_code: '4444',
@@ -260,6 +292,8 @@ export const DEMO_GENTS_BRANCH2_SENIOR: Staff = {
   commission_rate: 25,
   join_date: '2025-06-01',
   is_active: true,
+  last_login_at: null,
+  first_login_seen: true,
   created_at: '2025-06-01T00:00:00Z',
 };
 
@@ -269,6 +303,8 @@ export const DEMO_GENTS_BRANCH2_JUNIOR: Staff = {
   branch_id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaac',
   name: 'Waqar Ahmed',
   phone: '0300-7775678',
+  email: null,
+  auth_user_id: null,
   role: 'junior_stylist',
   photo_url: null,
   pin_code: '5555',
@@ -277,6 +313,8 @@ export const DEMO_GENTS_BRANCH2_JUNIOR: Staff = {
   commission_rate: 50,
   join_date: '2025-06-15',
   is_active: true,
+  last_login_at: null,
+  first_login_seen: true,
   created_at: '2025-06-15T00:00:00Z',
 };
 
@@ -289,6 +327,8 @@ export const DEMO_PARTNER_ROYAL: SalonPartner = {
   salon_id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
   name: 'Imran Malik',
   phone: '0333-9998877',
+  email: null,
+  auth_user_id: null,
   pin_code: '9999',
   is_active: true,
   created_at: '2025-03-01T00:00:00Z',
@@ -302,8 +342,10 @@ export const DEMO_STAFF_SUPERADMIN: Staff = {
   id: '00000000-0000-0000-0000-000000000000',
   salon_id: '',
   branch_id: null,
-  name: 'BrBr Super Admin',
-  phone: '0300-BRBR-PK',
+  name: 'iCut Super Admin',
+  phone: '0300-ICUT-PK',
+  email: null,
+  auth_user_id: null,
   role: 'owner',
   photo_url: null,
   pin_code: '0000',
@@ -312,6 +354,8 @@ export const DEMO_STAFF_SUPERADMIN: Staff = {
   commission_rate: 0,
   join_date: '2024-01-01',
   is_active: true,
+  last_login_at: null,
+  first_login_seen: true,
   created_at: '2024-01-01T00:00:00Z',
 };
 
@@ -344,6 +388,7 @@ export const DEMO_ALL_SALONS: Salon[] = [
     bank_title: null,
     privacy_mode: false,
     setup_complete: true,
+    onboarding_dismissed: true,
     owner_id: null,
     created_at: '2025-03-01T00:00:00Z',
   },
@@ -369,35 +414,9 @@ export const DEMO_ALL_SALONS: Salon[] = [
     bank_title: null,
     privacy_mode: false,
     setup_complete: false,
+    onboarding_dismissed: false,
     owner_id: null,
     created_at: '2025-03-15T00:00:00Z',
   },
 ];
 
-// ═══════════════════════════════════════
-// Role-based nav access
-// ═══════════════════════════════════════
-// owner/manager:     ALL pages
-// receptionist:      dashboard, appointments, clients, pos
-// senior_stylist:    dashboard (stylist view), appointments (own only)
-// junior_stylist:    dashboard (stylist view), appointments (own only)
-// helper:            dashboard only (minimal)
-
-export type StaffRoleAccess = 'full' | 'front_desk' | 'stylist' | 'minimal';
-
-export function getRoleAccess(role: string): StaffRoleAccess {
-  switch (role) {
-    case 'owner':
-    case 'manager':
-      return 'full';
-    case 'receptionist':
-      return 'front_desk';
-    case 'senior_stylist':
-    case 'junior_stylist':
-      return 'stylist';
-    case 'helper':
-      return 'minimal';
-    default:
-      return 'minimal';
-  }
-}

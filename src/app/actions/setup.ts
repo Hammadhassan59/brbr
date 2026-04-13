@@ -18,8 +18,8 @@ export async function setupSalon(data: {
   prayerBlockEnabled: boolean;
   workingHours: Record<string, unknown>;
   services: Array<{ name: string; category: string; price: number; duration: number }>;
-  partners: Array<{ name: string; phone: string; pin: string }>;
-  staff: Array<{ name: string; phone: string; role: string; pin: string }>;
+  partners: Array<{ name: string; email: string; password: string }>;
+  staff: Array<{ name: string; email: string; role: string; password: string }>;
 }) {
   const supabase = createServerClient();
 
@@ -75,31 +75,45 @@ export async function setupSalon(data: {
     if (svcErr) return { data: null, error: svcErr.message };
   }
 
-  // Create partners
-  if (data.partners.length > 0) {
-    const { error: partnerErr } = await supabase.from('salon_partners').insert(
-      data.partners.map(p => ({
-        salon_id: newSalon.id,
-        name: p.name,
-        phone: p.phone,
-        pin_code: p.pin,
-      }))
-    );
+  // Create partners — each gets a Supabase Auth account
+  for (const p of data.partners) {
+    const { data: authUser, error: authErr } = await supabase.auth.admin.createUser({
+      email: p.email,
+      password: p.password,
+      email_confirm: true,
+    });
+
+    if (authErr) return { data: null, error: `Failed to create account for ${p.name}: ${authErr.message}` };
+
+    const { error: partnerErr } = await supabase.from('salon_partners').insert({
+      salon_id: newSalon.id,
+      name: p.name,
+      email: p.email,
+      auth_user_id: authUser.user.id,
+      pin_code: null,
+    });
     if (partnerErr) return { data: null, error: partnerErr.message };
   }
 
-  // Create staff
-  if (data.staff.length > 0) {
-    const { error: staffErr } = await supabase.from('staff').insert(
-      data.staff.map(s => ({
-        salon_id: newSalon.id,
-        branch_id: branch.id,
-        name: s.name,
-        phone: s.phone,
-        role: s.role,
-        pin_code: s.pin,
-      }))
-    );
+  // Create staff — each gets a Supabase Auth account
+  for (const s of data.staff) {
+    const { data: authUser, error: authErr } = await supabase.auth.admin.createUser({
+      email: s.email,
+      password: s.password,
+      email_confirm: true,
+    });
+
+    if (authErr) return { data: null, error: `Failed to create account for ${s.name}: ${authErr.message}` };
+
+    const { error: staffErr } = await supabase.from('staff').insert({
+      salon_id: newSalon.id,
+      branch_id: branch.id,
+      name: s.name,
+      email: s.email,
+      auth_user_id: authUser.user.id,
+      role: s.role,
+      pin_code: null,
+    });
     if (staffErr) return { data: null, error: staffErr.message };
   }
 

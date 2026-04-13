@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Scissors, ChevronRight, ChevronLeft, Check, Plus, X } from 'lucide-react';
+import { Scissors, ChevronRight, ChevronLeft, Check, Plus, X, Sparkles, Users } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { supabase } from '@/lib/supabase';
 import { setupSalon } from '@/app/actions/setup';
@@ -13,7 +13,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { isValidPKPhone } from '@/lib/utils/phone';
 import type { SalonType, StaffRole } from '@/types/database';
 
 const CITIES = ['Lahore', 'Karachi', 'Islamabad', 'Rawalpindi', 'Faisalabad', 'Other'];
@@ -53,17 +52,16 @@ interface ServiceEntry {
 interface PartnerEntry {
   name: string;
   email: string;
-  phone: string;
-  pin: string;
-  confirmPin: string;
+  password: string;
+  confirmPassword: string;
 }
 
 interface StaffEntry {
   name: string;
   role: StaffRole;
-  phone: string;
-  pin: string;
-  confirmPin: string;
+  email: string;
+  password: string;
+  confirmPassword: string;
 }
 
 interface DaySchedule {
@@ -75,7 +73,7 @@ interface DaySchedule {
 export default function SetupPage() {
   const router = useRouter();
   const { t } = useLanguage();
-  const { salon, setSalon, setCurrentBranch } = useAppStore();
+  const { salon, setSalon, setBranches, setCurrentBranch, setIsOwner } = useAppStore();
 
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
@@ -92,7 +90,7 @@ export default function SetupPage() {
   // Step 3 — Ownership
   const [ownershipType, setOwnershipType] = useState<'single' | 'multiple'>('single');
   const [partners, setPartners] = useState<PartnerEntry[]>([
-    { name: '', email: '', phone: '', pin: '', confirmPin: '' },
+    { name: '', email: '', password: '', confirmPassword: '' },
   ]);
 
   // Step 4 — Working Hours
@@ -113,16 +111,16 @@ export default function SetupPage() {
 
   // Step 5 — Staff
   const [staffList, setStaffList] = useState<StaffEntry[]>([
-    { name: '', role: 'junior_stylist', phone: '', pin: '', confirmPin: '' },
+    { name: '', role: 'junior_stylist', email: '', password: '', confirmPassword: '' },
   ]);
 
   // Derived
   const selectedServices = services.filter((s) => s.selected);
-  const validStaff = staffList.filter((s) => s.name && s.pin.length === 4 && s.pin === s.confirmPin);
-  const validPartners = partners.filter((p) => p.name && p.phone && p.pin.length === 4 && p.pin === p.confirmPin);
+  const validStaff = staffList.filter((s) => s.name && s.email && s.password.length >= 6 && s.password === s.confirmPassword);
+  const validPartners = partners.filter((p) => p.name && p.email && p.password.length >= 6 && p.password === p.confirmPassword);
 
   function addPartnerRow() {
-    setPartners([...partners, { name: '', email: '', phone: '', pin: '', confirmPin: '' }]);
+    setPartners([...partners, { name: '', email: '', password: '', confirmPassword: '' }]);
   }
 
   function updatePartner(index: number, field: keyof PartnerEntry, value: string) {
@@ -159,7 +157,7 @@ export default function SetupPage() {
   }
 
   function addStaffRow() {
-    setStaffList([...staffList, { name: '', role: 'junior_stylist', phone: '', pin: '', confirmPin: '' }]);
+    setStaffList([...staffList, { name: '', role: 'junior_stylist', email: '', password: '', confirmPassword: '' }]);
   }
 
   function updateStaff(index: number, field: keyof StaffEntry, value: string) {
@@ -175,8 +173,7 @@ export default function SetupPage() {
 
   function handleNext() {
     if (step === 2 && !salonName) { toast.error('Salon name required'); return; }
-    if (step === 2 && phone && !isValidPKPhone(phone)) { toast.error('Invalid phone format — expected 03XX-XXXXXXX'); return; }
-    if (step === 3 && ownershipType === 'multiple' && validPartners.length === 0) { toast.error('Add at least one partner with name, phone, and PIN'); return; }
+    if (step === 3 && ownershipType === 'multiple' && validPartners.length === 0) { toast.error('Add at least one partner with name, email, and password'); return; }
     if (step === 4) {
       const invalidDay = DAYS.find(d => !hours[d].off && hours[d].close <= hours[d].open);
       if (invalidDay) {
@@ -216,17 +213,32 @@ export default function SetupPage() {
         address,
         phone,
         whatsapp: sameAsPhone ? phone : whatsapp,
-        ownerId: user?.id,
+        ownerId: user?.id ?? '',
         prayerBlockEnabled: prayerBlocks,
         workingHours,
         services: selectedServices.map(s => ({ name: s.name, category: s.category, price: s.price, duration: s.duration })),
-        partners: validPartners.map(p => ({ name: p.name, phone: p.phone, pin: p.pin })),
-        staff: validStaff.map(s => ({ name: s.name, phone: s.phone, role: s.role, pin: s.pin })),
+        partners: validPartners.map(p => ({ name: p.name, email: p.email, password: p.password })),
+        staff: validStaff.map(s => ({ name: s.name, email: s.email, role: s.role, password: s.password })),
       });
       if (result.error) throw new Error(result.error);
 
-      setSalon(result.data!.salon);
-      setCurrentBranch(result.data!.branch);
+      const newSalon = result.data!.salon;
+      const newBranch = result.data!.branch;
+      setSalon(newSalon);
+      setBranches([newBranch]);
+      setCurrentBranch(newBranch);
+      setIsOwner(true);
+
+      // Re-sign the JWT session with correct salon/branch IDs
+      const { signSession } = await import('@/app/actions/auth');
+      await signSession({
+        salonId: newSalon.id,
+        staffId: user?.id ?? '',
+        role: 'owner',
+        branchId: newBranch.id,
+        name: 'Owner',
+      });
+
       toast.success('Salon setup complete!');
       router.push('/dashboard');
     } catch (err: unknown) {
@@ -244,7 +256,7 @@ export default function SetupPage() {
         <div className="max-w-2xl mx-auto px-4 py-3">
           <div className="flex items-center gap-2 mb-2">
             <Scissors className="w-5 h-5 text-gold" />
-            <span className="font-heading font-bold text-lg">BrBr</span>
+            <span className="font-heading font-bold text-lg">iCut</span>
             <span className="text-sm text-muted-foreground ml-auto">Step {step} of 7</span>
             <button
               onClick={() => {
@@ -309,8 +321,8 @@ export default function SetupPage() {
                         : 'border-border hover:border-gold/50'
                     }`}
                   >
-                    <div className="text-2xl mb-1">
-                      {type === 'gents' ? '✂️' : type === 'ladies' ? '💄' : '🌟'}
+                    <div className="flex justify-center mb-1">
+                      {type === 'gents' ? <Scissors className="w-6 h-6" /> : type === 'ladies' ? <Sparkles className="w-6 h-6" /> : <Users className="w-6 h-6" />}
                     </div>
                     <div className="text-sm font-medium">
                       {type === 'gents' ? t('gentsSalon') : type === 'ladies' ? t('ladiesSalon') : t('unisexSalon')}
@@ -401,24 +413,20 @@ export default function SetupPage() {
                         <Input value={partner.name} onChange={(e) => updatePartner(i, 'name', e.target.value)} placeholder="Partner name" className="mt-1" />
                       </div>
                       <div>
-                        <Label>Email</Label>
+                        <Label>Email *</Label>
                         <Input type="email" value={partner.email} onChange={(e) => updatePartner(i, 'email', e.target.value)} placeholder="partner@email.com" className="mt-1" />
                       </div>
                     </div>
-                    <div>
-                      <Label>Phone Number *</Label>
-                      <Input value={partner.phone} onChange={(e) => updatePartner(i, 'phone', e.target.value)} placeholder="03XX-XXXXXXX" className="mt-1" />
-                    </div>
                     <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <Label>Set 4-digit PIN *</Label>
-                        <Input type="password" maxLength={4} inputMode="numeric" value={partner.pin} onChange={(e) => updatePartner(i, 'pin', e.target.value.replace(/\D/g, ''))} className="mt-1 text-center tracking-widest" />
+                        <Label>Password *</Label>
+                        <Input type="password" value={partner.password} onChange={(e) => updatePartner(i, 'password', e.target.value)} minLength={6} placeholder="Min 6 characters" className="mt-1" />
                       </div>
                       <div>
-                        <Label>Confirm PIN *</Label>
-                        <Input type="password" maxLength={4} inputMode="numeric" value={partner.confirmPin} onChange={(e) => updatePartner(i, 'confirmPin', e.target.value.replace(/\D/g, ''))} className="mt-1 text-center tracking-widest" />
-                        {partner.pin && partner.confirmPin && partner.pin !== partner.confirmPin && (
-                          <p className="text-xs text-destructive mt-1">PINs don&apos;t match</p>
+                        <Label>Confirm Password *</Label>
+                        <Input type="password" value={partner.confirmPassword} onChange={(e) => updatePartner(i, 'confirmPassword', e.target.value)} className="mt-1" />
+                        {partner.password && partner.confirmPassword && partner.password !== partner.confirmPassword && (
+                          <p className="text-xs text-destructive mt-1">Passwords don&apos;t match</p>
                         )}
                       </div>
                     </div>
@@ -575,33 +583,31 @@ export default function SetupPage() {
                   </div>
                 </div>
                 <div>
-                  <Label>{t('staffPhone')}</Label>
-                  <Input value={staff.phone} onChange={(e) => updateStaff(i, 'phone', e.target.value)} placeholder="03XX-XXXXXXX" className="mt-1" />
+                  <Label>Email *</Label>
+                  <Input type="email" value={staff.email} onChange={(e) => updateStaff(i, 'email', e.target.value)} placeholder="staff@email.com" className="mt-1" />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <Label>{t('setPin')}</Label>
+                    <Label>Password *</Label>
                     <Input
                       type="password"
-                      maxLength={4}
-                      inputMode="numeric"
-                      value={staff.pin}
-                      onChange={(e) => updateStaff(i, 'pin', e.target.value.replace(/\D/g, ''))}
-                      className="mt-1 text-center tracking-widest"
+                      value={staff.password}
+                      onChange={(e) => updateStaff(i, 'password', e.target.value)}
+                      minLength={6}
+                      placeholder="Min 6 characters"
+                      className="mt-1"
                     />
                   </div>
                   <div>
-                    <Label>{t('confirmPin')}</Label>
+                    <Label>Confirm Password *</Label>
                     <Input
                       type="password"
-                      maxLength={4}
-                      inputMode="numeric"
-                      value={staff.confirmPin}
-                      onChange={(e) => updateStaff(i, 'confirmPin', e.target.value.replace(/\D/g, ''))}
-                      className="mt-1 text-center tracking-widest"
+                      value={staff.confirmPassword}
+                      onChange={(e) => updateStaff(i, 'confirmPassword', e.target.value)}
+                      className="mt-1"
                     />
-                    {staff.pin && staff.confirmPin && staff.pin !== staff.confirmPin && (
-                      <p className="text-xs text-destructive mt-1">PINs don&apos;t match</p>
+                    {staff.password && staff.confirmPassword && staff.password !== staff.confirmPassword && (
+                      <p className="text-xs text-destructive mt-1">Passwords don&apos;t match</p>
                     )}
                   </div>
                 </div>

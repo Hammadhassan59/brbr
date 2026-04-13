@@ -2,8 +2,8 @@ import { Metadata } from 'next';
 import PublicLayout from '@/components/public-layout';
 
 export const metadata: Metadata = {
-  title: 'Refund Policy — BrBr',
-  description: 'BrBr refund and cancellation policy.',
+  title: 'Refund Policy — iCut',
+  description: 'iCut refund and cancellation policy.',
 };
 
 export default function RefundPage() {
@@ -18,27 +18,27 @@ export default function RefundPage() {
           <section>
             <h2 className="text-base font-bold text-[#1A1A1A] mb-3">Free Trial</h2>
             <p>
-              BrBr offers a <strong>14-day free trial</strong> with no payment required. You can use the full product during your trial period without entering any billing details. If BrBr is not the right fit, simply let the trial expire — no action needed.
+              iCut offers a <strong>14-day free trial</strong> with no payment required. You can use the full product during your trial period without entering any billing details. If iCut is not the right fit, simply let the trial expire — no action needed.
             </p>
           </section>
 
           <section>
             <h2 className="text-base font-bold text-[#1A1A1A] mb-3">After You Subscribe</h2>
             <p>
-              BrBr subscriptions are billed monthly. We do not offer partial or prorated refunds for unused time within a billing cycle. When you cancel, your access continues until the end of your current paid period, at which point you will not be charged again.
+              iCut subscriptions are billed monthly. We do not offer partial or prorated refunds for unused time within a billing cycle. When you cancel, your access continues until the end of your current paid period, at which point you will not be charged again.
             </p>
           </section>
 
           <section>
             <h2 className="text-base font-bold text-[#1A1A1A] mb-3">How to Cancel</h2>
             <p>
-              You can cancel your subscription at any time from the <strong>Settings page</strong> inside BrBr. You can also cancel by reaching us on{' '}
+              You can cancel your subscription at any time from the <strong>Settings page</strong> inside iCut. You can also cancel by reaching us on{' '}
               <a href="https://wa.me/923001234567" className="text-gold hover:underline" target="_blank" rel="noopener noreferrer">
                 WhatsApp +92 300 123 4567
               </a>{' '}
               or by emailing{' '}
-              <a href="mailto:support@brbr.pk" className="text-gold hover:underline">
-                support@brbr.pk
+              <a href="mailto:support@icut.pk" className="text-gold hover:underline">
+                support@icut.pk
               </a>
               .
             </p>
@@ -52,8 +52,8 @@ export default function RefundPage() {
                 WhatsApp +92 300 123 4567
               </a>{' '}
               or email{' '}
-              <a href="mailto:support@brbr.pk" className="text-gold hover:underline">
-                support@brbr.pk
+              <a href="mailto:support@icut.pk" className="text-gold hover:underline">
+                support@icut.pk
               </a>
               . We will review and resolve your dispute within <strong>7 business days</strong>.
             </p>

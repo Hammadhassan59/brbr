@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
-import { Calendar, CalendarRange, UserCog, Package, Users, TrendingUp, ArrowRight, ArrowUpRight, ArrowDownRight } from 'lucide-react';
+import { Calendar, CalendarRange, UserCog, Package, Users, TrendingUp, ArrowRight, ArrowUpRight, ArrowDownRight, BarChart3 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAppStore } from '@/store/app-store';
 import { getTodayPKT } from '@/lib/utils/dates';
@@ -170,7 +170,7 @@ export default function ReportsPage() {
         <h2 className="font-heading text-xl font-bold">Reports</h2>
       </div>
       {!loading && data === null && (
-        <EmptyState icon="📊" text="noDataYet" />
+        <EmptyState icon={BarChart3} text="noDataYet" />
       )}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3 stagger-children">
         {REPORTS.map((r) => (

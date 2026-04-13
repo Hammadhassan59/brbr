@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
-import { Plus, Package, Tag, Award, Users } from 'lucide-react';
+import { Plus, Package, Tag, Award, Users, Gift } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAppStore } from '@/store/app-store';
 import { formatPKR } from '@/lib/utils/currency';
@@ -149,7 +149,7 @@ export default function PackagesPage() {
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">{[1, 2, 3].map((i) => <div key={i} className="h-36 bg-muted rounded-lg animate-pulse" />)}</div>
       ) : filtered.length === 0 ? (
-        <EmptyState icon="🎁" text="noPackagesYet" ctaLabel="addPackage" ctaHref="/dashboard/packages?action=new" />
+        <EmptyState icon={Gift} text="noPackagesYet" ctaLabel="addPackage" ctaHref="/dashboard/packages?action=new" />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 stagger-children">
           {filtered.map((pkg) => {

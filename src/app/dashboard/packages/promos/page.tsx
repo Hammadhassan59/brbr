@@ -46,7 +46,7 @@ export default function PromosPage() {
 
   function generateCode() {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-    let code = 'BRBR-';
+    let code = 'ICUT-';
     for (let i = 0; i < 4; i++) code += chars[Math.floor(Math.random() * chars.length)];
     setFormCode(code);
   }
@@ -149,7 +149,7 @@ export default function PromosPage() {
                       document.body.removeChild(textarea);
                       toast.success('Copied!');
                     } catch {
-                      toast(`Code: ${p.code}`, { icon: '📋' });
+                      toast(`Code: ${p.code}`);
                     }
                   }
                 }} className="text-muted-foreground hover:text-foreground">

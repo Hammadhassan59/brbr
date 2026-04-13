@@ -1,6 +1,6 @@
 {
-  "name": "BrBr — Pakistan ka Smart Salon System",
-  "short_name": "BrBr",
+  "name": "iCut — Pakistan ka Smart Salon System",
+  "short_name": "iCut",
   "description": "Salon & Barber POS System for Pakistan",
   "start_url": "/dashboard",
   "display": "standalone",

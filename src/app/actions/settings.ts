@@ -19,13 +19,14 @@ export async function updateSalon(data: Record<string, unknown>) {
 }
 
 export async function updateBranchWorkingHours(branchId: string, workingHours: Record<string, unknown>) {
-  await verifySession();
+  const session = await verifySession();
   const supabase = createServerClient();
 
   const { data: result, error } = await supabase
     .from('branches')
     .update({ working_hours: workingHours })
     .eq('id', branchId)
+    .eq('salon_id', session.salonId)
     .select()
     .single();
 
@@ -62,13 +63,14 @@ export async function createService(data: {
 }
 
 export async function updateService(id: string, data: Record<string, unknown>) {
-  await verifySession();
+  const session = await verifySession();
   const supabase = createServerClient();
 
   const { data: result, error } = await supabase
     .from('services')
     .update(data)
     .eq('id', id)
+    .eq('salon_id', session.salonId)
     .select()
     .single();
 
@@ -77,13 +79,14 @@ export async function updateService(id: string, data: Record<string, unknown>) {
 }
 
 export async function deleteService(id: string) {
-  await verifySession();
+  const session = await verifySession();
   const supabase = createServerClient();
 
   const { error } = await supabase
     .from('services')
     .delete()
-    .eq('id', id);
+    .eq('id', id)
+    .eq('salon_id', session.salonId);
 
   if (error) return { error: error.message };
   return { error: null };

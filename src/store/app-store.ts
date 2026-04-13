@@ -8,6 +8,7 @@ interface AppState {
   currentBranch: Branch | null;
   currentStaff: Staff | null;
   currentPartner: SalonPartner | null;
+  isOwner: boolean;
   isPartner: boolean;
   isSuperAdmin: boolean;
   setSalon: (salon: Salon | null) => void;
@@ -15,6 +16,7 @@ interface AppState {
   setCurrentBranch: (branch: Branch | null) => void;
   setCurrentStaff: (staff: Staff | null) => void;
   setCurrentPartner: (partner: SalonPartner | null) => void;
+  setIsOwner: (v: boolean) => void;
   setIsPartner: (v: boolean) => void;
   setIsSuperAdmin: (v: boolean) => void;
   reset: () => void;
@@ -28,6 +30,7 @@ export const useAppStore = create<AppState>()(
       currentBranch: null,
       currentStaff: null,
       currentPartner: null,
+      isOwner: false,
       isPartner: false,
       isSuperAdmin: false,
       setSalon: (salon) => set({ salon }),
@@ -35,12 +38,13 @@ export const useAppStore = create<AppState>()(
       setCurrentBranch: (branch) => set({ currentBranch: branch }),
       setCurrentStaff: (staff) => set({ currentStaff: staff }),
       setCurrentPartner: (partner) => set({ currentPartner: partner }),
+      setIsOwner: (v) => set({ isOwner: v }),
       setIsPartner: (v) => set({ isPartner: v }),
       setIsSuperAdmin: (v) => set({ isSuperAdmin: v }),
-      reset: () => set({ salon: null, branches: [], currentBranch: null, currentStaff: null, currentPartner: null, isPartner: false, isSuperAdmin: false }),
+      reset: () => set({ salon: null, branches: [], currentBranch: null, currentStaff: null, currentPartner: null, isOwner: false, isPartner: false, isSuperAdmin: false }),
     }),
     {
-      name: 'brbr-session',
+      name: 'icut-session',
     }
   )
 );

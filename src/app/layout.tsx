@@ -16,24 +16,24 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "BrBr — Pakistan's Smart Salon System",
+  title: "iCut — Pakistan's Smart Salon System",
   description: 'Bookings, Payments, Staff, Inventory — all in one place. Salon & Barber POS for Pakistan.',
-  metadataBase: new URL('https://brbr.pk'),
+  metadataBase: new URL('https://icut.pk'),
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
-    title: 'BrBr',
+    title: 'iCut',
   },
   openGraph: {
-    title: "BrBr — Pakistan's Smart Salon POS System",
+    title: "iCut — Pakistan's Smart Salon POS System",
     description: 'Bookings, Payments, Staff, Inventory — all in one place',
-    siteName: 'BrBr',
-    images: [{ url: '/og-image.svg', width: 1200, height: 630, alt: "BrBr — Pakistan's Smart Salon System" }],
+    siteName: 'iCut',
+    images: [{ url: '/og-image.svg', width: 1200, height: 630, alt: "iCut — Pakistan's Smart Salon System" }],
   },
   twitter: {
     card: 'summary_large_image',
-    title: "BrBr — Pakistan's Smart Salon POS System",
+    title: "iCut — Pakistan's Smart Salon POS System",
     description: 'Bookings, Payments, Staff, Inventory — all in one place',
     images: ['/og-image.svg'],
   },

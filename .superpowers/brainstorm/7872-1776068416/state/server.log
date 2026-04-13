@@ -1,0 +1,6 @@
+{"type":"server-started","port":62414,"host":"127.0.0.1","url_host":"localhost","url":"http://localhost:62414","screen_dir":"/Users/user1/brbr/.superpowers/brainstorm/7872-1776068416/content","state_dir":"/Users/user1/brbr/.superpowers/brainstorm/7872-1776068416/state"}
+{"type":"screen-added","file":"/Users/user1/brbr/.superpowers/brainstorm/7872-1776068416/content/01-checklist-layout.html"}
+{"type":"screen-added","file":"/Users/user1/brbr/.superpowers/brainstorm/7872-1776068416/content/02-staff-welcome.html"}
+{"type":"screen-added","file":"/Users/user1/brbr/.superpowers/brainstorm/7872-1776068416/content/03-empty-states.html"}
+{"type":"screen-added","file":"/Users/user1/brbr/.superpowers/brainstorm/7872-1776068416/content/waiting.html"}
+{"type":"server-stopped","reason":"idle timeout"}

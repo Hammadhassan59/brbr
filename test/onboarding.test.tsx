@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
+import { UserRound, BarChart3 } from 'lucide-react'
 
 vi.mock('@/components/providers/language-provider', () => ({
   useLanguage: () => ({
@@ -108,20 +109,19 @@ describe('EmptyState', () => {
   })
 
   it('renders icon and text', () => {
-    render(<EmptyState icon="👤" text="noClientsYet" />)
-    expect(screen.getByText('👤')).toBeDefined()
+    render(<EmptyState icon={UserRound} text="noClientsYet" />)
     expect(screen.getByText('No clients yet')).toBeDefined()
   })
 
   it('renders CTA button with link when provided', () => {
-    render(<EmptyState icon="👤" text="noClientsYet" ctaLabel="addClient" ctaHref="/dashboard/clients?action=new" />)
+    render(<EmptyState icon={UserRound} text="noClientsYet" ctaLabel="addClient" ctaHref="/dashboard/clients?action=new" />)
     const link = screen.getByText('Add Client')
     expect(link.closest('a')).toBeDefined()
     expect(link.closest('a')?.getAttribute('href')).toBe('/dashboard/clients?action=new')
   })
 
   it('renders without CTA when no ctaLabel provided', () => {
-    render(<EmptyState icon="📊" text="noDataYet" />)
+    render(<EmptyState icon={BarChart3} text="noDataYet" />)
     expect(screen.getByText('No data yet')).toBeDefined()
     expect(screen.queryByRole('link')).toBeNull()
   })

@@ -56,8 +56,8 @@ export function KPICards({ summary, appointmentsDone, appointmentsTotal, walkIns
             <>
               <div className="flex items-center justify-between mb-3">
                 <span className="text-xs text-muted-foreground uppercase tracking-wider font-medium">{card.label}</span>
-                <div>
-                  <card.icon className="w-5 h-5 text-foreground" />
+                <div className="w-8 h-8 rounded-lg bg-foreground flex items-center justify-center">
+                  <card.icon className="w-4 h-4 text-background" />
                 </div>
               </div>
               <p className="text-2xl font-bold">{card.value}</p>

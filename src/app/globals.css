@@ -64,7 +64,7 @@
   --duration-dramatic: 600ms;
   --duration-landing: 800ms;
 
-  /* BrBr — TaskPro style
+  /* iCut — TaskPro style
      Content area: light backgrounds, white cards
      Sidebar: dark navy, Topbar: white */
   --gold: #FEBE10;
@@ -197,7 +197,7 @@
 
   /* Entrance animation helper */
   .animate-fade-up {
-    animation: fade-up var(--duration-normal) var(--ease-snappy) both;
+    animation: fade-up var(--duration-landing) var(--ease-snappy) both;
   }
 
   .animate-fade-in {

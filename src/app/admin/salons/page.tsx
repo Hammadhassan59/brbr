@@ -11,8 +11,7 @@ import { formatPKDate } from '@/lib/utils/dates';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { DEMO_ALL_SALONS, DEMO_BRANCH } from '@/lib/demo-data';
-import type { Salon } from '@/types/database';
+import type { Salon, Branch } from '@/types/database';
 
 const TYPE_BADGE: Record<string, { label: string; cls: string }> = {
   gents: { label: 'Gents', cls: 'bg-blue-500/15 text-blue-600' },
@@ -24,7 +23,7 @@ export default function AdminSalonsPage() {
   const router = useRouter();
   const { setSalon, setCurrentBranch } = useAppStore();
 
-  const [salons, setSalons] = useState<Salon[]>(DEMO_ALL_SALONS);
+  const [salons, setSalons] = useState<Salon[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -39,8 +38,7 @@ export default function AdminSalonsPage() {
           setSalons(data as Salon[]);
         }
       } catch {
-        setSalons(DEMO_ALL_SALONS);
-        toast.error('Could not load live data — showing demo');
+        toast.error('Could not load salons');
       } finally {
         setLoading(false);
       }
@@ -48,9 +46,19 @@ export default function AdminSalonsPage() {
     fetchSalons();
   }, []);
 
-  function enterSalon(salon: Salon) {
+  async function enterSalon(salon: Salon) {
     setSalon(salon);
-    setCurrentBranch(DEMO_BRANCH);
+    try {
+      const { data } = await supabase
+        .from('branches')
+        .select('*')
+        .eq('salon_id', salon.id)
+        .eq('is_main', true)
+        .single();
+      if (data) setCurrentBranch(data as Branch);
+    } catch {
+      // Branch will be loaded by dashboard
+    }
     router.push('/dashboard');
   }
 

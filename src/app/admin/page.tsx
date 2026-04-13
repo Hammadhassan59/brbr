@@ -15,23 +15,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { DEMO_ALL_SALONS, DEMO_BRANCH } from '@/lib/demo-data';
-import type { Salon } from '@/types/database';
-
-// Fallback platform-level stats (demo mode)
-const DEMO_PLATFORM_STATS = {
-  totalSalons: 4,
-  activeSalons: 3,
-  pendingSetup: 1,
-  totalStaff: 23,
-  totalClients: 847,
-  monthlyRevenue: 1284500,
-  monthlyBills: 2134,
-  trialSalons: 1,
-  paidSalons: 2,
-  churnedSalons: 0,
-  topCity: 'Lahore',
-};
+import type { Salon, Branch } from '@/types/database';
 
 const TYPE_BADGE: Record<string, { label: string; cls: string }> = {
   gents: { label: 'Gents', cls: 'bg-blue-500/15 text-blue-600' },
@@ -43,9 +27,21 @@ export default function AdminDashboard() {
   const router = useRouter();
   const { setSalon, setCurrentBranch, setCurrentStaff, setIsSuperAdmin } = useAppStore();
 
-  const [salons, setSalons] = useState<Salon[]>(DEMO_ALL_SALONS);
+  const [salons, setSalons] = useState<Salon[]>([]);
   const [loading, setLoading] = useState(true);
-  const [platformStats, setPlatformStats] = useState(DEMO_PLATFORM_STATS);
+  const [platformStats, setPlatformStats] = useState({
+    totalSalons: 0,
+    activeSalons: 0,
+    pendingSetup: 0,
+    totalStaff: 0,
+    totalClients: 0,
+    monthlyRevenue: 0,
+    monthlyBills: 0,
+    trialSalons: 0,
+    paidSalons: 0,
+    churnedSalons: 0,
+    topCity: '—',
+  });
 
   useEffect(() => {
     async function fetchData() {
@@ -58,7 +54,7 @@ export default function AdminDashboard() {
 
         if (salonErr) throw salonErr;
 
-        const liveSalons = (salonData && salonData.length > 0) ? salonData as Salon[] : DEMO_ALL_SALONS;
+        const liveSalons = (salonData || []) as Salon[];
         setSalons(liveSalons);
 
         // Calculate stats from real data
@@ -74,10 +70,10 @@ export default function AdminDashboard() {
           .select('total_amount')
           .gte('created_at', monthStart.toISOString());
 
-        const monthlyRevenue = billData && billData.length > 0
+        const monthlyRevenue = billData
           ? billData.reduce((sum: number, b: { total_amount: number }) => sum + (b.total_amount || 0), 0)
-          : DEMO_PLATFORM_STATS.monthlyRevenue;
-        const monthlyBills = billData && billData.length > 0 ? billData.length : DEMO_PLATFORM_STATS.monthlyBills;
+          : 0;
+        const monthlyBills = billData ? billData.length : 0;
 
         // Fetch staff count
         const { count: staffCount } = await supabase
@@ -92,14 +88,14 @@ export default function AdminDashboard() {
         // Find top city
         const cityCounts: Record<string, number> = {};
         liveSalons.forEach((s) => { const city = s.city || 'Unknown'; cityCounts[city] = (cityCounts[city] || 0) + 1; });
-        const topCity = Object.entries(cityCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || DEMO_PLATFORM_STATS.topCity;
+        const topCity = Object.entries(cityCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || '—';
 
         setPlatformStats({
           totalSalons: liveSalons.length,
           activeSalons,
           pendingSetup,
-          totalStaff: staffCount ?? DEMO_PLATFORM_STATS.totalStaff,
-          totalClients: clientCount ?? DEMO_PLATFORM_STATS.totalClients,
+          totalStaff: staffCount ?? 0,
+          totalClients: clientCount ?? 0,
           monthlyRevenue,
           monthlyBills,
           trialSalons: pendingSetup, // approximate: pending ~ trial
@@ -108,9 +104,7 @@ export default function AdminDashboard() {
           topCity,
         });
       } catch {
-        setSalons(DEMO_ALL_SALONS);
-        setPlatformStats(DEMO_PLATFORM_STATS);
-        toast.error('Could not load live data — showing demo');
+        toast.error('Could not load platform data');
       } finally {
         setLoading(false);
       }
@@ -118,10 +112,20 @@ export default function AdminDashboard() {
     fetchData();
   }, []);
 
-  function enterSalon(salon: Salon) {
+  async function enterSalon(salon: Salon) {
     setSalon(salon);
-    setCurrentBranch(DEMO_BRANCH); // In real app, fetch the salon's main branch
     setCurrentStaff(null);
+    try {
+      const { data } = await supabase
+        .from('branches')
+        .select('*')
+        .eq('salon_id', salon.id)
+        .eq('is_main', true)
+        .single();
+      if (data) setCurrentBranch(data as Branch);
+    } catch {
+      // Branch will be loaded by dashboard
+    }
     router.push('/dashboard');
   }
 
@@ -260,23 +264,7 @@ export default function AdminDashboard() {
           <CardTitle className="text-sm">Recent Platform Activity</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-3">
-            {[
-              { time: '2 min ago', event: 'New salon registered', detail: 'Style Hub — Rawalpindi', color: 'text-blue-600' },
-              { time: '15 min ago', event: 'Subscription payment received', detail: 'Royal Barbers — Rs 5,000 (Growth Plan)', color: 'text-green-600' },
-              { time: '1 hour ago', event: 'Salon completed setup', detail: 'Noor Beauty Lounge — Karachi', color: 'text-purple-600' },
-              { time: '3 hours ago', event: 'Trial expiring soon', detail: 'Style Hub — 3 days remaining', color: 'text-amber-600' },
-              { time: 'Yesterday', event: 'New subscription', detail: 'Glamour Studio upgraded to Growth Plan', color: 'text-green-600' },
-            ].map((a, i) => (
-              <div key={i} className="flex items-start gap-3 text-sm">
-                <span className="text-[10px] text-muted-foreground w-16 shrink-0 pt-0.5">{a.time}</span>
-                <div>
-                  <p className={`font-medium ${a.color}`}>{a.event}</p>
-                  <p className="text-xs text-muted-foreground">{a.detail}</p>
-                </div>
-              </div>
-            ))}
-          </div>
+          <p className="text-sm text-muted-foreground py-4 text-center">Activity feed will appear as salons sign up and transact.</p>
         </CardContent>
       </Card>
     </div>

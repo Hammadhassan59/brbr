@@ -52,7 +52,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         {/* Logo */}
         <div className="flex items-center gap-2 px-5 py-4 border-b border-sidebar-border">
           <Scissors className="w-5 h-5 text-sidebar-primary" />
-          <span className="font-heading text-lg font-bold">BrBr</span>
+          <span className="font-heading text-lg font-bold">iCut</span>
           <span className="text-[10px] bg-red-500/20 text-red-400 px-1.5 py-0.5 rounded font-medium ml-auto flex items-center gap-1">
             <Shield className="w-3 h-3" /> ADMIN
           </span>
@@ -112,7 +112,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       {/* Content */}
       <div className="flex-1 flex flex-col min-w-0">
         <header className="sticky top-0 z-30 bg-card border-b px-6 h-14 flex items-center">
-          <h1 className="font-heading text-lg font-semibold">BrBr Admin Panel</h1>
+          <h1 className="font-heading text-lg font-semibold">iCut Admin Panel</h1>
         </header>
         <main className="flex-1 overflow-y-auto p-6">
           <ErrorBoundary>

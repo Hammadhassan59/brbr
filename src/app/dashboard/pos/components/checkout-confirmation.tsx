@@ -31,8 +31,8 @@ interface CheckoutConfirmationProps {
   tipAmount: number;
 }
 
-const RECEIPT_TEMPLATE = `✂️ *{salon_name}*
-📍 {salon_address}
+const RECEIPT_TEMPLATE = `*{salon_name}*
+{salon_address}
 ─────────────────
 Bill # {bill_number}
 Date: {date}
@@ -43,9 +43,9 @@ Subtotal:       {subtotal}
 {discount_line}*TOTAL:          {total}*
 Paid: {payment_method}
 ─────────────────
-⭐ Points earned: +{points_earned}
+Points earned: +{points_earned}
 
-Thank you! Please visit again 🙏`;
+Thank you! Please visit again.`;
 
 export function CheckoutConfirmation({
   open, onClose, onConfirm, saving,
@@ -190,7 +190,7 @@ export function CheckoutConfirmation({
               )}
               <div className="flex justify-between text-gold">
                 <span>Points earned</span>
-                <span>+{pointsEarned} ⭐</span>
+                <span>+{pointsEarned} pts</span>
               </div>
             </div>
 
@@ -218,7 +218,7 @@ export function CheckoutConfirmation({
 
       <div id="print-receipt" style={{ position: 'absolute', left: '-9999px', top: 0 }}>
         <div style={{ textAlign: 'center', marginBottom: 4 }}>
-          <div style={{ fontSize: 16, fontWeight: 'bold', letterSpacing: 2 }}>✂ {salonName.toUpperCase()}</div>
+          <div style={{ fontSize: 16, fontWeight: 'bold', letterSpacing: 2 }}>{salonName.toUpperCase()}</div>
           {salonAddress && <div style={{ fontSize: 10 }}>{salonAddress}</div>}
           <div style={{ fontSize: 10, marginTop: 2 }}>Pakistan&apos;s Smart Salon System</div>
         </div>
@@ -314,7 +314,7 @@ export function CheckoutConfirmation({
           {pointsEarned > 0 && <div>★ Points earned: +{pointsEarned}</div>}
           <div style={{ marginTop: 6 }}>Thank you for visiting!</div>
           <div>Please come again</div>
-          <div style={{ marginTop: 6, fontSize: 9, letterSpacing: 1 }}>— BRBR.PK —</div>
+          <div style={{ marginTop: 6, fontSize: 9, letterSpacing: 1 }}>— ICUT.PK —</div>
         </div>
       </div>
     </>

@@ -3,4 +3,4 @@ Allow: /
 Disallow: /dashboard/
 Disallow: /admin/
 Disallow: /api/
-Sitemap: https://brbr.pk/sitemap.xml
+Sitemap: https://icut.pk/sitemap.xml

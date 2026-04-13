@@ -1,6 +1,6 @@
 'use client';
 
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, LabelList } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useLanguage } from '@/components/providers/language-provider';
 import { formatPKR } from '@/lib/utils/currency';
@@ -43,7 +43,7 @@ export function RevenueChart({ data, loading, title }: RevenueChartProps) {
           </div>
         ) : (
           <ResponsiveContainer width="100%" height={280}>
-            <BarChart data={data} margin={{ top: 5, right: 5, left: -15, bottom: 0 }}>
+            <BarChart data={data} margin={{ top: 20, right: 5, left: -15, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" opacity={0.3} />
               <XAxis
                 dataKey="label"
@@ -62,15 +62,27 @@ export function RevenueChart({ data, loading, title }: RevenueChartProps) {
                 tickFormatter={(v) => v >= 1000 ? `${(v / 1000).toFixed(0)}K` : String(v)}
               />
               <Tooltip
-                formatter={(value) => [formatPKR(Number(value)), 'Revenue']}
-                contentStyle={{
-                  backgroundColor: 'hsl(var(--card))',
-                  border: '1px solid hsl(var(--border))',
-                  borderRadius: '8px',
-                  fontSize: '12px',
+                cursor={{ fill: 'rgba(0,0,0,0.06)' }}
+                content={({ active, payload, label }) => {
+                  if (!active || !payload?.length) return null;
+                  const revenue = Number(payload[0].value);
+                  return (
+                    <div className="bg-black text-white px-3 py-2 rounded-lg border border-border shadow-lg text-xs">
+                      <p className="font-semibold mb-1">{label}</p>
+                      <p className="text-[#FEBE10] font-medium">{formatPKR(revenue)}</p>
+                      <p className="text-white/60 mt-0.5">{payload[0].payload.appointments} appt{payload[0].payload.appointments !== 1 ? 's' : ''}</p>
+                    </div>
+                  );
                 }}
               />
-              <Bar dataKey="revenue" fill="#FEBE10" radius={[4, 4, 0, 0]} isAnimationActive={true} animationDuration={600} animationEasing="ease-out" animationBegin={200} />
+              <Bar dataKey="revenue" fill="#FEBE10" radius={[4, 4, 0, 0]} isAnimationActive={true} animationDuration={600} animationEasing="ease-out" animationBegin={200}>
+                <LabelList
+                  dataKey="revenue"
+                  position="top"
+                  formatter={(v: unknown) => { const n = Number(v); return n >= 1000 ? `${(n / 1000).toFixed(1)}K` : n > 0 ? String(n) : ''; }}
+                  style={{ fontSize: 10, fill: 'var(--muted-foreground)', fontWeight: 500 }}
+                />
+              </Bar>
             </BarChart>
           </ResponsiveContainer>
         )}

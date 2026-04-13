@@ -221,7 +221,7 @@ export function NewAppointmentModal({
         const daySchedule = currentBranch.working_hours[selectedDay];
         if (daySchedule && !daySchedule.off && endTime > daySchedule.close) {
           toast(`This appointment would end at ${formatTime(endTime)}, after closing time (${formatTime(daySchedule.close)})`, {
-            icon: '⚠️', duration: 5000,
+            duration: 5000,
           });
         }
       }

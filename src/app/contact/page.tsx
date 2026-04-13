@@ -3,8 +3,8 @@ import { MessageCircle, Mail, Clock } from 'lucide-react';
 import PublicLayout from '@/components/public-layout';
 
 export const metadata: Metadata = {
-  title: 'Contact — BrBr',
-  description: 'Get in touch with BrBr support via WhatsApp or email.',
+  title: 'Contact — iCut',
+  description: 'Get in touch with iCut support via WhatsApp or email.',
 };
 
 export default function ContactPage() {
@@ -40,14 +40,14 @@ export default function ContactPage() {
 
           {/* Email */}
           <a
-            href="mailto:support@brbr.pk"
+            href="mailto:support@icut.pk"
             className="flex items-start gap-4 p-6 border border-[#E8E8E8] hover:border-gold/30 hover:bg-gold/5 transition-colors block"
           >
             <div className="mt-0.5 shrink-0">
               <Mail className="w-5 h-5 text-gold" />
             </div>
             <div>
-              <p className="text-sm font-bold text-[#1A1A1A] mb-0.5">support@brbr.pk</p>
+              <p className="text-sm font-bold text-[#1A1A1A] mb-0.5">support@icut.pk</p>
               <p className="text-xs text-[#1A1A1A]/50 leading-relaxed">
                 Formal requests, data questions, and billing disputes.
               </p>

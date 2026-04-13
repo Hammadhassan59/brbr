@@ -1,20 +1,10 @@
 'use client';
 
-import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useLanguage } from '@/components/providers/language-provider';
 import { formatPKR } from '@/lib/utils/currency';
-import { PieChartIcon } from 'lucide-react';
+import { Sparkles } from 'lucide-react';
 import type { DailySummary } from '@/types/database';
-
-const COLORS: Record<string, string> = {
-  Cash: '#22C55E',
-  JazzCash: '#EF4444',
-  EasyPaisa: '#10B981',
-  Card: '#3B82F6',
-  'Bank Transfer': '#8B5CF6',
-  Udhaar: '#F97316',
-};
 
 interface PaymentBreakdownProps {
   summary: DailySummary | null;
@@ -24,73 +14,64 @@ interface PaymentBreakdownProps {
 export function PaymentBreakdown({ summary, loading }: PaymentBreakdownProps) {
   const { t } = useLanguage();
 
-  const data = summary ? [
-    { name: 'Cash', value: summary.cash_amount },
-    { name: 'JazzCash', value: summary.jazzcash_amount },
-    { name: 'EasyPaisa', value: summary.easypaisa_amount },
-    { name: 'Card', value: summary.card_amount },
-    { name: 'Bank Transfer', value: summary.bank_transfer_amount },
-    { name: 'Udhaar', value: summary.udhaar_amount },
-  ].filter((d) => d.value > 0) : [];
+  const services = summary?.top_services ?? [];
+  const maxRevenue = services.length > 0 ? Math.max(...services.map((s) => s.revenue)) : 0;
 
   return (
     <Card className="bg-card border border-border rounded-lg">
       <CardHeader className="pb-3">
-        <CardTitle className="text-base font-semibold">{t('paymentBreakdown')}</CardTitle>
+        <CardTitle className="text-base font-semibold">{t('topServices')}</CardTitle>
       </CardHeader>
       <CardContent>
         {loading ? (
-          <div className="h-[280px] flex items-center justify-center overflow-hidden">
-            <div className="shimmer h-full w-full rounded-lg" />
+          <div className="space-y-4">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="space-y-2">
+                <div className="h-4 w-28 shimmer rounded" />
+                <div className="h-3 shimmer rounded-full" />
+              </div>
+            ))}
           </div>
-        ) : data.length === 0 ? (
-          <div className="h-[280px] flex flex-col items-center justify-center gap-3">
+        ) : services.length === 0 ? (
+          <div className="py-10 flex flex-col items-center justify-center gap-3">
             <div className="w-12 h-12 rounded-lg bg-muted/50 flex items-center justify-center">
-              <PieChartIcon className="w-6 h-6 text-muted-foreground" />
+              <Sparkles className="w-6 h-6 text-muted-foreground" />
             </div>
             <div className="text-center">
-              <p className="text-sm font-medium text-muted-foreground">No payment data yet</p>
-              <p className="text-xs text-muted-foreground/60 mt-1">Payment breakdown will appear after transactions</p>
+              <p className="text-sm font-medium text-muted-foreground">No services yet</p>
+              <p className="text-xs text-muted-foreground/60 mt-1">Top services will appear after billing</p>
             </div>
           </div>
         ) : (
-          <ResponsiveContainer width="100%" height={280}>
-            <PieChart>
-              <Pie
-                data={data}
-                cx="50%"
-                cy="50%"
-                innerRadius={60}
-                outerRadius={95}
-                paddingAngle={3}
-                dataKey="value"
-                label={false}
-                isAnimationActive={true}
-                animationDuration={800}
-                animationBegin={300}
-              >
-                {data.map((entry) => (
-                  <Cell key={entry.name} fill={COLORS[entry.name] || '#555555'} />
-                ))}
-              </Pie>
-              <Tooltip
-                formatter={(value) => formatPKR(Number(value))}
-                contentStyle={{
-                  backgroundColor: 'hsl(var(--card))',
-                  border: '1px solid hsl(var(--border))',
-                  borderRadius: '8px',
-                  fontSize: '12px',
-                }}
-              />
-              <Legend
-                formatter={(value: string) => {
-                  const item = data.find((d) => d.name === value);
-                  return `${value}: ${item ? formatPKR(item.value) : ''}`;
-                }}
-                wrapperStyle={{ fontSize: '13px' }}
-              />
-            </PieChart>
-          </ResponsiveContainer>
+          <div className="space-y-3">
+            {services.map((s, i) => {
+              const pct = maxRevenue > 0 ? (s.revenue / maxRevenue) * 100 : 0;
+              return (
+                <div key={s.name}>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="text-xs font-bold text-muted-foreground w-5 shrink-0">
+                        {i + 1}.
+                      </span>
+                      <span className="text-sm font-medium truncate">{s.name}</span>
+                    </div>
+                    <div className="flex items-center gap-3 shrink-0">
+                      <span className="text-xs text-muted-foreground tabular-nums">
+                        {s.count} {s.count === 1 ? 'done' : 'done'}
+                      </span>
+                      <span className="text-sm font-semibold tabular-nums">{formatPKR(s.revenue)}</span>
+                    </div>
+                  </div>
+                  <div className="h-2 rounded-full bg-muted overflow-hidden">
+                    <div
+                      className="h-full rounded-full bg-gold transition-all duration-500"
+                      style={{ width: `${pct}%`, opacity: 1 - i * 0.12 }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         )}
       </CardContent>
     </Card>

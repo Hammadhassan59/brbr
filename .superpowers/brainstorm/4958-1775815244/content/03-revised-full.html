@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BrBr Landing — Revised</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:'Inter',system-ui,-apple-system,sans-serif; background:#FFF; color:#1A1A1A; -webkit-font-smoothing:antialiased; overflow-x:hidden; }
+
+  /* ── Spacing system: 8px grid ── */
+  :root {
+    --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 24px; --s6: 32px;
+    --s7: 48px; --s8: 64px; --s9: 80px; --s10: 120px;
+    --gold: #FEBE10; --gold-light: #FFF8E1; --gold-border: #FFE082;
+    --dark: #1A1A1A; --dark-2: #111; --grey: #888; --light: #F8F9FA;
+    --radius-sm: 10px; --radius-md: 14px; --radius-lg: 20px; --radius-xl: 24px;
+    --radius-pill: 999px;
+    --shadow-card: 0 1px 3px rgba(0,0,0,0.04), 0 6px 24px rgba(0,0,0,0.04);
+    --shadow-card-hover: 0 4px 12px rgba(0,0,0,0.08), 0 12px 40px rgba(0,0,0,0.06);
+    --shadow-hero: 0 20px 60px rgba(254,190,16,0.12), 0 8px 24px rgba(0,0,0,0.06);
+  }
+
+  .container { max-width:1120px; margin:0 auto; padding:0 var(--s5); }
+
+  /* ── Animations ── */
+  @keyframes fadeUp {
+    from { opacity:0; transform:translateY(30px); }
+    to { opacity:1; transform:translateY(0); }
+  }
+  @keyframes fadeIn {
+    from { opacity:0; }
+    to { opacity:1; }
+  }
+  @keyframes float {
+    0%,100% { transform:translateY(0); }
+    50% { transform:translateY(-6px); }
+  }
+  @keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+  }
+  .fade-up { animation: fadeUp 0.7s ease-out both; }
+  .fade-up-d1 { animation: fadeUp 0.7s ease-out 0.1s both; }
+  .fade-up-d2 { animation: fadeUp 0.7s ease-out 0.2s both; }
+  .fade-up-d3 { animation: fadeUp 0.7s ease-out 0.3s both; }
+  .fade-up-d4 { animation: fadeUp 0.7s ease-out 0.4s both; }
+  .fade-in { animation: fadeIn 0.5s ease-out both; }
+
+  /* ── Section spacing: consistent 80px ── */
+  section { padding: var(--s9) 0; }
+
+  /* ── Dot pattern ── */
+  .dot-pattern {
+    background-image: radial-gradient(circle, #E0E0E0 1px, transparent 1px);
+    background-size: 24px 24px;
+  }
+  .grid-pattern {
+    background-image:
+      linear-gradient(rgba(0,0,0,0.02) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,0,0,0.02) 1px, transparent 1px);
+    background-size: 40px 40px;
+  }
+
+  /* ── Cards ── */
+  .bento-card {
+    border-radius: var(--radius-lg);
+    padding: var(--s5);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    position: relative;
+    overflow: hidden;
+  }
+  .bento-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-card-hover);
+  }
+
+  /* ── Buttons ── */
+  .btn-primary {
+    background: var(--gold); color:#000; font-size:14px; padding:14px 28px;
+    border-radius: var(--radius-md); font-weight:700; display:inline-flex;
+    align-items:center; gap:8px; border:none; cursor:pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+    box-shadow: 0 2px 8px rgba(254,190,16,0.3);
+  }
+  .btn-primary:hover { transform:translateY(-1px); box-shadow: 0 4px 16px rgba(254,190,16,0.4); }
+  .btn-secondary {
+    background:#FFF; color:#1A1A1A; font-size:14px; padding:14px 24px;
+    border-radius: var(--radius-md); font-weight:600; display:inline-flex;
+    align-items:center; gap:8px; border:1.5px solid #E0E0E0; cursor:pointer;
+    transition: border-color 0.2s, transform 0.2s;
+  }
+  .btn-secondary:hover { border-color:#1A1A1A; transform:translateY(-1px); }
+
+  /* ── Section label ── */
+  .section-label {
+    font-size:11px; font-weight:700; color:var(--gold); text-transform:uppercase;
+    letter-spacing:1.5px; margin-bottom: var(--s3);
+  }
+  .section-title {
+    font-size:36px; font-weight:800; color:var(--dark); line-height:1.15;
+    letter-spacing:-0.5px; margin-bottom: var(--s3);
+  }
+  .section-subtitle {
+    font-size:15px; color:var(--grey); line-height:1.7; max-width:500px;
+  }
+  .section-subtitle.center { margin:0 auto; text-align:center; }
+  .section-title.center { text-align:center; }
+  .section-label.center { text-align:center; }
+</style>
+</head>
+<body>
+
+<!-- ════════════════════════════════════════ -->
+<!-- SECTION 1: HERO                        -->
+<!-- ════════════════════════════════════════ -->
+<section style="padding-top:0;padding-bottom:var(--s9);background:linear-gradient(180deg,#FFFCF0 0%,#FFF 70%);position:relative;">
+  <!-- Subtle dot pattern overlay -->
+  <div style="position:absolute;inset:0;background-image:radial-gradient(circle,rgba(254,190,16,0.06) 1px,transparent 1px);background-size:32px 32px;pointer-events:none;"></div>
+
+  <div class="container" style="position:relative;">
+    <!-- Nav -->
+    <nav class="fade-in" style="display:flex;align-items:center;justify-content:space-between;padding:20px 0;">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <div style="width:36px;height:36px;background:var(--dark);border-radius:var(--radius-sm);display:flex;align-items:center;justify-content:center;font-size:18px;color:var(--gold);">✂</div>
+        <span style="font-weight:800;font-size:18px;color:var(--dark);letter-spacing:-0.3px;">BrBr</span>
+      </div>
+      <div style="display:flex;gap:32px;font-size:13px;color:#666;font-weight:500;">
+        <span style="cursor:pointer;transition:color 0.2s;">Features</span>
+        <span style="cursor:pointer;transition:color 0.2s;">Pricing</span>
+        <span style="cursor:pointer;transition:color 0.2s;">FAQ</span>
+      </div>
+      <div class="btn-primary" style="padding:10px 20px;font-size:12px;">Start Free →</div>
+    </nav>
+
+    <!-- Hero content -->
+    <div style="text-align:center;padding:var(--s8) 0 var(--s7);">
+      <div class="fade-up" style="display:inline-flex;align-items:center;gap:6px;background:var(--gold-light);color:#B8860B;font-size:11px;font-weight:700;padding:6px 16px;border-radius:var(--radius-pill);margin-bottom:var(--s5);border:1px solid var(--gold-border);">
+        <span>✦</span> SALON POS FOR PAKISTAN
+      </div>
+      <h1 class="fade-up-d1" style="font-size:clamp(32px,5vw,56px);font-weight:900;color:var(--dark);line-height:1.1;letter-spacing:-1.5px;margin-bottom:var(--s4);">
+        Your register, khata, and<br/>WhatsApp chaos — <span style="color:var(--gold);">one app</span>
+      </h1>
+      <p class="fade-up-d2" style="font-size:16px;color:var(--grey);line-height:1.7;max-width:460px;margin:0 auto var(--s6);">
+        Bookings, billing, staff commission, inventory, udhaar tracking. Works with cash, JazzCash, and EasyPaisa.
+      </p>
+      <div class="fade-up-d3" style="display:flex;gap:12px;justify-content:center;margin-bottom:var(--s8);">
+        <div class="btn-primary">✂ Try Free for 14 Days</div>
+        <div class="btn-secondary">See How It Works ↓</div>
+      </div>
+    </div>
+
+    <!-- Bento preview — the app "screenshot" -->
+    <div class="fade-up-d4" style="background:#FFF;border-radius:var(--radius-xl);border:1px solid #E8E8E8;padding:var(--s5);box-shadow:var(--shadow-hero);max-width:700px;margin:0 auto;">
+      <!-- Top bar -->
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:var(--s4);">
+        <div style="width:8px;height:8px;border-radius:50%;background:#FF5F57;"></div>
+        <div style="width:8px;height:8px;border-radius:50%;background:#FEBC2E;"></div>
+        <div style="width:8px;height:8px;border-radius:50%;background:#28C840;"></div>
+        <span style="margin-left:auto;font-size:10px;color:#CCC;font-weight:500;">brbr.pk/dashboard</span>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:12px;">
+        <div style="background:#F0FFF4;border-radius:var(--radius-md);padding:16px;text-align:center;border:1px solid #D1FAE5;">
+          <div style="font-size:24px;font-weight:800;color:#16A34A;">Rs 34.5K</div>
+          <div style="font-size:10px;color:var(--grey);margin-top:4px;font-weight:500;">Today's Revenue</div>
+        </div>
+        <div style="background:#EFF6FF;border-radius:var(--radius-md);padding:16px;text-align:center;border:1px solid #BFDBFE;">
+          <div style="font-size:24px;font-weight:800;color:#2563EB;">18</div>
+          <div style="font-size:10px;color:var(--grey);margin-top:4px;font-weight:500;">Appointments</div>
+        </div>
+        <div style="background:#FDF4FF;border-radius:var(--radius-md);padding:16px;text-align:center;border:1px solid #E9D5FF;">
+          <div style="font-size:24px;font-weight:800;color:#9333EA;">7</div>
+          <div style="font-size:10px;color:var(--grey);margin-top:4px;font-weight:500;">Walk-ins</div>
+        </div>
+      </div>
+      <!-- Mini schedule -->
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
+        <div style="text-align:center;">
+          <div style="font-size:10px;font-weight:700;color:var(--dark);margin-bottom:6px;">Sadia</div>
+          <div style="font-size:9px;background:var(--gold-light);color:#B8860B;padding:5px 0;border-radius:8px;margin-bottom:4px;border:1px solid var(--gold-border);font-weight:600;">10:00 Haircut</div>
+          <div style="font-size:9px;background:var(--gold-light);color:#B8860B;padding:5px 0;border-radius:8px;margin-bottom:4px;border:1px solid var(--gold-border);font-weight:600;">11:00 Color</div>
+          <div style="font-size:9px;color:#CCC;padding:5px 0;">Free</div>
+        </div>
+        <div style="text-align:center;">
+          <div style="font-size:10px;font-weight:700;color:var(--dark);margin-bottom:6px;">Nadia</div>
+          <div style="font-size:9px;background:var(--gold-light);color:#B8860B;padding:5px 0;border-radius:8px;margin-bottom:4px;border:1px solid var(--gold-border);font-weight:600;">10:00 Facial</div>
+          <div style="font-size:9px;color:#CCC;padding:5px 0;">Free</div>
+          <div style="font-size:9px;background:var(--gold-light);color:#B8860B;padding:5px 0;border-radius:8px;border:1px solid var(--gold-border);font-weight:600;">12:00 Wax</div>
+        </div>
+        <div style="text-align:center;">
+          <div style="font-size:10px;font-weight:700;color:var(--dark);margin-bottom:6px;">Rabia</div>
+          <div style="font-size:9px;color:#CCC;padding:5px 0;">Free</div>
+          <div style="font-size:9px;background:var(--gold-light);color:#B8860B;padding:5px 0;border-radius:8px;margin-bottom:4px;border:1px solid var(--gold-border);font-weight:600;">11:00 Cut</div>
+          <div style="font-size:9px;background:var(--gold-light);color:#B8860B;padding:5px 0;border-radius:8px;border:1px solid var(--gold-border);font-weight:600;">12:00 Bridal</div>
+        </div>
+      </div>
+      <!-- Prayer block -->
+      <div style="margin-top:12px;background:linear-gradient(90deg,#FFF8E1,#FFFCF0);border:1px solid var(--gold-border);border-radius:var(--radius-sm);padding:8px 14px;display:flex;align-items:center;gap:8px;">
+        <span style="font-size:14px;">🕌</span>
+        <span style="font-size:11px;color:#B8860B;font-weight:600;">Zuhr prayer break 12:30 – 1:15 PM</span>
+        <span style="margin-left:auto;font-size:9px;background:var(--gold);color:#000;padding:3px 8px;border-radius:var(--radius-pill);font-weight:700;">Auto-blocked</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ════════════════════════════════════════ -->
+<!-- SECTION 2: FEATURES (Bento Grid)       -->
+<!-- ════════════════════════════════════════ -->
+<section style="background:#FFF;position:relative;">
+  <div style="position:absolute;inset:0;" class="grid-pattern"></div>
+  <div class="container" style="position:relative;">
+    <div style="text-align:center;margin-bottom:var(--s7);">
+      <div class="section-label center">WHAT IT DOES</div>
+      <h2 class="section-title center">Everything your salon needs</h2>
+      <p class="section-subtitle center">No more WhatsApp, calculator, and notebook. One app replaces all three.</p>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;max-width:900px;margin:0 auto;">
+      <!-- Appointments — tall card with UI -->
+      <div class="bento-card" style="background:var(--dark);grid-row:span 2;padding:var(--s6);box-shadow:var(--shadow-card);">
+        <div style="font-size:10px;color:var(--gold);text-transform:uppercase;letter-spacing:1.5px;font-weight:700;margin-bottom:var(--s3);">APPOINTMENTS</div>
+        <div style="font-size:20px;font-weight:800;color:#FFF;line-height:1.3;margin-bottom:var(--s5);">Per-stylist calendar<br/>with prayer blocks</div>
+        <!-- Mini calendar UI -->
+        <div style="background:rgba(255,255,255,0.05);border-radius:var(--radius-md);padding:14px;border:1px solid rgba(255,255,255,0.08);">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
+            <div style="text-align:center;">
+              <div style="font-size:10px;color:var(--gold);font-weight:700;margin-bottom:6px;">Sadia</div>
+              <div style="font-size:9px;background:rgba(254,190,16,0.12);color:var(--gold);padding:5px 0;border-radius:8px;margin-bottom:4px;font-weight:600;">Haircut</div>
+              <div style="font-size:9px;background:rgba(254,190,16,0.12);color:var(--gold);padding:5px 0;border-radius:8px;margin-bottom:4px;font-weight:600;">Color</div>
+              <div style="font-size:9px;color:#555;padding:5px 0;">—</div>
+              <div style="font-size:9px;background:rgba(254,190,16,0.12);color:var(--gold);padding:5px 0;border-radius:8px;font-weight:600;">Bridal</div>
+            </div>
+            <div style="text-align:center;">
+              <div style="font-size:10px;color:var(--gold);font-weight:700;margin-bottom:6px;">Nadia</div>
+              <div style="font-size:9px;background:rgba(254,190,16,0.12);color:var(--gold);padding:5px 0;border-radius:8px;margin-bottom:4px;font-weight:600;">Facial</div>
+              <div style="font-size:9px;color:#555;padding:5px 0;">—</div>
+              <div style="font-size:9px;background:rgba(254,190,16,0.12);color:var(--gold);padding:5px 0;border-radius:8px;margin-bottom:4px;font-weight:600;">Wax</div>
+              <div style="font-size:9px;color:#555;padding:5px 0;">—</div>
+            </div>
+          </div>
+          <div style="background:rgba(251,191,36,0.1);border-radius:8px;padding:7px 10px;display:flex;align-items:center;gap:6px;">
+            <span style="font-size:12px;">🕌</span>
+            <span style="font-size:9px;color:#F59E0B;font-weight:600;">Zuhr 12:30 – 1:15</span>
+          </div>
+        </div>
+        <!-- Walk-in badge -->
+        <div style="margin-top:12px;display:inline-flex;align-items:center;gap:6px;background:rgba(254,190,16,0.1);border:1px solid rgba(254,190,16,0.2);padding:6px 12px;border-radius:var(--radius-pill);font-size:10px;color:var(--gold);font-weight:600;">
+          🎫 Token #4 waiting
+        </div>
+      </div>
+
+      <!-- Billing — with mini POS UI -->
+      <div class="bento-card" style="background:#F0FFF4;border:1px solid #D1FAE5;box-shadow:var(--shadow-card);">
+        <div style="font-size:10px;color:#16A34A;text-transform:uppercase;letter-spacing:1.5px;font-weight:700;margin-bottom:var(--s2);">BILLING</div>
+        <div style="font-size:16px;font-weight:800;color:var(--dark);margin-bottom:var(--s4);">Tap to bill. Split any way.</div>
+        <!-- Mini bill -->
+        <div style="background:#FFF;border-radius:var(--radius-sm);padding:12px;border:1px solid #E8F5E9;font-size:10px;">
+          <div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span style="color:var(--grey);">Haircut</span><span style="font-weight:700;">Rs 500</span></div>
+          <div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span style="color:var(--grey);">Color</span><span style="font-weight:700;">Rs 3,000</span></div>
+          <div style="border-top:1px dashed #D1FAE5;padding-top:6px;margin-top:6px;display:flex;justify-content:space-between;font-weight:800;font-size:12px;"><span>Total</span><span style="color:#16A34A;">Rs 3,500</span></div>
+        </div>
+        <div style="display:flex;gap:4px;margin-top:10px;flex-wrap:wrap;">
+          <span style="font-size:9px;background:#16A34A;color:#FFF;padding:4px 10px;border-radius:var(--radius-pill);font-weight:600;">Cash ✓</span>
+          <span style="font-size:9px;background:#FFF;border:1px solid #D1FAE5;padding:4px 10px;border-radius:var(--radius-pill);font-weight:500;color:var(--grey);">JazzCash</span>
+          <span style="font-size:9px;background:#FFF;border:1px solid #D1FAE5;padding:4px 10px;border-radius:var(--radius-pill);font-weight:500;color:var(--grey);">EasyPaisa</span>
+          <span style="font-size:9px;background:#FFF;border:1px solid #D1FAE5;padding:4px 10px;border-radius:var(--radius-pill);font-weight:500;color:var(--grey);">Split</span>
+        </div>
+      </div>
+
+      <!-- Udhaar — with mini client list -->
+      <div class="bento-card" style="background:var(--gold-light);border:1px solid var(--gold-border);box-shadow:var(--shadow-card);">
+        <div style="font-size:10px;color:#B8860B;text-transform:uppercase;letter-spacing:1.5px;font-weight:700;margin-bottom:var(--s2);">UDHAAR</div>
+        <div style="font-size:16px;font-weight:800;color:var(--dark);margin-bottom:var(--s4);">Track who owes what</div>
+        <div style="background:#FFF;border-radius:var(--radius-sm);padding:10px 12px;border:1px solid var(--gold-border);font-size:10px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+            <div style="display:flex;align-items:center;gap:6px;">
+              <div style="width:20px;height:20px;border-radius:50%;background:var(--gold);color:#000;font-size:8px;font-weight:800;display:flex;align-items:center;justify-content:center;">AK</div>
+              <span style="font-weight:600;">Ayesha K.</span>
+            </div>
+            <span style="font-weight:700;color:#B8860B;">Rs 2,500</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <div style="display:flex;align-items:center;gap:6px;">
+              <div style="width:20px;height:20px;border-radius:50%;background:#E8E8E8;color:#666;font-size:8px;font-weight:800;display:flex;align-items:center;justify-content:center;">SJ</div>
+              <span style="font-weight:600;">Sana J.</span>
+            </div>
+            <span style="font-weight:700;color:#B8860B;">Rs 1,800</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Payroll — full width with mini table -->
+      <div class="bento-card" style="background:var(--light);border:1px solid #EAEAEA;grid-column:span 2;display:flex;gap:var(--s6);align-items:center;box-shadow:var(--shadow-card);">
+        <div style="flex:1;">
+          <div style="font-size:10px;color:var(--grey);text-transform:uppercase;letter-spacing:1.5px;font-weight:700;margin-bottom:var(--s2);">PAYROLL</div>
+          <div style="font-size:20px;font-weight:800;color:var(--dark);line-height:1.3;margin-bottom:var(--s2);">Commission, attendance, advances</div>
+          <div style="font-size:13px;color:var(--grey);line-height:1.6;">All calculated. Month-end is one screen.</div>
+        </div>
+        <div style="background:#FFF;border-radius:var(--radius-md);padding:16px 20px;border:1px solid #E8E8E8;min-width:260px;box-shadow:var(--shadow-card);">
+          <div style="font-size:9px;color:var(--grey);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;font-weight:600;">March 2026</div>
+          <div style="font-size:11px;margin-bottom:6px;display:flex;justify-content:space-between;"><span style="color:var(--grey);">Sadia <span style="color:#CCC;">18K + 8.4K</span></span><span style="font-weight:700;">Rs 26,400</span></div>
+          <div style="font-size:11px;margin-bottom:6px;display:flex;justify-content:space-between;"><span style="color:var(--grey);">Nadia <span style="color:#CCC;">15K + 5.2K</span></span><span style="font-weight:700;">Rs 20,200</span></div>
+          <div style="font-size:11px;display:flex;justify-content:space-between;"><span style="color:var(--grey);">Rabia <span style="color:#CCC;">15K + 3.1K</span></span><span style="font-weight:700;">Rs 18,100</span></div>
+          <div style="border-top:1px dashed #E8E8E8;margin-top:8px;padding-top:8px;font-size:12px;display:flex;justify-content:space-between;font-weight:800;"><span>Net</span><span style="color:var(--gold);">Rs 64,700</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ════════════════════════════════════════ -->
+<!-- SECTION 3: HOW IT WORKS                -->
+<!-- ════════════════════════════════════════ -->
+<section style="background:var(--light);position:relative;">
+  <div style="position:absolute;inset:0;" class="dot-pattern" ></div>
+  <div class="container" style="position:relative;">
+    <div style="text-align:center;margin-bottom:var(--s7);">
+      <div class="section-label center">HOW IT WORKS</div>
+      <h2 class="section-title center">Set up in 5 minutes</h2>
+      <p class="section-subtitle center">Your staff can barely use a phone? Perfect. That's who we built this for.</p>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;max-width:800px;margin:0 auto;">
+      <div class="bento-card" style="background:#FFF;border:1px solid #E8E8E8;text-align:center;padding:var(--s6) var(--s5);box-shadow:var(--shadow-card);">
+        <div style="width:48px;height:48px;background:var(--gold);border-radius:var(--radius-md);display:flex;align-items:center;justify-content:center;margin:0 auto var(--s4);font-size:22px;font-weight:900;color:#000;">1</div>
+        <div style="font-size:16px;font-weight:800;color:var(--dark);margin-bottom:var(--s2);">Sign up</div>
+        <div style="font-size:13px;color:var(--grey);line-height:1.6;">Email and password.<br/>That's it.</div>
+      </div>
+      <div class="bento-card" style="background:#FFF;border:1px solid #E8E8E8;text-align:center;padding:var(--s6) var(--s5);box-shadow:var(--shadow-card);">
+        <div style="width:48px;height:48px;background:var(--dark);border-radius:var(--radius-md);display:flex;align-items:center;justify-content:center;margin:0 auto var(--s4);font-size:22px;font-weight:900;color:var(--gold);">2</div>
+        <div style="font-size:16px;font-weight:800;color:var(--dark);margin-bottom:var(--s2);">Add staff & services</div>
+        <div style="font-size:13px;color:var(--grey);line-height:1.6;">Names, PINs, prices.<br/>Done in 5 minutes.</div>
+      </div>
+      <div class="bento-card" style="background:#FFF;border:1px solid #E8E8E8;text-align:center;padding:var(--s6) var(--s5);box-shadow:var(--shadow-card);">
+        <div style="width:48px;height:48px;background:var(--gold);border-radius:var(--radius-md);display:flex;align-items:center;justify-content:center;margin:0 auto var(--s4);font-size:22px;font-weight:900;color:#000;">3</div>
+        <div style="font-size:16px;font-weight:800;color:var(--dark);margin-bottom:var(--s2);">Start billing</div>
+        <div style="font-size:13px;color:var(--grey);line-height:1.6;">Your first bill<br/>goes out today.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ════════════════════════════════════════ -->
+<!-- SECTION 4: TRUST                       -->
+<!-- ════════════════════════════════════════ -->
+<section style="background:#FFF;">
+  <div class="container">
+    <div style="text-align:center;margin-bottom:var(--s7);">
+      <div class="section-label center">BUILT FOR PAKISTAN</div>
+      <h2 class="section-title center">We know how your salon works</h2>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;max-width:800px;margin:0 auto;">
+      <div class="bento-card" style="background:var(--light);border:1px solid #EAEAEA;display:flex;align-items:center;gap:16px;box-shadow:var(--shadow-card);">
+        <div style="width:52px;height:52px;background:var(--gold-light);border-radius:var(--radius-md);display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0;border:1px solid var(--gold-border);">🔒</div>
+        <div>
+          <div style="font-size:15px;font-weight:800;color:var(--dark);margin-bottom:2px;">100% Private</div>
+          <div style="font-size:12px;color:var(--grey);line-height:1.5;">Not connected to FBR. Your data stays yours.</div>
+        </div>
+      </div>
+      <div class="bento-card" style="background:var(--light);border:1px solid #EAEAEA;display:flex;align-items:center;gap:16px;box-shadow:var(--shadow-card);">
+        <div style="width:52px;height:52px;background:#F0FFF4;border-radius:var(--radius-md);display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0;border:1px solid #D1FAE5;">⚡</div>
+        <div>
+          <div style="font-size:15px;font-weight:800;color:var(--dark);margin-bottom:2px;">Works offline</div>
+          <div style="font-size:12px;color:var(--grey);line-height:1.5;">Load shedding? Queues and syncs when back.</div>
+        </div>
+      </div>
+      <div class="bento-card" style="background:var(--light);border:1px solid #EAEAEA;display:flex;align-items:center;gap:16px;box-shadow:var(--shadow-card);">
+        <div style="width:52px;height:52px;background:#EFF6FF;border-radius:var(--radius-md);display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0;border:1px solid #BFDBFE;">📱</div>
+        <div>
+          <div style="font-size:15px;font-weight:800;color:var(--dark);margin-bottom:2px;">Phone + PIN login</div>
+          <div style="font-size:12px;color:var(--grey);line-height:1.5;">No email. No password. Staff learn in 1 day.</div>
+        </div>
+      </div>
+      <div class="bento-card" style="background:var(--light);border:1px solid #EAEAEA;display:flex;align-items:center;gap:16px;box-shadow:var(--shadow-card);">
+        <div style="width:52px;height:52px;background:#FDF4FF;border-radius:var(--radius-md);display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0;border:1px solid #E9D5FF;">🕌</div>
+        <div>
+          <div style="font-size:15px;font-weight:800;color:var(--dark);margin-bottom:2px;">Prayer blocks built in</div>
+          <div style="font-size:12px;color:var(--grey);line-height:1.5;">Jummah, Zuhr, Maghrib — auto-blocked in calendar.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ════════════════════════════════════════ -->
+<!-- SECTION 5: PRICING                     -->
+<!-- ════════════════════════════════════════ -->
+<section style="background:linear-gradient(180deg,#FFFCF0 0%,#FFF 100%);position:relative;">
+  <div style="position:absolute;inset:0;background-image:radial-gradient(circle,rgba(254,190,16,0.04) 1px,transparent 1px);background-size:24px 24px;pointer-events:none;"></div>
+  <div class="container" style="position:relative;">
+    <div style="text-align:center;margin-bottom:var(--s7);">
+      <div class="section-label center">PRICING</div>
+      <h2 class="section-title center">14 days free. No card needed.</h2>
+      <p class="section-subtitle center">Pick a plan after you see results. Cancel anytime.</p>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;max-width:860px;margin:0 auto;align-items:stretch;">
+      <!-- Starter -->
+      <div class="bento-card" style="background:#FFF;border:1px solid #E8E8E8;display:flex;flex-direction:column;box-shadow:var(--shadow-card);">
+        <div style="font-size:14px;font-weight:800;color:var(--dark);margin-bottom:var(--s1);">Starter</div>
+        <div style="font-size:11px;color:var(--grey);margin-bottom:var(--s4);">For new and small salons</div>
+        <div style="font-size:32px;font-weight:900;color:var(--dark);margin-bottom:2px;">Rs 2,500<span style="font-size:13px;font-weight:400;color:var(--grey);">/mo</span></div>
+        <div style="font-size:11px;color:var(--grey);margin-bottom:var(--s5);padding-bottom:var(--s4);border-bottom:1px solid #F0F0F0;">1 branch · up to 10 staff</div>
+        <div style="font-size:12px;color:var(--grey);line-height:2;flex:1;">
+          ✓ POS + billing<br/>
+          ✓ Bookings + walk-in queue<br/>
+          ✓ Cash, JazzCash, EasyPaisa<br/>
+          ✓ Basic daily report<br/>
+          ✓ Commission tracking<br/>
+          <span style="color:#D4D4D4;text-decoration:line-through;">✗ Inventory</span><br/>
+          <span style="color:#D4D4D4;text-decoration:line-through;">✗ Payroll</span>
+        </div>
+        <div class="btn-secondary" style="width:100%;justify-content:center;margin-top:var(--s5);font-size:12px;">Start Trial</div>
+      </div>
+
+      <!-- Business (popular) -->
+      <div class="bento-card" style="background:var(--dark);display:flex;flex-direction:column;position:relative;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,0.15);">
+        <div style="position:absolute;top:0;left:0;right:0;height:4px;background:var(--gold);"></div>
+        <div style="position:absolute;top:0;right:0;width:100px;height:100px;background:radial-gradient(circle,rgba(254,190,16,0.12),transparent);pointer-events:none;"></div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:var(--s1);">
+          <div style="font-size:14px;font-weight:800;color:#FFF;">Business</div>
+          <span style="font-size:8px;font-weight:700;color:var(--gold);background:rgba(254,190,16,0.15);padding:3px 8px;border-radius:var(--radius-pill);text-transform:uppercase;letter-spacing:0.5px;">Popular</span>
+        </div>
+        <div style="font-size:11px;color:#888;margin-bottom:var(--s4);">For growing salons</div>
+        <div style="font-size:32px;font-weight:900;color:#FFF;margin-bottom:2px;">Rs 5,000<span style="font-size:13px;font-weight:400;color:#666;">/mo</span></div>
+        <div style="font-size:11px;color:#888;margin-bottom:var(--s5);padding-bottom:var(--s4);border-bottom:1px solid #333;">3 branches · 10 staff each</div>
+        <div style="font-size:12px;color:#AAA;line-height:2;flex:1;">
+          ✓ POS + billing<br/>
+          ✓ Bookings + walk-in queue<br/>
+          ✓ Cash, JazzCash, EasyPaisa<br/>
+          ✓ Full daily reports<br/>
+          ✓ Commission tracking<br/>
+          ✓ Inventory<br/>
+          ✓ Payroll + attendance
+        </div>
+        <div class="btn-primary" style="width:100%;justify-content:center;margin-top:var(--s5);font-size:12px;">Start Trial →</div>
+      </div>
+
+      <!-- Enterprise -->
+      <div class="bento-card" style="background:#FFF;border:1px solid #E8E8E8;display:flex;flex-direction:column;box-shadow:var(--shadow-card);">
+        <div style="font-size:14px;font-weight:800;color:var(--dark);margin-bottom:var(--s1);">Enterprise</div>
+        <div style="font-size:11px;color:var(--grey);margin-bottom:var(--s4);">For salon chains</div>
+        <div style="font-size:32px;font-weight:900;color:var(--dark);margin-bottom:2px;">Rs 10,000<span style="font-size:13px;font-weight:400;color:var(--grey);">/mo</span></div>
+        <div style="font-size:11px;color:var(--grey);margin-bottom:var(--s5);padding-bottom:var(--s4);border-bottom:1px solid #F0F0F0;">10 branches · 100 staff</div>
+        <div style="font-size:12px;color:var(--grey);line-height:2;flex:1;">
+          ✓ Everything in Business<br/>
+          ✓ Cross-branch reports<br/>
+          ✓ Partner/co-owner logins<br/>
+          ✓ Priority support
+        </div>
+        <div class="btn-secondary" style="width:100%;justify-content:center;margin-top:var(--s5);font-size:12px;">Start Trial</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ════════════════════════════════════════ -->
+<!-- SECTION 6: FAQ                         -->
+<!-- ════════════════════════════════════════ -->
+<section style="background:#FFF;">
+  <div class="container">
+    <div style="text-align:center;margin-bottom:var(--s7);">
+      <h2 class="section-title center">Questions?</h2>
+    </div>
+
+    <div style="max-width:600px;margin:0 auto;">
+      <div style="border:1px solid #E8E8E8;border-radius:var(--radius-lg);overflow:hidden;">
+        <div style="padding:18px var(--s5);border-bottom:1px solid #F0F0F0;display:flex;justify-content:space-between;align-items:center;cursor:pointer;">
+          <span style="font-size:14px;font-weight:700;color:var(--dark);">Do I need a credit card to start?</span>
+          <span style="font-size:18px;color:#D4D4D4;font-weight:300;">+</span>
+        </div>
+        <div style="padding:18px var(--s5);border-bottom:1px solid #F0F0F0;display:flex;justify-content:space-between;align-items:center;cursor:pointer;">
+          <span style="font-size:14px;font-weight:700;color:var(--dark);">I only take cash and JazzCash. Does that work?</span>
+          <span style="font-size:18px;color:#D4D4D4;font-weight:300;">+</span>
+        </div>
+        <div style="padding:18px var(--s5);display:flex;justify-content:space-between;align-items:center;cursor:pointer;">
+          <span style="font-size:14px;font-weight:700;color:var(--dark);">My staff won't use software. It's too complicated.</span>
+          <span style="font-size:18px;color:#D4D4D4;font-weight:300;">+</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ════════════════════════════════════════ -->
+<!-- SECTION 7: FINAL CTA                   -->
+<!-- ════════════════════════════════════════ -->
+<section style="background:var(--dark);position:relative;overflow:hidden;">
+  <!-- Gold radial glow -->
+  <div style="position:absolute;top:-50%;left:50%;transform:translateX(-50%);width:600px;height:400px;background:radial-gradient(ellipse,rgba(254,190,16,0.1),transparent 70%);pointer-events:none;"></div>
+  <div class="container" style="position:relative;text-align:center;">
+    <h2 style="font-size:36px;font-weight:900;color:#FFF;margin-bottom:var(--s3);letter-spacing:-0.5px;">Ready to try?</h2>
+    <p style="font-size:15px;color:#888;margin-bottom:var(--s6);line-height:1.7;">14 days free. Set up in 5 minutes. Cancel anytime.</p>
+    <div class="btn-primary" style="font-size:15px;padding:16px 36px;">✂ Start Free Trial →</div>
+  </div>
+</section>
+
+<!-- Footer spacer -->
+<div style="height:40px;background:var(--dark);"></div>
+
+</body>
+</html>

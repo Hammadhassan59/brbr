@@ -593,7 +593,7 @@ function POSContent() {
         billNumber={billNumber}
         clientName={selectedClient?.name || 'Walk-in Guest'}
         clientPhone={selectedClient?.phone || ''}
-        salonName={salon?.name || 'BrBr'}
+        salonName={salon?.name || 'iCut'}
         salonAddress={currentBranch?.address || ''}
         items={items}
         subtotal={subtotal}

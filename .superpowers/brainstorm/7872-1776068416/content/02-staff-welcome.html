@@ -1,0 +1,86 @@
+<h2>Staff First-Login Welcome Card</h2>
+<p class="subtitle">What a staff member sees the first time they log in with phone+PIN</p>
+
+<div class="cards">
+  <div class="card" data-choice="compact" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div style="background:#111;border-radius:8px;overflow:hidden;font-family:system-ui;font-size:12px;color:#fff;padding:20px;">
+        <!-- Welcome card -->
+        <div style="border:1px solid #C8A028;padding:20px;margin-bottom:16px;">
+          <div style="display:flex;justify-content:space-between;align-items:start;">
+            <div>
+              <div style="font-size:16px;font-weight:bold;color:#C8A028;margin-bottom:4px;">Welcome, Sadia!</div>
+              <div style="font-size:11px;color:#888;margin-bottom:12px;">Senior Stylist at Glamour Studio</div>
+            </div>
+            <div style="font-size:10px;color:#666;cursor:pointer;">✕</div>
+          </div>
+          <div style="font-size:11px;color:#ccc;margin-bottom:10px;">Here's what you can do:</div>
+          <div style="display:flex;flex-direction:column;gap:6px;">
+            <div style="display:flex;align-items:center;gap:8px;font-size:11px;">
+              <span style="color:#C8A028;">•</span> View and manage your appointments
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;font-size:11px;">
+              <span style="color:#C8A028;">•</span> See your earnings and commissions
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;font-size:11px;">
+              <span style="color:#C8A028;">•</span> Track your daily schedule
+            </div>
+          </div>
+        </div>
+        <!-- Dashboard behind -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+          <div style="border:1px solid #333;padding:10px;">
+            <div style="font-size:10px;color:#888;">My Appointments</div>
+            <div style="font-size:16px;font-weight:bold;">0 today</div>
+          </div>
+          <div style="border:1px solid #333;padding:10px;">
+            <div style="font-size:10px;color:#888;">My Earnings</div>
+            <div style="font-size:16px;font-weight:bold;">Rs 0</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A — Compact Card</h3>
+      <p>Gold-bordered card at the top of their dashboard. Name, role, 3 bullet points of what they can do. Single tap to dismiss.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="fullscreen" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div style="background:#111;border-radius:8px;overflow:hidden;font-family:system-ui;font-size:12px;color:#fff;padding:20px;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:220px;text-align:center;">
+        <div style="font-size:28px;margin-bottom:8px;">✂️</div>
+        <div style="font-size:18px;font-weight:bold;color:#C8A028;margin-bottom:4px;">Welcome, Sadia!</div>
+        <div style="font-size:12px;color:#888;margin-bottom:20px;">You're logged in as Senior Stylist at Glamour Studio</div>
+        <div style="text-align:left;max-width:260px;">
+          <div style="display:flex;align-items:start;gap:10px;margin-bottom:12px;">
+            <div style="width:24px;height:24px;border:1px solid #C8A028;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:11px;color:#C8A028;">1</div>
+            <div>
+              <div style="font-size:12px;font-weight:bold;">Your Appointments</div>
+              <div style="font-size:10px;color:#888;">See today's schedule and upcoming bookings</div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:start;gap:10px;margin-bottom:12px;">
+            <div style="width:24px;height:24px;border:1px solid #C8A028;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:11px;color:#C8A028;">2</div>
+            <div>
+              <div style="font-size:12px;font-weight:bold;">Your Earnings</div>
+              <div style="font-size:10px;color:#888;">Track commissions and tips</div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:start;gap:10px;margin-bottom:16px;">
+            <div style="width:24px;height:24px;border:1px solid #C8A028;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:11px;color:#C8A028;">3</div>
+            <div>
+              <div style="font-size:12px;font-weight:bold;">Your Dashboard</div>
+              <div style="font-size:10px;color:#888;">Quick view of your day at a glance</div>
+            </div>
+          </div>
+        </div>
+        <div style="background:#C8A028;color:#000;padding:10px 32px;font-size:12px;font-weight:bold;cursor:pointer;">Got it, let's go</div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B — Full Screen Welcome</h3>
+      <p>Takes over the whole view before showing the dashboard. Numbered walkthrough of capabilities. "Got it, let's go" button to enter.</p>
+    </div>
+  </div>
+</div>

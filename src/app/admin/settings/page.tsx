@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button';
 import { DEFAULT_EMAIL_TEMPLATES } from '@/lib/email-templates';
 import toast from 'react-hot-toast';
 
-const STORAGE_KEY = 'brbr_platform_settings';
+const STORAGE_KEY = 'icut_platform_settings';
 
 interface PlanSettings {
   price: string;
@@ -38,13 +38,13 @@ interface PlatformSettings {
 }
 
 const DEFAULT_SETTINGS: PlatformSettings = {
-  platformName: 'BrBr',
-  platformDomain: 'brbr.pk',
-  supportWhatsApp: '0300-BRBR-PK',
-  supportEmail: 'support@brbr.pk',
+  platformName: 'iCut',
+  platformDomain: 'icut.pk',
+  supportWhatsApp: '', // Set your real WhatsApp number here
+  supportEmail: 'support@icut.pk',
   sendgridKey: '',
-  fromEmail: 'notifications@brbr.pk',
-  fromName: 'BrBr',
+  fromEmail: 'notifications@icut.pk',
+  fromName: 'iCut',
   emailEnabled: false,
   enabledTemplates: {
     winback: true,
@@ -60,8 +60,8 @@ const DEFAULT_SETTINGS: PlatformSettings = {
   trialDuration: '14',
   gracePeriod: '3',
   requirePaymentOnSignup: false,
-  jazzcashAccount: '0300-1234567',
-  bankAccount: '1234-5678-9012',
+  jazzcashAccount: '',
+  bankAccount: '',
 };
 
 export default function AdminSettingsPage() {
@@ -165,11 +165,11 @@ export default function AdminSettingsPage() {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <Label className="text-xs">From Email</Label>
-              <Input value={settings.fromEmail} onChange={(e) => update('fromEmail', e.target.value)} placeholder="notifications@brbr.pk" className="mt-1" />
+              <Input value={settings.fromEmail} onChange={(e) => update('fromEmail', e.target.value)} placeholder="notifications@icut.pk" className="mt-1" />
             </div>
             <div>
               <Label className="text-xs">From Name</Label>
-              <Input value={settings.fromName} onChange={(e) => update('fromName', e.target.value)} placeholder="BrBr" className="mt-1" />
+              <Input value={settings.fromName} onChange={(e) => update('fromName', e.target.value)} placeholder="iCut" className="mt-1" />
             </div>
           </div>
 

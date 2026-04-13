@@ -180,7 +180,7 @@ export default function PayrollPage() {
 
   function sendSalarySlip(row: PayrollRow) {
     if (!row.staff.phone) return;
-    const msg = `*BrBr — Salary Slip*
+    const msg = `*iCut — Salary Slip*
 Staff: ${row.staff.name}
 Month: ${new Date(year, month - 1).toLocaleString('default', { month: 'long' })} ${year}
 ─────────────────
@@ -194,7 +194,7 @@ Late Deductions:   -${formatPKR(row.lateDeductions)}
 ─────────────────
 *NET PAYABLE:       ${formatPKR(row.netPayable)}*
 
-Thank you 🙏 — BrBr Management`;
+Thank you — iCut Management`;
 
     openWhatsApp({
       recipient: { name: row.staff.name, phone: row.staff.phone },
@@ -213,7 +213,7 @@ Thank you 🙏 — BrBr Management`;
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `brbr-payroll-${year}-${String(month).padStart(2, '0')}.csv`;
+    a.download = `icut-payroll-${year}-${String(month).padStart(2, '0')}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   }

@@ -1,7 +1,7 @@
 export const translations = {
   en: {
     // App
-    appName: 'BrBr',
+    appName: 'iCut',
     tagline: "Pakistan's Smart Salon System",
 
     // Auth
@@ -16,7 +16,7 @@ export const translations = {
     wrongPerson: 'Wrong person?',
 
     // Setup Wizard
-    welcomeTitle: 'Welcome to BrBr!',
+    welcomeTitle: 'Welcome to iCut!',
     welcomeSubtitle: 'Set up your salon — just 5 minutes',
     startSetup: 'Start Setup',
     salonBasics: 'Salon Basics',
@@ -45,8 +45,7 @@ export const translations = {
     setPin: 'Set 4-digit PIN',
     confirmPin: 'Confirm PIN',
     addAnother: 'Add Another',
-    allSet: 'All Set!',
-    setupComplete: 'Your salon is ready on BrBr!',
+    setupComplete: 'Your salon is ready on iCut!',
     servicesAdded: 'services added',
     staffAdded: 'staff added',
     openDashboard: 'Open Dashboard',
@@ -130,7 +129,7 @@ export const translations = {
   },
   ur: {
     // App
-    appName: 'BrBr',
+    appName: 'iCut',
     tagline: 'پاکستان کا سمارٹ سیلون سسٹم',
 
     // Auth
@@ -145,7 +144,7 @@ export const translations = {
     wrongPerson: 'غلط شخص؟',
 
     // Setup Wizard
-    welcomeTitle: '!BrBr میں خوش آمدید',
+    welcomeTitle: '!iCut میں خوش آمدید',
     welcomeSubtitle: 'اپنا سیلون سیٹ اپ کریں — صرف 5 منٹ میں',
     startSetup: 'شروع کریں',
     salonBasics: 'سیلون کی بنیادی معلومات',
@@ -174,8 +173,7 @@ export const translations = {
     setPin: '4 ہندسوں کا پن سیٹ کریں',
     confirmPin: 'پن کی تصدیق کریں',
     addAnother: 'اور شامل کریں',
-    allSet: '!سب تیار ہے',
-    setupComplete: '!BrBr پر آپ کا سیلون تیار ہے',
+    setupComplete: '!iCut پر آپ کا سیلون تیار ہے',
     servicesAdded: 'خدمات شامل کی گئیں',
     staffAdded: 'سٹاف شامل کیے گئے',
     openDashboard: 'ڈیش بورڈ کھولیں',

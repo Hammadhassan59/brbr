@@ -36,7 +36,7 @@ export function AppointmentsFeed({ appointments, loading }: AppointmentsFeedProp
   const { t } = useLanguage();
 
   return (
-    <Card className="bg-card border border-border rounded-lg sticky top-20">
+    <Card className="bg-card border border-border rounded-lg sticky top-0">
       <CardHeader className="pb-2">
         <CardTitle className="text-sm font-medium flex items-center gap-2">
           <div className="w-8 h-8 rounded-lg bg-gold/20 flex items-center justify-center">

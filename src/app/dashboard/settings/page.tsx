@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { Plus, X } from 'lucide-react';
+import { Plus, X, Scissors, Sparkles, Users } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { updateSalon, updateBranchWorkingHours, createService, updateService, deleteService } from '@/app/actions/settings';
 import { useAppStore } from '@/store/app-store';
@@ -72,7 +72,7 @@ export default function SettingsPage() {
   // Dark mode
   const [darkMode, setDarkMode] = useState(() => {
     if (typeof window !== 'undefined') {
-      return localStorage.getItem('brbr-dark-mode') === 'true';
+      return localStorage.getItem('icut-dark-mode') === 'true';
     }
     return false;
   });
@@ -80,7 +80,7 @@ export default function SettingsPage() {
   // Screen wake lock
   const [keepAwake, setKeepAwake] = useState(() => {
     if (typeof window !== 'undefined') {
-      return localStorage.getItem('brbr-keep-awake') === 'true';
+      return localStorage.getItem('icut-keep-awake') === 'true';
     }
     return false;
   });
@@ -131,12 +131,12 @@ export default function SettingsPage() {
   useEffect(() => {
     if (darkMode) document.documentElement.classList.add('dark');
     else document.documentElement.classList.remove('dark');
-    localStorage.setItem('brbr-dark-mode', String(darkMode));
+    localStorage.setItem('icut-dark-mode', String(darkMode));
   }, [darkMode]);
 
   // Screen wake lock — persist to localStorage
   useEffect(() => {
-    localStorage.setItem('brbr-keep-awake', String(keepAwake));
+    localStorage.setItem('icut-keep-awake', String(keepAwake));
     let wakeLock: WakeLockSentinel | null = null;
     if (keepAwake && 'wakeLock' in navigator) {
       (navigator as Navigator & { wakeLock: { request: (type: string) => Promise<WakeLockSentinel> } }).wakeLock.request('screen').then((wl) => { wakeLock = wl; }).catch(() => {});
@@ -147,11 +147,13 @@ export default function SettingsPage() {
   async function saveSalonProfile() {
     if (!salon) return;
     if (!salonName.trim()) { toast.error('Salon name is required'); return; }
+    const parsedGstRate = Number(gstRate) || 0;
+    if (gstEnabled && (parsedGstRate < 0 || parsedGstRate > 100)) { toast.error('GST rate must be 0–100%'); return; }
     setSaving(true);
     try {
       const { data, error } = await updateSalon({
         name: salonName.trim(), type: salonType, city, address, phone, whatsapp,
-        gst_enabled: gstEnabled, gst_number: gstNumber || null, gst_rate: Number(gstRate) || 0,
+        gst_enabled: gstEnabled, gst_number: gstNumber || null, gst_rate: parsedGstRate,
         prayer_block_enabled: prayerBlockEnabled,
         privacy_mode: privacyMode,
       });
@@ -164,6 +166,13 @@ export default function SettingsPage() {
 
   async function saveWorkingHours() {
     if (!currentBranch) return;
+    // Validate close > open for working days
+    for (const d of DAYS) {
+      if (hours[d]?.off) continue;
+      const open = hours[d]?.open || '09:00';
+      const close = hours[d]?.close || '21:00';
+      if (close <= open) { toast.error(`${DAY_LABELS[d]}: closing time must be after opening time`); return; }
+    }
     setSaving(true);
     try {
       const wh: Record<string, unknown> = {};
@@ -231,22 +240,26 @@ export default function SettingsPage() {
 
         {/* Salon Profile */}
         <TabsContent value="profile" className="mt-4">
-          <div className="bg-card border border-border rounded-lg p-6 space-y-5 max-w-2xl">
+          <div className="bg-card border border-border rounded-lg p-6 space-y-5">
           <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Salon Information</p>
-          <div><Label>Salon Name</Label><Input value={salonName} onChange={(e) => setSalonName(e.target.value)} className="mt-1" /></div>
-          <div>
-            <Label>Salon Type</Label>
-            <div className="flex gap-2 mt-1">
-              {['gents', 'ladies', 'unisex'].map((t) => (
-                <button key={t} onClick={() => setSalonType(t)} className={`flex-1 py-2.5 border text-sm font-medium transition-all duration-150 ${salonType === t ? 'border-gold bg-gold text-black' : 'border-border hover:border-gold/30'}`}>
-                  {t === 'gents' ? '✂️ Gents' : t === 'ladies' ? '💄 Ladies' : '🌟 Unisex'}
-                </button>
-              ))}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div><Label>Salon Name</Label><Input value={salonName} onChange={(e) => setSalonName(e.target.value)} className="mt-1" /></div>
+            <div>
+              <Label>Salon Type</Label>
+              <div className="flex gap-2 mt-1">
+                {['gents', 'ladies', 'unisex'].map((t) => (
+                  <button key={t} onClick={() => setSalonType(t)} className={`flex-1 py-2.5 border text-sm font-medium transition-all duration-150 ${salonType === t ? 'border-gold bg-gold text-black' : 'border-border hover:border-gold/30'}`}>
+                    {t === 'gents' ? <><Scissors className="w-4 h-4 inline-block mr-1.5" />Gents</> : t === 'ladies' ? <><Sparkles className="w-4 h-4 inline-block mr-1.5" />Ladies</> : <><Users className="w-4 h-4 inline-block mr-1.5" />Unisex</>}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
-          <div><Label>City</Label><Input value={city} onChange={(e) => setCity(e.target.value)} className="mt-1" /></div>
-          <div><Label>Address</Label><Input value={address} onChange={(e) => setAddress(e.target.value)} className="mt-1" /></div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div><Label>City</Label><Input value={city} onChange={(e) => setCity(e.target.value)} className="mt-1" /></div>
+            <div><Label>Address</Label><Input value={address} onChange={(e) => setAddress(e.target.value)} className="mt-1" /></div>
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <div><Label>Phone</Label><Input value={phone} onChange={(e) => setPhone(e.target.value)} className="mt-1" /></div>
             <div><Label>WhatsApp</Label><Input value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)} className="mt-1" /></div>
           </div>
@@ -271,7 +284,7 @@ export default function SettingsPage() {
 
         {/* Working Hours */}
         <TabsContent value="hours" className="mt-4">
-          <div className="bg-card border border-border rounded-lg p-6 space-y-3 max-w-2xl">
+          <div className="bg-card border border-border rounded-lg p-6 space-y-3">
           <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Weekly Schedule</p>
           {DAYS.map((day) => (
             <div key={day} className="border-border flex items-center gap-3 p-3 bg-card border">
@@ -312,61 +325,68 @@ export default function SettingsPage() {
 
         {/* Payment Methods */}
         <TabsContent value="payment" className="mt-4">
-          <div className="bg-card border border-border rounded-lg p-6 space-y-4 max-w-2xl">
+          <div className="bg-card border border-border rounded-lg p-6 space-y-4">
           <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Payment Methods</p>
-          <Card className="border-border"><CardContent className="p-4 space-y-3">
-            <p className="text-sm font-medium">Cash</p>
-            <p className="text-xs text-muted-foreground">Always enabled</p>
-          </CardContent></Card>
-          <Card className="border-border"><CardContent className="p-4 space-y-3">
-            <p className="text-sm font-medium">JazzCash</p>
-            <div><Label className="text-xs">Account Number</Label><Input value={jazzcashNumber} onChange={(e) => setJazzcashNumber(e.target.value)} placeholder="03XX-XXXXXXX" className="mt-1" /></div>
-          </CardContent></Card>
-          <Card className="border-border"><CardContent className="p-4 space-y-3">
-            <p className="text-sm font-medium">EasyPaisa</p>
-            <div><Label className="text-xs">Account Number</Label><Input value={easypaisaNumber} onChange={(e) => setEasypaisaNumber(e.target.value)} placeholder="03XX-XXXXXXX" className="mt-1" /></div>
-          </CardContent></Card>
-          <Card className="border-border"><CardContent className="p-4 space-y-3">
-            <p className="text-sm font-medium">Bank Transfer (IBFT)</p>
-            <div className="grid grid-cols-3 gap-3">
-              <div><Label className="text-xs">Bank Name</Label><Input value={bankName} onChange={(e) => setBankName(e.target.value)} placeholder="HBL" className="mt-1" /></div>
-              <div><Label className="text-xs">Account #</Label><Input value={bankAccount} onChange={(e) => setBankAccount(e.target.value)} className="mt-1" /></div>
-              <div><Label className="text-xs">Account Title</Label><Input value={bankTitle} onChange={(e) => setBankTitle(e.target.value)} className="mt-1" /></div>
-            </div>
-          </CardContent></Card>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <Card className="border-border"><CardContent className="p-4 space-y-3">
+              <p className="text-sm font-medium">Cash</p>
+              <p className="text-xs text-muted-foreground">Always enabled</p>
+            </CardContent></Card>
+            <Card className="border-border"><CardContent className="p-4 space-y-3">
+              <p className="text-sm font-medium">JazzCash</p>
+              <div><Label className="text-xs">Account Number</Label><Input value={jazzcashNumber} onChange={(e) => setJazzcashNumber(e.target.value)} placeholder="03XX-XXXXXXX" className="mt-1" /></div>
+            </CardContent></Card>
+            <Card className="border-border"><CardContent className="p-4 space-y-3">
+              <p className="text-sm font-medium">EasyPaisa</p>
+              <div><Label className="text-xs">Account Number</Label><Input value={easypaisaNumber} onChange={(e) => setEasypaisaNumber(e.target.value)} placeholder="03XX-XXXXXXX" className="mt-1" /></div>
+            </CardContent></Card>
+            <Card className="border-border"><CardContent className="p-4 space-y-3">
+              <p className="text-sm font-medium">Bank Transfer (IBFT)</p>
+              <div className="grid grid-cols-3 gap-3">
+                <div><Label className="text-xs">Bank Name</Label><Input value={bankName} onChange={(e) => setBankName(e.target.value)} placeholder="HBL" className="mt-1" /></div>
+                <div><Label className="text-xs">Account #</Label><Input value={bankAccount} onChange={(e) => setBankAccount(e.target.value)} className="mt-1" /></div>
+                <div><Label className="text-xs">Account Title</Label><Input value={bankTitle} onChange={(e) => setBankTitle(e.target.value)} className="mt-1" /></div>
+              </div>
+            </CardContent></Card>
+          </div>
           <Button onClick={savePaymentSettings} disabled={saving} className="bg-gold hover:bg-gold/90 text-black font-bold h-11">{saving ? 'Saving...' : 'Save Payment Settings'}</Button>
           </div>
         </TabsContent>
 
         {/* Tax & Billing */}
         <TabsContent value="tax" className="mt-4">
-          <div className="bg-card border border-border rounded-lg p-6 space-y-4 max-w-2xl">
+          <div className="bg-card border border-border rounded-lg p-6 space-y-4">
           <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Tax Configuration</p>
-          <div className="bg-secondary/30 p-4 border border-border flex items-center justify-between">
-            <div><p className="text-sm font-medium">GST / Sales Tax</p><p className="text-xs text-muted-foreground">Enable tax on bills</p></div>
-            <Switch checked={gstEnabled} onCheckedChange={setGstEnabled} className="" />
-          </div>
-          {gstEnabled && (
-            <div className="grid grid-cols-2 gap-4">
-              <div><Label className="text-xs">GST Number</Label><Input value={gstNumber} onChange={(e) => setGstNumber(e.target.value)} className="mt-1" /></div>
-              <div><Label className="text-xs">GST Rate (%)</Label><Input type="number" value={gstRate} onChange={(e) => setGstRate(e.target.value)} className="mt-1" /></div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div className="bg-secondary/30 p-4 border border-border flex items-center justify-between">
+              <div><p className="text-sm font-medium">GST / Sales Tax</p><p className="text-xs text-muted-foreground">Enable tax on bills</p></div>
+              <Switch checked={gstEnabled} onCheckedChange={setGstEnabled} className="" />
             </div>
-          )}
+            {gstEnabled && (
+              <>
+                <div />
+                <div><Label className="text-xs">GST Number</Label><Input value={gstNumber} onChange={(e) => setGstNumber(e.target.value)} className="mt-1" /></div>
+                <div><Label className="text-xs">GST Rate (%)</Label><Input type="number" value={gstRate} onChange={(e) => setGstRate(e.target.value)} className="mt-1" /></div>
+              </>
+            )}
+          </div>
           <Button onClick={saveSalonProfile} disabled={saving} className="bg-gold hover:bg-gold/90 text-black font-bold h-11">{saving ? 'Saving...' : 'Save Tax Settings'}</Button>
           </div>
         </TabsContent>
 
         {/* Display */}
         <TabsContent value="display" className="mt-4">
-          <div className="bg-card border border-border rounded-lg p-6 space-y-4 max-w-2xl">
+          <div className="bg-card border border-border rounded-lg p-6 space-y-4">
           <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Display Preferences</p>
-          <div className="bg-secondary/30 p-4 border border-border flex items-center justify-between">
-            <div><p className="text-sm font-medium">Dark Mode</p><p className="text-xs text-muted-foreground">Switch to dark theme</p></div>
-            <Switch checked={darkMode} onCheckedChange={setDarkMode} className="" />
-          </div>
-          <div className="bg-secondary/30 p-4 border border-border flex items-center justify-between">
-            <div><p className="text-sm font-medium">Keep Screen Awake</p><p className="text-xs text-muted-foreground">Prevent tablet from sleeping (front desk mode)</p></div>
-            <Switch checked={keepAwake} onCheckedChange={setKeepAwake} className="" />
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div className="bg-secondary/30 p-4 border border-border flex items-center justify-between">
+              <div><p className="text-sm font-medium">Dark Mode</p><p className="text-xs text-muted-foreground">Switch to dark theme</p></div>
+              <Switch checked={darkMode} onCheckedChange={setDarkMode} className="" />
+            </div>
+            <div className="bg-secondary/30 p-4 border border-border flex items-center justify-between">
+              <div><p className="text-sm font-medium">Keep Screen Awake</p><p className="text-xs text-muted-foreground">Prevent tablet from sleeping (front desk mode)</p></div>
+              <Switch checked={keepAwake} onCheckedChange={setKeepAwake} className="" />
+            </div>
           </div>
           </div>
         </TabsContent>
@@ -415,7 +435,8 @@ function ServiceManager({
 
   async function saveService() {
     if (!name.trim()) { toast.error('Service name is required'); return; }
-    if (!price || Number(price) <= 0) { toast.error('Enter a valid price'); return; }
+    if (!price || isNaN(Number(price)) || Number(price) <= 0) { toast.error('Enter a valid price'); return; }
+    if (duration && (isNaN(Number(duration)) || Number(duration) < 5 || Number(duration) > 480)) { toast.error('Duration must be 5–480 minutes'); return; }
 
     setSaving(true);
     try {

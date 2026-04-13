@@ -53,7 +53,7 @@ The following products are below their reorder threshold:
 
 Please place orders with your suppliers to avoid running out.
 
-— BrBr Platform`,
+— iCut Platform`,
     variables: ['salon_name', 'branch_name', 'product_list'],
   },
   {
@@ -72,16 +72,16 @@ Udhaar Added:    Rs {udhaar}
 Top Service:     {top_service}
 Top Stylist:     {top_stylist}
 
-— BrBr Platform`,
+— iCut Platform`,
     variables: ['date', 'salon_name', 'branch_name', 'total_revenue', 'completed', 'total', 'cash', 'jazzcash', 'udhaar', 'top_service', 'top_stylist'],
   },
 ];
 
 export function welcomeEmail(salonName: string, dashboardUrl: string): string {
-  const previewText = `Welcome to BrBr! Your salon ${salonName} is live. Let's get started.`;
+  const previewText = `Welcome to iCut! Your salon ${salonName} is live. Let's get started.`;
   const body = `
-    <h1 style="margin:0 0 16px 0;font-family:Inter,-apple-system,BlinkMacSystemFont,Arial,sans-serif;font-size:22px;font-weight:bold;color:#1A1A1A;">Welcome to BrBr!</h1>
-    <p style="margin:0 0 20px 0;font-family:Inter,-apple-system,BlinkMacSystemFont,Arial,sans-serif;font-size:15px;color:#1A1A1A;line-height:1.6;">Your salon <strong>${salonName}</strong> is live on BrBr.</p>
+    <h1 style="margin:0 0 16px 0;font-family:Inter,-apple-system,BlinkMacSystemFont,Arial,sans-serif;font-size:22px;font-weight:bold;color:#1A1A1A;">Welcome to iCut!</h1>
+    <p style="margin:0 0 20px 0;font-family:Inter,-apple-system,BlinkMacSystemFont,Arial,sans-serif;font-size:15px;color:#1A1A1A;line-height:1.6;">Your salon <strong>${salonName}</strong> is live on iCut.</p>
     <p style="margin:0 0 8px 0;font-family:Inter,-apple-system,BlinkMacSystemFont,Arial,sans-serif;font-size:15px;color:#1A1A1A;font-weight:600;">Here's how to get started:</p>
     <ol style="margin:0 0 24px 0;padding-left:20px;font-family:Inter,-apple-system,BlinkMacSystemFont,Arial,sans-serif;font-size:15px;color:#1A1A1A;line-height:1.8;">
       <li>Add your services</li>
@@ -95,10 +95,10 @@ export function welcomeEmail(salonName: string, dashboardUrl: string): string {
 }
 
 export function passwordResetEmail(resetUrl: string): string {
-  const previewText = 'Reset your BrBr password — link expires in 1 hour.';
+  const previewText = 'Reset your iCut password — link expires in 1 hour.';
   const body = `
     <h1 style="margin:0 0 16px 0;font-family:Inter,-apple-system,BlinkMacSystemFont,Arial,sans-serif;font-size:22px;font-weight:bold;color:#1A1A1A;">Reset your password</h1>
-    <p style="margin:0 0 16px 0;font-family:Inter,-apple-system,BlinkMacSystemFont,Arial,sans-serif;font-size:15px;color:#1A1A1A;line-height:1.6;">Someone requested a password reset for your BrBr account. Click the button below to set a new password.</p>
+    <p style="margin:0 0 16px 0;font-family:Inter,-apple-system,BlinkMacSystemFont,Arial,sans-serif;font-size:15px;color:#1A1A1A;line-height:1.6;">Someone requested a password reset for your iCut account. Click the button below to set a new password.</p>
     <p style="margin:0 0 24px 0;font-family:Inter,-apple-system,BlinkMacSystemFont,Arial,sans-serif;font-size:15px;color:#1A1A1A;line-height:1.6;">If you did not request this, ignore this email — your password will remain unchanged.</p>
     ${emailButton('Reset Password', resetUrl)}
     <p style="margin:24px 0 0 0;font-family:Inter,-apple-system,BlinkMacSystemFont,Arial,sans-serif;font-size:13px;color:#1A1A1A;opacity:0.5;">This link expires in 1 hour.</p>

@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 const DEMO_USERS = [
-  { name: 'BrBr Admin', email: 'admin@brbr.pk', role: 'Super Admin', salon: '— Platform', status: 'Active' },
+  { name: 'iCut Admin', email: 'admin@icut.pk', role: 'Super Admin', salon: '— Platform', status: 'Active' },
   { name: 'Fatima Khan', email: 'fatima@glamourstudio.pk', role: 'Owner', salon: 'Glamour Studio', status: 'Active' },
   { name: 'Ahmed Raza', email: 'ahmed@royalbarbers.pk', role: 'Owner', salon: 'Royal Barbers', status: 'Active' },
   { name: 'Noor Fatima', email: 'noor@noorbeauty.pk', role: 'Owner', salon: 'Noor Beauty Lounge', status: 'Active' },

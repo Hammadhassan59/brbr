@@ -22,7 +22,7 @@ export function wrapEmailHtml(body: string, previewText: string): string {
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-  <title>BrBr</title>
+  <title>iCut</title>
   <!--[if mso]>
   <noscript>
     <xml>
@@ -47,12 +47,12 @@ export function wrapEmailHtml(body: string, previewText: string): string {
           <!-- Header -->
           <tr>
             <td style="background:#161616;padding:20px 32px;">
-              <a href="https://brbr.pk" style="text-decoration:none;">
+              <a href="https://icut.pk" style="text-decoration:none;">
                 <!--[if mso]>
-                <span style="font-family:Arial,sans-serif;font-size:22px;font-weight:bold;color:#F0B000;">&#9986; BRBR</span>
+                <span style="font-family:Arial,sans-serif;font-size:22px;font-weight:bold;color:#F0B000;">&#9986; iCut</span>
                 <![endif]-->
                 <!--[if !mso]><!-->
-                <span style="font-family:Inter,-apple-system,BlinkMacSystemFont,Arial,sans-serif;font-size:22px;font-weight:bold;color:#F0B000;">&#9986; BRBR</span>
+                <span style="font-family:Inter,-apple-system,BlinkMacSystemFont,Arial,sans-serif;font-size:22px;font-weight:bold;color:#F0B000;">&#9986; iCut</span>
                 <!--<![endif]-->
               </a>
             </td>
@@ -72,9 +72,9 @@ export function wrapEmailHtml(body: string, previewText: string): string {
               <p style="margin:0 0 10px 0;font-family:Inter,-apple-system,BlinkMacSystemFont,Arial,sans-serif;font-size:13px;color:#EFEFEF;">
                 <a href="https://wa.me/923001234567" style="color:#F0B000;text-decoration:none;font-weight:600;">WhatsApp</a>
                 &nbsp;&nbsp;|&nbsp;&nbsp;
-                <a href="mailto:support@brbr.pk" style="color:#F0B000;text-decoration:none;font-weight:600;">support@brbr.pk</a>
+                <a href="mailto:support@icut.pk" style="color:#F0B000;text-decoration:none;font-weight:600;">support@icut.pk</a>
               </p>
-              <p style="margin:0;font-family:Inter,-apple-system,BlinkMacSystemFont,Arial,sans-serif;font-size:11px;color:#EFEFEF;opacity:0.4;">&#169; 2025 BrBr by Inparlor Technologies Pvt Ltd</p>
+              <p style="margin:0;font-family:Inter,-apple-system,BlinkMacSystemFont,Arial,sans-serif;font-size:11px;color:#EFEFEF;opacity:0.4;">&#169; 2026 iCut by Inparlor Technologies Pvt Ltd</p>
             </td>
           </tr>
 
