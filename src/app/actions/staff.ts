@@ -6,16 +6,26 @@ import { createServerClient } from '@/lib/supabase';
 export async function createStaff(data: {
   branchId: string;
   name: string;
+  email: string;
+  password: string;
   phone?: string | null;
   role: string;
   joinDate?: string;
   baseSalary?: number;
   commissionType?: string;
   commissionRate?: number;
-  pinCode: string;
 }) {
   const session = await verifySession();
   const supabase = createServerClient();
+
+  // Create Supabase Auth account for the staff member
+  const { data: authUser, error: authError } = await supabase.auth.admin.createUser({
+    email: data.email,
+    password: data.password,
+    email_confirm: true,
+  });
+
+  if (authError) return { data: null, error: authError.message };
 
   const { data: result, error } = await supabase
     .from('staff')
@@ -23,13 +33,14 @@ export async function createStaff(data: {
       salon_id: session.salonId,
       branch_id: data.branchId,
       name: data.name.trim(),
+      email: data.email,
+      auth_user_id: authUser.user.id,
       phone: data.phone || null,
       role: data.role,
       join_date: data.joinDate,
       base_salary: data.baseSalary || 0,
       commission_type: data.commissionType,
       commission_rate: data.commissionRate || 0,
-      pin_code: data.pinCode,
     })
     .select()
     .single();

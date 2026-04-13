@@ -11,7 +11,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import toast from 'react-hot-toast';
-import { isValidPKPhone } from '@/lib/utils/phone';
 import type { Staff, StaffRole, CommissionType } from '@/types/database';
 
 interface StaffFormProps {
@@ -33,11 +32,12 @@ export function StaffForm({ staff, onSaved }: StaffFormProps) {
   const isEditing = !!staff;
 
   const [name, setName] = useState(staff?.name || '');
+  const [email, setEmail] = useState(staff?.email || '');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [phone, setPhone] = useState(staff?.phone || '');
   const [role, setRole] = useState<StaffRole>(staff?.role || 'junior_stylist');
   const [joinDate, setJoinDate] = useState(staff?.join_date || new Date().toISOString().slice(0, 10));
-  const [pin, setPin] = useState('');
-  const [confirmPin, setConfirmPin] = useState('');
   const [baseSalary, setBaseSalary] = useState(String(staff?.base_salary ?? 0));
   const [commissionType, setCommissionType] = useState<CommissionType>(staff?.commission_type || 'percentage');
   const [commissionRate, setCommissionRate] = useState(String(staff?.commission_rate ?? 0));
@@ -47,19 +47,18 @@ export function StaffForm({ staff, onSaved }: StaffFormProps) {
   async function handleSave() {
     if (!salon || !currentBranch) return;
     if (!name.trim()) { toast.error('Name is required'); return; }
-    if (phone && !isValidPKPhone(phone)) { toast.error('Invalid phone format — expected 03XX-XXXXXXX'); return; }
-    if (!isEditing && pin.length !== 4) { toast.error('PIN must be 4 digits'); return; }
-    if (!isEditing && pin !== confirmPin) { toast.error('PINs do not match'); return; }
-    if (isEditing && pin) {
-      if (pin.length !== 4 || !/^\d{4}$/.test(pin)) { toast.error('PIN must be exactly 4 digits'); return; }
-      if (pin !== confirmPin) { toast.error('PINs do not match'); return; }
-    }
+    if (!isEditing && !email.trim()) { toast.error('Email is required'); return; }
+    if (!isEditing && password.length < 6) { toast.error('Password must be at least 6 characters'); return; }
+    if (!isEditing && password !== confirmPassword) { toast.error('Passwords do not match'); return; }
+    if (isEditing && password && password.length < 6) { toast.error('Password must be at least 6 characters'); return; }
+    if (isEditing && password && password !== confirmPassword) { toast.error('Passwords do not match'); return; }
 
     setSaving(true);
     try {
       if (isEditing && staff) {
         const data: Record<string, unknown> = {
           name: name.trim(),
+          email: email.trim() || undefined,
           phone: phone || null,
           role,
           join_date: joinDate,
@@ -68,7 +67,6 @@ export function StaffForm({ staff, onSaved }: StaffFormProps) {
           commission_rate: Number(commissionRate) || 0,
           is_active: isActive,
         };
-        if (pin) data.pin_code = pin;
 
         const { error } = await updateStaff(staff.id, data);
         if (error) throw new Error(error);
@@ -77,13 +75,14 @@ export function StaffForm({ staff, onSaved }: StaffFormProps) {
         const { data: newStaff, error } = await createStaff({
           branchId: currentBranch.id,
           name: name.trim(),
+          email: email.trim(),
+          password,
           phone: phone || null,
           role,
           joinDate,
           baseSalary: Number(baseSalary) || 0,
           commissionType,
           commissionRate: Number(commissionRate) || 0,
-          pinCode: pin,
         });
         if (error) throw new Error(error);
         toast.success('Staff member added');
@@ -110,8 +109,20 @@ export function StaffForm({ staff, onSaved }: StaffFormProps) {
             <Input value={name} onChange={(e) => setName(e.target.value)} className="mt-1" />
           </div>
           <div>
-            <Label>Phone</Label>
-            <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="03XX-XXXXXXX" className="mt-1" />
+            <Label>Email *</Label>
+            <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="staff@example.com" className="mt-1" disabled={isEditing} />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <Label>{isEditing ? 'New Password (leave blank to keep)' : 'Password *'}</Label>
+            <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} minLength={6} className="mt-1" />
+          </div>
+          <div>
+            <Label>Confirm Password</Label>
+            <Input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} className="mt-1" />
+            {password && confirmPassword && password !== confirmPassword && <p className="text-xs text-destructive mt-1">Passwords don&apos;t match</p>}
           </div>
         </div>
 
@@ -120,28 +131,21 @@ export function StaffForm({ staff, onSaved }: StaffFormProps) {
             <Label>Role *</Label>
             <Select value={role} onValueChange={(v) => { if (v) setRole(v as StaffRole); }}>
               <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              {ROLES.map((r) => <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>)}
-            </SelectContent>
-          </Select>
+              <SelectContent>
+                {ROLES.map((r) => <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label>Join Date</Label>
+            <Input type="date" value={joinDate} onChange={(e) => setJoinDate(e.target.value)} className="mt-1" />
+          </div>
         </div>
-        <div>
-          <Label>Join Date</Label>
-          <Input type="date" value={joinDate} onChange={(e) => setJoinDate(e.target.value)} className="mt-1" />
-        </div>
-      </div>
 
-      <div className="grid grid-cols-2 gap-4">
         <div>
-          <Label>{isEditing ? 'New PIN (leave blank to keep)' : 'Set 4-digit PIN *'}</Label>
-          <Input type="password" maxLength={4} inputMode="numeric" value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))} className="mt-1 text-center tracking-widest" />
+          <Label>Phone (optional)</Label>
+          <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="03XX-XXXXXXX" className="mt-1 w-64" />
         </div>
-        <div>
-          <Label>Confirm PIN</Label>
-          <Input type="password" maxLength={4} inputMode="numeric" value={confirmPin} onChange={(e) => setConfirmPin(e.target.value.replace(/\D/g, ''))} className="mt-1 text-center tracking-widest" />
-          {pin && confirmPin && pin !== confirmPin && <p className="text-xs text-destructive mt-1">PINs don&apos;t match</p>}
-        </div>
-      </div>
       </div>
 
       <div className="bg-card border border-border rounded-lg p-5 space-y-4">
