@@ -61,18 +61,7 @@ const SERVICE_TABS: { value: string; label: string }[] = [
   { value: 'other', label: 'Other' },
 ];
 
-const CATEGORY_COLORS: Record<string, string> = {
-  haircut: 'border-t-blue-500',
-  color: 'border-t-purple-500',
-  facial: 'border-t-pink-500',
-  waxing: 'border-t-amber-500',
-  treatment: 'border-t-teal-500',
-  bridal: 'border-t-rose-500',
-  beard: 'border-t-indigo-500',
-  nails: 'border-t-red-500',
-  massage: 'border-t-green-500',
-  other: 'border-t-gray-400',
-};
+// Category colors removed — using gold accent for all service cards
 
 export function BillBuilder({
   services, products, packages, items,
@@ -130,16 +119,18 @@ export function BillBuilder({
         </div>
 
         <div className="flex-1 overflow-y-auto px-3 pb-2" style={{ scrollbarWidth: 'none' }}>
-          <div className="grid grid-cols-3 sm:grid-cols-4 gap-2.5">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
             {filteredServices.map((svc) => (
               <button
                 key={svc.id}
                 onClick={() => onAddService(svc)}
-                className={`aspect-square flex flex-col items-center justify-center text-center bg-card border border-border rounded-lg p-2.5 hover:border-gold/30 hover:bg-gold/5 active:scale-[0.97] transition-all duration-150 touch-target border-t-[3px] ${CATEGORY_COLORS[svc.category] || 'border-t-gray-400'}`}
+                className="flex items-center gap-3 bg-card border border-border rounded-lg px-3 py-3 hover:border-gold/40 hover:bg-gold/5 active:scale-[0.97] transition-all duration-150 touch-target text-left"
               >
-                <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">{svc.category}</p>
-                <p className="text-sm font-semibold leading-tight">{svc.name}</p>
-                <p className="text-xs text-muted-foreground mt-1.5">{formatPKR(svc.base_price)}</p>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold truncate">{svc.name}</p>
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider">{svc.category}</p>
+                </div>
+                <p className="text-sm font-bold text-gold shrink-0">{formatPKR(svc.base_price)}</p>
               </button>
             ))}
           </div>
