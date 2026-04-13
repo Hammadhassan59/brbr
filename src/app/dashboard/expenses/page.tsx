@@ -361,14 +361,16 @@ export default function ExpensesPage() {
           <div className="space-y-4">
             <div>
               <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Staff Member *</Label>
-              <Select value={advStaffId} onValueChange={(v) => { if (v) setAdvStaffId(v); }}>
-                <SelectTrigger className="mt-1"><SelectValue placeholder="Select staff" /></SelectTrigger>
-                <SelectContent>
-                  {staffList.map((s) => (
-                    <SelectItem key={s.id} value={s.id}>{s.name} — {s.role.replace('_', ' ')}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <select
+                value={advStaffId}
+                onChange={(e) => setAdvStaffId(e.target.value)}
+                className="mt-1 w-full h-10 border border-border bg-background px-3 text-sm rounded-md"
+              >
+                <option value="">Select staff</option>
+                {staffList.map((s) => (
+                  <option key={s.id} value={s.id}>{s.name} — {s.role.replace('_', ' ')}</option>
+                ))}
+              </select>
             </div>
             <div>
               <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Amount (Rs) *</Label>
