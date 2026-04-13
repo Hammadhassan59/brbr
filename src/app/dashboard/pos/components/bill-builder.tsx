@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Search, X, Plus, Minus, Tag, ShoppingBag, Package, Receipt, Scissors, Palette, Sparkles, Hand, Droplets, Heart, Brush, Gem, type LucideIcon } from 'lucide-react';
+import { Search, X, Plus, Minus, Tag, ShoppingBag, Package, Receipt } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 
@@ -61,18 +61,6 @@ const SERVICE_TABS: { value: string; label: string }[] = [
   { value: 'other', label: 'Other' },
 ];
 
-const CATEGORY_ICONS: Record<string, LucideIcon> = {
-  haircut: Scissors,
-  color: Palette,
-  facial: Sparkles,
-  waxing: Hand,
-  treatment: Droplets,
-  bridal: Heart,
-  beard: Brush,
-  nails: Gem,
-  massage: Hand,
-  other: Tag,
-};
 
 export function BillBuilder({
   services, products, packages, items,
@@ -130,23 +118,16 @@ export function BillBuilder({
         </div>
 
         <div className="flex-1 overflow-y-auto px-3 pb-2" style={{ scrollbarWidth: 'none' }}>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+          <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
             {filteredServices.map((svc) => (
               <button
                 key={svc.id}
                 onClick={() => onAddService(svc)}
-                className="flex items-center gap-3 bg-card border border-border rounded-lg px-3 py-3 hover:border-gold/40 hover:bg-gold/5 active:scale-[0.97] transition-all duration-150 touch-target text-left"
+                className="aspect-square flex flex-col items-center justify-center text-center bg-card border border-border rounded-lg p-2.5 hover:border-gold/40 hover:bg-gold/5 active:scale-[0.97] transition-all duration-150 touch-target"
               >
-                {(() => { const Icon = CATEGORY_ICONS[svc.category] || Tag; return (
-                  <div className="w-9 h-9 rounded-lg bg-gold/10 flex items-center justify-center shrink-0">
-                    <Icon className="w-4.5 h-4.5 text-gold" />
-                  </div>
-                ); })()}
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold truncate">{svc.name}</p>
-                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider">{svc.category}</p>
-                </div>
-                <p className="text-sm font-bold text-gold shrink-0">{formatPKR(svc.base_price)}</p>
+                <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">{svc.category}</p>
+                <p className="text-sm font-semibold leading-tight">{svc.name}</p>
+                <p className="text-xs text-gold font-bold mt-1.5">{formatPKR(svc.base_price)}</p>
               </button>
             ))}
           </div>
