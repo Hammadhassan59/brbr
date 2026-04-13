@@ -223,13 +223,13 @@ export default function ExpensesPage() {
             .from('cash_drawers')
             .select('*')
             .eq('branch_id', currentBranch.id)
-            .eq('date', today)
+            .eq('date', todayPKT)
             .eq('status', 'open')
             .single();
 
           if (drawer) {
             const newTotal = (drawer.total_expenses || 0) + Number(amount);
-            const { error: drawerError } = await updateCashDrawerExpenses(currentBranch.id, today, newTotal);
+            const { error: drawerError } = await updateCashDrawerExpenses(currentBranch.id, todayPKT, newTotal);
             if (drawerError) throw new Error(drawerError);
           }
         } catch {
