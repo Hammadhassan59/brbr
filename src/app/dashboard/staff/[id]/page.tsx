@@ -169,11 +169,11 @@ export default function StaffProfilePage() {
 
       <Tabs defaultValue="schedule">
         <TabsList className="flex-wrap h-auto gap-1.5 bg-transparent">
-          <TabsTrigger value="schedule" className="text-xs px-3.5 py-2 gap-1 font-medium transition-all duration-150 border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30"><Clock className="w-3 h-3" /> Schedule</TabsTrigger>
-          <TabsTrigger value="attendance" className="text-xs px-3.5 py-2 gap-1 font-medium transition-all duration-150 border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30"><Calendar className="w-3 h-3" /> Attendance</TabsTrigger>
-          <TabsTrigger value="commission" className="text-xs px-3.5 py-2 gap-1 font-medium transition-all duration-150 border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30"><DollarSign className="w-3 h-3" /> Commission</TabsTrigger>
-          <TabsTrigger value="advances" className="text-xs px-3.5 py-2 gap-1 font-medium transition-all duration-150 border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30"><CreditCard className="w-3 h-3" /> Advances</TabsTrigger>
-          <TabsTrigger value="performance" className="text-xs px-3.5 py-2 gap-1 font-medium transition-all duration-150 border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30"><TrendingUp className="w-3 h-3" /> Performance</TabsTrigger>
+          <TabsTrigger value="schedule" className="text-sm px-4 py-2.5 gap-1.5 font-medium transition-all duration-150 border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30"><Clock className="w-3 h-3" /> Schedule</TabsTrigger>
+          <TabsTrigger value="attendance" className="text-sm px-4 py-2.5 gap-1.5 font-medium transition-all duration-150 border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30"><Calendar className="w-3 h-3" /> Attendance</TabsTrigger>
+          <TabsTrigger value="commission" className="text-sm px-4 py-2.5 gap-1.5 font-medium transition-all duration-150 border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30"><DollarSign className="w-3 h-3" /> Commission</TabsTrigger>
+          <TabsTrigger value="advances" className="text-sm px-4 py-2.5 gap-1.5 font-medium transition-all duration-150 border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30"><CreditCard className="w-3 h-3" /> Advances</TabsTrigger>
+          <TabsTrigger value="performance" className="text-sm px-4 py-2.5 gap-1.5 font-medium transition-all duration-150 border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30"><TrendingUp className="w-3 h-3" /> Performance</TabsTrigger>
         </TabsList>
 
         {/* Schedule */}
