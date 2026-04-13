@@ -495,8 +495,8 @@ function POSContent() {
                   </div>
                 )}
               </div>
-              <Button variant="outline" size="sm" className="h-8 text-xs shrink-0 transition-all duration-150" onClick={() => { setShowNewClient(true); setNewClientName(clientSearch); setClientSearch(''); setClientResults([]); }}>
-                <UserPlus className="w-3.5 h-3.5 mr-1" /> New
+              <Button size="sm" className="h-8 text-xs shrink-0 bg-gold hover:bg-gold/90 text-black border border-gold font-semibold px-4 transition-all duration-150" onClick={() => { setShowNewClient(true); setNewClientName(clientSearch); setClientSearch(''); setClientResults([]); }}>
+                <UserPlus className="w-4 h-4 mr-1.5" /> New Client
               </Button>
             </div>
           )}
