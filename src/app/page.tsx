@@ -8,23 +8,27 @@ import { DataNotice } from '@/components/data-notice';
 import { DashboardHeroPreview } from './components/dashboard-hero-preview';
 
 // ── Scroll reveal ──
-// Starts visible (opacity-100) so SSR/prerender shows content.
-// On hydration, resets to hidden, then animates in on intersection.
+// Uses CSS-only animation. Content is always visible in HTML (no JS dependency).
+// On mount, elements below the viewport get the hidden class and animate in on scroll.
 function Reveal({ children, className = '' }: { children: React.ReactNode; className?: string }) {
   const ref = useRef<HTMLDivElement>(null);
-  const [hydrated, setHydrated] = useState(false);
-  const [visible, setVisible] = useState(false);
+  const [animate, setAnimate] = useState(false);
+  const [visible, setVisible] = useState(true);
   useEffect(() => {
-    setHydrated(true);
     const el = ref.current;
     if (!el) return;
+    // If element is already in viewport on mount, skip animation entirely
+    const rect = el.getBoundingClientRect();
+    if (rect.top < window.innerHeight) { setVisible(true); return; }
+    // Element is below the fold — set up scroll animation
+    setAnimate(true);
+    setVisible(false);
     const obs = new IntersectionObserver(([e]) => { if (e.isIntersecting) { setVisible(true); obs.disconnect(); } }, { threshold: 0.12 });
     obs.observe(el);
     return () => obs.disconnect();
   }, []);
-  const show = !hydrated || visible;
   return (
-    <div ref={ref} className={`transition-all duration-700 ease-out ${show ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-5'} ${className}`}>
+    <div ref={ref} className={`${animate ? 'transition-all duration-700 ease-out' : ''} ${visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-5'} ${className}`}>
       {children}
     </div>
   );
