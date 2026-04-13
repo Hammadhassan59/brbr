@@ -17,6 +17,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import toast from 'react-hot-toast';
 import { createPackage, updatePackage } from '@/app/actions/packages';
+import { EmptyState } from '@/components/empty-state';
 import type { Package as PkgType, Service } from '@/types/database';
 
 type Filter = 'all' | 'active' | 'inactive';
@@ -148,7 +149,7 @@ export default function PackagesPage() {
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">{[1, 2, 3].map((i) => <div key={i} className="h-36 bg-muted rounded-lg animate-pulse" />)}</div>
       ) : filtered.length === 0 ? (
-        <p className="text-center text-muted-foreground py-16">No packages yet — create your first package</p>
+        <EmptyState icon="🎁" text="noPackagesYet" ctaLabel="addPackage" ctaHref="/dashboard/packages?action=new" />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 stagger-children">
           {filtered.map((pkg) => {

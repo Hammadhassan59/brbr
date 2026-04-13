@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { Search, Plus, Download, Tag, Users } from 'lucide-react';
+import { Search, Plus, Download, Tag } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { supabase } from '@/lib/supabase';
 import { useAppStore } from '@/store/app-store';
@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ClientCard } from './components/client-card';
+import { EmptyState } from '@/components/empty-state';
 import type { Client } from '@/types/database';
 
 type FilterTab = 'all' | 'vip' | 'regular' | 'lapsed' | 'udhaar' | 'blacklisted';
@@ -186,12 +187,7 @@ function ClientsContent() {
           ))}
         </div>
       ) : sorted.length === 0 ? (
-        <div className="bg-card border border-border rounded-lg p-12 flex flex-col items-center justify-center text-center">
-          <Users className="w-12 h-12 text-muted-foreground/40 mb-4" />
-          <p className="text-muted-foreground text-sm">
-            {search ? 'No clients match your search' : 'No clients yet — add your first client'}
-          </p>
-        </div>
+        <EmptyState icon="👤" text="noClientsYet" ctaLabel="addClient" ctaHref="/dashboard/clients?action=new" />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 stagger-children">
           {sorted.map((client) => (

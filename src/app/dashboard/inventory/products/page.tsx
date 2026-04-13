@@ -17,6 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import toast from 'react-hot-toast';
+import { EmptyState } from '@/components/empty-state';
 import type { Product, InventoryType, Service, ProductServiceLink } from '@/types/database';
 
 type Tab = 'all' | 'backbar' | 'retail' | 'low';
@@ -245,7 +246,7 @@ function ProductsContent() {
       {loading ? (
         <div className="space-y-2">{[1, 2, 3, 4].map((i) => <div key={i} className="h-12 bg-muted rounded-lg animate-pulse" />)}</div>
       ) : filtered.length === 0 ? (
-        <p className="text-center text-muted-foreground py-16">No products found</p>
+        <EmptyState icon="📦" text="noProductsYet" ctaLabel="addProduct" ctaHref="/dashboard/inventory/products?action=new" />
       ) : (
         <div className="bg-card border border-border rounded-lg overflow-hidden overflow-x-auto">
           <Table>

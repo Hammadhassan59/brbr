@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { EmptyState } from '@/components/empty-state';
 
 import type { Staff, Attendance } from '@/types/database';
 
@@ -157,11 +158,7 @@ export default function StaffListPage() {
           {[1, 2, 3, 4].map((i) => <div key={i} className="h-32 bg-muted rounded-lg animate-pulse" />)}
         </div>
       ) : filteredStaff.length === 0 ? (
-        <div className="bg-card border border-border rounded-lg p-12">
-          <p className="text-center text-muted-foreground">
-            {staff.length === 0 ? 'No staff members yet' : 'No staff match your filters'}
-          </p>
-        </div>
+        <EmptyState icon="👥" text="noStaffYet" ctaLabel="addStaff" ctaHref="/dashboard/staff?action=new" />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 stagger-children">
           {filteredStaff.map((s) => (

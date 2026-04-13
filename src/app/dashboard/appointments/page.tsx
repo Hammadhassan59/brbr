@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useState, useCallback } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { ChevronLeft, ChevronRight, CalendarIcon, RefreshCw, Filter, Users } from 'lucide-react';
+import { ChevronLeft, ChevronRight, CalendarIcon, RefreshCw, Filter } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { supabase } from '@/lib/supabase';
 import { useAppStore } from '@/store/app-store';
@@ -14,6 +14,7 @@ import { CalendarGrid } from './components/calendar-grid';
 import { NewAppointmentModal } from './components/new-appointment-modal';
 import { AppointmentDetail } from './components/appointment-detail';
 import { WalkInQueue } from './components/walk-in-queue';
+import { EmptyState } from '@/components/empty-state';
 import type { AppointmentWithDetails, Staff, WorkingHours, PrayerBlocks } from '@/types/database';
 
 interface WalkInEntry {
@@ -344,17 +345,7 @@ function AppointmentsContent() {
           </div>
         </div>
       ) : !loading && stylists.length === 0 ? (
-        <div className="bg-card border border-border rounded-lg">
-          <div className="flex flex-col items-center justify-center h-[400px] gap-4">
-            <div className="w-16 h-16 bg-muted/40 flex items-center justify-center" style={{ borderRadius: '12px' }}>
-              <Users className="w-8 h-8 text-muted-foreground/40" />
-            </div>
-            <div className="text-center">
-              <p className="text-base font-semibold text-foreground">No stylists available</p>
-              <p className="text-sm text-muted-foreground mt-1">Add staff with stylist roles to see the calendar</p>
-            </div>
-          </div>
-        </div>
+        <EmptyState icon="📅" text="noAppointmentsYet" ctaLabel="bookAppointmentCta" ctaHref="/dashboard/appointments?action=new" />
       ) : (
         <div className="bg-card border border-border rounded-lg overflow-hidden">
           <CalendarGrid

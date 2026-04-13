@@ -7,6 +7,7 @@ import { supabase } from '@/lib/supabase';
 import { useAppStore } from '@/store/app-store';
 import { getTodayPKT } from '@/lib/utils/dates';
 import { formatPKR, formatPKRShort } from '@/lib/utils/currency';
+import { EmptyState } from '@/components/empty-state';
 
 interface ReportPreview {
   daily: { revenue: number; bills: number };
@@ -168,6 +169,9 @@ export default function ReportsPage() {
       <div className="bg-card border border-border rounded-lg p-4">
         <h2 className="font-heading text-xl font-bold">Reports</h2>
       </div>
+      {!loading && data === null && (
+        <EmptyState icon="📊" text="noDataYet" />
+      )}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3 stagger-children">
         {REPORTS.map((r) => (
           <Link key={r.href} href={r.href} className="group animate-fade-up">

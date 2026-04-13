@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { Plus, Wallet, Trash2 } from 'lucide-react';
+import { Plus, Trash2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAppStore } from '@/store/app-store';
 import { formatPKR } from '@/lib/utils/currency';
@@ -16,6 +16,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import toast from 'react-hot-toast';
 import type { Expense } from '@/types/database';
 import { createExpense, updateExpense, deleteExpense as deleteExpenseAction, updateCashDrawerExpenses } from '@/app/actions/expenses';
+import { EmptyState } from '@/components/empty-state';
 
 const CATEGORIES = [
   'Chai/Snacks',
@@ -279,15 +280,7 @@ export default function ExpensesPage() {
           {[1, 2, 3].map((i) => <div key={i} className="h-16 bg-muted rounded-lg animate-pulse" />)}
         </div>
       ) : expenses.length === 0 ? (
-        <Card className="border-border">
-          <CardContent className="p-8 text-center">
-            <Wallet className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
-            <p className="text-muted-foreground">No expenses recorded for this period.</p>
-            <Button onClick={() => { setEditingExpense(null); setCategory(''); setCustomCategory(''); setAmount(''); setDescription(''); setShowAdd(true); }} variant="outline" size="sm" className="mt-3">
-              <Plus className="w-4 h-4 mr-1" /> Record First Expense
-            </Button>
-          </CardContent>
-        </Card>
+        <EmptyState icon="💰" text="noExpensesYet" ctaLabel="addExpense" ctaHref="/dashboard/expenses?action=new" />
       ) : (
         <div className="space-y-4 stagger-children">
         {Object.entries(groupedByDate).sort(([a], [b]) => b.localeCompare(a)).map(([date, dayExpenses]) => (
