@@ -11,6 +11,8 @@ import { StaffPerformanceTable } from './components/staff-performance-table';
 import { AppointmentsFeed } from './components/appointments-feed';
 import { AlertsPanel, buildAlerts } from './components/alerts-panel';
 import { StylistDashboard } from './components/stylist-dashboard';
+import { OnboardingBanner } from './components/onboarding-banner';
+import { StaffWelcome } from './components/staff-welcome';
 import { Store, ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { formatPKDate } from '@/lib/utils/dates';
@@ -35,6 +37,14 @@ export default function DashboardPage() {
   const [udhaarInfo, setUdhaarInfo] = useState({ clients: 0, total: 0 });
   const [branchStaff, setBranchStaff] = useState<Staff[]>([]);
   const [stylistTips, setStylistTips] = useState(0);
+
+  const [showWelcome, setShowWelcome] = useState(false);
+
+  useEffect(() => {
+    if (currentStaff && !currentStaff.first_login_seen && currentStaff.role !== 'owner') {
+      setShowWelcome(true);
+    }
+  }, [currentStaff]);
 
   const isStylist = currentStaff?.role === 'senior_stylist' || currentStaff?.role === 'junior_stylist';
   const todayPKT = getTodayPKT();
@@ -395,6 +405,14 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
+      {showWelcome && currentStaff && salon && (
+        <StaffWelcome
+          name={currentStaff.name}
+          role={currentStaff.role}
+          salonName={salon.name}
+          onDismiss={() => setShowWelcome(false)}
+        />
+      )}
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold">{salon?.name ?? 'Dashboard'}</h1>
@@ -422,7 +440,7 @@ export default function DashboardPage() {
             <button
               key={key}
               onClick={() => setFilter(key, d)}
-              className={`px-3.5 py-2.5 text-xs font-medium rounded-lg transition-all duration-150 touch-target ${
+              className={`px-3 py-1 text-xs font-medium rounded-md transition-all duration-150 ${
                 activeFilter === key
                   ? 'bg-foreground text-white'
                   : 'text-muted-foreground hover:text-foreground'
@@ -434,7 +452,7 @@ export default function DashboardPage() {
 
           <Popover open={customOpen} onOpenChange={(open) => { setCustomOpen(open); if (open) { setRangeFrom(undefined); setRangeTo(undefined); } }}>
             <PopoverTrigger
-              className={`px-3.5 py-2.5 text-xs font-medium rounded-lg transition-all duration-150 flex items-center gap-1.5 outline-none touch-target ${
+              className={`px-3 py-1 text-xs font-medium rounded-md transition-all duration-150 flex items-center gap-1.5 outline-none ${
                 activeFilter === 'custom'
                   ? 'bg-foreground text-white'
                   : 'text-muted-foreground hover:text-foreground'
@@ -464,6 +482,10 @@ export default function DashboardPage() {
         </div>
       </div>
 
+      {currentStaff?.role === 'owner' && salon && (
+        <OnboardingBanner salonId={salon.id} />
+      )}
+
       <KPICards
         summary={summary}
         appointmentsDone={appointmentsDone}
@@ -473,7 +495,7 @@ export default function DashboardPage() {
         loading={loading}
       />
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
         <div className="lg:col-span-2 space-y-6">
           <RevenueChart data={chartData} loading={loading} title={isMultiDay ? 'Revenue by Day' : undefined} />
 
