@@ -445,68 +445,59 @@ function POSContent() {
                 <X className="w-3 h-3" />
               </Button>
             </div>
-          ) : (
-            <div className="relative flex-1">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+          ) : showNewClient ? (
+            <div className="flex-1 flex items-center gap-2">
               <Input
-                value={clientSearch}
-                onChange={(e) => setClientSearch(e.target.value)}
-                placeholder="Search client..."
-                className="pl-8 h-8 text-sm"
+                value={newClientName}
+                onChange={(e) => setNewClientName(e.target.value)}
+                placeholder="Client name *"
+                className="h-8 text-sm flex-1"
+                autoFocus
               />
-              {clientSearch.length >= 2 && (
-                <div className="absolute z-20 top-full left-0 right-0 mt-1 bg-card border border-border rounded-lg max-h-40 overflow-y-auto" style={{ scrollbarWidth: 'none' }}>
-                  {clientResults.map((c) => (
-                    <button key={c.id} onClick={() => { setSelectedClient(c); setClientSearch(''); setClientResults([]); }}
-                      className="w-full text-left px-3 py-1.5 hover:bg-secondary text-sm transition-all duration-150"
+              <Input
+                value={newClientPhone}
+                onChange={(e) => setNewClientPhone(e.target.value)}
+                placeholder="Phone"
+                className="h-8 text-sm w-36"
+              />
+              <Button size="sm" className="h-8 text-xs bg-gold text-black border border-gold shrink-0 transition-all duration-150" onClick={createNewClient}>
+                Save
+              </Button>
+              <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 transition-all duration-150" onClick={() => { setShowNewClient(false); setNewClientName(''); setNewClientPhone(''); }}>
+                <X className="w-3.5 h-3.5" />
+              </Button>
+            </div>
+          ) : (
+            <div className="relative flex-1 flex items-center gap-2">
+              <div className="relative flex-1">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+                <Input
+                  value={clientSearch}
+                  onChange={(e) => setClientSearch(e.target.value)}
+                  placeholder="Search client..."
+                  className="pl-8 h-8 text-sm"
+                />
+                {clientSearch.length >= 2 && (
+                  <div className="absolute z-20 top-full left-0 right-0 mt-1 bg-card border border-border rounded-lg max-h-40 overflow-y-auto" style={{ scrollbarWidth: 'none' }}>
+                    {clientResults.map((c) => (
+                      <button key={c.id} onClick={() => { setSelectedClient(c); setClientSearch(''); setClientResults([]); }}
+                        className="w-full text-left px-3 py-1.5 hover:bg-secondary text-sm transition-all duration-150"
+                      >
+                        {c.name} <span className="text-muted-foreground">{c.phone}</span>
+                      </button>
+                    ))}
+                    <button
+                      onClick={() => { setClientSearch(''); setClientResults([]); }}
+                      className="w-full text-left px-3 py-1.5 hover:bg-secondary text-sm text-muted-foreground border-t border-border transition-all duration-150"
                     >
-                      {c.name} <span className="text-muted-foreground">{c.phone}</span>
+                      Walk-in Guest
                     </button>
-                  ))}
-                  <div className="border-t border-border">
-                    {!showNewClient ? (
-                      <div className="flex">
-                        <button
-                          onClick={() => { setClientSearch(''); setClientResults([]); }}
-                          className="flex-1 text-left px-3 py-1.5 hover:bg-secondary text-sm text-muted-foreground transition-all duration-150"
-                        >
-                          Walk-in Guest
-                        </button>
-                        <button
-                          onClick={() => { setShowNewClient(true); setNewClientName(clientSearch); }}
-                          className="px-3 py-1.5 hover:bg-secondary text-sm text-gold font-medium transition-all duration-150"
-                        >
-                          <UserPlus className="w-3 h-3 inline mr-1" /> New Client
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="p-2 space-y-1.5">
-                        <Input
-                          value={newClientName}
-                          onChange={(e) => setNewClientName(e.target.value)}
-                          placeholder="Client name *"
-                          className="h-7 text-xs"
-                          autoFocus
-                        />
-                        <Input
-                          value={newClientPhone}
-                          onChange={(e) => setNewClientPhone(e.target.value)}
-                          placeholder="Phone (optional)"
-                          className="h-7 text-xs"
-                        />
-                        <div className="flex gap-1.5">
-                          <Button variant="outline" size="sm" className="flex-1 h-7 text-xs transition-all duration-150" onClick={() => setShowNewClient(false)}>
-                            Cancel
-                          </Button>
-                          <Button size="sm" className="flex-1 h-7 text-xs bg-gold text-black border border-gold transition-all duration-150" onClick={createNewClient}>
-                            Save
-                          </Button>
-                        </div>
-                      </div>
-                    )}
                   </div>
-                </div>
-              )}
+                )}
+              </div>
+              <Button variant="outline" size="sm" className="h-8 text-xs shrink-0 transition-all duration-150" onClick={() => { setShowNewClient(true); setNewClientName(clientSearch); setClientSearch(''); setClientResults([]); }}>
+                <UserPlus className="w-3.5 h-3.5 mr-1" /> New
+              </Button>
             </div>
           )}
 
