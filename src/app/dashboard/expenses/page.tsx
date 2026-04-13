@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { Plus, Trash2, Wallet } from 'lucide-react';
+import { Plus, Trash2, Wallet, Banknote } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAppStore } from '@/store/app-store';
 import { formatPKR } from '@/lib/utils/currency';
@@ -14,8 +14,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 import toast from 'react-hot-toast';
-import type { Expense } from '@/types/database';
+import type { Expense, Staff } from '@/types/database';
 import { createExpense, updateExpense, deleteExpense as deleteExpenseAction, updateCashDrawerExpenses } from '@/app/actions/expenses';
+import { recordAdvance } from '@/app/actions/staff';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { EmptyState } from '@/components/empty-state';
 
 const CATEGORIES = [
@@ -37,6 +39,14 @@ export default function ExpensesPage() {
   const [saving, setSaving] = useState(false);
   const [tab, setTab] = useState<'today' | 'week' | 'month'>('today');
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
+
+  // Advance state
+  const [showAdvance, setShowAdvance] = useState(false);
+  const [staffList, setStaffList] = useState<Staff[]>([]);
+  const [advStaffId, setAdvStaffId] = useState('');
+  const [advAmount, setAdvAmount] = useState('');
+  const [advReason, setAdvReason] = useState('');
+  const [savingAdv, setSavingAdv] = useState(false);
 
   // Form state
   const [category, setCategory] = useState('');
@@ -74,6 +84,31 @@ export default function ExpensesPage() {
   }, [currentBranch, today, tab]);
 
   useEffect(() => { fetchExpenses(); }, [fetchExpenses]);
+
+  // Fetch staff for advance dialog
+  useEffect(() => {
+    if (!currentBranch) return;
+    supabase.from('staff').select('*').eq('branch_id', currentBranch.id).eq('is_active', true).order('name')
+      .then(({ data }) => { if (data) setStaffList(data as Staff[]); });
+  }, [currentBranch]);
+
+  async function saveAdvance() {
+    if (!advStaffId) { toast.error('Select a staff member'); return; }
+    if (!advAmount || Number(advAmount) <= 0) { toast.error('Enter a valid amount'); return; }
+    setSavingAdv(true);
+    try {
+      const { error } = await recordAdvance(advStaffId, Number(advAmount), advReason || null);
+      if (error) throw new Error(error);
+      const staffName = staffList.find((s) => s.id === advStaffId)?.name || 'Staff';
+      toast.success(`Advance of Rs ${advAmount} recorded for ${staffName}`);
+      setShowAdvance(false);
+      setAdvStaffId(''); setAdvAmount(''); setAdvReason('');
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Failed to record advance');
+    } finally {
+      setSavingAdv(false);
+    }
+  }
 
   function openEditExpense(expense: Expense) {
     setEditingExpense(expense);
@@ -211,7 +246,10 @@ export default function ExpensesPage() {
             >{label}</button>
           ))}
         </div>
-        <div className="ml-auto">
+        <div className="ml-auto flex gap-2">
+          <Button variant="outline" onClick={() => { setAdvStaffId(''); setAdvAmount(''); setAdvReason(''); setShowAdvance(true); }} className="h-10 px-4 font-medium transition-all duration-150" size="sm">
+            <Banknote className="w-4 h-4 mr-1" /> Staff Advance
+          </Button>
           <Button onClick={() => { setEditingExpense(null); setCategory(''); setCustomCategory(''); setAmount(''); setDescription(''); setShowAdd(true); }} className="bg-gold hover:bg-gold/90 text-black font-bold h-10 px-4 transition-all duration-150" size="sm">
             <Plus className="w-4 h-4 mr-1" /> Record Expense
           </Button>
@@ -315,6 +353,37 @@ export default function ExpensesPage() {
         ))}
         </div>
       )}
+
+      {/* Staff Advance Dialog */}
+      <Dialog open={showAdvance} onOpenChange={setShowAdvance}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader><DialogTitle>Record Staff Advance</DialogTitle></DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Staff Member *</Label>
+              <Select value={advStaffId} onValueChange={setAdvStaffId}>
+                <SelectTrigger className="mt-1"><SelectValue placeholder="Select staff" /></SelectTrigger>
+                <SelectContent>
+                  {staffList.map((s) => (
+                    <SelectItem key={s.id} value={s.id}>{s.name} — {s.role.replace('_', ' ')}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Amount (Rs) *</Label>
+              <Input type="number" value={advAmount} onChange={(e) => setAdvAmount(e.target.value)} placeholder="0" className="mt-1 text-lg h-12" inputMode="numeric" min={0} />
+            </div>
+            <div>
+              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Reason</Label>
+              <Input value={advReason} onChange={(e) => setAdvReason(e.target.value)} placeholder="e.g. Personal emergency, medical" className="mt-1" />
+            </div>
+            <Button onClick={saveAdvance} disabled={savingAdv} className="w-full h-11 bg-gold hover:bg-gold/90 text-black border border-gold font-bold transition-all duration-150">
+              {savingAdv ? 'Saving...' : 'Record Advance'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Add Expense Dialog */}
       <Dialog open={showAdd} onOpenChange={(open) => { setShowAdd(open); if (!open) setEditingExpense(null); }}>
