@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { Plus, Trash2, Wallet, Banknote } from 'lucide-react';
+import { Plus, Trash2, Wallet, Banknote, Pencil } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAppStore } from '@/store/app-store';
 import { formatPKR } from '@/lib/utils/currency';
@@ -49,6 +49,7 @@ export default function ExpensesPage() {
   const [advStaffId, setAdvStaffId] = useState('');
   const [advAmount, setAdvAmount] = useState('');
   const [advReason, setAdvReason] = useState('');
+  const [editingAdvanceId, setEditingAdvanceId] = useState<string | null>(null);
   const [savingAdv, setSavingAdv] = useState(false);
 
   // Form state
@@ -119,15 +120,25 @@ export default function ExpensesPage() {
     if (!advAmount || Number(advAmount) <= 0) { toast.error('Enter a valid amount'); return; }
     setSavingAdv(true);
     try {
-      const { error } = await recordAdvance(advStaffId, Number(advAmount), advReason || null);
-      if (error) throw new Error(error);
-      const staffName = staffList.find((s) => s.id === advStaffId)?.name || 'Staff';
-      toast.success(`Advance of Rs ${advAmount} recorded for ${staffName}`);
+      if (editingAdvanceId) {
+        const { createServerClient } = await import('@/lib/supabase');
+        const { error } = await supabase
+          .from('advances')
+          .update({ amount: Number(advAmount), reason: advReason || null })
+          .eq('id', editingAdvanceId);
+        if (error) throw new Error(error.message);
+        toast.success('Advance updated');
+      } else {
+        const { error } = await recordAdvance(advStaffId, Number(advAmount), advReason || null);
+        if (error) throw new Error(error);
+        const staffName = staffList.find((s) => s.id === advStaffId)?.name || 'Staff';
+        toast.success(`Advance of Rs ${advAmount} recorded for ${staffName}`);
+      }
       setShowAdvance(false);
-      setAdvStaffId(''); setAdvAmount(''); setAdvReason('');
+      setAdvStaffId(''); setAdvAmount(''); setAdvReason(''); setEditingAdvanceId(null);
       fetchExpenses();
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : 'Failed to record advance');
+      toast.error(err instanceof Error ? err.message : 'Failed to save advance');
     } finally {
       setSavingAdv(false);
     }
@@ -271,7 +282,7 @@ export default function ExpensesPage() {
           ))}
         </div>
         <div className="ml-auto flex gap-2">
-          <Button variant="outline" onClick={() => { setAdvStaffId(''); setAdvAmount(''); setAdvReason(''); setShowAdvance(true); }} className="h-10 px-4 font-medium transition-all duration-150" size="sm">
+          <Button variant="outline" onClick={() => { setAdvStaffId(''); setAdvAmount(''); setAdvReason(''); setEditingAdvanceId(null); setShowAdvance(true); }} className="h-10 px-4 font-medium transition-all duration-150" size="sm">
             <Banknote className="w-4 h-4 mr-1" /> Staff Advance
           </Button>
           <Button onClick={() => { setEditingExpense(null); setCategory(''); setCustomCategory(''); setAmount(''); setDescription(''); setShowAdd(true); }} className="bg-gold hover:bg-gold/90 text-black font-bold h-10 px-4 transition-all duration-150" size="sm">
@@ -349,12 +360,30 @@ export default function ExpensesPage() {
             <Table>
               <TableBody>
                 {recentAdvances.map((adv) => (
-                  <TableRow key={adv.id}>
+                  <TableRow key={adv.id} className="cursor-pointer hover:bg-muted/50" onClick={() => {
+                    setAdvStaffId(adv.staff_id);
+                    setAdvAmount(String(adv.amount));
+                    setAdvReason(adv.reason || '');
+                    setEditingAdvanceId(adv.id);
+                    setShowAdvance(true);
+                  }}>
                     <TableCell className="pl-4">
                       <p className="text-sm font-medium">{adv.staff_name}</p>
                       <p className="text-xs text-muted-foreground">{formatPKDate(adv.date)}{adv.reason ? ` — ${adv.reason}` : ''}</p>
                     </TableCell>
-                    <TableCell className="text-right text-sm font-medium text-orange-600 pr-4">{formatPKR(adv.amount)}</TableCell>
+                    <TableCell className="text-right text-sm font-medium text-orange-600">{formatPKR(adv.amount)}</TableCell>
+                    <TableCell className="text-right pr-4 w-10">
+                      <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground" onClick={(e) => {
+                        e.stopPropagation();
+                        setAdvStaffId(adv.staff_id);
+                        setAdvAmount(String(adv.amount));
+                        setAdvReason(adv.reason || '');
+                        setEditingAdvanceId(adv.id);
+                        setShowAdvance(true);
+                      }}>
+                        <Pencil className="w-3.5 h-3.5" />
+                      </Button>
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -406,9 +435,9 @@ export default function ExpensesPage() {
       )}
 
       {/* Staff Advance Dialog */}
-      <Dialog open={showAdvance} onOpenChange={setShowAdvance}>
+      <Dialog open={showAdvance} onOpenChange={(open) => { setShowAdvance(open); if (!open) setEditingAdvanceId(null); }}>
         <DialogContent className="max-w-sm">
-          <DialogHeader><DialogTitle>Record Staff Advance</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{editingAdvanceId ? 'Edit Advance' : 'Record Staff Advance'}</DialogTitle></DialogHeader>
           <div className="space-y-4">
             <div>
               <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Staff Member *</Label>
@@ -432,7 +461,7 @@ export default function ExpensesPage() {
               <Input value={advReason} onChange={(e) => setAdvReason(e.target.value)} placeholder="e.g. Personal emergency, medical" className="mt-1" />
             </div>
             <Button onClick={saveAdvance} disabled={savingAdv} className="w-full h-11 bg-gold hover:bg-gold/90 text-black border border-gold font-bold transition-all duration-150">
-              {savingAdv ? 'Saving...' : 'Record Advance'}
+              {savingAdv ? 'Saving...' : editingAdvanceId ? 'Update Advance' : 'Record Advance'}
             </Button>
           </div>
         </DialogContent>
