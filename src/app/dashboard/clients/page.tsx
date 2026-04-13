@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { Search, Plus, Download, Tag, UserRound } from 'lucide-react';
+import { Search, Plus, Download, Tag, UserRound, LayoutGrid, List } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { supabase } from '@/lib/supabase';
 import { useAppStore } from '@/store/app-store';
@@ -11,8 +11,11 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ClientCard } from './components/client-card';
 import { EmptyState } from '@/components/empty-state';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { formatPKR } from '@/lib/utils/currency';
 import type { Client } from '@/types/database';
 
+type ViewMode = 'card' | 'list';
 type FilterTab = 'all' | 'vip' | 'regular' | 'lapsed' | 'udhaar' | 'blacklisted';
 type SortBy = 'name' | 'total_spent' | 'total_visits' | 'udhaar_balance' | 'loyalty_points';
 
@@ -35,6 +38,10 @@ function ClientsContent() {
   const [tab, setTab] = useState<FilterTab>((searchParams.get('tab') as FilterTab) || 'all');
   const [sortBy, setSortBy] = useState<SortBy>('name');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [viewMode, setViewMode] = useState<ViewMode>(() => {
+    if (typeof window !== 'undefined') return (localStorage.getItem('icut-clients-view') as ViewMode) || 'card';
+    return 'card';
+  });
 
   const fetchClients = useCallback(async () => {
     if (!salon) return;
@@ -141,6 +148,23 @@ function ClientsContent() {
           </SelectContent>
         </Select>
 
+        <div className="flex items-center border border-border rounded-lg overflow-hidden">
+          <button
+            onClick={() => { setViewMode('card'); localStorage.setItem('icut-clients-view', 'card'); }}
+            className={`p-2 transition-all duration-150 ${viewMode === 'card' ? 'bg-foreground text-white' : 'text-muted-foreground hover:text-foreground'}`}
+            title="Card view"
+          >
+            <LayoutGrid className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => { setViewMode('list'); localStorage.setItem('icut-clients-view', 'list'); }}
+            className={`p-2 transition-all duration-150 ${viewMode === 'list' ? 'bg-foreground text-white' : 'text-muted-foreground hover:text-foreground'}`}
+            title="List view"
+          >
+            <List className="w-4 h-4" />
+          </button>
+        </div>
+
         <Button
           onClick={() => router.push('/dashboard/clients/new')}
           className="bg-gold hover:bg-gold/90 text-black font-bold h-11 transition-all duration-150"
@@ -188,7 +212,7 @@ function ClientsContent() {
         </div>
       ) : sorted.length === 0 ? (
         <EmptyState icon={UserRound} text="noClientsYet" ctaLabel="addClient" ctaHref="/dashboard/clients?action=new" />
-      ) : (
+      ) : viewMode === 'card' ? (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 stagger-children">
           {sorted.map((client) => (
             <ClientCard
@@ -198,6 +222,43 @@ function ClientsContent() {
               onSelect={toggleSelect}
             />
           ))}
+        </div>
+      ) : (
+        <div className="bg-card border border-border rounded-lg overflow-hidden">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-8 pl-4"><span className="sr-only">Select</span></TableHead>
+                <TableHead className="pl-2">Client</TableHead>
+                <TableHead>Phone</TableHead>
+                <TableHead className="text-center">Visits</TableHead>
+                <TableHead className="text-right">Spent</TableHead>
+                <TableHead className="text-right">Udhaar</TableHead>
+                <TableHead className="text-center">Points</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {sorted.map((c) => (
+                <TableRow key={c.id} className="cursor-pointer hover:bg-muted/50" onClick={() => router.push(`/dashboard/clients/${c.id}`)}>
+                  <TableCell className="pl-4" onClick={(e) => e.stopPropagation()}>
+                    <input type="checkbox" checked={selectedIds.has(c.id)} onChange={(e) => toggleSelect(c.id, e.target.checked)} className="rounded" />
+                  </TableCell>
+                  <TableCell className="pl-2">
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-medium text-sm">{c.name}</span>
+                      {c.is_vip && <span className="text-gold text-xs">VIP</span>}
+                      {c.is_blacklisted && <span className="text-destructive text-xs">Blocked</span>}
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-sm text-muted-foreground">{c.phone || '—'}</TableCell>
+                  <TableCell className="text-center text-sm">{c.total_visits}</TableCell>
+                  <TableCell className="text-right text-sm">{formatPKR(c.total_spent)}</TableCell>
+                  <TableCell className="text-right text-sm">{c.udhaar_balance > 0 ? <span className="text-destructive">{formatPKR(c.udhaar_balance)}</span> : '—'}</TableCell>
+                  <TableCell className="text-center text-sm">{c.loyalty_points > 0 ? c.loyalty_points : '—'}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         </div>
       )}
 

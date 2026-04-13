@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Plus, Search, DollarSign, Users } from 'lucide-react';
+import { Plus, Search, DollarSign, Users, LayoutGrid, List } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { supabase } from '@/lib/supabase';
 import { useAppStore } from '@/store/app-store';
@@ -13,8 +13,11 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { EmptyState } from '@/components/empty-state';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 import type { Staff, Attendance } from '@/types/database';
+
+type ViewMode = 'card' | 'list';
 
 const ROLE_COLORS: Record<string, string> = {
   owner: 'bg-amber-100 text-amber-700',
@@ -32,6 +35,10 @@ export default function StaffListPage() {
   const [loading, setLoading] = useState(true);
   const [roleFilter, setRoleFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [viewMode, setViewMode] = useState<ViewMode>(() => {
+    if (typeof window !== 'undefined') return (localStorage.getItem('icut-staff-view') as ViewMode) || 'card';
+    return 'card';
+  });
 
   const fetchStaff = useCallback(async () => {
     if (!salon) return;
@@ -141,7 +148,24 @@ export default function StaffListPage() {
           />
         </div>
 
-        <div className="flex gap-2 ml-auto">
+        <div className="flex items-center border border-border rounded-lg overflow-hidden ml-auto">
+          <button
+            onClick={() => { setViewMode('card'); localStorage.setItem('icut-staff-view', 'card'); }}
+            className={`p-2 transition-all duration-150 ${viewMode === 'card' ? 'bg-foreground text-white' : 'text-muted-foreground hover:text-foreground'}`}
+            title="Card view"
+          >
+            <LayoutGrid className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => { setViewMode('list'); localStorage.setItem('icut-staff-view', 'list'); }}
+            className={`p-2 transition-all duration-150 ${viewMode === 'list' ? 'bg-foreground text-white' : 'text-muted-foreground hover:text-foreground'}`}
+            title="List view"
+          >
+            <List className="w-4 h-4" />
+          </button>
+        </div>
+
+        <div className="flex gap-2">
           <Link href="/dashboard/staff/payroll">
             <Button variant="outline" size="sm" className="h-10 px-4 font-medium border border-border transition-all duration-150 gap-1.5 hover:bg-secondary/50">
               <DollarSign className="w-3.5 h-3.5" /> Payroll
@@ -159,7 +183,7 @@ export default function StaffListPage() {
         </div>
       ) : filteredStaff.length === 0 ? (
         <EmptyState icon={Users} text="noStaffYet" ctaLabel="addStaff" ctaHref="/dashboard/staff?action=new" />
-      ) : (
+      ) : viewMode === 'card' ? (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 stagger-children">
           {filteredStaff.map((s) => (
             <Link key={s.id} href={`/dashboard/staff/${s.id}`}>
@@ -195,6 +219,37 @@ export default function StaffListPage() {
               </div>
             </Link>
           ))}
+        </div>
+      ) : (
+        <div className="bg-card border border-border rounded-lg overflow-hidden">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="pl-4">Name</TableHead>
+                <TableHead>Role</TableHead>
+                <TableHead className="text-center">Status</TableHead>
+                <TableHead className="text-center">Services</TableHead>
+                <TableHead className="text-right pr-4">Revenue</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredStaff.map((s) => (
+                <TableRow key={s.id} className="cursor-pointer hover:bg-muted/50" onClick={() => router.push(`/dashboard/staff/${s.id}`)}>
+                  <TableCell className="pl-4">
+                    <span className="font-medium text-sm">{s.name}</span>
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant="secondary" className={`text-[10px] ${ROLE_COLORS[s.role] || ''}`}>
+                      {s.role.replace('_', ' ')}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-center">{getStatusBadge(s.todayAttendance)}</TableCell>
+                  <TableCell className="text-center text-sm">{s.todayServices || 0}</TableCell>
+                  <TableCell className="text-right text-sm pr-4">{formatPKR(s.todayRevenue || 0)}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         </div>
       )}
     </div>
