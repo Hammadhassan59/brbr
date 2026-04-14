@@ -58,7 +58,7 @@ const TRUST = [
 ];
 
 const FAQS = [
-  { q: 'Do I need a credit card to start?', a: 'No. Use iCut free for 14 days. No payment info required. If it doesn\'t help, don\'t pay.' },
+  { q: 'How does pricing work?', a: 'Pick a plan that fits your salon size. Pay monthly. Switch plans or cancel anytime, no contracts.' },
   { q: 'I only take cash and mobile payments. Does that work?', a: 'Yes. iCut supports cash, mobile payments, bank transfer, card, and split payments. Record multiple payment methods in one bill.' },
   { q: 'My staff won\'t use software. It\'s too complicated.', a: 'Your staff logs in with their phone number and a 4-digit PIN. That\'s it. No email, no password. If they can use a phone, they can use iCut.' },
   { q: 'Can I manage multiple branches?', a: 'Yes. Business plan supports 3 branches, Enterprise supports 10. Each branch has its own staff, calendar, inventory, and reports. Switch between them in one tap.' },
@@ -105,7 +105,7 @@ export default function LandingClient({ initialPlans, supportWhatsApp }: Landing
             </p>
             <div className="animate-fade-up flex flex-wrap gap-4 justify-center items-center" style={{ animationDelay: '0.15s' }}>
               <Link href="/login" className="bg-[#1A1A1A] text-white px-8 py-3.5 text-[15px] font-bold hover:shadow-lg hover:shadow-black/20 hover:-translate-y-0.5 transition-all inline-flex items-center touch-target shadow-md shadow-black/10" style={{ borderRadius: Ri }}>
-                Try Free for 14 Days
+                Get Started
               </Link>
               <a href="#features" className="text-[#6B7280] text-[13px] font-medium hover:text-[#1A1A1A] transition-colors inline-flex items-center gap-1.5">
                 See what it does <span className="text-[12px]">&rarr;</span>
@@ -115,7 +115,7 @@ export default function LandingClient({ initialPlans, supportWhatsApp }: Landing
 
           {/* Trust strip — social proof at point of decision */}
           <p className="animate-fade-up text-center text-[13px] text-[#6B7280] font-medium tracking-wide" style={{ animationDelay: '0.18s', marginBottom: '28px' }}>
-            Trusted by salon owners across 6 cities &nbsp;&middot;&nbsp; No credit card required
+            Trusted by salon owners across 6 cities
           </p>
 
           {/* Dashboard mockup — THE hero visual, clipped at bottom */}
@@ -471,8 +471,8 @@ export default function LandingClient({ initialPlans, supportWhatsApp }: Landing
         <div className="max-w-5xl mx-auto px-5">
           <Reveal className="text-center mb-14">
             <p className="text-[11px] font-bold text-gold uppercase tracking-[1.5px] mb-3">Plans</p>
-            <h2 className="font-heading text-3xl md:text-[2.75rem] font-black text-[#1A1A1A] tracking-tight mb-4">14 days free. No card needed.</h2>
-            <p className="text-[16px] text-[#1A1A1A] max-w-lg mx-auto leading-relaxed">Pick a plan after you see results. Cancel anytime.</p>
+            <h2 className="font-heading text-3xl md:text-[2.75rem] font-black text-[#1A1A1A] tracking-tight mb-4">Simple plans. Cancel anytime.</h2>
+            <p className="text-[16px] text-[#1A1A1A] max-w-lg mx-auto leading-relaxed">Pick the plan that fits your salon. Switch or cancel whenever.</p>
           </Reveal>
 
           <div className="grid md:grid-cols-3 gap-5 items-stretch">
