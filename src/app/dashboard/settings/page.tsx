@@ -71,14 +71,6 @@ export default function SettingsPage() {
   // Privacy / Ladies
   const [privacyMode, setPrivacyMode] = useState(false);
 
-  // Dark mode
-  const [darkMode, setDarkMode] = useState(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('icut-dark-mode') === 'true';
-    }
-    return false;
-  });
-
   // Screen wake lock
   const [keepAwake, setKeepAwake] = useState(() => {
     if (typeof window !== 'undefined') {
@@ -144,13 +136,6 @@ export default function SettingsPage() {
   }, [salon]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
-
-  // Dark mode toggle
-  useEffect(() => {
-    if (darkMode) document.documentElement.classList.add('dark');
-    else document.documentElement.classList.remove('dark');
-    localStorage.setItem('icut-dark-mode', String(darkMode));
-  }, [darkMode]);
 
   // Screen wake lock — persist to localStorage
   useEffect(() => {
@@ -426,15 +411,9 @@ export default function SettingsPage() {
         <TabsContent value="display" className="mt-4">
           <div className="bg-card border border-border rounded-lg p-6 space-y-4">
           <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Display Preferences</p>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <div className="bg-secondary/30 p-4 border border-border flex items-center justify-between">
-              <div><p className="text-sm font-medium">Dark Mode</p><p className="text-xs text-muted-foreground">Switch to dark theme</p></div>
-              <Switch checked={darkMode} onCheckedChange={setDarkMode} className="" />
-            </div>
-            <div className="bg-secondary/30 p-4 border border-border flex items-center justify-between">
-              <div><p className="text-sm font-medium">Keep Screen Awake</p><p className="text-xs text-muted-foreground">Prevent tablet from sleeping (front desk mode)</p></div>
-              <Switch checked={keepAwake} onCheckedChange={setKeepAwake} className="" />
-            </div>
+          <div className="bg-secondary/30 p-4 border border-border flex items-center justify-between">
+            <div><p className="text-sm font-medium">Keep Screen Awake</p><p className="text-xs text-muted-foreground">Prevent tablet from sleeping (front desk mode)</p></div>
+            <Switch checked={keepAwake} onCheckedChange={setKeepAwake} className="" />
           </div>
           </div>
         </TabsContent>
