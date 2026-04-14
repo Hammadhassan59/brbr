@@ -485,29 +485,8 @@ export async function createBillItems(items: BillItemInsert[]) {
   return data as BillItem[];
 }
 
-export async function generateBillNumber(_branchId: string) {
-  const todayISO = new Date().toISOString().slice(0, 10);
-  const prefix = `BB-${todayISO.replace(/-/g, '')}-`;
-
-  // Find the highest bill number for today to avoid duplicates
-  const { data, error } = await supabase
-    .from('bills')
-    .select('bill_number')
-    .like('bill_number', `${prefix}%`)
-    .order('bill_number', { ascending: false })
-    .limit(1);
-
-  if (error) throw error;
-
-  let nextSeq = 1;
-  if (data && data.length > 0) {
-    const lastNum = data[0].bill_number;
-    const lastSeq = parseInt(lastNum.replace(prefix, ''), 10);
-    if (!isNaN(lastSeq)) nextSeq = lastSeq + 1;
-  }
-
-  return `${prefix}${String(nextSeq).padStart(3, '0')}`;
-}
+// Bill number generation moved to server action (src/app/actions/bills.ts)
+// to avoid race conditions between concurrent checkouts.
 
 // ═══════════════════════════════════════
 // Attendance

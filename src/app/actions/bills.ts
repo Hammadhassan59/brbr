@@ -3,9 +3,33 @@
 import { verifyWriteAccess } from './auth';
 import { createServerClient } from '@/lib/supabase';
 
+/**
+ * Generate bill number server-side at insert time to avoid race conditions.
+ * Uses service_role client (bypasses RLS) and retries on collision.
+ */
+async function generateBillNumber(supabase: ReturnType<typeof createServerClient>, salonId: string): Promise<string> {
+  const todayISO = new Date().toISOString().slice(0, 10);
+  const prefix = `BB-${todayISO.replace(/-/g, '')}-`;
+
+  const { data } = await supabase
+    .from('bills')
+    .select('bill_number')
+    .eq('salon_id', salonId)
+    .like('bill_number', `${prefix}%`)
+    .order('bill_number', { ascending: false })
+    .limit(1);
+
+  let nextSeq = 1;
+  if (data && data.length > 0) {
+    const lastSeq = parseInt(data[0].bill_number.replace(prefix, ''), 10);
+    if (!isNaN(lastSeq)) nextSeq = lastSeq + 1;
+  }
+
+  return `${prefix}${String(nextSeq).padStart(3, '0')}`;
+}
+
 export async function createBill(data: {
   branchId: string;
-  billNumber: string;
   appointmentId?: string | null;
   clientId?: string | null;
   staffId?: string | null;
@@ -26,35 +50,46 @@ export async function createBill(data: {
   const session = await verifyWriteAccess();
   const supabase = createServerClient();
 
-  const { data: result, error } = await supabase
-    .from('bills')
-    .insert({
-      salon_id: session.salonId,
-      branch_id: data.branchId,
-      bill_number: data.billNumber,
-      appointment_id: data.appointmentId || null,
-      client_id: data.clientId || null,
-      staff_id: data.staffId || null,
-      subtotal: data.subtotal,
-      discount_amount: data.discountAmount || 0,
-      discount_type: data.discountType || null,
-      tax_amount: data.taxAmount || 0,
-      tip_amount: data.tipAmount || 0,
-      total_amount: data.totalAmount,
-      paid_amount: data.paidAmount || data.totalAmount,
-      payment_method: data.paymentMethod,
-      payment_details: data.paymentDetails || null,
-      udhaar_added: data.udhaarAdded || 0,
-      loyalty_points_used: data.loyaltyPointsUsed || 0,
-      loyalty_points_earned: data.loyaltyPointsEarned || 0,
-      promo_code: data.promoCode || null,
-      status: 'paid',
-    })
-    .select()
-    .single();
+  // Retry up to 3 times on bill_number collision
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const billNumber = await generateBillNumber(supabase, session.salonId);
 
-  if (error) return { data: null, error: error.message };
-  return { data: result, error: null };
+    const { data: result, error } = await supabase
+      .from('bills')
+      .insert({
+        salon_id: session.salonId,
+        branch_id: data.branchId,
+        bill_number: billNumber,
+        appointment_id: data.appointmentId || null,
+        client_id: data.clientId || null,
+        staff_id: data.staffId || null,
+        subtotal: data.subtotal,
+        discount_amount: data.discountAmount || 0,
+        discount_type: data.discountType || null,
+        tax_amount: data.taxAmount || 0,
+        tip_amount: data.tipAmount || 0,
+        total_amount: data.totalAmount,
+        paid_amount: data.paidAmount || data.totalAmount,
+        payment_method: data.paymentMethod,
+        payment_details: data.paymentDetails || null,
+        udhaar_added: data.udhaarAdded || 0,
+        loyalty_points_used: data.loyaltyPointsUsed || 0,
+        loyalty_points_earned: data.loyaltyPointsEarned || 0,
+        promo_code: data.promoCode || null,
+        status: 'paid',
+      })
+      .select()
+      .single();
+
+    if (!error) return { data: result, error: null };
+
+    // If it's a unique constraint violation, retry with a fresh number
+    if (error.code === '23505' && error.message.includes('bill_number')) continue;
+
+    return { data: null, error: error.message };
+  }
+
+  return { data: null, error: 'Failed to generate unique bill number after 3 attempts' };
 }
 
 export async function createBillItems(billId: string, items: Array<{

@@ -16,7 +16,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { BillBuilder, type BillLineItem } from './components/bill-builder';
 import { PaymentPanel, type SplitPaymentEntry } from './components/payment-panel';
 import { CheckoutConfirmation } from './components/checkout-confirmation';
-import { generateBillNumber } from '@/lib/db';
 import toast from 'react-hot-toast';
 import type { Client, Staff, Service, Product, PaymentMethod, AppointmentWithDetails, Package as PkgType } from '@/types/database';
 
@@ -109,14 +108,11 @@ function POSContent() {
     load();
   }, [salon, currentBranch]);
 
-  // Generate bill number
+  // Display-only bill number preview (actual number is generated server-side at checkout)
   useEffect(() => {
-    if (!currentBranch) return;
-    generateBillNumber(currentBranch.id).then(setBillNumber).catch(() => {
-      const today = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-      setBillNumber(`BB-${today}-001`);
-    });
-  }, [currentBranch]);
+    const today = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+    setBillNumber(`BB-${today}-...`);
+  }, []);
 
   // Pre-fill from appointment
   useEffect(() => {
@@ -295,10 +291,9 @@ function POSContent() {
       const actualMethod = isSplit ? 'split' : paymentMethod;
       const pointsEarned = Math.floor(total / 100) * 10; // 10 pts per Rs100
 
-      // Create bill
+      // Create bill (bill number generated server-side)
       const { data: bill, error: billErr } = await createBill({
         branchId: currentBranch.id,
-        billNumber,
         appointmentId,
         clientId: selectedClient?.id || null,
         staffId: selectedStaffId || null,
@@ -378,12 +373,13 @@ function POSContent() {
           // cleanup failed — manual review needed
         }
         throw new Error(
-          `Checkout partially failed — bill ${billNumber} may need manual review. ` +
+          `Checkout partially failed — bill ${bill.bill_number} may need manual review. ` +
           (postBillErr instanceof Error ? postBillErr.message : 'Unknown error')
         );
       }
 
       toast.success(`Bill paid — ${formatPKR(total)}`);
+      setBillNumber(bill.bill_number);
       setShowCheckout(false);
 
       // Reset
@@ -402,11 +398,6 @@ function POSContent() {
       setSplitPayments([]);
       setTipAmount(0);
       setAppointmentId(null);
-      // Generate new bill number
-      generateBillNumber(currentBranch.id).then(setBillNumber).catch(() => {
-        const today2 = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-        setBillNumber(`BB-${today2}-001`);
-      });
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Checkout failed');
     } finally {
