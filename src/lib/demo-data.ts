@@ -29,6 +29,11 @@ export const DEMO_SALON: Salon = {
   onboarding_dismissed: true,
   owner_id: null,
   created_at: '2025-01-01T00:00:00Z',
+  subscription_plan: 'growth',
+  subscription_status: 'active',
+  subscription_expires_at: null,
+  subscription_started_at: '2025-01-01T00:00:00Z',
+  admin_notes: null,
 };
 
 export const DEMO_BRANCH: Branch = {
@@ -144,6 +149,11 @@ export const DEMO_SALON_GENTS: Salon = {
   onboarding_dismissed: true,
   owner_id: null,
   created_at: '2025-02-10T00:00:00Z',
+  subscription_plan: 'pro',
+  subscription_status: 'active',
+  subscription_expires_at: null,
+  subscription_started_at: '2025-02-10T00:00:00Z',
+  admin_notes: null,
 };
 
 export const DEMO_BRANCH_GENTS: Branch = {
