@@ -24,7 +24,7 @@ const TYPE_BADGE: Record<string, { label: string; cls: string }> = {
 
 const STATUS_COLORS: Record<string, string> = {
   active: 'text-green-600 border-green-500/25 bg-green-500/10',
-  trial: 'text-amber-600 border-amber-500/25 bg-amber-500/10',
+  pending: 'text-amber-600 border-amber-500/25 bg-amber-500/10',
   expired: 'text-red-600 border-red-500/25 bg-red-500/10',
   suspended: 'text-gray-500 border-gray-400/25 bg-gray-500/10',
 };
@@ -142,7 +142,7 @@ export default function AdminSalonsPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filtered.map((salon) => {
             const type = TYPE_BADGE[salon.type] || TYPE_BADGE.unisex;
-            const sub = salon.subscription_status || 'trial';
+            const sub = salon.subscription_status || 'pending';
             return (
               <Card key={salon.id} className="hover:border-gold/30 transition-colors">
                 <CardContent className="p-5">
@@ -157,10 +157,10 @@ export default function AdminSalonsPage() {
                   </div>
                   <div className="flex items-center gap-2 mb-3">
                     <Badge variant="secondary" className={`text-[10px] ${type.cls}`}>{type.label}</Badge>
-                    <Badge variant="outline" className={`text-[10px] ${STATUS_COLORS[sub] || STATUS_COLORS.trial}`}>
+                    <Badge variant="outline" className={`text-[10px] ${STATUS_COLORS[sub] || STATUS_COLORS.pending}`}>
                       {sub.charAt(0).toUpperCase() + sub.slice(1)}
                     </Badge>
-                    {salon.subscription_plan && salon.subscription_plan !== 'trial' && (
+                    {salon.subscription_plan && salon.subscription_plan !== 'none' && (
                       <Badge variant="outline" className="text-[10px] text-gold border-gold/25 bg-gold/10">
                         {salon.subscription_plan.charAt(0).toUpperCase() + salon.subscription_plan.slice(1)}
                       </Badge>
@@ -202,8 +202,8 @@ export default function AdminSalonsPage() {
               <TableBody>
                 {filtered.map((salon) => {
                   const type = TYPE_BADGE[salon.type] || TYPE_BADGE.unisex;
-                  const sub = salon.subscription_status || 'trial';
-                  const plan = salon.subscription_plan || 'trial';
+                  const sub = salon.subscription_status || 'pending';
+                  const plan = salon.subscription_plan || 'pending';
                   return (
                     <TableRow key={salon.id}>
                       <TableCell className="pl-4">
@@ -227,7 +227,7 @@ export default function AdminSalonsPage() {
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        <Badge variant="outline" className={`text-[10px] ${STATUS_COLORS[sub] || STATUS_COLORS.trial}`}>
+                        <Badge variant="outline" className={`text-[10px] ${STATUS_COLORS[sub] || STATUS_COLORS.pending}`}>
                           {sub.charAt(0).toUpperCase() + sub.slice(1)}
                         </Badge>
                       </TableCell>

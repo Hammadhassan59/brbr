@@ -449,7 +449,7 @@ export default function LandingPage() {
                       ? 'bg-gold text-black hover:shadow-lg hover:shadow-gold/25'
                       : 'border-[1.5px] border-[#1A1A1A] text-[#1A1A1A] hover:bg-[#1A1A1A] hover:text-white'
                   }`} style={{ borderRadius: Ri }}>
-                    Start 14-Day Trial{plan.popular ? ' →' : ''}
+                    Get Started{plan.popular ? ' →' : ''}
                   </Link>
                 </div>
               </Reveal>
@@ -501,9 +501,9 @@ export default function LandingPage() {
         <div className="max-w-2xl mx-auto px-5 text-center">
           <Reveal>
             <h2 className="font-heading text-3xl md:text-4xl font-black text-white tracking-tight mb-3">Your first bill goes out today.</h2>
-            <p className="text-[15px] text-[#6B7280] mb-8">Set up in 5 minutes. 14 days free. Cancel anytime.</p>
+            <p className="text-[15px] text-[#6B7280] mb-8">Set up in 5 minutes. Choose a plan that fits your salon.</p>
             <Link href="/login" className="bg-gold text-black px-8 py-4 text-[15px] font-bold hover:shadow-lg hover:shadow-gold/25 hover:-translate-y-0.5 transition-all inline-flex items-center touch-target shadow-md shadow-gold/15" style={{ borderRadius: Ri }}>
-              Start Free Trial
+              Get Started
             </Link>
           </Reveal>
         </div>

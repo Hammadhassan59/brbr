@@ -1,6 +1,6 @@
 'use server';
 
-import { verifyWriteAccess } from './auth';
+import { verifyWriteAccess, getPlanLimits } from './auth';
 import { createServerClient } from '@/lib/supabase';
 
 export async function updateSalon(data: Record<string, unknown>) {
@@ -106,6 +106,27 @@ export async function createBranch(data: { name: string; address?: string; phone
   const session = await verifyWriteAccess();
   if (session.role !== 'owner') return { data: null, error: 'Only the owner can add branches' };
   const supabase = createServerClient();
+
+  // Enforce branch limit based on plan
+  const { data: salon } = await supabase
+    .from('salons')
+    .select('subscription_plan')
+    .eq('id', session.salonId)
+    .single();
+
+  if (salon) {
+    const limits = await getPlanLimits(salon.subscription_plan);
+    if (limits.branches > 0) {
+      const { count } = await supabase
+        .from('branches')
+        .select('id', { count: 'exact', head: true })
+        .eq('salon_id', session.salonId);
+
+      if ((count ?? 0) >= limits.branches) {
+        return { data: null, error: `Your ${salon.subscription_plan} plan allows ${limits.branches} branch${limits.branches > 1 ? 'es' : ''}. Upgrade your plan to add more.` };
+      }
+    }
+  }
 
   const { data: result, error } = await supabase
     .from('branches')

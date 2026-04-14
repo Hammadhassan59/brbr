@@ -55,6 +55,7 @@ export async function verifySession(): Promise<SessionPayload> {
 /**
  * Verify session AND check that the salon subscription allows writes.
  * Use this instead of verifySession() for any action that creates/updates/deletes data.
+ * Only salons with status='active' can write. All others are read-only.
  */
 export async function verifyWriteAccess(): Promise<SessionPayload> {
   const session = await verifySession();
@@ -72,11 +73,51 @@ export async function verifyWriteAccess(): Promise<SessionPayload> {
     .eq('id', session.salonId)
     .maybeSingle();
 
-  if (salon && (salon.subscription_status === 'suspended' || salon.subscription_status === 'expired')) {
-    throw new Error('Your account is suspended. Contact support to reactivate.');
+  if (!salon || salon.subscription_status !== 'active') {
+    throw new Error('SUBSCRIPTION_REQUIRED');
   }
 
   return session;
+}
+
+/** Plan limits from platform_settings (fallback to hardcoded defaults) */
+export interface PlanLimits {
+  branches: number;
+  staff: number;  // 0 = unlimited
+  price: number;
+}
+
+const DEFAULT_PLAN_LIMITS: Record<string, PlanLimits> = {
+  none: { branches: 0, staff: 0, price: 0 },
+  basic: { branches: 1, staff: 3, price: 2500 },
+  growth: { branches: 1, staff: 0, price: 5000 },
+  pro: { branches: 3, staff: 0, price: 9000 },
+};
+
+export async function getPlanLimits(plan: string): Promise<PlanLimits> {
+  if (plan === 'none') return DEFAULT_PLAN_LIMITS.none;
+
+  const { createServerClient } = await import('@/lib/supabase');
+  const supabase = createServerClient();
+  const { data } = await supabase
+    .from('platform_settings')
+    .select('value')
+    .eq('key', 'plans')
+    .maybeSingle();
+
+  if (data?.value) {
+    const plans = data.value as Record<string, { price?: number; branches?: number; staff?: number }>;
+    const p = plans[plan];
+    if (p) {
+      return {
+        branches: Number(p.branches) || 1,
+        staff: Number(p.staff) || 0,
+        price: Number(p.price) || 0,
+      };
+    }
+  }
+
+  return DEFAULT_PLAN_LIMITS[plan] || DEFAULT_PLAN_LIMITS.basic;
 }
 
 export async function destroySession() {

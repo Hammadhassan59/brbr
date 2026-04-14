@@ -116,7 +116,7 @@ export default function AdminDashboard() {
           <CardContent className="p-4 text-center">
             <Clock className="w-5 h-5 text-amber-600 mx-auto mb-1" />
             <p className="text-2xl font-bold text-amber-600">{platformStats.trialSalons}</p>
-            <p className="text-xs text-amber-600">On Trial</p>
+            <p className="text-xs text-amber-600">Pending</p>
           </CardContent>
         </Card>
         <Card className="border-orange-500/20 bg-orange-500/10">
@@ -153,7 +153,7 @@ export default function AdminDashboard() {
                 const subStatus = salon.subscription_status as string | undefined;
                 const STATUS_BADGE: Record<string, string> = {
                   active: 'text-green-600 border-green-500/25 bg-green-500/10',
-                  trial: 'text-amber-600 border-amber-500/25 bg-amber-500/10',
+                  pending: 'text-amber-600 border-amber-500/25 bg-amber-500/10',
                   expired: 'text-red-600 border-red-500/25 bg-red-500/10',
                   suspended: 'text-gray-500 border-gray-400/25 bg-gray-500/10',
                 };

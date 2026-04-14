@@ -54,7 +54,7 @@ export async function getAdminDashboardData() {
   const topCity = Object.entries(cityCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || '—';
 
   const activeSalons = liveSalons.filter((s) => s.subscription_status === 'active').length;
-  const trialSalons = liveSalons.filter((s) => s.subscription_status === 'trial').length;
+  const trialSalons = liveSalons.filter((s) => s.subscription_status === 'pending').length;
   const expiredSalons = liveSalons.filter((s) => s.subscription_status === 'expired' || s.subscription_status === 'suspended').length;
   const pendingSetup = liveSalons.filter((s) => !s.setup_complete).length;
 

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { Plus, X, Scissors, Sparkles, Users, MapPin, Pencil, Trash2 } from 'lucide-react';
+import { Plus, X, Scissors, Sparkles, Users, MapPin, Pencil, Trash2, Copy, CreditCard, Check, Lock } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { updateSalon, updateBranchWorkingHours, createService, updateService, deleteService, createBranch, updateBranch, deleteBranch } from '@/app/actions/settings';
 import { useAppStore } from '@/store/app-store';
@@ -410,75 +410,7 @@ export default function SettingsPage() {
 
         {/* Subscription */}
         {isOwner && <TabsContent value="subscription" className="mt-4">
-          <div className="bg-card border border-border rounded-lg p-6 space-y-6">
-            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Your Plan</p>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="bg-secondary/30 p-4 border border-border rounded-lg">
-                <p className="text-xs text-muted-foreground">Current Plan</p>
-                <p className="text-lg font-bold capitalize mt-1">{salon?.subscription_plan || 'Trial'}</p>
-              </div>
-              <div className="bg-secondary/30 p-4 border border-border rounded-lg">
-                <p className="text-xs text-muted-foreground">Status</p>
-                <p className={`text-lg font-bold capitalize mt-1 ${
-                  salon?.subscription_status === 'active' ? 'text-green-600' :
-                  salon?.subscription_status === 'trial' ? 'text-gold' :
-                  'text-red-600'
-                }`}>{salon?.subscription_status || 'Trial'}</p>
-              </div>
-              <div className="bg-secondary/30 p-4 border border-border rounded-lg">
-                <p className="text-xs text-muted-foreground">
-                  {salon?.subscription_status === 'trial' ? 'Trial Ends' : 'Renews On'}
-                </p>
-                <p className="text-lg font-bold mt-1">
-                  {salon?.subscription_expires_at
-                    ? new Date(salon.subscription_expires_at).toLocaleDateString('en-PK', { day: 'numeric', month: 'short', year: 'numeric' })
-                    : salon?.subscription_started_at
-                      ? (() => {
-                          const d = new Date(salon.subscription_started_at);
-                          d.setDate(d.getDate() + 14);
-                          return d.toLocaleDateString('en-PK', { day: 'numeric', month: 'short', year: 'numeric' });
-                        })()
-                      : '—'}
-                </p>
-              </div>
-            </div>
-
-            <div className="border border-border rounded-lg p-5 space-y-3">
-              <p className="text-sm font-semibold">Pricing Plans</p>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                {[
-                  { name: 'Basic', price: 'Rs 2,500/mo', features: ['1 branch', 'Up to 3 staff', 'All features'] },
-                  { name: 'Growth', price: 'Rs 5,000/mo', features: ['1 branch', 'Unlimited staff', 'All features'] },
-                  { name: 'Pro', price: 'Rs 9,000/mo', features: ['Up to 3 branches', 'Unlimited staff', 'Priority support'] },
-                ].map((plan) => (
-                  <div key={plan.name} className={`border rounded-lg p-4 ${
-                    salon?.subscription_plan === plan.name.toLowerCase() ? 'border-gold bg-gold/5' : 'border-border'
-                  }`}>
-                    <p className="font-semibold">{plan.name}</p>
-                    <p className="text-lg font-bold mt-1">{plan.price}</p>
-                    <ul className="mt-3 space-y-1">
-                      {plan.features.map((f) => (
-                        <li key={f} className="text-xs text-muted-foreground flex items-center gap-1.5">
-                          <span className="text-gold">+</span> {f}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="bg-secondary/30 p-4 border border-border rounded-lg flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium">Need to upgrade or have questions?</p>
-                <p className="text-xs text-muted-foreground">Contact us on WhatsApp for instant help</p>
-              </div>
-              <a href="https://wa.me/923001234567?text=Hi%2C%20I%20want%20to%20upgrade%20my%20iCut%20plan" target="_blank" rel="noopener noreferrer" className="text-xs font-semibold bg-gold text-black px-4 py-2 rounded-md hover:bg-gold/90 transition-all shrink-0">
-                Contact Support
-              </a>
-            </div>
-          </div>
+          <SubscriptionTab salon={salon} branches={branches} />
         </TabsContent>}
 
         {/* Display */}
@@ -816,6 +748,215 @@ function BranchManager({
           </Card>
         );
       })}
+    </div>
+  );
+}
+
+
+// ───────────────────────────────────────
+// Subscription Tab sub-component
+// ───────────────────────────────────────
+
+const PLANS = [
+  { key: 'basic', name: 'Basic', price: 2500, branches: 1, staff: 3, features: ['1 branch', 'Up to 3 staff', 'All features'] },
+  { key: 'growth', name: 'Growth', price: 5000, branches: 1, staff: 0, features: ['1 branch', 'Unlimited staff', 'All features'] },
+  { key: 'pro', name: 'Pro', price: 9000, branches: 3, staff: 0, features: ['Up to 3 branches', 'Unlimited staff', 'Priority support'] },
+];
+
+const BANK_DETAILS = {
+  bankName: 'Meezan Bank',
+  accountTitle: 'iCut Technologies',
+  accountNumber: '02340105566723',
+  jazzcash: '03001234567',
+};
+
+function copyText(text: string, label: string) {
+  navigator.clipboard.writeText(text).then(() => toast.success(`${label} copied`));
+}
+
+function SubscriptionTab({ salon, branches }: { salon: Salon | null; branches: Branch[] }) {
+  const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
+  const isActive = salon?.subscription_status === 'active';
+  const currentPlan = salon?.subscription_plan || 'none';
+
+  return (
+    <div className="bg-card border border-border rounded-lg p-6 space-y-6">
+      <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Subscription</p>
+
+      {/* Current status */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="bg-secondary/30 p-4 border border-border rounded-lg">
+          <p className="text-xs text-muted-foreground">Current Plan</p>
+          <p className="text-lg font-bold capitalize mt-1">{currentPlan === 'none' ? 'No Plan' : currentPlan}</p>
+        </div>
+        <div className="bg-secondary/30 p-4 border border-border rounded-lg">
+          <p className="text-xs text-muted-foreground">Status</p>
+          <p className={`text-lg font-bold capitalize mt-1 ${
+            isActive ? 'text-green-600' : 'text-red-600'
+          }`}>
+            {salon?.subscription_status === 'pending' ? 'Not Subscribed'
+              : salon?.subscription_status === 'expired' ? 'Expired'
+              : salon?.subscription_status === 'suspended' ? 'Suspended'
+              : 'Active'}
+          </p>
+        </div>
+        <div className="bg-secondary/30 p-4 border border-border rounded-lg">
+          <p className="text-xs text-muted-foreground">
+            {isActive ? 'Renews On' : 'Usage'}
+          </p>
+          <p className="text-lg font-bold mt-1">
+            {isActive && salon?.subscription_expires_at
+              ? new Date(salon.subscription_expires_at).toLocaleDateString('en-PK', { day: 'numeric', month: 'short', year: 'numeric' })
+              : `${branches.length} branch${branches.length !== 1 ? 'es' : ''}`}
+          </p>
+        </div>
+      </div>
+
+      {/* Read-only notice */}
+      {!isActive && (
+        <div className="bg-red-500/5 border border-red-500/20 rounded-lg p-4 flex items-start gap-3">
+          <Lock className="w-4 h-4 text-red-600 mt-0.5 shrink-0" />
+          <div>
+            <p className="text-sm font-medium text-red-700">Your account is in read-only mode</p>
+            <p className="text-xs text-red-600/80 mt-0.5">
+              {salon?.subscription_status === 'suspended'
+                ? 'Your account has been suspended. Contact support to reactivate.'
+                : 'Subscribe to a plan below to unlock all features. Your data is safe.'}
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Plan selection */}
+      {salon?.subscription_status !== 'suspended' && (
+        <div className="border border-border rounded-lg p-5 space-y-3">
+          <p className="text-sm font-semibold">{isActive ? 'Plans' : 'Choose a Plan'}</p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            {PLANS.map((plan) => {
+              const isCurrent = currentPlan === plan.key && isActive;
+              const isSelected = selectedPlan === plan.key;
+              return (
+                <button
+                  key={plan.key}
+                  onClick={() => !isCurrent && setSelectedPlan(isSelected ? null : plan.key)}
+                  className={`text-left border rounded-lg p-4 transition-all ${
+                    isCurrent ? 'border-gold bg-gold/5'
+                    : isSelected ? 'border-gold bg-gold/5 ring-2 ring-gold/30'
+                    : 'border-border hover:border-gold/50'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <p className="font-semibold">{plan.name}</p>
+                    {isCurrent && (
+                      <span className="text-[10px] font-medium bg-gold/20 text-gold px-1.5 py-0.5 rounded">Active</span>
+                    )}
+                    {!isCurrent && (
+                      <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                        isSelected ? 'border-gold bg-gold' : 'border-border'
+                      }`}>
+                        {isSelected && <Check className="w-3 h-3 text-black" />}
+                      </div>
+                    )}
+                  </div>
+                  <p className="text-lg font-bold mt-1">
+                    Rs {plan.price.toLocaleString()}
+                    <span className="text-xs font-normal text-muted-foreground">/mo</span>
+                  </p>
+                  <ul className="mt-3 space-y-1">
+                    {plan.features.map((f) => (
+                      <li key={f} className="text-xs text-muted-foreground flex items-center gap-1.5">
+                        <span className="text-gold">+</span> {f}
+                      </li>
+                    ))}
+                  </ul>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Bank details (shown after plan selection) */}
+      {selectedPlan && (
+        <div className="border border-border rounded-lg p-5 space-y-4">
+          <p className="text-sm font-semibold flex items-center gap-1.5">
+            <CreditCard className="w-4 h-4 text-gold" />
+            Payment Details
+          </p>
+
+          <div className="bg-gold/5 border border-gold/20 rounded-lg p-3">
+            <p className="text-sm font-semibold">
+              Amount: Rs {PLANS.find((p) => p.key === selectedPlan)?.price.toLocaleString()}/month
+            </p>
+          </div>
+
+          <div className="space-y-3 text-sm">
+            <div className="flex items-center justify-between p-3 bg-secondary/30 rounded-lg">
+              <div>
+                <p className="text-xs text-muted-foreground">Bank</p>
+                <p className="font-medium">{BANK_DETAILS.bankName}</p>
+              </div>
+            </div>
+            <div className="flex items-center justify-between p-3 bg-secondary/30 rounded-lg">
+              <div>
+                <p className="text-xs text-muted-foreground">Account Title</p>
+                <p className="font-medium">{BANK_DETAILS.accountTitle}</p>
+              </div>
+            </div>
+            <div className="flex items-center justify-between p-3 bg-secondary/30 rounded-lg">
+              <div>
+                <p className="text-xs text-muted-foreground">Account Number</p>
+                <p className="font-medium font-mono">{BANK_DETAILS.accountNumber}</p>
+              </div>
+              <button onClick={() => copyText(BANK_DETAILS.accountNumber, 'Account number')} className="p-1.5 hover:bg-secondary rounded">
+                <Copy className="w-4 h-4 text-muted-foreground" />
+              </button>
+            </div>
+            <div className="flex items-center justify-between p-3 bg-secondary/30 rounded-lg">
+              <div>
+                <p className="text-xs text-muted-foreground">JazzCash</p>
+                <p className="font-medium font-mono">{BANK_DETAILS.jazzcash}</p>
+              </div>
+              <button onClick={() => copyText(BANK_DETAILS.jazzcash, 'JazzCash number')} className="p-1.5 hover:bg-secondary rounded">
+                <Copy className="w-4 h-4 text-muted-foreground" />
+              </button>
+            </div>
+          </div>
+
+          <div className="bg-secondary/30 border border-border rounded-lg p-4 space-y-1 text-xs text-muted-foreground">
+            <p className="font-semibold text-foreground text-sm">How to activate:</p>
+            <p>1. Transfer the amount to the bank account or JazzCash number above</p>
+            <p>2. Send the payment screenshot on WhatsApp</p>
+            <p>3. Your account will be activated within minutes</p>
+          </div>
+
+          <a
+            href={`https://wa.me/923001234567?text=${encodeURIComponent(
+              `Hi, I want to subscribe to the ${selectedPlan?.toUpperCase()} plan for my salon "${salon?.name || ''}". I'm sending the payment screenshot.`
+            )}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="block"
+          >
+            <Button className="w-full bg-gold text-black hover:bg-gold/90 font-semibold h-11">
+              Send Screenshot on WhatsApp
+            </Button>
+          </a>
+        </div>
+      )}
+
+      {/* Contact support (for suspended accounts) */}
+      {salon?.subscription_status === 'suspended' && (
+        <div className="bg-secondary/30 p-4 border border-border rounded-lg flex items-center justify-between">
+          <div>
+            <p className="text-sm font-medium">Account suspended</p>
+            <p className="text-xs text-muted-foreground">Contact us on WhatsApp to reactivate</p>
+          </div>
+          <a href="https://wa.me/923001234567?text=Hi%2C%20my%20iCut%20account%20has%20been%20suspended.%20Please%20help." target="_blank" rel="noopener noreferrer" className="text-xs font-semibold bg-gold text-black px-4 py-2 rounded-md hover:bg-gold/90 transition-all shrink-0">
+            Contact Support
+          </a>
+        </div>
+      )}
     </div>
   );
 }

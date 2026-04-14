@@ -11,6 +11,7 @@ interface AppState {
   isOwner: boolean;
   isPartner: boolean;
   isSuperAdmin: boolean;
+  showPaywall: boolean;
   setSalon: (salon: Salon | null) => void;
   setBranches: (branches: Branch[]) => void;
   setCurrentBranch: (branch: Branch | null) => void;
@@ -19,6 +20,7 @@ interface AppState {
   setIsOwner: (v: boolean) => void;
   setIsPartner: (v: boolean) => void;
   setIsSuperAdmin: (v: boolean) => void;
+  setShowPaywall: (v: boolean) => void;
   reset: () => void;
 }
 
@@ -33,6 +35,7 @@ export const useAppStore = create<AppState>()(
       isOwner: false,
       isPartner: false,
       isSuperAdmin: false,
+      showPaywall: false,
       setSalon: (salon) => set({ salon }),
       setBranches: (branches) => set({ branches }),
       setCurrentBranch: (branch) => set({ currentBranch: branch }),
@@ -41,7 +44,8 @@ export const useAppStore = create<AppState>()(
       setIsOwner: (v) => set({ isOwner: v }),
       setIsPartner: (v) => set({ isPartner: v }),
       setIsSuperAdmin: (v) => set({ isSuperAdmin: v }),
-      reset: () => set({ salon: null, branches: [], currentBranch: null, currentStaff: null, currentPartner: null, isOwner: false, isPartner: false, isSuperAdmin: false }),
+      setShowPaywall: (v) => set({ showPaywall: v }),
+      reset: () => set({ salon: null, branches: [], currentBranch: null, currentStaff: null, currentPartner: null, isOwner: false, isPartner: false, isSuperAdmin: false, showPaywall: false }),
     }),
     {
       name: 'icut-session',

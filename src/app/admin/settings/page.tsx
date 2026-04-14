@@ -56,9 +56,9 @@ const DEFAULT_SETTINGS: PlatformSettings = {
     Growth: { price: '5000', branches: '1', staff: 'Unlimited' },
     Pro: { price: '9000', branches: '3', staff: 'Unlimited' },
   },
-  trialDuration: '14',
-  gracePeriod: '3',
-  requirePaymentOnSignup: false,
+  trialDuration: '0',
+  gracePeriod: '0',
+  requirePaymentOnSignup: true,
   jazzcashAccount: '',
   bankAccount: '',
 };

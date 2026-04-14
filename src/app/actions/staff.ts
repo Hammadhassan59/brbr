@@ -1,6 +1,6 @@
 'use server';
 
-import { verifyWriteAccess } from './auth';
+import { verifyWriteAccess, getPlanLimits } from './auth';
 import { createServerClient } from '@/lib/supabase';
 
 export async function createStaff(data: {
@@ -17,6 +17,28 @@ export async function createStaff(data: {
 }) {
   const session = await verifyWriteAccess();
   const supabase = createServerClient();
+
+  // Enforce staff limit based on plan
+  const { data: salon } = await supabase
+    .from('salons')
+    .select('subscription_plan')
+    .eq('id', session.salonId)
+    .single();
+
+  if (salon) {
+    const limits = await getPlanLimits(salon.subscription_plan);
+    if (limits.staff > 0) {
+      const { count } = await supabase
+        .from('staff')
+        .select('id', { count: 'exact', head: true })
+        .eq('salon_id', session.salonId)
+        .eq('is_active', true);
+
+      if ((count ?? 0) >= limits.staff) {
+        return { data: null, error: `Your ${salon.subscription_plan} plan allows ${limits.staff} staff members. Upgrade your plan to add more.` };
+      }
+    }
+  }
 
   // Create Supabase Auth account for the staff member
   const { data: authUser, error: authError } = await supabase.auth.admin.createUser({

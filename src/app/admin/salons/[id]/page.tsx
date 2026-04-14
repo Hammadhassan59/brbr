@@ -32,14 +32,14 @@ import type {
 } from '@/types/database';
 
 const STATUS_BADGE: Record<SubscriptionStatus, { label: string; cls: string }> = {
-  trial: { label: 'Trial', cls: 'bg-orange-500/15 text-orange-600 border-orange-500/25' },
+  pending: { label: 'Pending', cls: 'bg-orange-500/15 text-orange-600 border-orange-500/25' },
   active: { label: 'Active', cls: 'bg-green-500/15 text-green-600 border-green-500/25' },
   expired: { label: 'Expired', cls: 'bg-red-500/15 text-red-600 border-red-500/25' },
   suspended: { label: 'Suspended', cls: 'bg-red-500/15 text-red-600 border-red-500/25' },
 };
 
 const PLAN_PRICES: Record<SubscriptionPlan, string> = {
-  trial: 'Trial (Free)',
+  none: 'No Plan',
   basic: 'Basic — Rs 2,500/mo',
   growth: 'Growth — Rs 5,000/mo',
   pro: 'Pro — Rs 9,000/mo',
@@ -102,8 +102,8 @@ export default function AdminSalonDetailPage({
   const [adminNotes, setAdminNotes] = useState('');
 
   // Editable subscription fields
-  const [plan, setPlan] = useState<SubscriptionPlan>('trial');
-  const [status, setStatus] = useState<SubscriptionStatus>('trial');
+  const [plan, setPlan] = useState<SubscriptionPlan>('none');
+  const [status, setStatus] = useState<SubscriptionStatus>('pending');
   const [expiresAt, setExpiresAt] = useState('');
 
   useEffect(() => {
@@ -167,12 +167,13 @@ export default function AdminSalonDetailPage({
   }
 
   async function handleActivate() {
-    setPlan((prev) => (prev === 'trial' ? 'growth' : prev));
+    const activePlan = plan === 'none' ? 'basic' : plan;
+    setPlan(activePlan);
     setStatus('active');
     setSaving(true);
     try {
       await updateSubscription(id, {
-        subscription_plan: plan === 'trial' ? 'growth' : plan,
+        subscription_plan: activePlan,
         subscription_status: 'active',
       });
       toast.success('Subscription activated');
@@ -383,7 +384,7 @@ export default function AdminSalonDetailPage({
                 onChange={(e) => setStatus(e.target.value as SubscriptionStatus)}
                 className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-1 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
               >
-                {salon.subscription_status === 'trial' && <option value="trial">Trial</option>}
+                <option value="pending">Pending</option>
                 <option value="active">Active</option>
                 <option value="expired">Expired</option>
                 <option value="suspended">Suspended</option>

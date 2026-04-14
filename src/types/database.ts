@@ -3,8 +3,8 @@
 // Auto-generated from Supabase schema
 // ═══════════════════════════════════════
 
-export type SubscriptionPlan = 'trial' | 'basic' | 'growth' | 'pro';
-export type SubscriptionStatus = 'trial' | 'active' | 'expired' | 'suspended';
+export type SubscriptionPlan = 'none' | 'basic' | 'growth' | 'pro';
+export type SubscriptionStatus = 'pending' | 'active' | 'expired' | 'suspended';
 export type SalonType = 'gents' | 'ladies' | 'unisex';
 export type Language = 'en' | 'ur';
 export type StaffRole = 'owner' | 'manager' | 'receptionist' | 'senior_stylist' | 'junior_stylist' | 'helper';

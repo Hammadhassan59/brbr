@@ -6,6 +6,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { WhatsAppComposeProvider } from '@/components/whatsapp-compose/provider';
 import { WhatsAppComposeSheet } from '@/components/whatsapp-compose/sheet';
+import { PaywallDialog } from '@/components/paywall-dialog';
 import {
   LayoutDashboard, CalendarDays, Users, Receipt, UserCog,
   Package, BarChart3, Settings, LogOut,
@@ -52,7 +53,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const pathname = usePathname();
   const router = useRouter();
   const { t } = useLanguage();
-  const { salon, branches, currentBranch, currentStaff, currentPartner, isOwner, isPartner, isSuperAdmin, setCurrentBranch } = useAppStore();
+  const { salon, branches, currentBranch, currentStaff, currentPartner, isOwner, isPartner, isSuperAdmin, setCurrentBranch, setShowPaywall } = useAppStore();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // Zustand 5 persist hydrates synchronously from localStorage on the client,
@@ -364,46 +365,41 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </header>
 
         {/* Subscription status banners */}
-        {salon && (salon.subscription_status === 'suspended' || salon.subscription_status === 'expired') && (
-          <div className={`px-4 lg:px-6 py-3 text-sm font-medium flex items-center gap-2 no-print ${
+        {salon && salon.subscription_status !== 'active' && (
+          <div className={`px-4 lg:px-6 py-2.5 text-sm flex items-center justify-between gap-2 no-print ${
             salon.subscription_status === 'suspended'
               ? 'bg-red-500/10 text-red-700 border-b border-red-500/20'
-              : 'bg-orange-500/10 text-orange-700 border-b border-orange-500/20'
+              : salon.subscription_status === 'expired'
+              ? 'bg-orange-500/10 text-orange-700 border-b border-orange-500/20'
+              : 'bg-gold/10 border-b border-gold/20'
           }`}>
-            <AlertTriangle className="w-4 h-4 shrink-0" />
-            {salon.subscription_status === 'suspended'
-              ? 'Your account has been suspended. You can view your data but cannot make changes. Contact support to reactivate.'
-              : 'Your trial has expired. Contact support to activate your subscription.'}
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 shrink-0" />
+              <span className="font-medium">
+                {salon.subscription_status === 'suspended'
+                  ? 'Your account has been suspended. Contact support to reactivate.'
+                  : salon.subscription_status === 'expired'
+                  ? 'Your subscription has expired. Renew to continue making changes.'
+                  : 'Read-only mode. Subscribe to unlock all features.'}
+              </span>
+            </div>
+            {isOwner && salon.subscription_status !== 'suspended' && (
+              <button
+                onClick={() => setShowPaywall(true)}
+                className="text-xs font-semibold bg-gold text-black px-3 py-1.5 rounded-md hover:bg-gold/90 transition-all shrink-0"
+              >
+                Choose Plan
+              </button>
+            )}
           </div>
         )}
-        {salon && salon.subscription_status === 'trial' && isOwner && (() => {
-          const started = salon.subscription_started_at ? new Date(salon.subscription_started_at) : null;
-          if (!started) return null;
-          const trialEnd = new Date(started);
-          trialEnd.setDate(trialEnd.getDate() + 14);
-          const now = new Date();
-          const daysLeft = Math.max(0, Math.ceil((trialEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
-          if (daysLeft > 7) return null;
-          return (
-            <div className="px-4 lg:px-6 py-2.5 text-sm flex items-center justify-between gap-2 no-print bg-gold/10 border-b border-gold/20">
-              <div className="flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4 shrink-0 text-gold" />
-                <span className="font-medium text-foreground">
-                  {daysLeft === 0 ? 'Your free trial ends today.' : `${daysLeft} day${daysLeft !== 1 ? 's' : ''} left in your free trial.`}
-                </span>
-              </div>
-              <a href="https://wa.me/923001234567?text=Hi%2C%20I%20want%20to%20upgrade%20my%20iCut%20plan" target="_blank" rel="noopener noreferrer" className="text-xs font-semibold bg-gold text-black px-3 py-1.5 rounded-md hover:bg-gold/90 transition-all shrink-0">
-                Upgrade Now
-              </a>
-            </div>
-          );
-        })()}
 
         {/* Page content */}
         <main className="flex-1 overflow-y-auto p-4 lg:p-6 pb-20 lg:pb-6">
           <WhatsAppComposeProvider>
             <ErrorBoundary>{children}</ErrorBoundary>
             <WhatsAppComposeSheet />
+            <PaywallDialog />
           </WhatsAppComposeProvider>
         </main>
       </div>

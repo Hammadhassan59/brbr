@@ -34,6 +34,11 @@ function makeSalon(overrides: Partial<Salon> = {}): Salon {
     onboarding_dismissed: false,
     owner_id: 'partner-1',
     created_at: '2025-01-01T00:00:00Z',
+    subscription_plan: 'growth',
+    subscription_status: 'active',
+    subscription_expires_at: null,
+    subscription_started_at: '2025-01-01T00:00:00Z',
+    admin_notes: null,
     ...overrides,
   }
 }
