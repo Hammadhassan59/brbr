@@ -74,7 +74,7 @@ export default function DailyReportPage() {
         const [sumRes, billsRes, drawerRes, expRes] = await Promise.all([
           supabase.rpc('get_daily_summary', { p_branch_id: bid, p_date: date }),
           supabase.from('bills').select('*, items:bill_items(*)').eq('branch_id', bid).gte('created_at', `${date}T00:00:00`).lte('created_at', `${date}T23:59:59`).order('created_at', { ascending: false }),
-          supabase.from('cash_drawers').select('*').eq('branch_id', bid).eq('date', date).single(),
+          supabase.from('cash_drawers').select('*').eq('branch_id', bid).eq('date', date).maybeSingle(),
           supabase.from('expenses').select('*').eq('branch_id', bid).eq('date', date).order('created_at', { ascending: false }),
         ]);
         if (sumRes.data) setSummary(sumRes.data as DailySummary);

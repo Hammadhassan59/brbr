@@ -193,7 +193,7 @@ export default function ExpensesPage() {
               .eq('branch_id', currentBranch.id)
               .eq('date', editingExpense.date)
               .eq('status', 'open')
-              .single();
+              .maybeSingle();
 
             if (drawer) {
               const newTotal = (drawer.total_expenses || 0) - oldAmount + newAmount;
@@ -225,7 +225,7 @@ export default function ExpensesPage() {
             .eq('branch_id', currentBranch.id)
             .eq('date', todayPKT)
             .eq('status', 'open')
-            .single();
+            .maybeSingle();
 
           if (drawer) {
             const newTotal = (drawer.total_expenses || 0) + Number(amount);

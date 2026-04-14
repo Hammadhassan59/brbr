@@ -149,7 +149,7 @@ export default function DashboardPage() {
         .select('*')
         .eq('branch_id', currentBranch.id)
         .eq('date', startDate)
-        .single();
+        .maybeSingle();
       if (drawerData) {
         setCashInDrawer(
           (drawerData.opening_balance || 0) +
