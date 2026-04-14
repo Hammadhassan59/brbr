@@ -16,6 +16,12 @@ interface PlanSettings {
   price: string;
   branches: string;
   staff: string;
+  displayName: string;
+  originalPrice: string;
+  pitch: string;
+  limits: string;
+  popular: boolean;
+  features: string; // one feature per line; prefix "~ " means crossed-out
 }
 
 interface PlatformSettings {
@@ -52,9 +58,45 @@ const DEFAULT_SETTINGS: PlatformSettings = {
     daily_summary: true,
   },
   plans: {
-    Basic: { price: '2500', branches: '1', staff: '3' },
-    Growth: { price: '5000', branches: '1', staff: 'Unlimited' },
-    Pro: { price: '9000', branches: '3', staff: 'Unlimited' },
+    Basic: {
+      price: '2500', branches: '1', staff: '3',
+      displayName: 'Starter', originalPrice: '5000', pitch: 'For new and small salons',
+      limits: '1 branch · up to 10 staff', popular: false,
+      features: [
+        'POS + billing',
+        'Bookings + walk-in queue',
+        'Cash, mobile, card payments',
+        'Basic daily report',
+        'Commission tracking',
+        '~ Inventory',
+        '~ Payroll',
+      ].join('\n'),
+    },
+    Growth: {
+      price: '5000', branches: '1', staff: 'Unlimited',
+      displayName: 'Business', originalPrice: '12000', pitch: 'For growing salons and small chains',
+      limits: '3 branches · 10 staff each', popular: true,
+      features: [
+        'POS + billing',
+        'Bookings + walk-in queue',
+        'Cash, mobile, card payments',
+        'Full daily reports',
+        'Commission tracking',
+        'Inventory',
+        'Payroll + attendance',
+      ].join('\n'),
+    },
+    Pro: {
+      price: '9000', branches: '3', staff: 'Unlimited',
+      displayName: 'Enterprise', originalPrice: '20000', pitch: 'For salon chains',
+      limits: '10 branches · 100 staff', popular: false,
+      features: [
+        'Everything in Business',
+        'Cross-branch reports',
+        'Partner/co-owner logins',
+        'Priority support',
+      ].join('\n'),
+    },
   },
   trialDuration: '0',
   gracePeriod: '0',
@@ -76,23 +118,52 @@ export default function AdminSettingsPage() {
         const tr = (db.trial ?? {}) as Record<string, unknown>;
         const py = (db.payment ?? {}) as Record<string, unknown>;
 
-        const dbPlans = pl as Record<string, { price?: number; branches?: number; staff?: number }>;
-        const plans: Record<string, { price: string; branches: string; staff: string }> = {
-          Basic: {
-            price: String(dbPlans.basic?.price ?? DEFAULT_SETTINGS.plans.Basic.price),
-            branches: String(dbPlans.basic?.branches ?? DEFAULT_SETTINGS.plans.Basic.branches),
-            staff: dbPlans.basic?.staff === 0 ? 'Unlimited' : String(dbPlans.basic?.staff ?? DEFAULT_SETTINGS.plans.Basic.staff),
-          },
-          Growth: {
-            price: String(dbPlans.growth?.price ?? DEFAULT_SETTINGS.plans.Growth.price),
-            branches: String(dbPlans.growth?.branches ?? DEFAULT_SETTINGS.plans.Growth.branches),
-            staff: dbPlans.growth?.staff === 0 ? 'Unlimited' : String(dbPlans.growth?.staff ?? DEFAULT_SETTINGS.plans.Growth.staff),
-          },
-          Pro: {
-            price: String(dbPlans.pro?.price ?? DEFAULT_SETTINGS.plans.Pro.price),
-            branches: String(dbPlans.pro?.branches ?? DEFAULT_SETTINGS.plans.Pro.branches),
-            staff: dbPlans.pro?.staff === 0 ? 'Unlimited' : String(dbPlans.pro?.staff ?? DEFAULT_SETTINGS.plans.Pro.staff),
-          },
+        interface DbPlan {
+          price?: number;
+          branches?: number;
+          staff?: number;
+          displayName?: string;
+          originalPrice?: number;
+          pitch?: string;
+          limits?: string;
+          popular?: boolean;
+          features?: Array<{ text?: string; ok?: boolean } | string>;
+        }
+        const dbPlans = pl as Record<string, DbPlan>;
+        const featuresToText = (feats: DbPlan['features'] | undefined, fallback: string): string => {
+          if (!feats || !Array.isArray(feats) || feats.length === 0) return fallback;
+          return feats
+            .map((f) => {
+              if (typeof f === 'string') return f;
+              if (f && typeof f === 'object') {
+                const txt = String(f.text ?? '').trim();
+                if (!txt) return '';
+                return f.ok === false ? `~ ${txt}` : txt;
+              }
+              return '';
+            })
+            .filter(Boolean)
+            .join('\n');
+        };
+        const hydratePlan = (key: 'basic' | 'growth' | 'pro', adminKey: 'Basic' | 'Growth' | 'Pro'): PlanSettings => {
+          const db = dbPlans[key] ?? {};
+          const fallback = DEFAULT_SETTINGS.plans[adminKey];
+          return {
+            price: String(db.price ?? fallback.price),
+            branches: String(db.branches ?? fallback.branches),
+            staff: db.staff === 0 ? 'Unlimited' : String(db.staff ?? fallback.staff),
+            displayName: typeof db.displayName === 'string' && db.displayName ? db.displayName : fallback.displayName,
+            originalPrice: String(db.originalPrice ?? fallback.originalPrice),
+            pitch: typeof db.pitch === 'string' && db.pitch ? db.pitch : fallback.pitch,
+            limits: typeof db.limits === 'string' && db.limits ? db.limits : fallback.limits,
+            popular: typeof db.popular === 'boolean' ? db.popular : fallback.popular,
+            features: featuresToText(db.features, fallback.features),
+          };
+        };
+        const plans: Record<string, PlanSettings> = {
+          Basic: hydratePlan('basic', 'Basic'),
+          Growth: hydratePlan('growth', 'Growth'),
+          Pro: hydratePlan('pro', 'Pro'),
         };
 
         setSettings({
@@ -122,7 +193,7 @@ export default function AdminSettingsPage() {
     setSettings((prev) => ({ ...prev, [key]: value }));
   }
 
-  function updatePlan(name: string, field: keyof PlanSettings, value: string) {
+  function updatePlan<F extends keyof PlanSettings>(name: string, field: F, value: PlanSettings[F]) {
     setSettings((prev) => ({
       ...prev,
       plans: {
@@ -130,6 +201,28 @@ export default function AdminSettingsPage() {
         [name]: { ...prev.plans[name], [field]: value },
       },
     }));
+  }
+
+  function setPopularPlan(name: string) {
+    setSettings((prev) => {
+      const next: Record<string, PlanSettings> = {};
+      for (const [k, v] of Object.entries(prev.plans)) {
+        next[k] = { ...v, popular: k === name };
+      }
+      return { ...prev, plans: next };
+    });
+  }
+
+  function featuresFromText(text: string): Array<{ text: string; ok: boolean }> {
+    return text
+      .split('\n')
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0)
+      .map((line) => {
+        if (line.startsWith('~')) return { text: line.slice(1).trim(), ok: false };
+        return { text: line, ok: true };
+      })
+      .filter((f) => f.text.length > 0);
   }
 
   function toggleTemplate(id: string) {
@@ -172,16 +265,34 @@ export default function AdminSettingsPage() {
             price: toNumber(settings.plans.Basic.price, 2500),
             branches: toNumber(settings.plans.Basic.branches, 1),
             staff: staffToNumber(settings.plans.Basic.staff),
+            displayName: settings.plans.Basic.displayName,
+            originalPrice: toNumber(settings.plans.Basic.originalPrice, 5000),
+            pitch: settings.plans.Basic.pitch,
+            limits: settings.plans.Basic.limits,
+            popular: settings.plans.Basic.popular,
+            features: featuresFromText(settings.plans.Basic.features),
           },
           growth: {
             price: toNumber(settings.plans.Growth.price, 5000),
             branches: toNumber(settings.plans.Growth.branches, 1),
             staff: staffToNumber(settings.plans.Growth.staff),
+            displayName: settings.plans.Growth.displayName,
+            originalPrice: toNumber(settings.plans.Growth.originalPrice, 12000),
+            pitch: settings.plans.Growth.pitch,
+            limits: settings.plans.Growth.limits,
+            popular: settings.plans.Growth.popular,
+            features: featuresFromText(settings.plans.Growth.features),
           },
           pro: {
             price: toNumber(settings.plans.Pro.price, 9000),
             branches: toNumber(settings.plans.Pro.branches, 3),
             staff: staffToNumber(settings.plans.Pro.staff),
+            displayName: settings.plans.Pro.displayName,
+            originalPrice: toNumber(settings.plans.Pro.originalPrice, 20000),
+            pitch: settings.plans.Pro.pitch,
+            limits: settings.plans.Pro.limits,
+            popular: settings.plans.Pro.popular,
+            features: featuresFromText(settings.plans.Pro.features),
           },
         }),
         savePlatformSetting('trial', {
@@ -318,14 +429,53 @@ export default function AdminSettingsPage() {
 
       {/* Row 3: Subscription Plans (full width) */}
       <Card>
-        <CardHeader className="pb-2"><CardTitle className="text-sm">Subscription Plans</CardTitle></CardHeader>
-        <CardContent className="space-y-2">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm">Subscription Plans</CardTitle>
+          <p className="text-xs text-muted-foreground mt-1">
+            These values drive the homepage pricing section and the in-app paywall. Marketing copy (display name, pitch, features) only shows on the homepage. Exactly one plan can be marked Most Popular.
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-4">
           {Object.entries(settings.plans).map(([name, plan]) => (
-            <div key={name} className="flex items-center gap-3 p-3 bg-secondary/50 rounded-lg">
-              <span className="font-medium text-sm w-16">{name}</span>
-              <div><Label className="text-[10px]">Rs/month</Label><Input value={plan.price} onChange={(e) => updatePlan(name, 'price', e.target.value)} className="w-24 h-7 text-xs" /></div>
-              <div><Label className="text-[10px]">Branches</Label><Input value={plan.branches} onChange={(e) => updatePlan(name, 'branches', e.target.value)} className="w-20 h-7 text-xs" /></div>
-              <div><Label className="text-[10px]">Staff</Label><Input value={plan.staff} onChange={(e) => updatePlan(name, 'staff', e.target.value)} className="w-24 h-7 text-xs" /></div>
+            <div key={name} className="p-3 bg-secondary/50 rounded-lg space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="font-semibold text-sm">{name}</span>
+                <label className="flex items-center gap-2 text-xs cursor-pointer">
+                  <input
+                    type="radio"
+                    name="popularPlan"
+                    checked={plan.popular}
+                    onChange={() => setPopularPlan(name)}
+                  />
+                  Most Popular (homepage highlight)
+                </label>
+              </div>
+
+              {/* Operational: price + limits used by paywall + backend */}
+              <div className="flex flex-wrap items-end gap-3">
+                <div><Label className="text-[10px]">Rs/month</Label><Input value={plan.price} onChange={(e) => updatePlan(name, 'price', e.target.value)} className="w-24 h-7 text-xs" /></div>
+                <div><Label className="text-[10px]">Branches</Label><Input value={plan.branches} onChange={(e) => updatePlan(name, 'branches', e.target.value)} className="w-20 h-7 text-xs" /></div>
+                <div><Label className="text-[10px]">Staff</Label><Input value={plan.staff} onChange={(e) => updatePlan(name, 'staff', e.target.value)} className="w-24 h-7 text-xs" /></div>
+                <div><Label className="text-[10px]">Original Rs (strikethrough)</Label><Input value={plan.originalPrice} onChange={(e) => updatePlan(name, 'originalPrice', e.target.value)} className="w-28 h-7 text-xs" /></div>
+              </div>
+
+              {/* Marketing: homepage display */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div><Label className="text-[10px]">Display Name (homepage)</Label><Input value={plan.displayName} onChange={(e) => updatePlan(name, 'displayName', e.target.value)} className="h-8 text-xs" /></div>
+                <div><Label className="text-[10px]">Pitch (one line)</Label><Input value={plan.pitch} onChange={(e) => updatePlan(name, 'pitch', e.target.value)} className="h-8 text-xs" /></div>
+                <div><Label className="text-[10px]">Limits line (under price)</Label><Input value={plan.limits} onChange={(e) => updatePlan(name, 'limits', e.target.value)} className="h-8 text-xs" /></div>
+              </div>
+
+              <div>
+                <Label className="text-[10px]">Features (one per line · prefix with <code>~</code> to cross out)</Label>
+                <textarea
+                  value={plan.features}
+                  onChange={(e) => updatePlan(name, 'features', e.target.value)}
+                  rows={7}
+                  className="mt-1 w-full px-2 py-1.5 text-xs border border-border rounded-md bg-background focus:outline-none focus:border-gold font-mono"
+                  placeholder={'POS + billing\nBookings\n~ Inventory'}
+                />
+              </div>
             </div>
           ))}
         </CardContent>
