@@ -1,9 +1,9 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { Plus, X, Scissors, Sparkles, Users } from 'lucide-react';
+import { Plus, X, Scissors, Sparkles, Users, MapPin, Pencil, Trash2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
-import { updateSalon, updateBranchWorkingHours, createService, updateService, deleteService } from '@/app/actions/settings';
+import { updateSalon, updateBranchWorkingHours, createService, updateService, deleteService, createBranch, updateBranch, deleteBranch } from '@/app/actions/settings';
 import { useAppStore } from '@/store/app-store';
 import { useLanguage } from '@/components/providers/language-provider';
 import { Button } from '@/components/ui/button';
@@ -234,6 +234,7 @@ export default function SettingsPage() {
             <TabsTrigger value="services" className="text-xs px-3.5 py-2 font-medium transition-all duration-150 border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30">Services</TabsTrigger>
             <TabsTrigger value="payment" className="text-xs px-3.5 py-2 font-medium transition-all duration-150 border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30">Payments</TabsTrigger>
             <TabsTrigger value="tax" className="text-xs px-3.5 py-2 font-medium transition-all duration-150 border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30">Tax & Billing</TabsTrigger>
+            <TabsTrigger value="branches" className="text-xs px-3.5 py-2 font-medium transition-all duration-150 border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30">Branches</TabsTrigger>
             <TabsTrigger value="display" className="text-xs px-3.5 py-2 font-medium transition-all duration-150 border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30">Display</TabsTrigger>
           </TabsList>
         </div>
@@ -372,6 +373,33 @@ export default function SettingsPage() {
           </div>
           <Button onClick={saveSalonProfile} disabled={saving} className="bg-gold hover:bg-gold/90 text-black font-bold h-11">{saving ? 'Saving...' : 'Save Tax Settings'}</Button>
           </div>
+        </TabsContent>
+
+        {/* Branches */}
+        <TabsContent value="branches" className="mt-4">
+          <BranchManager
+            branches={branches}
+            salonId={salon?.id || ''}
+            currentBranchId={currentBranch?.id || ''}
+            onAdded={(branch) => {
+              setBranches([...branches, branch]);
+              const { setBranches: setStoreBranches } = useAppStore.getState();
+              setStoreBranches([...branches, branch]);
+            }}
+            onUpdated={(branch) => {
+              const updated = branches.map((b) => b.id === branch.id ? branch : b);
+              setBranches(updated);
+              const { setBranches: setStoreBranches } = useAppStore.getState();
+              setStoreBranches(updated);
+              if (currentBranch?.id === branch.id) setCurrentBranch(branch);
+            }}
+            onRemoved={(id) => {
+              const updated = branches.filter((b) => b.id !== id);
+              setBranches(updated);
+              const { setBranches: setStoreBranches } = useAppStore.getState();
+              setStoreBranches(updated);
+            }}
+          />
         </TabsContent>
 
         {/* Display */}
@@ -544,5 +572,147 @@ function ServiceManager({
         </div>
       ))}
     </>
+  );
+}
+
+
+// ───────────────────────────────────────
+// Branch Manager sub-component
+// ───────────────────────────────────────
+
+function BranchManager({
+  branches, salonId, currentBranchId, onAdded, onUpdated, onRemoved,
+}: {
+  branches: Branch[];
+  salonId: string;
+  currentBranchId: string;
+  onAdded: (branch: Branch) => void;
+  onUpdated: (branch: Branch) => void;
+  onRemoved: (id: string) => void;
+}) {
+  const [showForm, setShowForm] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [name, setName] = useState('');
+  const [branchAddress, setBranchAddress] = useState('');
+  const [branchPhone, setBranchPhone] = useState('');
+
+  function resetForm() {
+    setName(''); setBranchAddress(''); setBranchPhone('');
+    setEditingId(null); setShowForm(false);
+  }
+
+  function startEdit(branch: Branch) {
+    setEditingId(branch.id);
+    setName(branch.name);
+    setBranchAddress(branch.address || '');
+    setBranchPhone(branch.phone || '');
+    setShowForm(true);
+  }
+
+  async function saveBranch() {
+    if (!name.trim()) { toast.error('Branch name is required'); return; }
+    setSaving(true);
+    try {
+      if (editingId) {
+        const { data, error } = await updateBranch(editingId, {
+          name: name.trim(),
+          address: branchAddress,
+          phone: branchPhone,
+        });
+        if (error) throw new Error(error);
+        onUpdated(data as Branch);
+        toast.success(`"${name.trim()}" updated`);
+      } else {
+        const { data, error } = await createBranch({
+          name: name.trim(),
+          address: branchAddress,
+          phone: branchPhone,
+        });
+        if (error) throw new Error(error);
+        onAdded(data as Branch);
+        toast.success(`"${name.trim()}" created`);
+      }
+      resetForm();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Failed to save branch');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function removeBranch(branch: Branch) {
+    if (branch.is_main) { toast.error('Cannot delete the main branch'); return; }
+    if (!confirm(`Delete "${branch.name}"? This cannot be undone.`)) return;
+    try {
+      const { error } = await deleteBranch(branch.id);
+      if (error) throw new Error(error);
+      onRemoved(branch.id);
+      toast.success(`"${branch.name}" deleted`);
+      if (editingId === branch.id) resetForm();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Failed to delete');
+    }
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-muted-foreground">{branches.length} {branches.length === 1 ? 'branch' : 'branches'}</p>
+        <Button size="sm" onClick={() => { if (showForm) resetForm(); else setShowForm(true); }} variant={showForm ? 'outline' : 'default'} className={showForm ? '' : 'bg-gold hover:bg-gold/90 text-black font-bold'}>
+          {showForm ? <><X className="w-4 h-4 mr-1" /> Cancel</> : <><Plus className="w-4 h-4 mr-1" /> Add Branch</>}
+        </Button>
+      </div>
+
+      {showForm && (
+        <Card className="border-border border-gold/30 bg-gold/5">
+          <CardContent className="p-4 space-y-3">
+            <p className="text-sm font-medium">{editingId ? 'Edit Branch' : 'New Branch'}</p>
+            <div>
+              <Label className="text-xs">Branch Name *</Label>
+              <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Gulberg Branch" className="mt-1" />
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <Label className="text-xs">Address</Label>
+                <Input value={branchAddress} onChange={(e) => setBranchAddress(e.target.value)} placeholder="Street address" className="mt-1" />
+              </div>
+              <div>
+                <Label className="text-xs">Phone</Label>
+                <Input value={branchPhone} onChange={(e) => setBranchPhone(e.target.value)} placeholder="03XX-XXXXXXX" className="mt-1" />
+              </div>
+            </div>
+            <Button onClick={saveBranch} disabled={saving} size="sm" className="bg-gold hover:bg-gold/90 text-black font-bold h-11">
+              {saving ? 'Saving...' : editingId ? 'Save Changes' : 'Add Branch'}
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
+      {branches.map((branch) => (
+        <div key={branch.id} className={`flex items-center gap-3 p-4 bg-card border border-border ${editingId === branch.id ? 'ring-2 ring-gold/40' : ''}`}>
+          <div className="w-10 h-10 bg-gold/10 flex items-center justify-center shrink-0">
+            <MapPin className="w-5 h-5 text-gold" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium">{branch.name}</span>
+              {branch.is_main && <span className="text-[10px] px-1.5 py-0.5 bg-gold/20 text-gold font-medium">Main</span>}
+              {branch.id === currentBranchId && <span className="text-[10px] px-1.5 py-0.5 bg-green-500/20 text-green-600 font-medium">Active</span>}
+            </div>
+            {branch.address && <p className="text-xs text-muted-foreground mt-0.5">{branch.address}</p>}
+            {branch.phone && <p className="text-xs text-muted-foreground">{branch.phone}</p>}
+          </div>
+          <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => startEdit(branch)}>
+            <Pencil className="w-3.5 h-3.5" />
+          </Button>
+          {!branch.is_main && (
+            <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-destructive hover:text-destructive" onClick={() => removeBranch(branch)}>
+              <Trash2 className="w-3.5 h-3.5" />
+            </Button>
+          )}
+        </div>
+      ))}
+    </div>
   );
 }

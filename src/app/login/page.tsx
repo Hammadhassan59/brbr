@@ -86,6 +86,7 @@ export default function LoginPage() {
           setCurrentPartner(null);
           setIsOwner(true);
           setIsPartner(false);
+          useAppStore.getState().setIsSuperAdmin(false);
           setSessionCookie('owner');
           await signSession({
             salonId: result.salon.id,
@@ -97,7 +98,9 @@ export default function LoginPage() {
         } else if (result.type === 'partner') {
           setCurrentPartner(result.partner);
           setIsPartner(true);
+          setIsOwner(false);
           setCurrentStaff(null);
+          useAppStore.getState().setIsSuperAdmin(false);
           setSessionCookie('partner');
           await signSession({
             salonId: result.salon.id,
@@ -109,7 +112,9 @@ export default function LoginPage() {
         } else if (result.type === 'staff') {
           setCurrentStaff(result.staff);
           setCurrentPartner(null);
+          setIsOwner(false);
           setIsPartner(false);
+          useAppStore.getState().setIsSuperAdmin(false);
           setSessionCookie('staff');
           await signSession({
             salonId: result.salon.id,
@@ -169,6 +174,7 @@ export default function LoginPage() {
     if (!IS_DEV) return;
     const { setIsSuperAdmin } = useAppStore.getState();
     setIsSuperAdmin(true);
+    setIsOwner(false);
     setCurrentStaff(DEMO_STAFF_SUPERADMIN);
     setSalon(null);
     setBranches([]);
@@ -185,6 +191,7 @@ export default function LoginPage() {
     if (!IS_DEV) return;
     const { setIsSuperAdmin } = useAppStore.getState();
     setIsSuperAdmin(false);
+    setIsOwner(false);
     setSalon(salonData);
     setBranches(allBranches || [branchData]);
     setCurrentBranch(branchData);
@@ -201,6 +208,7 @@ export default function LoginPage() {
     if (!IS_DEV) return;
     const { setIsSuperAdmin } = useAppStore.getState();
     setIsSuperAdmin(false);
+    setIsOwner(false);
     setSalon(salonData);
     setBranches(allBranches);
     const mainBranch = allBranches.find((b) => b.is_main) || allBranches[0];
