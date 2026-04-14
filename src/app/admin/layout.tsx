@@ -5,8 +5,9 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
   LayoutDashboard, Store, Users, BarChart3, Settings,
-  Shield, LogOut, Scissors, Loader2,
+  Shield, LogOut, Scissors, Loader2, CreditCard,
 } from 'lucide-react';
+import { getPendingPaymentCount } from '@/app/actions/payment-requests';
 import { useAppStore } from '@/store/app-store';
 import { destroySession } from '@/app/actions/auth';
 import { ErrorBoundary } from '@/components/error-boundary';
@@ -14,6 +15,7 @@ import { ErrorBoundary } from '@/components/error-boundary';
 const NAV_ITEMS = [
   { href: '/admin', icon: LayoutDashboard, label: 'Overview' },
   { href: '/admin/salons', icon: Store, label: 'Salons' },
+  { href: '/admin/payments', icon: CreditCard, label: 'Payments' },
   { href: '/admin/users', icon: Users, label: 'Users' },
   { href: '/admin/analytics', icon: BarChart3, label: 'Analytics' },
   { href: '/admin/settings', icon: Settings, label: 'Platform Settings' },
@@ -24,6 +26,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const router = useRouter();
   const { salon, currentStaff, isSuperAdmin, reset } = useAppStore();
   const [authChecked, setAuthChecked] = useState(false);
+  const [pendingPayments, setPendingPayments] = useState(0);
 
   useEffect(() => {
     if (!isSuperAdmin) {
@@ -32,6 +35,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     }
     setAuthChecked(true);
   }, [isSuperAdmin, router]);
+
+  // Refresh pending count when route changes (cheap query, head: true)
+  useEffect(() => {
+    if (!isSuperAdmin) return;
+    getPendingPaymentCount().then(setPendingPayments).catch(() => {});
+  }, [isSuperAdmin, pathname]);
 
   if (!authChecked) {
     return (
@@ -79,7 +88,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 }`}
               >
                 <item.icon className="w-5 h-5 shrink-0" />
-                <span>{item.label}</span>
+                <span className="flex-1">{item.label}</span>
+                {item.href === '/admin/payments' && pendingPayments > 0 && (
+                  <span className="text-[10px] font-bold bg-red-500 text-white px-1.5 py-0.5 rounded-full min-w-[20px] text-center">
+                    {pendingPayments}
+                  </span>
+                )}
               </Link>
             );
           })}

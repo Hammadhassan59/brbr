@@ -6,6 +6,7 @@ import { Lock, Check, CreditCard, Building2, Copy } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAppStore } from '@/store/app-store';
 import { getPublicPlatformConfig } from '@/app/actions/admin-settings';
+import { submitPaymentRequest } from '@/app/actions/payment-requests';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from '@/components/ui/dialog';
@@ -57,6 +58,9 @@ export function PaywallDialog() {
   const [bankAccount, setBankAccount] = useState('');
   const [jazzcash, setJazzcash] = useState('');
   const [supportWhatsApp, setSupportWhatsApp] = useState('');
+  const [reference, setReference] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
 
   // Fetch plans + payment details from superadmin settings on mount
   useEffect(() => {
@@ -92,6 +96,41 @@ export function PaywallDialog() {
     if (!open) {
       setShowPaywall(false);
       setSelectedPlan(null);
+      setReference('');
+      setSubmitted(false);
+    }
+  }
+
+  // Reset per-plan state when the user picks a different plan
+  useEffect(() => {
+    setSubmitted(false);
+  }, [selectedPlan]);
+
+  async function handleSubmitAndOpenWhatsApp(plan: PlanRow) {
+    if (submitting) return;
+    setSubmitting(true);
+    try {
+      const { error } = await submitPaymentRequest({
+        plan: plan.key as 'basic' | 'growth' | 'pro',
+        reference: reference || null,
+      });
+      if (error) {
+        // Don't block the WhatsApp link on submit failure — admin can still
+        // manually activate from /admin/salons. But surface the error.
+        toast.error(`Couldn't record request: ${error}. Send the screenshot anyway.`);
+      } else {
+        setSubmitted(true);
+        toast.success('Request submitted. Send your screenshot to activate.');
+      }
+    } finally {
+      setSubmitting(false);
+    }
+
+    // Always open WhatsApp regardless of submit outcome
+    if (supportWhatsApp) {
+      const phone = supportWhatsApp.replace(/\D/g, '');
+      const msg = `Hi, I want to subscribe to the ${plan.name} plan (Rs ${plan.price.toLocaleString()}/mo) for my salon "${salon?.name || ''}".${reference ? ` Transaction ref: ${reference}.` : ''} I'm sending the payment screenshot.`;
+      window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank', 'noopener');
     }
   }
 
@@ -211,28 +250,51 @@ export function PaywallDialog() {
 
                 <div className="text-xs text-muted-foreground space-y-1">
                   <p>1. Transfer the amount to the account above</p>
-                  <p>2. Send the payment screenshot on WhatsApp</p>
-                  <p>3. Your account will be activated within minutes</p>
+                  <p>2. Submit your transaction reference and send screenshot on WhatsApp</p>
+                  <p>3. Admin will approve within minutes and your account activates</p>
                 </div>
 
-                {supportWhatsApp ? (
-                  <a
-                    href={`https://wa.me/${supportWhatsApp.replace(/\D/g, '')}?text=${encodeURIComponent(
-                      `Hi, I want to subscribe to the ${selectedPlan?.toUpperCase()} plan for my salon "${salon?.name || ''}". I'm sending the payment screenshot.`
-                    )}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="block"
-                  >
-                    <Button className="w-full bg-gold text-black hover:bg-gold/90 font-semibold">
-                      Send Screenshot on WhatsApp
-                    </Button>
-                  </a>
-                ) : (
-                  <Button disabled className="w-full bg-gold/40 text-black/60 font-semibold">
-                    Support WhatsApp not configured
-                  </Button>
+                <div>
+                  <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    Transaction Reference (optional)
+                  </label>
+                  <input
+                    type="text"
+                    value={reference}
+                    onChange={(e) => setReference(e.target.value)}
+                    placeholder="e.g. JazzCash TID or sender name"
+                    className="w-full mt-1 h-9 px-3 text-sm border border-border rounded-md bg-background focus:outline-none focus:border-gold"
+                    maxLength={100}
+                  />
+                </div>
+
+                {submitted && (
+                  <div className="bg-green-500/10 border border-green-500/30 rounded p-2 text-xs text-green-700">
+                    Request submitted. Admin sees it in the queue. Send your screenshot
+                    via WhatsApp to confirm.
+                  </div>
                 )}
+
+                {(() => {
+                  const plan = plans.find((p) => p.key === selectedPlan);
+                  if (!plan) return null;
+                  if (!supportWhatsApp) {
+                    return (
+                      <Button disabled className="w-full bg-gold/40 text-black/60 font-semibold">
+                        Support WhatsApp not configured
+                      </Button>
+                    );
+                  }
+                  return (
+                    <Button
+                      onClick={() => handleSubmitAndOpenWhatsApp(plan)}
+                      disabled={submitting}
+                      className="w-full bg-gold text-black hover:bg-gold/90 font-semibold"
+                    >
+                      {submitting ? 'Submitting...' : submitted ? 'Resend on WhatsApp' : 'Submit Request & Send Screenshot'}
+                    </Button>
+                  );
+                })()}
               </div>
             )}
 
