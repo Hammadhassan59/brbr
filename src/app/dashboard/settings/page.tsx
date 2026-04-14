@@ -121,13 +121,13 @@ export default function SettingsPage() {
       const branchIds = branchList.map((b) => b.id);
       const [staffRes, billsRes, aptsRes] = await Promise.all([
         supabase.from('staff').select('branch_id').eq('salon_id', salon.id).eq('is_active', true),
-        supabase.from('bills').select('branch_id, total').eq('salon_id', salon.id).gte('created_at', today + 'T00:00:00').lt('created_at', today + 'T23:59:59'),
+        supabase.from('bills').select('branch_id, total_amount').eq('salon_id', salon.id).gte('created_at', today + 'T00:00:00').lt('created_at', today + 'T23:59:59'),
         supabase.from('appointments').select('branch_id').eq('salon_id', salon.id).eq('appointment_date', today),
       ]);
       const stats: Record<string, { staffCount: number; todayRevenue: number; todayAppointments: number }> = {};
       branchIds.forEach((id) => { stats[id] = { staffCount: 0, todayRevenue: 0, todayAppointments: 0 }; });
       staffRes.data?.forEach((s: { branch_id: string | null }) => { if (s.branch_id && stats[s.branch_id]) stats[s.branch_id].staffCount++; });
-      billsRes.data?.forEach((b: { branch_id: string | null; total: number }) => { if (b.branch_id && stats[b.branch_id]) stats[b.branch_id].todayRevenue += b.total; });
+      billsRes.data?.forEach((b: { branch_id: string | null; total_amount: number }) => { if (b.branch_id && stats[b.branch_id]) stats[b.branch_id].todayRevenue += b.total_amount; });
       aptsRes.data?.forEach((a: { branch_id: string | null }) => { if (a.branch_id && stats[a.branch_id]) stats[a.branch_id].todayAppointments++; });
       setBranchStats(stats);
     }
