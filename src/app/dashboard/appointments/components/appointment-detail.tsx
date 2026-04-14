@@ -76,7 +76,7 @@ export function AppointmentDetail({ appointment, open, onClose, onUpdated, onEdi
 
   return (
     <Sheet open={open} onOpenChange={(v) => !v && onClose()}>
-      <SheetContent className="w-[350px] sm:w-[400px] overflow-y-auto">
+      <SheetContent className="w-[340px] sm:w-[400px] sm:max-w-[400px] overflow-y-auto">
         <SheetHeader>
           <SheetTitle className="font-heading flex items-center gap-2">
             Appointment Details
@@ -84,7 +84,7 @@ export function AppointmentDetail({ appointment, open, onClose, onUpdated, onEdi
           </SheetTitle>
         </SheetHeader>
 
-        <div className="mt-4 space-y-4">
+        <div className="px-4 pb-4 space-y-4">
           {/* Client info */}
           <div className="p-3 bg-secondary rounded-lg">
             <div className="flex items-center gap-3">
