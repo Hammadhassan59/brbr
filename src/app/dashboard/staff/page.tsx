@@ -30,7 +30,7 @@ const ROLE_COLORS: Record<string, string> = {
 
 export default function StaffListPage() {
   const router = useRouter();
-  const { salon } = useAppStore();
+  const { salon, currentBranch } = useAppStore();
   const [staff, setStaff] = useState<(Staff & { todayAttendance?: Attendance; todayServices?: number; todayRevenue?: number })[]>([]);
   const [loading, setLoading] = useState(true);
   const [roleFilter, setRoleFilter] = useState<string>('all');
@@ -45,12 +45,14 @@ export default function StaffListPage() {
     setLoading(true);
     try {
       const today = new Date().toISOString().slice(0, 10);
-      const { data: staffData } = await supabase
+      let staffQuery = supabase
         .from('staff')
         .select('*')
         .eq('salon_id', salon.id)
         .eq('is_active', true)
         .order('name');
+      if (currentBranch) staffQuery = staffQuery.eq('branch_id', currentBranch.id);
+      const { data: staffData } = await staffQuery;
       if (!staffData) { setLoading(false); return; }
 
       const staffList = staffData as Staff[];
@@ -88,7 +90,7 @@ export default function StaffListPage() {
     } finally {
       setLoading(false);
     }
-  }, [salon]);
+  }, [salon, currentBranch]);
 
   useEffect(() => { fetchStaff(); }, [fetchStaff]);
 
