@@ -138,17 +138,27 @@ export async function deductStockForBill(params: {
   if (writeError) return { error: writeError };
   const supabase = createServerClient();
 
-  // Aggregate deductions by productId so we do one update per product.
-  const deductions = new Map<string, number>();
+  // Aggregate deductions per product. Track packaging units (bottles sold
+  // directly) and content units (ml/g used on back-bar services) separately,
+  // since they need different conversions against current_stock.
+  const deductions = new Map<string, { bottles: number; content: number }>();
+  const bump = (id: string, patch: Partial<{ bottles: number; content: number }>) => {
+    const cur = deductions.get(id) ?? { bottles: 0, content: 0 };
+    deductions.set(id, {
+      bottles: cur.bottles + (patch.bottles ?? 0),
+      content: cur.content + (patch.content ?? 0),
+    });
+  };
 
-  // 1) Direct product sales
+  // 1) Direct product sales — item.quantity is in packaging units.
   for (const item of params.items) {
     if (item.type === 'product' && item.productId) {
-      deductions.set(item.productId, (deductions.get(item.productId) ?? 0) + item.quantity);
+      bump(item.productId, { bottles: item.quantity });
     }
   }
 
-  // 2) Back-bar usage via product_service_links
+  // 2) Back-bar usage via product_service_links — quantity_per_use is in
+  //    content_unit (ml/g), so this deducts content, not bottles.
   const serviceIds = Array.from(
     new Set(params.items.filter((i) => i.type === 'service' && i.serviceId).map((i) => i.serviceId as string))
   );
@@ -166,35 +176,43 @@ export async function deductStockForBill(params: {
         if (svcQty === 0) continue;
         const deduct = svcQty * Number(link.quantity_per_use || 0);
         if (deduct <= 0) continue;
-        deductions.set(link.product_id, (deductions.get(link.product_id) ?? 0) + deduct);
+        bump(link.product_id, { content: deduct });
       }
     }
   }
 
   if (deductions.size === 0) return { error: null };
 
-  // Apply deductions.
+  // Apply deductions. Convert content units to fractional bottles using
+  // content_per_unit so a 300ml bottle used 30ml only drops stock by 0.1.
   const productIds = Array.from(deductions.keys());
   const { data: products } = await supabase
     .from('products')
-    .select('id, current_stock')
+    .select('id, current_stock, content_per_unit')
     .in('id', productIds);
 
-  const stockMap: Record<string, number> = {};
-  (products ?? []).forEach((p: { id: string; current_stock: number }) => {
-    stockMap[p.id] = p.current_stock;
+  const stockMap: Record<string, { current: number; perUnit: number }> = {};
+  (products ?? []).forEach((p: { id: string; current_stock: number; content_per_unit: number }) => {
+    stockMap[p.id] = {
+      current: Number(p.current_stock) || 0,
+      perUnit: Number(p.content_per_unit) || 1,
+    };
   });
 
   const movements: Array<{ product_id: string; branch_id: string; movement_type: string; quantity: number; notes: string }> = [];
-  for (const [productId, qty] of deductions) {
-    const current = stockMap[productId] ?? 0;
-    const newStock = Math.max(0, current - qty);
+  for (const [productId, d] of deductions) {
+    const info = stockMap[productId];
+    if (!info) continue;
+    const bottlesFromContent = info.perUnit > 0 ? d.content / info.perUnit : 0;
+    const totalBottleDeduct = d.bottles + bottlesFromContent;
+    if (totalBottleDeduct <= 0) continue;
+    const newStock = Math.max(0, info.current - totalBottleDeduct);
     await supabase.from('products').update({ current_stock: newStock }).eq('id', productId);
     movements.push({
       product_id: productId,
       branch_id: params.branchId,
       movement_type: 'sale',
-      quantity: -qty,
+      quantity: -totalBottleDeduct,
       notes: `Bill ${params.billId}`,
     });
   }
