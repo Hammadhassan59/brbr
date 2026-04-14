@@ -122,8 +122,8 @@ export default function AdminDashboard() {
         <Card className="border-orange-500/20 bg-orange-500/10">
           <CardContent className="p-4 text-center">
             <AlertTriangle className="w-5 h-5 text-orange-600 mx-auto mb-1" />
-            <p className="text-2xl font-bold text-orange-600">{platformStats.pendingSetup}</p>
-            <p className="text-xs text-orange-600">Pending Setup</p>
+            <p className="text-2xl font-bold text-orange-600">{platformStats.churnedSalons}</p>
+            <p className="text-xs text-orange-600">Expired / Suspended</p>
           </CardContent>
         </Card>
       </div>
@@ -150,7 +150,17 @@ export default function AdminDashboard() {
             <TableBody>
               {salons.map((salon) => {
                 const type = TYPE_BADGE[salon.type] || TYPE_BADGE.unisex;
-                const isComplete = salon.setup_complete;
+                const subStatus = salon.subscription_status as string | undefined;
+                const STATUS_BADGE: Record<string, string> = {
+                  active: 'text-green-600 border-green-500/25 bg-green-500/10',
+                  trial: 'text-amber-600 border-amber-500/25 bg-amber-500/10',
+                  expired: 'text-red-600 border-red-500/25 bg-red-500/10',
+                  suspended: 'text-gray-500 border-gray-400/25 bg-gray-500/10',
+                };
+                const statusCls = STATUS_BADGE[subStatus ?? ''] || 'text-gray-500 border-gray-400/25 bg-gray-500/10';
+                const statusLabel = subStatus
+                  ? subStatus.charAt(0).toUpperCase() + subStatus.slice(1)
+                  : 'Unknown';
                 return (
                   <TableRow key={salon.id}>
                     <TableCell className="pl-4">
@@ -169,11 +179,7 @@ export default function AdminDashboard() {
                       <Badge variant="secondary" className={`text-[10px] ${type.cls}`}>{type.label}</Badge>
                     </TableCell>
                     <TableCell>
-                      {isComplete ? (
-                        <Badge variant="outline" className="text-[10px] text-green-600 border-green-500/25 bg-green-500/10">Active</Badge>
-                      ) : (
-                        <Badge variant="outline" className="text-[10px] text-orange-600 border-orange-500/25 bg-orange-500/10">Setup Pending</Badge>
-                      )}
+                      <Badge variant="outline" className={`text-[10px] ${statusCls}`}>{statusLabel}</Badge>
                     </TableCell>
                     <TableCell className="text-right text-sm">
                       <span>—</span>

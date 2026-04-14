@@ -10,8 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { DEFAULT_EMAIL_TEMPLATES } from '@/lib/email-templates';
 import toast from 'react-hot-toast';
-
-const STORAGE_KEY = 'icut_platform_settings';
+import { getPlatformSettings, savePlatformSetting } from '@/app/actions/admin-settings';
 
 interface PlanSettings {
   price: string;
@@ -69,15 +68,54 @@ export default function AdminSettingsPage() {
   const [settings, setSettings] = useState<PlatformSettings>(DEFAULT_SETTINGS);
 
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        const parsed = JSON.parse(stored) as Partial<PlatformSettings>;
-        setSettings({ ...DEFAULT_SETTINGS, ...parsed });
-      }
-    } catch {
-      // ignore parse errors, use defaults
-    }
+    getPlatformSettings()
+      .then((db) => {
+        const g = (db.general ?? {}) as Record<string, unknown>;
+        const e = (db.email ?? {}) as Record<string, unknown>;
+        const pl = (db.plans ?? {}) as Record<string, unknown>;
+        const tr = (db.trial ?? {}) as Record<string, unknown>;
+        const py = (db.payment ?? {}) as Record<string, unknown>;
+
+        const dbPlans = pl as Record<string, { price?: number; branches?: number; staff?: number }>;
+        const plans: Record<string, { price: string; branches: string; staff: string }> = {
+          Basic: {
+            price: String(dbPlans.basic?.price ?? DEFAULT_SETTINGS.plans.Basic.price),
+            branches: String(dbPlans.basic?.branches ?? DEFAULT_SETTINGS.plans.Basic.branches),
+            staff: dbPlans.basic?.staff === 0 ? 'Unlimited' : String(dbPlans.basic?.staff ?? DEFAULT_SETTINGS.plans.Basic.staff),
+          },
+          Growth: {
+            price: String(dbPlans.growth?.price ?? DEFAULT_SETTINGS.plans.Growth.price),
+            branches: String(dbPlans.growth?.branches ?? DEFAULT_SETTINGS.plans.Growth.branches),
+            staff: dbPlans.growth?.staff === 0 ? 'Unlimited' : String(dbPlans.growth?.staff ?? DEFAULT_SETTINGS.plans.Growth.staff),
+          },
+          Pro: {
+            price: String(dbPlans.pro?.price ?? DEFAULT_SETTINGS.plans.Pro.price),
+            branches: String(dbPlans.pro?.branches ?? DEFAULT_SETTINGS.plans.Pro.branches),
+            staff: dbPlans.pro?.staff === 0 ? 'Unlimited' : String(dbPlans.pro?.staff ?? DEFAULT_SETTINGS.plans.Pro.staff),
+          },
+        };
+
+        setSettings({
+          platformName: String(g.platformName ?? DEFAULT_SETTINGS.platformName),
+          platformDomain: String(g.platformDomain ?? DEFAULT_SETTINGS.platformDomain),
+          supportWhatsApp: String(g.supportWhatsApp ?? DEFAULT_SETTINGS.supportWhatsApp),
+          supportEmail: String(g.supportEmail ?? DEFAULT_SETTINGS.supportEmail),
+          emailEnabled: Boolean(e.enabled ?? DEFAULT_SETTINGS.emailEnabled),
+          fromEmail: String(e.fromEmail ?? DEFAULT_SETTINGS.fromEmail),
+          fromName: String(e.fromName ?? DEFAULT_SETTINGS.fromName),
+          sendgridKey: String(e.sendgridKey ?? DEFAULT_SETTINGS.sendgridKey),
+          enabledTemplates: (e.enabledTemplates as Record<string, boolean>) ?? DEFAULT_SETTINGS.enabledTemplates,
+          plans,
+          trialDuration: String(tr.durationDays ?? DEFAULT_SETTINGS.trialDuration),
+          gracePeriod: String(tr.graceDays ?? DEFAULT_SETTINGS.gracePeriod),
+          requirePaymentOnSignup: Boolean(tr.requirePayment ?? DEFAULT_SETTINGS.requirePaymentOnSignup),
+          jazzcashAccount: String(py.jazzcashAccount ?? DEFAULT_SETTINGS.jazzcashAccount),
+          bankAccount: String(py.bankAccount ?? DEFAULT_SETTINGS.bankAccount),
+        });
+      })
+      .catch(() => {
+        // fall back to defaults silently
+      });
   }, []);
 
   function update<K extends keyof PlatformSettings>(key: K, value: PlatformSettings[K]) {
@@ -107,10 +145,56 @@ export default function AdminSettingsPage() {
     toast.error('Email sending not yet connected to backend');
   }
 
-  function saveSettings() {
+  async function saveSettings() {
+    const toNumber = (v: string, fallback: number) => {
+      const n = parseInt(v, 10);
+      return isNaN(n) ? fallback : n;
+    };
+    const staffToNumber = (v: string) => (v === 'Unlimited' ? 0 : toNumber(v, 0));
+
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
-      toast.success('Platform settings saved');
+      await Promise.all([
+        savePlatformSetting('general', {
+          platformName: settings.platformName,
+          platformDomain: settings.platformDomain,
+          supportWhatsApp: settings.supportWhatsApp,
+          supportEmail: settings.supportEmail,
+        }),
+        savePlatformSetting('email', {
+          enabled: settings.emailEnabled,
+          fromEmail: settings.fromEmail,
+          fromName: settings.fromName,
+          sendgridKey: settings.sendgridKey,
+          enabledTemplates: settings.enabledTemplates,
+        }),
+        savePlatformSetting('plans', {
+          basic: {
+            price: toNumber(settings.plans.Basic.price, 2500),
+            branches: toNumber(settings.plans.Basic.branches, 1),
+            staff: staffToNumber(settings.plans.Basic.staff),
+          },
+          growth: {
+            price: toNumber(settings.plans.Growth.price, 5000),
+            branches: toNumber(settings.plans.Growth.branches, 1),
+            staff: staffToNumber(settings.plans.Growth.staff),
+          },
+          pro: {
+            price: toNumber(settings.plans.Pro.price, 9000),
+            branches: toNumber(settings.plans.Pro.branches, 3),
+            staff: staffToNumber(settings.plans.Pro.staff),
+          },
+        }),
+        savePlatformSetting('trial', {
+          durationDays: toNumber(settings.trialDuration, 14),
+          graceDays: toNumber(settings.gracePeriod, 3),
+          requirePayment: settings.requirePaymentOnSignup,
+        }),
+        savePlatformSetting('payment', {
+          jazzcashAccount: settings.jazzcashAccount,
+          bankAccount: settings.bankAccount,
+        }),
+      ]);
+      toast.success('Platform settings saved to database');
     } catch {
       toast.error('Failed to save settings');
     }
