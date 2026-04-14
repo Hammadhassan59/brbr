@@ -8,6 +8,7 @@ import {
   Shield, LogOut, Scissors, Loader2,
 } from 'lucide-react';
 import { useAppStore } from '@/store/app-store';
+import { destroySession } from '@/app/actions/auth';
 import { ErrorBoundary } from '@/components/error-boundary';
 
 const NAV_ITEMS = [
@@ -40,9 +41,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     );
   }
 
-  function handleLogout() {
+  async function handleLogout() {
+    document.cookie = 'icut-session=; path=/; max-age=0';
+    document.cookie = 'icut-role=; path=/; max-age=0';
+    await destroySession();
     reset();
-    router.push('/login');
+    window.location.href = '/login';
   }
 
   return (

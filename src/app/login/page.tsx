@@ -64,6 +64,12 @@ export default function LoginPage() {
       if (superAdmin) setIsSuperAdmin(true);
 
       if (result.type === 'none') {
+        if (superAdmin) {
+          setSessionCookie('super_admin');
+          await signSession({ salonId: 'super-admin', staffId: data.user.id, role: 'super_admin', branchId: '', name: 'Super Admin' });
+          router.push('/admin');
+          return;
+        }
         // New user with no salon — go to setup
         router.push('/setup');
         return;
