@@ -1,42 +1,40 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Lock, Check, CreditCard, Building2, Copy } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAppStore } from '@/store/app-store';
+import { getPublicPlatformConfig } from '@/app/actions/admin-settings';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 
-const PLANS = [
-  {
-    key: 'basic',
-    name: 'Basic',
-    price: 2500,
-    features: ['1 branch', 'Up to 3 staff', 'All features'],
-  },
-  {
-    key: 'growth',
-    name: 'Growth',
-    price: 5000,
-    features: ['1 branch', 'Unlimited staff', 'All features'],
-  },
-  {
-    key: 'pro',
-    name: 'Pro',
-    price: 9000,
-    features: ['Up to 3 branches', 'Unlimited staff', 'Priority support'],
-  },
+interface PlanRow {
+  key: string;
+  name: string;
+  price: number;
+  features: string[];
+}
+
+const PLAN_META: Array<{ key: 'basic' | 'growth' | 'pro'; name: string; tagline: string }> = [
+  { key: 'basic', name: 'Basic', tagline: 'All features' },
+  { key: 'growth', name: 'Growth', tagline: 'All features' },
+  { key: 'pro', name: 'Pro', tagline: 'Priority support' },
 ];
 
-const BANK_DETAILS = {
-  bankName: 'Meezan Bank',
-  accountTitle: 'iCut Technologies',
-  accountNumber: '02340105566723',
-  jazzcash: '03001234567',
+const FALLBACK_PLANS: Record<string, { price: number; branches: number; staff: number }> = {
+  basic: { price: 2500, branches: 1, staff: 3 },
+  growth: { price: 5000, branches: 1, staff: 0 },
+  pro: { price: 9000, branches: 3, staff: 0 },
 };
+
+function buildFeatures(branches: number, staff: number, tagline: string): string[] {
+  const branchLabel = branches === 1 ? '1 branch' : `Up to ${branches} branches`;
+  const staffLabel = staff === 0 ? 'Unlimited staff' : `Up to ${staff} staff`;
+  return [branchLabel, staffLabel, tagline];
+}
 
 function copyToClipboard(text: string, label: string) {
   navigator.clipboard.writeText(text).then(() => {
@@ -48,6 +46,45 @@ export function PaywallDialog() {
   const { showPaywall, setShowPaywall, salon } = useAppStore();
   const router = useRouter();
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
+  const [plans, setPlans] = useState<PlanRow[]>(() =>
+    PLAN_META.map((m) => ({
+      key: m.key,
+      name: m.name,
+      price: FALLBACK_PLANS[m.key].price,
+      features: buildFeatures(FALLBACK_PLANS[m.key].branches, FALLBACK_PLANS[m.key].staff, m.tagline),
+    }))
+  );
+  const [bankAccount, setBankAccount] = useState('');
+  const [jazzcash, setJazzcash] = useState('');
+  const [supportWhatsApp, setSupportWhatsApp] = useState('');
+
+  // Fetch plans + payment details from superadmin settings on mount
+  useEffect(() => {
+    if (!showPaywall) return;
+    let cancelled = false;
+    getPublicPlatformConfig()
+      .then((cfg) => {
+        if (cancelled) return;
+        setPlans(
+          PLAN_META.map((m) => {
+            const p = cfg.plans[m.key] ?? FALLBACK_PLANS[m.key];
+            return {
+              key: m.key,
+              name: m.name,
+              price: p.price,
+              features: buildFeatures(p.branches, p.staff, m.tagline),
+            };
+          })
+        );
+        setBankAccount(cfg.payment.bankAccount);
+        setJazzcash(cfg.payment.jazzcashAccount);
+        setSupportWhatsApp(cfg.supportWhatsApp);
+      })
+      .catch(() => {
+        // Keep fallbacks silently
+      });
+    return () => { cancelled = true; };
+  }, [showPaywall]);
 
   const currentPlan = salon?.subscription_plan || 'none';
 
@@ -79,7 +116,7 @@ export function PaywallDialog() {
           <>
             {/* Plan cards */}
             <div className="space-y-2 mt-2">
-              {PLANS.map((plan) => {
+              {plans.map((plan) => {
                 const isSelected = selectedPlan === plan.key;
                 const isCurrent = currentPlan === plan.key;
                 return (
@@ -135,42 +172,39 @@ export function PaywallDialog() {
                   </p>
 
                   <div className="space-y-1.5 text-sm">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-xs text-muted-foreground">Bank</p>
-                        <p className="font-medium">{BANK_DETAILS.bankName}</p>
+                    {bankAccount && (
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-xs text-muted-foreground">Bank Account</p>
+                          <p className="font-medium font-mono whitespace-pre-wrap">{bankAccount}</p>
+                        </div>
+                        <button onClick={() => copyToClipboard(bankAccount, 'Bank account')} className="p-1 hover:bg-secondary rounded shrink-0">
+                          <Copy className="w-3.5 h-3.5 text-muted-foreground" />
+                        </button>
                       </div>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-xs text-muted-foreground">Account Title</p>
-                        <p className="font-medium">{BANK_DETAILS.accountTitle}</p>
+                    )}
+                    {jazzcash && (
+                      <div className={`${bankAccount ? 'border-t border-border pt-1.5 ' : ''}flex items-center justify-between`}>
+                        <div>
+                          <p className="text-xs text-muted-foreground">JazzCash</p>
+                          <p className="font-medium font-mono">{jazzcash}</p>
+                        </div>
+                        <button onClick={() => copyToClipboard(jazzcash, 'JazzCash number')} className="p-1 hover:bg-secondary rounded shrink-0">
+                          <Copy className="w-3.5 h-3.5 text-muted-foreground" />
+                        </button>
                       </div>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-xs text-muted-foreground">Account Number</p>
-                        <p className="font-medium font-mono">{BANK_DETAILS.accountNumber}</p>
-                      </div>
-                      <button onClick={() => copyToClipboard(BANK_DETAILS.accountNumber, 'Account number')} className="p-1 hover:bg-secondary rounded">
-                        <Copy className="w-3.5 h-3.5 text-muted-foreground" />
-                      </button>
-                    </div>
-                    <div className="border-t border-border pt-1.5 flex items-center justify-between">
-                      <div>
-                        <p className="text-xs text-muted-foreground">JazzCash</p>
-                        <p className="font-medium font-mono">{BANK_DETAILS.jazzcash}</p>
-                      </div>
-                      <button onClick={() => copyToClipboard(BANK_DETAILS.jazzcash, 'JazzCash number')} className="p-1 hover:bg-secondary rounded">
-                        <Copy className="w-3.5 h-3.5 text-muted-foreground" />
-                      </button>
-                    </div>
+                    )}
+                    {!bankAccount && !jazzcash && (
+                      <p className="text-xs text-muted-foreground">
+                        Contact support on WhatsApp for payment details.
+                      </p>
+                    )}
                   </div>
 
                   <div className="bg-gold/5 border border-gold/20 rounded p-2 mt-2">
                     <p className="text-xs">
                       <span className="font-semibold">Amount:</span>{' '}
-                      Rs {PLANS.find((p) => p.key === selectedPlan)?.price.toLocaleString()}/month
+                      Rs {plans.find((p) => p.key === selectedPlan)?.price.toLocaleString()}/month
                     </p>
                   </div>
                 </div>
@@ -181,18 +215,24 @@ export function PaywallDialog() {
                   <p>3. Your account will be activated within minutes</p>
                 </div>
 
-                <a
-                  href={`https://wa.me/923001234567?text=${encodeURIComponent(
-                    `Hi, I want to subscribe to the ${selectedPlan?.toUpperCase()} plan for my salon "${salon?.name || ''}". I'm sending the payment screenshot.`
-                  )}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="block"
-                >
-                  <Button className="w-full bg-gold text-black hover:bg-gold/90 font-semibold">
-                    Send Screenshot on WhatsApp
+                {supportWhatsApp ? (
+                  <a
+                    href={`https://wa.me/${supportWhatsApp.replace(/\D/g, '')}?text=${encodeURIComponent(
+                      `Hi, I want to subscribe to the ${selectedPlan?.toUpperCase()} plan for my salon "${salon?.name || ''}". I'm sending the payment screenshot.`
+                    )}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block"
+                  >
+                    <Button className="w-full bg-gold text-black hover:bg-gold/90 font-semibold">
+                      Send Screenshot on WhatsApp
+                    </Button>
+                  </a>
+                ) : (
+                  <Button disabled className="w-full bg-gold/40 text-black/60 font-semibold">
+                    Support WhatsApp not configured
                   </Button>
-                </a>
+                )}
               </div>
             )}
 
@@ -214,16 +254,24 @@ export function PaywallDialog() {
 
         {salon?.subscription_status === 'suspended' && (
           <div className="mt-2">
-            <a
-              href="https://wa.me/923001234567?text=Hi%2C%20my%20iCut%20account%20has%20been%20suspended.%20Please%20help%20me%20reactivate%20it."
-              target="_blank"
-              rel="noopener noreferrer"
-              className="block"
-            >
-              <Button className="w-full bg-gold text-black hover:bg-gold/90 font-semibold">
-                Contact Support on WhatsApp
+            {supportWhatsApp ? (
+              <a
+                href={`https://wa.me/${supportWhatsApp.replace(/\D/g, '')}?text=${encodeURIComponent(
+                  'Hi, my iCut account has been suspended. Please help me reactivate it.'
+                )}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block"
+              >
+                <Button className="w-full bg-gold text-black hover:bg-gold/90 font-semibold">
+                  Contact Support on WhatsApp
+                </Button>
+              </a>
+            ) : (
+              <Button disabled className="w-full bg-gold/40 text-black/60 font-semibold">
+                Support WhatsApp not configured
               </Button>
-            </a>
+            )}
           </div>
         )}
       </DialogContent>
