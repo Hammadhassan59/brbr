@@ -18,6 +18,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { BillBuilder, type BillLineItem } from './components/bill-builder';
 import { PaymentPanel, type SplitPaymentEntry } from './components/payment-panel';
 import { CheckoutConfirmation } from './components/checkout-confirmation';
+import { getCheckoutBlockReason } from './components/checkout-gate';
 import toast from 'react-hot-toast';
 import type { Client, Staff, Service, Product, PaymentMethod, AppointmentWithDetails, Package as PkgType } from '@/types/database';
 
@@ -168,6 +169,7 @@ function POSContent() {
 
   async function createNewClient() {
     if (!salon || !newClientName.trim()) { toast.error('Client name is required'); return; }
+    if (!newClientPhone.trim()) { toast.error('Phone number is required'); return; }
     try {
       const { data, error } = await createClient({
         name: newClientName.trim(),
@@ -201,12 +203,26 @@ function POSContent() {
         case 'c': setPaymentMethod('cash'); break;
         case 'j': setPaymentMethod('jazzcash'); break;
         case 'escape': router.push('/dashboard'); break;
-        case 'enter': if (total > 0 && paymentMethod) setShowCheckout(true); break;
+        case 'enter': {
+          const splitTotal = splitPayments.reduce((sum, s) => sum + s.amount, 0);
+          const canCheckout = getCheckoutBlockReason({
+            total,
+            hasStylist: !!selectedStaffId,
+            hasClient: !!selectedClient,
+            selectedPaymentMethod: paymentMethod,
+            cashReceived,
+            isSplit,
+            splitRemaining: total - splitTotal,
+            saving,
+          }) === null;
+          if (canCheckout) setShowCheckout(true);
+          break;
+        }
       }
     }
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [total, paymentMethod, router]);
+  }, [total, paymentMethod, router, selectedStaffId, selectedClient, cashReceived, isSplit, splitPayments, saving]);
 
   // Add service to bill
   function addService(svc: Service) {
@@ -471,7 +487,7 @@ function POSContent() {
               <Input
                 value={newClientPhone}
                 onChange={(e) => setNewClientPhone(e.target.value)}
-                placeholder="Phone"
+                placeholder="Phone *"
                 className="h-8 text-sm w-36"
               />
               <Button size="sm" className="h-8 text-xs bg-gold text-black border border-gold shrink-0 transition-all duration-150" onClick={createNewClient}>
@@ -500,12 +516,11 @@ function POSContent() {
                         {c.name} <span className="text-muted-foreground">{c.phone}</span>
                       </button>
                     ))}
-                    <button
-                      onClick={() => { setClientSearch(''); setClientResults([]); }}
-                      className="w-full text-left px-3 py-1.5 hover:bg-secondary text-sm text-muted-foreground border-t border-border transition-all duration-150"
-                    >
-                      Walk-in Guest
-                    </button>
+                    {clientResults.length === 0 && (
+                      <p className="px-3 py-2 text-xs text-muted-foreground">
+                        No matches. Use &quot;New Client&quot; for walk-ins (name + phone required).
+                      </p>
+                    )}
                   </div>
                 )}
               </div>
@@ -561,6 +576,7 @@ function POSContent() {
           clientUdhaarBalance={selectedClient?.udhaar_balance || 0}
           clientUdhaarLimit={selectedClient?.udhaar_limit || 5000}
           hasClient={!!selectedClient}
+          hasStylist={!!selectedStaffId}
           stylists={stylists}
           selectedPaymentMethod={paymentMethod}
           onSelectMethod={setPaymentMethod}
@@ -596,6 +612,7 @@ function POSContent() {
               clientUdhaarBalance={selectedClient?.udhaar_balance || 0}
               clientUdhaarLimit={selectedClient?.udhaar_limit || 5000}
               hasClient={!!selectedClient}
+              hasStylist={!!selectedStaffId}
               stylists={stylists}
               selectedPaymentMethod={paymentMethod}
               onSelectMethod={setPaymentMethod}

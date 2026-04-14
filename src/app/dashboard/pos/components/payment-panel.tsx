@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { formatPKR } from '@/lib/utils/currency';
 import type { PaymentMethod } from '@/types/database';
 import type { Staff } from '@/types/database';
+import { getCheckoutBlockReason, describeBlockReason } from './checkout-gate';
 
 export interface SplitPaymentEntry {
   method: PaymentMethod;
@@ -21,6 +22,7 @@ interface PaymentPanelProps {
   clientUdhaarBalance: number;
   clientUdhaarLimit: number;
   hasClient: boolean;
+  hasStylist: boolean;
   stylists: Staff[];
   selectedPaymentMethod: PaymentMethod | null;
   onSelectMethod: (method: PaymentMethod) => void;
@@ -50,7 +52,7 @@ const PAYMENT_METHODS: { method: PaymentMethod; label: string; icon: typeof Bank
 ];
 
 export function PaymentPanel({
-  total, clientUdhaarBalance, clientUdhaarLimit, hasClient, stylists,
+  total, clientUdhaarBalance, clientUdhaarLimit, hasClient, hasStylist, stylists,
   selectedPaymentMethod, onSelectMethod, cashReceived, onCashReceived,
   reference, onReferenceChange,
   isSplit, onSplitToggle, splitPayments, onSplitPaymentsChange,
@@ -285,13 +287,29 @@ export function PaymentPanel({
         </div>
       )}
 
-      <Button
-        onClick={onCheckout}
-        disabled={saving || total <= 0 || (!isSplit && !selectedPaymentMethod) || (isSplit && Math.abs(splitRemaining) >= 0.5)}
-        className="w-full h-14 text-lg font-bold bg-gold hover:bg-gold/90 text-black border border-gold touch-target mt-auto transition-all duration-150"
-      >
-        {saving ? 'Processing...' : `Checkout · ${formatPKR(total)}`}
-      </Button>
+      {(() => {
+        const blockReason = getCheckoutBlockReason({
+          total, hasStylist, hasClient, selectedPaymentMethod,
+          cashReceived, isSplit, splitRemaining, saving,
+        });
+        const blocked = blockReason !== null;
+        return (
+          <div className="mt-auto">
+            {blocked && blockReason !== 'saving' && blockReason !== 'empty_bill' && (
+              <p className="text-xs text-destructive text-center mb-2">
+                {describeBlockReason(blockReason)}
+              </p>
+            )}
+            <Button
+              onClick={onCheckout}
+              disabled={blocked}
+              className="w-full h-14 text-lg font-bold bg-gold hover:bg-gold/90 text-black border border-gold touch-target transition-all duration-150"
+            >
+              {saving ? 'Processing...' : `Checkout · ${formatPKR(total)}`}
+            </Button>
+          </div>
+        );
+      })()}
       </>
       )}
     </div>
