@@ -2,6 +2,7 @@
 
 import { createServerClient } from '@/lib/supabase';
 import { verifySession } from './auth';
+import type { SubscriptionPlan, SubscriptionStatus } from '@/types/database';
 
 async function requireSuperAdmin() {
   const session = await verifySession();
@@ -172,4 +173,105 @@ export async function getAdminSalonDetail(salonId: string) {
   ]);
 
   return { salon, branches: branches || [], staff: staff || [], clients: clients || [] };
+}
+
+export async function updateSalon(
+  salonId: string,
+  updates: {
+    name?: string;
+    city?: string;
+    phone?: string;
+    address?: string;
+    type?: string;
+    admin_notes?: string;
+  },
+) {
+  await requireSuperAdmin();
+  const supabase = createServerClient();
+
+  const { error } = await supabase
+    .from('salons')
+    .update(updates)
+    .eq('id', salonId);
+
+  if (error) throw error;
+  return { success: true };
+}
+
+export async function updateSubscription(
+  salonId: string,
+  updates: {
+    subscription_plan?: SubscriptionPlan;
+    subscription_status?: SubscriptionStatus;
+    subscription_expires_at?: string | null;
+  },
+) {
+  await requireSuperAdmin();
+  const supabase = createServerClient();
+
+  const { error } = await supabase
+    .from('salons')
+    .update(updates)
+    .eq('id', salonId);
+
+  if (error) throw error;
+  return { success: true };
+}
+
+export async function getAdminSalonMetrics(salonId: string) {
+  await requireSuperAdmin();
+  const supabase = createServerClient();
+
+  const monthStart = new Date();
+  monthStart.setDate(1);
+  monthStart.setHours(0, 0, 0, 0);
+
+  const [
+    { count: staffCount },
+    { count: clientCount },
+    { data: monthBills },
+    { data: allBills },
+  ] = await Promise.all([
+    supabase.from('staff').select('*', { count: 'exact', head: true }).eq('salon_id', salonId),
+    supabase.from('clients').select('*', { count: 'exact', head: true }).eq('salon_id', salonId),
+    supabase
+      .from('bills')
+      .select('total_amount, payment_method')
+      .eq('salon_id', salonId)
+      .gte('created_at', monthStart.toISOString()),
+    supabase
+      .from('bills')
+      .select('total_amount, created_at')
+      .eq('salon_id', salonId)
+      .order('created_at', { ascending: false })
+      .limit(100),
+  ]);
+
+  const bills = monthBills || [];
+  const monthlyRevenue = bills.reduce(
+    (sum: number, b: { total_amount: number }) => sum + (b.total_amount || 0),
+    0,
+  );
+  const monthlyBillCount = bills.length;
+
+  const totalRevenue = (allBills || []).reduce(
+    (sum: number, b: { total_amount: number }) => sum + (b.total_amount || 0),
+    0,
+  );
+
+  const paymentBreakdown: Record<string, number> = {};
+  bills.forEach((b: { payment_method: string; total_amount: number }) => {
+    const method = b.payment_method || 'unknown';
+    paymentBreakdown[method] = (paymentBreakdown[method] || 0) + (b.total_amount || 0);
+  });
+
+  return {
+    staffCount: staffCount ?? 0,
+    clientCount: clientCount ?? 0,
+    monthlyRevenue,
+    monthlyBillCount,
+    totalRevenue,
+    paymentBreakdown,
+    recentBills: allBills || [],
+  };
 }
