@@ -517,25 +517,19 @@ export default function LandingClient({ initialPlans, supportWhatsApp }: Landing
                     <p className={`text-[12px] font-medium mt-1.5 ${plan.popular ? 'text-white/60' : 'text-[#888]'}`}>per month, billed monthly</p>
                   </div>
 
-                  {/* Branch + staff anchor — modeled after per-seat SaaS pricing */}
-                  <div
-                    className={`flex items-stretch border ${plan.popular ? 'border-white/20 bg-white/5' : 'border-[#E8E8E8] bg-[#FAFAF8]'}`}
-                    style={{ borderRadius: Ri }}
-                  >
-                    <div className="flex-1 px-3 py-3 flex items-center gap-2.5" style={{ borderRightWidth: '1px', borderRightStyle: 'solid', borderRightColor: plan.popular ? 'rgba(255,255,255,0.18)' : '#E8E8E8' }}>
-                      <Building2 className={`w-5 h-5 shrink-0 ${plan.popular ? 'text-gold' : 'text-[#B8860B]'}`} strokeWidth={2.25} />
-                      <div className="leading-tight">
-                        <p className={`text-[18px] font-black tabular-nums ${plan.popular ? 'text-white' : 'text-[#1A1A1A]'}`}>{branchCount}</p>
-                        <p className={`text-[10px] font-bold uppercase tracking-wider ${plan.popular ? 'text-white/60' : 'text-[#888]'}`}>{branchLabel}</p>
-                      </div>
+                  {/* Branch + staff anchor — clean inline metrics, no card chrome */}
+                  <div className="flex items-center gap-5">
+                    <div className="flex items-baseline gap-1.5">
+                      <Building2 className={`w-5 h-5 self-center ${plan.popular ? 'text-gold' : 'text-[#B8860B]'}`} strokeWidth={2.25} />
+                      <span className={`text-[26px] font-black tabular-nums leading-none ${plan.popular ? 'text-white' : 'text-[#1A1A1A]'}`}>{branchCount}</span>
+                      <span className={`text-[12px] font-bold uppercase tracking-[1px] ${plan.popular ? 'text-white/65' : 'text-[#1A1A1A]/65'}`}>{branchLabel}</span>
                     </div>
-                    <div className="flex-1 px-3 py-3 flex items-center gap-2.5">
-                      <Users className={`w-5 h-5 shrink-0 ${plan.popular ? 'text-white/70' : 'text-[#1A1A1A]/60'}`} strokeWidth={2.25} />
-                      <div className="leading-tight">
-                        <p className={`text-[12px] font-bold ${plan.popular ? 'text-white' : 'text-[#1A1A1A]'}`}>{staffPart || '—'}</p>
-                        <p className={`text-[10px] font-medium ${plan.popular ? 'text-white/55' : 'text-[#888]'}`}>included</p>
-                      </div>
-                    </div>
+                    {staffPart && (
+                      <>
+                        <span className={`${plan.popular ? 'text-white/25' : 'text-[#1A1A1A]/20'}`}>·</span>
+                        <span className={`text-[12px] font-semibold ${plan.popular ? 'text-white/75' : 'text-[#1A1A1A]/70'}`}>{staffPart}</span>
+                      </>
+                    )}
                   </div>
 
                   {/* Features */}
