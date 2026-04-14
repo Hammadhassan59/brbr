@@ -18,23 +18,13 @@ interface PlanRow {
   features: string[];
 }
 
-const PLAN_META: Array<{ key: 'basic' | 'growth' | 'pro'; name: string; tagline: string }> = [
-  { key: 'basic', name: 'Basic', tagline: 'All features' },
-  { key: 'growth', name: 'Growth', tagline: 'All features' },
-  { key: 'pro', name: 'Pro', tagline: 'Priority support' },
-];
+const PLAN_KEYS: Array<'basic' | 'growth' | 'pro'> = ['basic', 'growth', 'pro'];
 
-const FALLBACK_PLANS: Record<string, { price: number; branches: number; staff: number }> = {
-  basic: { price: 2500, branches: 1, staff: 3 },
-  growth: { price: 5000, branches: 1, staff: 0 },
-  pro: { price: 9000, branches: 3, staff: 0 },
+const FALLBACK_DISPLAY: Record<'basic' | 'growth' | 'pro', { name: string; price: number; features: string[] }> = {
+  basic: { name: 'Basic', price: 2500, features: ['1 branch', 'Up to 3 staff', 'All features'] },
+  growth: { name: 'Growth', price: 5000, features: ['1 branch', 'Unlimited staff', 'All features'] },
+  pro: { name: 'Pro', price: 9000, features: ['Up to 3 branches', 'Unlimited staff', 'Priority support'] },
 };
-
-function buildFeatures(branches: number, staff: number, tagline: string): string[] {
-  const branchLabel = branches === 1 ? '1 branch' : `Up to ${branches} branches`;
-  const staffLabel = staff === 0 ? 'Unlimited staff' : `Up to ${staff} staff`;
-  return [branchLabel, staffLabel, tagline];
-}
 
 function copyToClipboard(text: string, label: string) {
   navigator.clipboard.writeText(text).then(() => {
@@ -46,11 +36,11 @@ export function PaywallDialog() {
   const { showPaywall, setShowPaywall, salon } = useAppStore();
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
   const [plans, setPlans] = useState<PlanRow[]>(() =>
-    PLAN_META.map((m) => ({
-      key: m.key,
-      name: m.name,
-      price: FALLBACK_PLANS[m.key].price,
-      features: buildFeatures(FALLBACK_PLANS[m.key].branches, FALLBACK_PLANS[m.key].staff, m.tagline),
+    PLAN_KEYS.map((key) => ({
+      key,
+      name: FALLBACK_DISPLAY[key].name,
+      price: FALLBACK_DISPLAY[key].price,
+      features: FALLBACK_DISPLAY[key].features,
     }))
   );
   const [bankAccount, setBankAccount] = useState('');
@@ -71,13 +61,27 @@ export function PaywallDialog() {
       .then((cfg) => {
         if (cancelled) return;
         setPlans(
-          PLAN_META.map((m) => {
-            const p = cfg.plans[m.key] ?? FALLBACK_PLANS[m.key];
+          PLAN_KEYS.map((key) => {
+            const p = cfg.plans[key];
+            // Derive feature strings: prefer admin-managed features list (ok-only —
+            // paywall never shows crossed-out items), otherwise build a basic line
+            // from branches/staff so expired users still see what they're getting.
+            let features: string[];
+            if (p && Array.isArray(p.features) && p.features.length > 0) {
+              features = p.features.filter((f) => f.ok !== false).map((f) => f.text);
+            } else {
+              const branches = p?.branches ?? 1;
+              const staff = p?.staff ?? 0;
+              features = [
+                branches === 1 ? '1 branch' : `Up to ${branches} branches`,
+                staff === 0 ? 'Unlimited staff' : `Up to ${staff} staff`,
+              ];
+            }
             return {
-              key: m.key,
-              name: m.name,
-              price: p.price,
-              features: buildFeatures(p.branches, p.staff, m.tagline),
+              key,
+              name: p?.displayName || FALLBACK_DISPLAY[key].name,
+              price: p?.price ?? FALLBACK_DISPLAY[key].price,
+              features,
             };
           })
         );
