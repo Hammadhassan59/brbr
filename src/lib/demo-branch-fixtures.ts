@@ -30,11 +30,11 @@ export interface DemoBranchFixture {
 const DEMO_BRANCH_FIXTURES: Record<string, DemoBranchFixture> = {
   [DEMO_BRANCH.id]: {
     branch: DEMO_BRANCH,
-    stylists: [DEMO_STAFF_OWNER, DEMO_STAFF_STYLIST],
+    stylists: [],
   },
   [DEMO_BRANCH_GENTS.id]: {
     branch: DEMO_BRANCH_GENTS,
-    stylists: [DEMO_GENTS_OWNER, DEMO_GENTS_BARBER_SENIOR, DEMO_GENTS_BARBER_JUNIOR],
+    stylists: [DEMO_GENTS_OWNER, DEMO_STAFF_OWNER, DEMO_STAFF_STYLIST, DEMO_GENTS_BARBER_SENIOR, DEMO_GENTS_BARBER_JUNIOR],
   },
   [DEMO_BRANCH_GENTS_2.id]: {
     branch: DEMO_BRANCH_GENTS_2,

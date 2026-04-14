@@ -339,40 +339,9 @@ export default function LoginPage() {
                 </button>
               </div>
 
-              {/* Glamour Studio */}
+              {/* Royal Barbers — all roles share one salon so data is visible across roles */}
               <div>
-                <p className="text-[10px] font-semibold text-pink-500 uppercase tracking-wider mb-1.5">Glamour Studio — Ladies Salon, Lahore</p>
-                <div className="space-y-1.5">
-                  <button onClick={() => demoLoginAs(DEMO_SALON, DEMO_BRANCH, DEMO_STAFF_OWNER, [DEMO_BRANCH])} className="w-full flex items-center gap-3 p-2.5 rounded-lg border-2 border-gold/30 bg-gold/5 hover:bg-gold/10 transition-all text-left">
-                    <div className="w-9 h-9 rounded-full bg-gold/20 text-gold font-bold flex items-center justify-center shrink-0 text-xs">FK</div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold">Fatima Khan</p>
-                      <p className="text-[10px] text-muted-foreground">Manager — Full access</p>
-                    </div>
-                    <span className="text-[10px] bg-gold/20 text-gold px-2 py-0.5 rounded-full font-medium shrink-0">Manager</span>
-                  </button>
-                  <button onClick={() => demoLoginAs(DEMO_SALON, DEMO_BRANCH, DEMO_STAFF_STYLIST, [DEMO_BRANCH])} className="w-full flex items-center gap-3 p-2.5 rounded-lg border hover:border-purple-500/25 hover:bg-purple-500/10 transition-all text-left">
-                    <div className="w-9 h-9 rounded-full bg-purple-500/15 text-purple-600 font-bold flex items-center justify-center shrink-0 text-xs">SA</div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold">Sadia Ahmed</p>
-                      <p className="text-[10px] text-muted-foreground">Senior Stylist — Appointments only</p>
-                    </div>
-                    <span className="text-[10px] bg-purple-500/15 text-purple-600 px-2 py-0.5 rounded-full font-medium shrink-0">Stylist</span>
-                  </button>
-                  <button onClick={() => demoLoginAs(DEMO_SALON, DEMO_BRANCH, DEMO_STAFF_RECEPTIONIST, [DEMO_BRANCH])} className="w-full flex items-center gap-3 p-2.5 rounded-lg border hover:border-teal-500/25 hover:bg-teal-500/10 transition-all text-left">
-                    <div className="w-9 h-9 rounded-full bg-teal-500/15 text-teal-600 font-bold flex items-center justify-center shrink-0 text-xs">ZB</div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold">Zainab Bibi</p>
-                      <p className="text-[10px] text-muted-foreground">Receptionist — Appointments, clients, POS</p>
-                    </div>
-                    <span className="text-[10px] bg-teal-500/15 text-teal-600 px-2 py-0.5 rounded-full font-medium shrink-0">Reception</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* Royal Barbers */}
-              <div>
-                <p className="text-[10px] font-semibold text-blue-500 uppercase tracking-wider mb-1.5">Royal Barbers — Gents, Islamabad (2 branches)</p>
+                <p className="text-[10px] font-semibold text-blue-500 uppercase tracking-wider mb-1.5">Royal Barbers — Islamabad (2 branches)</p>
                 <div className="space-y-1.5">
                   <button onClick={() => demoLoginAs(DEMO_SALON_GENTS, DEMO_BRANCH_GENTS, DEMO_GENTS_OWNER, royalBranches)} className="w-full flex items-center gap-3 p-2.5 rounded-lg border-2 border-gold/30 bg-gold/5 hover:bg-gold/10 transition-all text-left">
                     <div className="w-9 h-9 rounded-full bg-gold/20 text-gold font-bold flex items-center justify-center shrink-0 text-xs">AR</div>
@@ -389,6 +358,30 @@ export default function LoginPage() {
                       <p className="text-[10px] text-muted-foreground">Co-Owner — Full access</p>
                     </div>
                     <span className="text-[10px] bg-gold/20 text-gold px-2 py-0.5 rounded-full font-medium shrink-0">Owner</span>
+                  </button>
+                  <button onClick={() => demoLoginAs(DEMO_SALON_GENTS, DEMO_BRANCH_GENTS, DEMO_STAFF_OWNER, royalBranches)} className="w-full flex items-center gap-3 p-2.5 rounded-lg border-2 border-gold/30 bg-gold/5 hover:bg-gold/10 transition-all text-left">
+                    <div className="w-9 h-9 rounded-full bg-gold/20 text-gold font-bold flex items-center justify-center shrink-0 text-xs">FK</div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold">Fatima Khan</p>
+                      <p className="text-[10px] text-muted-foreground">Manager — Full access</p>
+                    </div>
+                    <span className="text-[10px] bg-gold/20 text-gold px-2 py-0.5 rounded-full font-medium shrink-0">Manager</span>
+                  </button>
+                  <button onClick={() => demoLoginAs(DEMO_SALON_GENTS, DEMO_BRANCH_GENTS, DEMO_STAFF_STYLIST, royalBranches)} className="w-full flex items-center gap-3 p-2.5 rounded-lg border hover:border-purple-500/25 hover:bg-purple-500/10 transition-all text-left">
+                    <div className="w-9 h-9 rounded-full bg-purple-500/15 text-purple-600 font-bold flex items-center justify-center shrink-0 text-xs">SA</div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold">Sadia Ahmed</p>
+                      <p className="text-[10px] text-muted-foreground">Senior Stylist — Appointments only</p>
+                    </div>
+                    <span className="text-[10px] bg-purple-500/15 text-purple-600 px-2 py-0.5 rounded-full font-medium shrink-0">Stylist</span>
+                  </button>
+                  <button onClick={() => demoLoginAs(DEMO_SALON_GENTS, DEMO_BRANCH_GENTS, DEMO_STAFF_RECEPTIONIST, royalBranches)} className="w-full flex items-center gap-3 p-2.5 rounded-lg border hover:border-teal-500/25 hover:bg-teal-500/10 transition-all text-left">
+                    <div className="w-9 h-9 rounded-full bg-teal-500/15 text-teal-600 font-bold flex items-center justify-center shrink-0 text-xs">ZB</div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold">Zainab Bibi</p>
+                      <p className="text-[10px] text-muted-foreground">Receptionist — Appointments, clients, POS</p>
+                    </div>
+                    <span className="text-[10px] bg-teal-500/15 text-teal-600 px-2 py-0.5 rounded-full font-medium shrink-0">Reception</span>
                   </button>
                   <button onClick={() => demoLoginAs(DEMO_SALON_GENTS, DEMO_BRANCH_GENTS, DEMO_GENTS_BARBER_SENIOR, royalBranches)} className="w-full flex items-center gap-3 p-2.5 rounded-lg border hover:border-purple-500/25 hover:bg-purple-500/10 transition-all text-left">
                     <div className="w-9 h-9 rounded-full bg-purple-500/15 text-purple-600 font-bold flex items-center justify-center shrink-0 text-xs">UG</div>

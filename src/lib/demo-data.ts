@@ -56,11 +56,11 @@ export const DEMO_BRANCH: Branch = {
   created_at: '2025-01-01T00:00:00Z',
 };
 
-// Glamour Studio Staff
+// Royal Barbers Staff (all demo users share one salon for data visibility)
 export const DEMO_STAFF_OWNER: Staff = {
   id: '33333333-3333-3333-3333-333333333301',
-  salon_id: '11111111-1111-1111-1111-111111111111',
-  branch_id: '22222222-2222-2222-2222-222222222222',
+  salon_id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+  branch_id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaab',
   name: 'Fatima Khan',
   phone: '0300-1234567',
   email: null,
@@ -80,8 +80,8 @@ export const DEMO_STAFF_OWNER: Staff = {
 
 export const DEMO_STAFF_STYLIST: Staff = {
   id: '33333333-3333-3333-3333-333333333302',
-  salon_id: '11111111-1111-1111-1111-111111111111',
-  branch_id: '22222222-2222-2222-2222-222222222222',
+  salon_id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+  branch_id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaab',
   name: 'Sadia Ahmed',
   phone: '0312-9876543',
   email: null,
@@ -101,8 +101,8 @@ export const DEMO_STAFF_STYLIST: Staff = {
 
 export const DEMO_STAFF_RECEPTIONIST: Staff = {
   id: '33333333-3333-3333-3333-333333333305',
-  salon_id: '11111111-1111-1111-1111-111111111111',
-  branch_id: '22222222-2222-2222-2222-222222222222',
+  salon_id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+  branch_id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaab',
   name: 'Zainab Bibi',
   phone: '0301-2345678',
   email: null,

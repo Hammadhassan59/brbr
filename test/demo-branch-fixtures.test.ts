@@ -26,21 +26,21 @@ describe('isDemoBranchId', () => {
 });
 
 describe('getDemoBranchFixture', () => {
-  it('returns Glamour Studio fixture with 2 stylists', () => {
+  it('returns Glamour Studio fixture with no stylists (staff moved to Royal Barbers)', () => {
     const f = getDemoBranchFixture(DEMO_BRANCH.id);
     expect(f).not.toBeNull();
     expect(f!.branch.name).toBe('Gulberg Branch');
-    expect(f!.stylists).toHaveLength(2);
-    expect(f!.stylists.map((s) => s.name)).toContain('Fatima Khan');
-    expect(f!.stylists.map((s) => s.name)).toContain('Sadia Ahmed');
+    expect(f!.stylists).toHaveLength(0);
   });
 
-  it('returns Royal Barbers F-7 fixture with 3 stylists', () => {
+  it('returns Royal Barbers F-7 fixture with 5 stylists (all demo roles)', () => {
     const f = getDemoBranchFixture(DEMO_BRANCH_GENTS.id);
     expect(f).not.toBeNull();
     expect(f!.branch.name).toBe('F-7 Markaz');
-    expect(f!.stylists).toHaveLength(3);
+    expect(f!.stylists).toHaveLength(5);
     expect(f!.stylists.map((s) => s.name)).toContain('Ahmed Raza');
+    expect(f!.stylists.map((s) => s.name)).toContain('Fatima Khan');
+    expect(f!.stylists.map((s) => s.name)).toContain('Sadia Ahmed');
   });
 
   it('returns Blue Area fixture with 2 stylists', () => {
