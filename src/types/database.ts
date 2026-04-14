@@ -3,6 +3,8 @@
 // Auto-generated from Supabase schema
 // ═══════════════════════════════════════
 
+export type SubscriptionPlan = 'trial' | 'basic' | 'growth' | 'pro';
+export type SubscriptionStatus = 'trial' | 'active' | 'expired' | 'suspended';
 export type SalonType = 'gents' | 'ladies' | 'unisex';
 export type Language = 'en' | 'ur';
 export type StaffRole = 'owner' | 'manager' | 'receptionist' | 'senior_stylist' | 'junior_stylist' | 'helper';
@@ -77,6 +79,17 @@ export interface Salon {
   onboarding_dismissed: boolean;
   owner_id: string | null;
   created_at: string;
+  subscription_plan: SubscriptionPlan;
+  subscription_status: SubscriptionStatus;
+  subscription_expires_at: string | null;
+  subscription_started_at: string | null;
+  admin_notes: string | null;
+}
+
+export interface PlatformSetting {
+  key: string;
+  value: Record<string, unknown>;
+  updated_at: string;
 }
 
 export interface Branch {
