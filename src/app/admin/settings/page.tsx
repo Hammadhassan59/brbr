@@ -12,6 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { DEFAULT_EMAIL_TEMPLATES } from '@/lib/email-templates';
 import toast from 'react-hot-toast';
 import { getPlatformSettings, savePlatformSetting } from '@/app/actions/admin-settings';
+import { sendTestEmail } from '@/lib/email-sender';
 
 interface PlanSettings {
   price: string;
@@ -233,10 +234,29 @@ export default function AdminSettingsPage() {
     }));
   }
 
-  function testEmail() {
+  async function testEmail() {
     if (!settings.resendKey) { toast.error('Enter a Resend API key first'); return; }
     if (!settings.fromEmail) { toast.error('Enter a from email address'); return; }
-    toast.error('Email sending not yet connected to backend');
+
+    const to = window.prompt(
+      'Send test email to which address?',
+      settings.supportEmail || settings.fromEmail,
+    );
+    if (!to) return;
+
+    const loadingId = toast.loading(`Sending test to ${to}…`);
+    const res = await sendTestEmail({
+      to,
+      resendKey: settings.resendKey,
+      fromEmail: settings.fromEmail,
+      fromName: settings.fromName,
+    });
+    toast.dismiss(loadingId);
+    if (res.sent) {
+      toast.success(`Test email sent to ${to}`);
+    } else {
+      toast.error(res.error || 'Send failed');
+    }
   }
 
   async function saveSettings() {
