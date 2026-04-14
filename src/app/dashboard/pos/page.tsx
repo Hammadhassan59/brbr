@@ -7,6 +7,7 @@ import { supabase } from '@/lib/supabase';
 import { createClient, updateClientStats } from '@/app/actions/clients';
 import { createBill, createBillItems, recordTip, updateCashDrawer, updatePromoCodeUsage, rollbackBill } from '@/app/actions/bills';
 import { updateAppointmentStatus } from '@/app/actions/appointments';
+import { handleSubscriptionError } from '@/components/paywall-dialog';
 import { useAppStore } from '@/store/app-store';
 import { formatPKR } from '@/lib/utils/currency';
 import { Button } from '@/components/ui/button';
@@ -399,6 +400,7 @@ function POSContent() {
       setTipAmount(0);
       setAppointmentId(null);
     } catch (err: unknown) {
+      if (handleSubscriptionError(err)) return;
       toast.error(err instanceof Error ? err.message : 'Checkout failed');
     } finally {
       setSaving(false);

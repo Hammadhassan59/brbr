@@ -80,6 +80,25 @@ export async function verifyWriteAccess(): Promise<SessionPayload> {
   return session;
 }
 
+/**
+ * Refresh salon data from the DB. Called by the dashboard layout on mount
+ * so the client always has fresh subscription status.
+ */
+export async function refreshSalonData(): Promise<{ salon: Record<string, unknown> } | null> {
+  const session = await verifySession();
+  if (!session.salonId || session.salonId === 'super-admin') return null;
+
+  const { createServerClient } = await import('@/lib/supabase');
+  const supabase = createServerClient();
+  const { data: salon } = await supabase
+    .from('salons')
+    .select('*')
+    .eq('id', session.salonId)
+    .maybeSingle();
+
+  return salon ? { salon } : null;
+}
+
 /** Plan limits from platform_settings (fallback to hardcoded defaults) */
 export interface PlanLimits {
   branches: number;

@@ -20,7 +20,7 @@ import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { getTodayPKT, formatPKDate } from '@/lib/utils/dates';
 import type { Branch } from '@/types/database';
-import { destroySession } from '@/app/actions/auth';
+import { destroySession, refreshSalonData } from '@/app/actions/auth';
 
 interface NavItem {
   href: string;
@@ -56,11 +56,21 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const { salon, branches, currentBranch, currentStaff, currentPartner, isOwner, isPartner, isSuperAdmin, setCurrentBranch, setShowPaywall } = useAppStore();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
+  const setSalon = useAppStore((s) => s.setSalon);
+
   // Zustand 5 persist hydrates synchronously from localStorage on the client,
   // but during SSR there is no localStorage so the first render has empty state.
   // Wait one tick so the client-side store is populated before running the auth check.
   const [isHydrated, setIsHydrated] = useState(false);
   useEffect(() => { setIsHydrated(true); }, []);
+
+  // Refresh salon data from DB on mount so subscription status is always current
+  useEffect(() => {
+    if (!isHydrated || !salon || isSuperAdmin) return;
+    refreshSalonData().then((result) => {
+      if (result?.salon) setSalon(result.salon as unknown as typeof salon);
+    }).catch(() => {});
+  }, [isHydrated, salon?.id, isSuperAdmin, setSalon]);
 
   const roleAccess: StaffRoleAccess = (isOwner || isPartner) ? 'full' : getRoleAccess(currentStaff?.role || 'helper');
   const canSwitchBranch = branches.length > 1 && (roleAccess === 'full' || isOwner || isPartner);
