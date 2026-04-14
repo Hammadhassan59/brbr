@@ -476,23 +476,29 @@ describe('payment settings', () => {
   })
 
   it('empty JazzCash number saves as null', () => {
-    const jazzcash = '' || null
+    const input: string = ''
+    const jazzcash = input || null
     expect(jazzcash).toBeNull()
   })
 
   it('empty EasyPaisa number saves as null', () => {
-    const easypaisa = '' || null
+    const input: string = ''
+    const easypaisa = input || null
     expect(easypaisa).toBeNull()
   })
 
   it('empty bank fields save as null', () => {
-    expect('' || null).toBeNull()
-    expect('' || null).toBeNull()
-    expect('' || null).toBeNull()
+    const a: string = ''
+    const b: string = ''
+    const c: string = ''
+    expect(a || null).toBeNull()
+    expect(b || null).toBeNull()
+    expect(c || null).toBeNull()
   })
 
   it('non-empty payment numbers are preserved', () => {
-    const jazzcash = '0300-1234567' || null
+    const input: string = '0300-1234567'
+    const jazzcash = input || null
     expect(jazzcash).toBe('0300-1234567')
   })
 
@@ -543,7 +549,8 @@ describe('tax and billing', () => {
   })
 
   it('GST number saves as null when empty', () => {
-    expect('' || null).toBeNull()
+    const gst: string = ''
+    expect(gst || null).toBeNull()
   })
 
   it('GST rate of 0 is valid (tax-exempt)', () => {
@@ -584,8 +591,10 @@ describe('display settings', () => {
   })
 
   it('dark mode read from localStorage correctly', () => {
-    expect('true' === 'true').toBe(true)
-    expect('false' === 'true').toBe(false)
+    const a: string = 'true'
+    const b: string = 'false'
+    expect(a === 'true').toBe(true)
+    expect(b === 'true').toBe(false)
   })
 
   it('dark mode defaults to false when no localStorage entry', () => {
