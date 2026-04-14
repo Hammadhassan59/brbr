@@ -12,6 +12,14 @@ export const dynamic = 'force-dynamic';
 // there is zero flicker between fallback and live data. Any admin change is
 // reflected on the next page render.
 export default async function LandingPage() {
+  // During `next build` (phase-production-build), Supabase may be unreachable
+  // or the anon key may not yet be valid — and Next collects page data even
+  // for force-dynamic routes. Serve fallbacks at build time, fetch live at
+  // request time.
+  if (process.env.NEXT_PHASE === 'phase-production-build') {
+    return <LandingClient initialPlans={FALLBACK_PLANS} supportWhatsApp="" />;
+  }
+
   let initialPlans: DisplayPlan[];
   let supportWhatsApp = '';
 
@@ -33,9 +41,8 @@ export default async function LandingPage() {
     });
     supportWhatsApp = cfg.supportWhatsApp || '';
   } catch {
-    // If the settings table is unreachable at build time, fall back to the
-    // same defaults getPublicPlatformConfig would have returned. Homepage
-    // must always render — it's the main conversion surface.
+    // Homepage must always render — it's the main conversion surface.
+    // If the settings table is unreachable at request time, fall back.
     initialPlans = FALLBACK_PLANS;
   }
 
