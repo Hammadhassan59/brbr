@@ -1,6 +1,6 @@
 'use server';
 
-import { verifySession } from './auth';
+import { verifyWriteAccess } from './auth';
 import { createServerClient } from '@/lib/supabase';
 
 export async function createPackage(data: {
@@ -11,7 +11,7 @@ export async function createPackage(data: {
   isActive?: boolean;
   services: unknown;
 }) {
-  const session = await verifySession();
+  const session = await verifyWriteAccess();
   const supabase = createServerClient();
 
   const { error } = await supabase
@@ -38,7 +38,7 @@ export async function updatePackage(id: string, data: {
   isActive?: boolean;
   services: unknown;
 }) {
-  const session = await verifySession();
+  const session = await verifyWriteAccess();
   const supabase = createServerClient();
 
   const { error } = await supabase
@@ -67,7 +67,7 @@ export async function createPromo(data: {
   expiryDate?: string | null;
   isActive?: boolean;
 }) {
-  const session = await verifySession();
+  const session = await verifyWriteAccess();
   const supabase = createServerClient();
 
   const { error } = await supabase
@@ -97,7 +97,7 @@ export async function updatePromo(id: string, data: {
   expiryDate?: string | null;
   isActive?: boolean;
 }) {
-  const session = await verifySession();
+  const session = await verifyWriteAccess();
   const supabase = createServerClient();
 
   const { error } = await supabase
@@ -123,7 +123,7 @@ export async function saveLoyaltyRules(existingId: string | null, data: {
   pkrPerPointRedemption: number;
   birthdayBonusMultiplier: number;
 }) {
-  const session = await verifySession();
+  const session = await verifyWriteAccess();
   const supabase = createServerClient();
 
   const row = {

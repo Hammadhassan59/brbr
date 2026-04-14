@@ -1,6 +1,6 @@
 'use server';
 
-import { verifySession } from './auth';
+import { verifyWriteAccess } from './auth';
 import { createServerClient } from '@/lib/supabase';
 
 export async function createStaff(data: {
@@ -15,7 +15,7 @@ export async function createStaff(data: {
   commissionType?: string;
   commissionRate?: number;
 }) {
-  const session = await verifySession();
+  const session = await verifyWriteAccess();
   const supabase = createServerClient();
 
   // Create Supabase Auth account for the staff member
@@ -50,7 +50,7 @@ export async function createStaff(data: {
 }
 
 export async function updateStaff(id: string, data: Record<string, unknown>) {
-  const session = await verifySession();
+  const session = await verifyWriteAccess();
   const supabase = createServerClient();
 
   // Ensure salon_id matches session
@@ -76,7 +76,7 @@ export async function upsertAttendance(data: {
   lateMinutes?: number;
   deductionAmount?: number;
 }) {
-  await verifySession();
+  await verifyWriteAccess();
   const supabase = createServerClient();
 
   const { error } = await supabase
@@ -100,7 +100,7 @@ export async function upsertAttendance(data: {
 }
 
 export async function recordAdvance(staffId: string, amount: number, reason?: string | null) {
-  await verifySession();
+  await verifyWriteAccess();
   const supabase = createServerClient();
 
   const { data: result, error } = await supabase

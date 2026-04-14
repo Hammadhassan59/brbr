@@ -20,6 +20,7 @@ vi.mock('@/lib/supabase', () => ({
 
 vi.mock('@/app/actions/auth', () => ({
   verifySession: vi.fn().mockResolvedValue({ salonId: 'salon-1', staffId: 'staff-1', role: 'owner' }),
+  verifyWriteAccess: vi.fn().mockResolvedValue({ salonId: 'salon-1', staffId: 'staff-1', role: 'owner' }),
 }))
 
 describe('onboarding actions', () => {

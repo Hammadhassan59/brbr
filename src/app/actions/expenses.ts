@@ -1,6 +1,6 @@
 'use server';
 
-import { verifySession } from './auth';
+import { verifyWriteAccess } from './auth';
 import { createServerClient } from '@/lib/supabase';
 
 export async function createExpense(data: {
@@ -11,7 +11,7 @@ export async function createExpense(data: {
   date: string;
   createdBy?: string | null;
 }) {
-  await verifySession();
+  await verifyWriteAccess();
   const supabase = createServerClient();
 
   const { error } = await supabase
@@ -37,7 +37,7 @@ export async function createExpenses(items: Array<{
   date: string;
   createdBy?: string | null;
 }>) {
-  await verifySession();
+  await verifyWriteAccess();
   const supabase = createServerClient();
 
   const { error } = await supabase
@@ -60,7 +60,7 @@ export async function updateExpense(id: string, data: {
   amount: number;
   description?: string | null;
 }) {
-  await verifySession();
+  await verifyWriteAccess();
   const supabase = createServerClient();
 
   const { error } = await supabase
@@ -77,7 +77,7 @@ export async function updateExpense(id: string, data: {
 }
 
 export async function deleteExpense(id: string) {
-  await verifySession();
+  await verifyWriteAccess();
   const supabase = createServerClient();
 
   const { error } = await supabase
@@ -90,7 +90,7 @@ export async function deleteExpense(id: string) {
 }
 
 export async function deleteSalaryExpenses(description: string, startDate: string, endDate: string) {
-  await verifySession();
+  await verifyWriteAccess();
   const supabase = createServerClient();
 
   const { error } = await supabase
@@ -106,7 +106,7 @@ export async function deleteSalaryExpenses(description: string, startDate: strin
 }
 
 export async function updateCashDrawerExpenses(branchId: string, date: string, totalExpenses: number) {
-  await verifySession();
+  await verifyWriteAccess();
   const supabase = createServerClient();
 
   const { data: drawer } = await supabase

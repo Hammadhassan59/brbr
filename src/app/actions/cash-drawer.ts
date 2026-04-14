@@ -1,6 +1,6 @@
 'use server';
 
-import { verifySession } from './auth';
+import { verifyWriteAccess } from './auth';
 import { createServerClient } from '@/lib/supabase';
 
 export async function openCashDrawer(data: {
@@ -9,7 +9,7 @@ export async function openCashDrawer(data: {
   openingBalance: number;
   openedBy?: string | null;
 }) {
-  await verifySession();
+  await verifyWriteAccess();
   const supabase = createServerClient();
 
   const { error } = await supabase
@@ -31,7 +31,7 @@ export async function closeCashDrawer(drawerId: string, data: {
   closedBy?: string | null;
   totalExpenses: number;
 }) {
-  await verifySession();
+  await verifyWriteAccess();
   const supabase = createServerClient();
 
   const { error } = await supabase

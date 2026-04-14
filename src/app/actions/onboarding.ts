@@ -1,11 +1,11 @@
 'use server';
 
 import { createServerClient } from '@/lib/supabase';
-import { verifySession } from '@/app/actions/auth';
+import { verifyWriteAccess } from '@/app/actions/auth';
 import type { OnboardingStatus } from '@/types/database';
 
 export async function getOnboardingStatus(): Promise<OnboardingStatus> {
-  const session = await verifySession();
+  const session = await verifyWriteAccess();
   const supabase = createServerClient();
 
   const { data, error } = await supabase.rpc('get_onboarding_status', {
@@ -17,7 +17,7 @@ export async function getOnboardingStatus(): Promise<OnboardingStatus> {
 }
 
 export async function dismissOnboarding(): Promise<{ success: true }> {
-  const session = await verifySession();
+  const session = await verifyWriteAccess();
   const supabase = createServerClient();
 
   const { error } = await supabase
@@ -30,7 +30,7 @@ export async function dismissOnboarding(): Promise<{ success: true }> {
 }
 
 export async function markFirstLoginSeen(): Promise<{ success: true }> {
-  const session = await verifySession();
+  const session = await verifyWriteAccess();
   const supabase = createServerClient();
 
   const { error } = await supabase

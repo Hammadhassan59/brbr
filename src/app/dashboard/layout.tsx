@@ -349,6 +349,20 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
         </header>
 
+        {/* Subscription status banner */}
+        {salon && (salon.subscription_status === 'suspended' || salon.subscription_status === 'expired') && (
+          <div className={`px-4 lg:px-6 py-3 text-sm font-medium flex items-center gap-2 no-print ${
+            salon.subscription_status === 'suspended'
+              ? 'bg-red-500/10 text-red-700 border-b border-red-500/20'
+              : 'bg-orange-500/10 text-orange-700 border-b border-orange-500/20'
+          }`}>
+            <AlertTriangle className="w-4 h-4 shrink-0" />
+            {salon.subscription_status === 'suspended'
+              ? 'Your account has been suspended. You can view your data but cannot make changes. Contact support to reactivate.'
+              : 'Your trial has expired. Contact support to activate your subscription.'}
+          </div>
+        )}
+
         {/* Page content */}
         <main className="flex-1 overflow-y-auto p-4 lg:p-6 pb-20 lg:pb-6">
           <WhatsAppComposeProvider>

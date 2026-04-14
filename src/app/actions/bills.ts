@@ -1,6 +1,6 @@
 'use server';
 
-import { verifySession } from './auth';
+import { verifyWriteAccess } from './auth';
 import { createServerClient } from '@/lib/supabase';
 
 export async function createBill(data: {
@@ -23,7 +23,7 @@ export async function createBill(data: {
   loyaltyPointsEarned?: number;
   promoCode?: string | null;
 }) {
-  const session = await verifySession();
+  const session = await verifyWriteAccess();
   const supabase = createServerClient();
 
   const { data: result, error } = await supabase
@@ -66,7 +66,7 @@ export async function createBillItems(billId: string, items: Array<{
   unitPrice: number;
   totalPrice: number;
 }>) {
-  await verifySession();
+  await verifyWriteAccess();
   const supabase = createServerClient();
 
   const { error } = await supabase
@@ -87,7 +87,7 @@ export async function createBillItems(billId: string, items: Array<{
 }
 
 export async function recordTip(staffId: string, billId: string, amount: number) {
-  await verifySession();
+  await verifyWriteAccess();
   const supabase = createServerClient();
 
   const { error } = await supabase
@@ -99,7 +99,7 @@ export async function recordTip(staffId: string, billId: string, amount: number)
 }
 
 export async function updateCashDrawer(branchId: string, cashAmount: number) {
-  await verifySession();
+  await verifyWriteAccess();
   const supabase = createServerClient();
 
   const today = new Date().toISOString().slice(0, 10);
@@ -122,7 +122,7 @@ export async function updateCashDrawer(branchId: string, cashAmount: number) {
 }
 
 export async function updatePromoCodeUsage(code: string) {
-  await verifySession();
+  await verifyWriteAccess();
   const supabase = createServerClient();
 
   const { data: promo } = await supabase
@@ -142,7 +142,7 @@ export async function updatePromoCodeUsage(code: string) {
 }
 
 export async function rollbackBill(billId: string) {
-  await verifySession();
+  await verifyWriteAccess();
   const supabase = createServerClient();
 
   try {

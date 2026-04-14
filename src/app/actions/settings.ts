@@ -1,10 +1,10 @@
 'use server';
 
-import { verifySession } from './auth';
+import { verifyWriteAccess } from './auth';
 import { createServerClient } from '@/lib/supabase';
 
 export async function updateSalon(data: Record<string, unknown>) {
-  const session = await verifySession();
+  const session = await verifyWriteAccess();
   const supabase = createServerClient();
 
   const { data: result, error } = await supabase
@@ -19,7 +19,7 @@ export async function updateSalon(data: Record<string, unknown>) {
 }
 
 export async function updateBranchWorkingHours(branchId: string, workingHours: Record<string, unknown>) {
-  const session = await verifySession();
+  const session = await verifyWriteAccess();
   const supabase = createServerClient();
 
   const { data: result, error } = await supabase
@@ -41,7 +41,7 @@ export async function createService(data: {
   basePrice: number;
   sortOrder?: number;
 }) {
-  const session = await verifySession();
+  const session = await verifyWriteAccess();
   const supabase = createServerClient();
 
   const { data: result, error } = await supabase
@@ -63,7 +63,7 @@ export async function createService(data: {
 }
 
 export async function updateService(id: string, data: Record<string, unknown>) {
-  const session = await verifySession();
+  const session = await verifyWriteAccess();
   const supabase = createServerClient();
 
   const { data: result, error } = await supabase
@@ -79,7 +79,7 @@ export async function updateService(id: string, data: Record<string, unknown>) {
 }
 
 export async function deleteService(id: string) {
-  const session = await verifySession();
+  const session = await verifyWriteAccess();
   const supabase = createServerClient();
 
   const { error } = await supabase
@@ -103,7 +103,7 @@ const DEFAULT_WORKING_HOURS = {
 };
 
 export async function createBranch(data: { name: string; address?: string; phone?: string }) {
-  const session = await verifySession();
+  const session = await verifyWriteAccess();
   if (session.role !== 'owner') return { data: null, error: 'Only the owner can add branches' };
   const supabase = createServerClient();
 
@@ -125,7 +125,7 @@ export async function createBranch(data: { name: string; address?: string; phone
 }
 
 export async function updateBranch(branchId: string, data: { name?: string; address?: string; phone?: string }) {
-  const session = await verifySession();
+  const session = await verifyWriteAccess();
   const supabase = createServerClient();
 
   const updates: Record<string, unknown> = {};
@@ -146,7 +146,7 @@ export async function updateBranch(branchId: string, data: { name?: string; addr
 }
 
 export async function deleteBranch(branchId: string) {
-  const session = await verifySession();
+  const session = await verifyWriteAccess();
   if (session.role !== 'owner') return { error: 'Only the owner can delete branches' };
   const supabase = createServerClient();
 

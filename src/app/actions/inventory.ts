@@ -1,6 +1,6 @@
 'use server';
 
-import { verifySession } from './auth';
+import { verifyWriteAccess } from './auth';
 import { createServerClient } from '@/lib/supabase';
 
 export async function createProduct(data: {
@@ -16,7 +16,7 @@ export async function createProduct(data: {
   currentStock?: number;
   lowStockThreshold?: number;
 }) {
-  const session = await verifySession();
+  const session = await verifyWriteAccess();
   const supabase = createServerClient();
 
   const { data: result, error } = await supabase
@@ -43,7 +43,7 @@ export async function createProduct(data: {
 }
 
 export async function updateProduct(id: string, data: Record<string, unknown>) {
-  const session = await verifySession();
+  const session = await verifyWriteAccess();
   const supabase = createServerClient();
   data.salon_id = session.salonId;
 
@@ -60,7 +60,7 @@ export async function syncProductServiceLinks(productId: string, links: Array<{
   serviceId: string;
   qtyPerUse: number;
 }>) {
-  await verifySession();
+  await verifyWriteAccess();
   const supabase = createServerClient();
 
   await supabase.from('product_service_links').delete().eq('product_id', productId);
@@ -80,7 +80,7 @@ export async function syncProductServiceLinks(productId: string, links: Array<{
 }
 
 export async function adjustStock(productId: string, branchId: string, quantity: number, notes?: string | null) {
-  await verifySession();
+  await verifyWriteAccess();
   const supabase = createServerClient();
 
   // Get current stock
@@ -122,7 +122,7 @@ export async function createPurchaseOrder(data: {
   totalAmount: number;
   notes?: string | null;
 }) {
-  await verifySession();
+  await verifyWriteAccess();
   const supabase = createServerClient();
 
   const { error } = await supabase
@@ -140,7 +140,7 @@ export async function createPurchaseOrder(data: {
 }
 
 export async function updateOrderStatus(orderId: string, status: string) {
-  await verifySession();
+  await verifyWriteAccess();
   const supabase = createServerClient();
 
   const { error } = await supabase
@@ -157,7 +157,7 @@ export async function createSupplier(data: {
   phone?: string | null;
   notes?: string | null;
 }) {
-  const session = await verifySession();
+  const session = await verifyWriteAccess();
   const supabase = createServerClient();
 
   const { error } = await supabase
@@ -178,7 +178,7 @@ export async function updateSupplier(id: string, data: {
   phone?: string | null;
   notes?: string | null;
 }) {
-  const session = await verifySession();
+  const session = await verifyWriteAccess();
   const supabase = createServerClient();
 
   const { error } = await supabase
@@ -196,7 +196,7 @@ export async function updateSupplier(id: string, data: {
 }
 
 export async function recordSupplierPayment(supplierId: string, amount: number, currentBalance: number) {
-  await verifySession();
+  await verifyWriteAccess();
   const supabase = createServerClient();
 
   const { error } = await supabase

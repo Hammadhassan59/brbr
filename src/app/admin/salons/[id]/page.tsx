@@ -383,7 +383,7 @@ export default function AdminSalonDetailPage({
                 onChange={(e) => setStatus(e.target.value as SubscriptionStatus)}
                 className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-1 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
               >
-                <option value="trial">Trial</option>
+                {salon.subscription_status === 'trial' && <option value="trial">Trial</option>}
                 <option value="active">Active</option>
                 <option value="expired">Expired</option>
                 <option value="suspended">Suspended</option>

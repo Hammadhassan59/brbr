@@ -1,6 +1,6 @@
 'use server';
 
-import { verifySession } from './auth';
+import { verifyWriteAccess } from './auth';
 import { createServerClient } from '@/lib/supabase';
 
 export async function createClient(data: {
@@ -15,7 +15,7 @@ export async function createClient(data: {
   isBlacklisted?: boolean;
   udhaarLimit?: number;
 }) {
-  const session = await verifySession();
+  const session = await verifyWriteAccess();
   const supabase = createServerClient();
 
   const { data: result, error } = await supabase
@@ -41,7 +41,7 @@ export async function createClient(data: {
 }
 
 export async function updateClient(id: string, data: Record<string, unknown>) {
-  const session = await verifySession();
+  const session = await verifyWriteAccess();
   const supabase = createServerClient();
 
   const { error } = await supabase
@@ -55,7 +55,7 @@ export async function updateClient(id: string, data: Record<string, unknown>) {
 }
 
 export async function updateClientNotes(clientId: string, field: 'notes' | 'hair_notes' | 'allergy_notes', value: string) {
-  const session = await verifySession();
+  const session = await verifyWriteAccess();
   const supabase = createServerClient();
 
   const { error } = await supabase
@@ -69,7 +69,7 @@ export async function updateClientNotes(clientId: string, field: 'notes' | 'hair
 }
 
 export async function recordUdhaarPayment(clientId: string, amount: number, paymentMethod: string) {
-  const session = await verifySession();
+  const session = await verifyWriteAccess();
   const supabase = createServerClient();
 
   const { error: paymentErr } = await supabase
@@ -107,7 +107,7 @@ export async function updateClientStats(clientId: string, data: {
   totalSpent: number;
   udhaarBalance: number;
 }) {
-  const session = await verifySession();
+  const session = await verifyWriteAccess();
   const supabase = createServerClient();
 
   const { error } = await supabase

@@ -52,6 +52,33 @@ export async function verifySession(): Promise<SessionPayload> {
   }
 }
 
+/**
+ * Verify session AND check that the salon subscription allows writes.
+ * Use this instead of verifySession() for any action that creates/updates/deletes data.
+ */
+export async function verifyWriteAccess(): Promise<SessionPayload> {
+  const session = await verifySession();
+
+  // Super admin and setup flows bypass subscription checks
+  if (session.role === 'super_admin' || !session.salonId || session.salonId === 'super-admin') {
+    return session;
+  }
+
+  const { createServerClient } = await import('@/lib/supabase');
+  const supabase = createServerClient();
+  const { data: salon } = await supabase
+    .from('salons')
+    .select('subscription_status')
+    .eq('id', session.salonId)
+    .maybeSingle();
+
+  if (salon && (salon.subscription_status === 'suspended' || salon.subscription_status === 'expired')) {
+    throw new Error('Your account is suspended. Contact support to reactivate.');
+  }
+
+  return session;
+}
+
 export async function destroySession() {
   const cookieStore = await cookies();
   cookieStore.delete(COOKIE_NAME);
