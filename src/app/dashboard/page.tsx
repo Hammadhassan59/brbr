@@ -332,6 +332,30 @@ export default function DashboardPage() {
     };
   }, [currentBranch, fetchDashboardData]);
 
+  const isHelper = currentStaff?.role === 'helper';
+
+  if (isHelper && currentStaff) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold">{salon?.name || ''}</h1>
+          <p className="text-sm text-muted-foreground">{formatPKDate(selectedDate)} — Today</p>
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <div className="bg-card border border-border rounded-lg p-5">
+            <span className="text-xs text-muted-foreground uppercase tracking-wider font-medium">Appointments</span>
+            <p className="text-2xl font-bold mt-3">{appointments.length}</p>
+          </div>
+          <div className="bg-card border border-border rounded-lg p-5">
+            <span className="text-xs text-muted-foreground uppercase tracking-wider font-medium">Walk-ins</span>
+            <p className="text-2xl font-bold mt-3">{appointments.filter((a) => a.is_walkin).length}</p>
+          </div>
+        </div>
+        <AppointmentsFeed appointments={appointments} loading={loading} />
+      </div>
+    );
+  }
+
   if (isStylist && currentStaff) {
     const myAppointments = appointments.filter((a) => a.staff_id === currentStaff.id);
 
