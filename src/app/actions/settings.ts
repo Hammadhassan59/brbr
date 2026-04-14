@@ -104,6 +104,7 @@ const DEFAULT_WORKING_HOURS = {
 
 export async function createBranch(data: { name: string; address?: string; phone?: string }) {
   const session = await verifySession();
+  if (session.role !== 'owner') return { data: null, error: 'Only the owner can add branches' };
   const supabase = createServerClient();
 
   const { data: result, error } = await supabase
@@ -146,6 +147,7 @@ export async function updateBranch(branchId: string, data: { name?: string; addr
 
 export async function deleteBranch(branchId: string) {
   const session = await verifySession();
+  if (session.role !== 'owner') return { error: 'Only the owner can delete branches' };
   const supabase = createServerClient();
 
   // Prevent deleting the main branch

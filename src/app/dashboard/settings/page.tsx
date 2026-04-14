@@ -34,7 +34,7 @@ const DAYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as const;
 const DAY_LABELS: Record<string, string> = { mon: 'Monday', tue: 'Tuesday', wed: 'Wednesday', thu: 'Thursday', fri: 'Friday', sat: 'Saturday', sun: 'Sunday' };
 
 export default function SettingsPage() {
-  const { salon, setSalon, currentBranch, setCurrentBranch } = useAppStore();
+  const { salon, setSalon, currentBranch, setCurrentBranch, isOwner } = useAppStore();
   const { language, setLanguage } = useLanguage();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -251,7 +251,7 @@ export default function SettingsPage() {
             <TabsTrigger value="services" className="text-xs px-3.5 py-2 font-medium transition-all duration-150 border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30">Services</TabsTrigger>
             <TabsTrigger value="payment" className="text-xs px-3.5 py-2 font-medium transition-all duration-150 border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30">Payments</TabsTrigger>
             <TabsTrigger value="tax" className="text-xs px-3.5 py-2 font-medium transition-all duration-150 border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30">Tax & Billing</TabsTrigger>
-            <TabsTrigger value="branches" className="text-xs px-3.5 py-2 font-medium transition-all duration-150 border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30">Branches</TabsTrigger>
+            {isOwner && <TabsTrigger value="branches" className="text-xs px-3.5 py-2 font-medium transition-all duration-150 border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30">Branches</TabsTrigger>}
             <TabsTrigger value="display" className="text-xs px-3.5 py-2 font-medium transition-all duration-150 border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30">Display</TabsTrigger>
           </TabsList>
         </div>
@@ -393,7 +393,7 @@ export default function SettingsPage() {
         </TabsContent>
 
         {/* Branches */}
-        <TabsContent value="branches" className="mt-4">
+        {isOwner && <TabsContent value="branches" className="mt-4">
           <BranchManager
             branches={branches}
             salonId={salon?.id || ''}
@@ -419,7 +419,7 @@ export default function SettingsPage() {
               setStoreBranches(updated);
             }}
           />
-        </TabsContent>
+        </TabsContent>}
 
         {/* Display */}
         <TabsContent value="display" className="mt-4">
