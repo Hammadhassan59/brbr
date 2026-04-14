@@ -289,7 +289,7 @@ export function PaymentPanel({
 
       {(() => {
         const blockReason = getCheckoutBlockReason({
-          total, hasStylist, hasClient, selectedPaymentMethod,
+          total, tipAmount, hasStylist, hasClient, selectedPaymentMethod,
           cashReceived, isSplit, splitRemaining, saving,
         });
         const blocked = blockReason !== null;

@@ -2,6 +2,7 @@ import type { PaymentMethod } from '@/types/database';
 
 export interface CheckoutGateInput {
   total: number;
+  tipAmount?: number;
   hasStylist: boolean;
   hasClient: boolean;
   selectedPaymentMethod: PaymentMethod | null;
@@ -29,7 +30,7 @@ export function getCheckoutBlockReason(input: CheckoutGateInput): CheckoutBlockR
     if (Math.abs(input.splitRemaining) >= 0.5) return 'split_unbalanced';
   } else {
     if (!input.selectedPaymentMethod) return 'no_payment_method';
-    if (input.selectedPaymentMethod === 'cash' && input.cashReceived < input.total) return 'cash_short';
+    if (input.selectedPaymentMethod === 'cash' && input.cashReceived < input.total + (input.tipAmount || 0)) return 'cash_short';
   }
   return null;
 }

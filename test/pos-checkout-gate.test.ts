@@ -51,6 +51,16 @@ describe('getCheckoutBlockReason', () => {
     expect(getCheckoutBlockReason({ ...ready, cashReceived: 2000 })).toBeNull();
   });
 
+  // Regression: bill 2700 + tip 100, cash 2700 should be blocked; 2800 passes.
+  it('includes tip in the cash-short check', () => {
+    expect(getCheckoutBlockReason({
+      ...ready, total: 2700, tipAmount: 100, cashReceived: 2700,
+    })).toBe('cash_short');
+    expect(getCheckoutBlockReason({
+      ...ready, total: 2700, tipAmount: 100, cashReceived: 2800,
+    })).toBeNull();
+  });
+
   it('does not require cash amount for non-cash methods', () => {
     expect(getCheckoutBlockReason({
       ...ready,

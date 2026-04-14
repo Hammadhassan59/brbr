@@ -207,6 +207,7 @@ function POSContent() {
           const splitTotal = splitPayments.reduce((sum, s) => sum + s.amount, 0);
           const canCheckout = getCheckoutBlockReason({
             total,
+            tipAmount,
             hasStylist: !!selectedStaffId,
             hasClient: !!selectedClient,
             selectedPaymentMethod: paymentMethod,
@@ -222,7 +223,7 @@ function POSContent() {
     }
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [total, paymentMethod, router, selectedStaffId, selectedClient, cashReceived, isSplit, splitPayments, saving]);
+  }, [total, paymentMethod, router, selectedStaffId, selectedClient, cashReceived, isSplit, splitPayments, saving, tipAmount]);
 
   // Add service to bill
   function addService(svc: Service) {
