@@ -73,6 +73,7 @@ function POSContent() {
 
   // Checkout
   const [showCheckout, setShowCheckout] = useState(false);
+  const [showMobilePayment, setShowMobilePayment] = useState(false);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -429,7 +430,7 @@ function POSContent() {
       )}
       {!loading && (<>
       <div className="flex-1 flex flex-col overflow-hidden">
-        <div className="flex items-center gap-2 px-3 py-2 bg-card border-b border-border shrink-0">
+        <div className="flex items-center gap-2 px-3 py-2 bg-card border-b border-border shrink-0 flex-wrap">
           <Button variant="ghost" size="sm" onClick={() => router.push('/dashboard')} className="transition-all duration-150">
             <ArrowLeft className="w-4 h-4" />
           </Button>
@@ -541,7 +542,7 @@ function POSContent() {
         </div>
       </div>
 
-      <div className="w-[320px] shrink-0 p-4 bg-card flex flex-col overflow-y-auto border-l border-border" style={{ scrollbarWidth: 'none' }}>
+      <div className="hidden lg:flex w-[320px] shrink-0 p-4 bg-card flex-col overflow-y-auto border-l border-border" style={{ scrollbarWidth: 'none' }}>
         <PaymentPanel
           total={total}
           clientUdhaarBalance={selectedClient?.udhaar_balance || 0}
@@ -566,6 +567,53 @@ function POSContent() {
           saving={saving}
         />
       </div>
+
+      {/* Mobile payment panel (full-screen overlay) */}
+      {showMobilePayment && (
+        <div className="lg:hidden fixed inset-0 z-40 bg-card overflow-y-auto" style={{ scrollbarWidth: 'none' }}>
+          <div className="flex items-center justify-between px-4 py-3 border-b border-border sticky top-0 bg-card z-10">
+            <h2 className="text-sm font-semibold">Payment</h2>
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setShowMobilePayment(false)}>
+              <X className="w-4 h-4" />
+            </Button>
+          </div>
+          <div className="p-4">
+            <PaymentPanel
+              total={total}
+              clientUdhaarBalance={selectedClient?.udhaar_balance || 0}
+              clientUdhaarLimit={selectedClient?.udhaar_limit || 5000}
+              hasClient={!!selectedClient}
+              stylists={stylists}
+              selectedPaymentMethod={paymentMethod}
+              onSelectMethod={setPaymentMethod}
+              cashReceived={cashReceived}
+              onCashReceived={setCashReceived}
+              reference={reference}
+              onReferenceChange={setReference}
+              isSplit={isSplit}
+              onSplitToggle={setIsSplit}
+              splitPayments={splitPayments}
+              onSplitPaymentsChange={setSplitPayments}
+              tipAmount={tipAmount}
+              onTipChange={setTipAmount}
+              tipStaffId={tipStaffId}
+              onTipStaffChange={setTipStaffId}
+              onCheckout={() => { setShowMobilePayment(false); setShowCheckout(true); }}
+              saving={saving}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Mobile checkout button - fixed above the bill bar */}
+      {!loading && items.length > 0 && (
+        <button
+          onClick={() => setShowMobilePayment(true)}
+          className="lg:hidden fixed bottom-14 right-4 z-30 bg-gold text-black font-semibold px-6 py-3 rounded-lg shadow-lg active:scale-95 transition-all"
+        >
+          Checkout {formatPKR(total)}
+        </button>
+      )}
       </>)}
 
       <CheckoutConfirmation
