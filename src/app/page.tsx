@@ -61,9 +61,9 @@ const FALLBACK_PLANS: DisplayPlan[] = [
     features: [
       { text: 'POS + billing', ok: true }, { text: 'Bookings + walk-in queue', ok: true },
       { text: 'Cash, mobile, card payments', ok: true }, { text: 'Client database + udhaar ledger', ok: true },
-      { text: 'WhatsApp receipts + reminders', ok: true }, { text: 'Basic daily report', ok: true },
-      { text: 'Commission tracking', ok: true }, { text: 'Prayer + lunch break blocks', ok: true },
-      { text: 'Inventory', ok: false }, { text: 'Payroll + attendance', ok: false }, { text: 'Multi-branch', ok: false },
+      { text: 'WhatsApp receipts + reminders', ok: true }, { text: 'Inventory + low-stock alerts', ok: true },
+      { text: 'Payroll + attendance + advances', ok: true }, { text: 'Commission tracking', ok: true },
+      { text: 'Daily + monthly reports', ok: true }, { text: 'Prayer + lunch break blocks', ok: true },
     ],
   },
   {
@@ -71,12 +71,9 @@ const FALLBACK_PLANS: DisplayPlan[] = [
     name: 'Business', price: '5,000', originalPrice: '12,000', pitch: 'For growing salons and small chains', popular: true,
     limits: '3 branches · 10 staff each',
     features: [
-      { text: 'POS + billing', ok: true }, { text: 'Bookings + walk-in queue', ok: true },
-      { text: 'Cash, mobile, card payments', ok: true }, { text: 'Client database + udhaar ledger', ok: true },
-      { text: 'WhatsApp receipts, reminders + birthdays', ok: true }, { text: 'Full daily + monthly reports', ok: true },
-      { text: 'Commission tracking', ok: true }, { text: 'Prayer + lunch break blocks', ok: true },
-      { text: 'Inventory + low-stock alerts', ok: true }, { text: 'Payroll + attendance + advances', ok: true },
-      { text: 'Up to 3 branches', ok: true },
+      { text: 'Everything in Starter', ok: true }, { text: 'WhatsApp birthdays + thank-yous', ok: true },
+      { text: 'Up to 3 branches', ok: true }, { text: 'Cross-branch reports', ok: true },
+      { text: 'Staff schedules + shift planning', ok: true }, { text: 'Client retention insights', ok: true },
     ],
   },
   {
@@ -85,8 +82,8 @@ const FALLBACK_PLANS: DisplayPlan[] = [
     limits: '10 branches · 100 staff',
     features: [
       { text: 'Everything in Business', ok: true }, { text: 'WhatsApp blasts + bulk reminders', ok: true },
-      { text: 'Cross-branch reports', ok: true }, { text: 'Partner/co-owner logins', ok: true },
-      { text: 'Up to 10 branches', ok: true }, { text: 'Priority support', ok: true },
+      { text: 'Up to 10 branches', ok: true }, { text: 'Partner/co-owner logins', ok: true },
+      { text: 'Priority support + onboarding', ok: true }, { text: 'Custom reports on request', ok: true },
     ],
   },
 ];
