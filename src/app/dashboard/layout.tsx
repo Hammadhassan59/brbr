@@ -10,7 +10,7 @@ import {
   LayoutDashboard, CalendarDays, Users, Receipt, UserCog,
   Package, BarChart3, Settings, LogOut,
   Scissors, Bell, Plus, Menu, X, ChevronDown, Gift, Check, Wallet,
-  AlertTriangle, CreditCard, UserX, Search,
+  AlertTriangle, CreditCard, UserX, Search, Building2,
 } from 'lucide-react';
 import { useLanguage } from '@/components/providers/language-provider';
 import { useAppStore } from '@/store/app-store';
@@ -213,6 +213,20 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               </Link>
             );
           })}
+          {(isOwner || isPartner) && branches.length > 0 && (
+            <Link
+              href="/dashboard/branches"
+              onClick={() => setSidebarOpen(false)}
+              className={`flex items-center gap-3 px-3 py-3 rounded-lg text-sm transition-all duration-200 ${
+                pathname.startsWith('/dashboard/branches')
+                  ? 'bg-gold/15 text-gold font-medium'
+                  : 'text-slate-400 hover:bg-sidebar-accent hover:text-slate-200'
+              }`}
+            >
+              <Building2 className="w-5 h-5 shrink-0" />
+              <span>Branches</span>
+            </Link>
+          )}
         </nav>
 
         {/* Settings + Logout at bottom */}
