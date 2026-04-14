@@ -3,10 +3,14 @@
 import { SignJWT, jwtVerify } from 'jose';
 import { cookies } from 'next/headers';
 
-if (!process.env.SESSION_SECRET) {
-  throw new Error('Missing SESSION_SECRET environment variable');
+// Lazy secret binding: during `next build` page-data collection, SESSION_SECRET
+// may be absent (it's a runtime-only var, not a build arg). Throwing at module
+// load blocks the build. Resolve on first use instead.
+function getSecret(): Uint8Array {
+  const secret = process.env.SESSION_SECRET;
+  if (!secret) throw new Error('Missing SESSION_SECRET environment variable');
+  return new TextEncoder().encode(secret);
 }
-const SECRET = new TextEncoder().encode(process.env.SESSION_SECRET);
 const COOKIE_NAME = 'icut-token';
 
 export interface SessionPayload {
@@ -22,7 +26,7 @@ export async function signSession(payload: SessionPayload) {
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
     .setExpirationTime('24h')
-    .sign(SECRET);
+    .sign(getSecret());
 
   const cookieStore = await cookies();
   cookieStore.set(COOKIE_NAME, token, {
@@ -45,7 +49,7 @@ export async function verifySession(): Promise<SessionPayload> {
   }
 
   try {
-    const { payload } = await jwtVerify(token, SECRET);
+    const { payload } = await jwtVerify(token, getSecret());
     return payload as unknown as SessionPayload;
   } catch {
     throw new Error('Invalid or expired session');
