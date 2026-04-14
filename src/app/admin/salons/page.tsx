@@ -4,9 +4,9 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Eye, Plus, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { supabase } from '@/lib/supabase';
 import { useAppStore } from '@/store/app-store';
 import { formatPKR } from '@/lib/utils/currency';
+import { getAdminSalons, getAdminBranchForSalon } from '@/app/actions/admin';
 import { formatPKDate } from '@/lib/utils/dates';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -29,14 +29,8 @@ export default function AdminSalonsPage() {
   useEffect(() => {
     async function fetchSalons() {
       try {
-        const { data, error } = await supabase
-          .from('salons')
-          .select('*')
-          .order('created_at', { ascending: false });
-        if (error) throw error;
-        if (data && data.length > 0) {
-          setSalons(data as Salon[]);
-        }
+        const data = await getAdminSalons();
+        setSalons(data as Salon[]);
       } catch {
         toast.error('Could not load salons');
       } finally {
@@ -49,13 +43,8 @@ export default function AdminSalonsPage() {
   async function enterSalon(salon: Salon) {
     setSalon(salon);
     try {
-      const { data } = await supabase
-        .from('branches')
-        .select('*')
-        .eq('salon_id', salon.id)
-        .eq('is_main', true)
-        .single();
-      if (data) setCurrentBranch(data as Branch);
+      const branch = await getAdminBranchForSalon(salon.id);
+      if (branch) setCurrentBranch(branch as Branch);
     } catch {
       // Branch will be loaded by dashboard
     }

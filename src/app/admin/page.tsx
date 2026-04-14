@@ -8,9 +8,9 @@ import {
   CheckCircle, Clock, Eye, Scissors, Loader2,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { supabase } from '@/lib/supabase';
 import { useAppStore } from '@/store/app-store';
 import { formatPKRShort } from '@/lib/utils/currency';
+import { getAdminDashboardData, getAdminBranchForSalon } from '@/app/actions/admin';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -46,63 +46,9 @@ export default function AdminDashboard() {
   useEffect(() => {
     async function fetchData() {
       try {
-        // Fetch salons
-        const { data: salonData, error: salonErr } = await supabase
-          .from('salons')
-          .select('*')
-          .order('created_at', { ascending: false });
-
-        if (salonErr) throw salonErr;
-
-        const liveSalons = (salonData || []) as Salon[];
-        setSalons(liveSalons);
-
-        // Calculate stats from real data
-        const activeSalons = liveSalons.filter((s) => s.setup_complete).length;
-        const pendingSetup = liveSalons.length - activeSalons;
-
-        // Fetch monthly revenue from bills
-        const monthStart = new Date();
-        monthStart.setDate(1);
-        monthStart.setHours(0, 0, 0, 0);
-        const { data: billData } = await supabase
-          .from('bills')
-          .select('total_amount')
-          .gte('created_at', monthStart.toISOString());
-
-        const monthlyRevenue = billData
-          ? billData.reduce((sum: number, b: { total_amount: number }) => sum + (b.total_amount || 0), 0)
-          : 0;
-        const monthlyBills = billData ? billData.length : 0;
-
-        // Fetch staff count
-        const { count: staffCount } = await supabase
-          .from('staff')
-          .select('*', { count: 'exact', head: true });
-
-        // Fetch client count
-        const { count: clientCount } = await supabase
-          .from('clients')
-          .select('*', { count: 'exact', head: true });
-
-        // Find top city
-        const cityCounts: Record<string, number> = {};
-        liveSalons.forEach((s) => { const city = s.city || 'Unknown'; cityCounts[city] = (cityCounts[city] || 0) + 1; });
-        const topCity = Object.entries(cityCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || '—';
-
-        setPlatformStats({
-          totalSalons: liveSalons.length,
-          activeSalons,
-          pendingSetup,
-          totalStaff: staffCount ?? 0,
-          totalClients: clientCount ?? 0,
-          monthlyRevenue,
-          monthlyBills,
-          trialSalons: pendingSetup, // approximate: pending ~ trial
-          paidSalons: activeSalons,
-          churnedSalons: 0,
-          topCity,
-        });
+        const { salons: salonData, stats } = await getAdminDashboardData();
+        setSalons(salonData as Salon[]);
+        setPlatformStats(stats);
       } catch {
         toast.error('Could not load platform data');
       } finally {
@@ -116,13 +62,8 @@ export default function AdminDashboard() {
     setSalon(salon);
     setCurrentStaff(null);
     try {
-      const { data } = await supabase
-        .from('branches')
-        .select('*')
-        .eq('salon_id', salon.id)
-        .eq('is_main', true)
-        .single();
-      if (data) setCurrentBranch(data as Branch);
+      const branch = await getAdminBranchForSalon(salon.id);
+      if (branch) setCurrentBranch(branch as Branch);
     } catch {
       // Branch will be loaded by dashboard
     }

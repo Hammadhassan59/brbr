@@ -3,18 +3,10 @@
 import { useState, useEffect } from 'react';
 import { Users, Shield, Store, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { supabase } from '@/lib/supabase';
+import { getAdminUsers } from '@/app/actions/admin';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-
-const DEMO_USERS = [
-  { name: 'iCut Admin', email: 'admin@icut.pk', role: 'Super Admin', salon: '— Platform', status: 'Active' },
-  { name: 'Fatima Khan', email: 'fatima@glamourstudio.pk', role: 'Owner', salon: 'Glamour Studio', status: 'Active' },
-  { name: 'Ahmed Raza', email: 'ahmed@royalbarbers.pk', role: 'Owner', salon: 'Royal Barbers', status: 'Active' },
-  { name: 'Noor Fatima', email: 'noor@noorbeauty.pk', role: 'Owner', salon: 'Noor Beauty Lounge', status: 'Active' },
-  { name: 'Usman Shah', email: 'usman@stylehub.pk', role: 'Owner', salon: 'Style Hub', status: 'Trial' },
-];
 
 interface StaffUser {
   name: string;
@@ -24,38 +16,50 @@ interface StaffUser {
   status: string;
 }
 
+const ROLE_LABELS: Record<string, string> = {
+  owner: 'Owner',
+  manager: 'Manager',
+  receptionist: 'Receptionist',
+  senior_stylist: 'Senior Stylist',
+  junior_stylist: 'Junior Stylist',
+  helper: 'Helper',
+};
+
 export default function AdminUsersPage() {
-  const [users, setUsers] = useState<StaffUser[]>(DEMO_USERS);
+  const [users, setUsers] = useState<StaffUser[]>([]);
   const [loading, setLoading] = useState(true);
-  const [stats, setStats] = useState({ superAdmins: 1, owners: 4, totalStaff: 23 });
+  const [stats, setStats] = useState({ superAdmins: 1, owners: 0, totalStaff: 0 });
 
   useEffect(() => {
     async function fetchUsers() {
       try {
-        const { data, error } = await supabase
-          .from('staff')
-          .select('*, salon:salons(name)')
-          .order('name');
+        const { staff, salons, partners } = await getAdminUsers();
 
-        if (error) throw error;
+        const mapped: StaffUser[] = staff.map((s: { name: string; email?: string; role: string; salon?: { name: string }; is_active?: boolean }) => ({
+          name: s.name,
+          email: s.email || '',
+          role: ROLE_LABELS[s.role] || s.role,
+          salon: s.salon?.name || '—',
+          status: s.is_active !== false ? 'Active' : 'Inactive',
+        }));
 
-        if (data && data.length > 0) {
-          const mapped: StaffUser[] = data.map((s: { name: string; email?: string; role: string; salon?: { name: string }; is_active?: boolean }) => ({
-            name: s.name,
-            email: s.email || '',
-            role: s.role === 'super_admin' ? 'Super Admin' : s.role === 'owner' ? 'Owner' : s.role === 'senior_stylist' ? 'Senior Stylist' : s.role === 'junior_stylist' ? 'Junior Stylist' : s.role === 'receptionist' ? 'Receptionist' : s.role,
-            salon: s.salon?.name || '— Platform',
-            status: s.is_active ? 'Active' : 'Inactive',
-          }));
-          setUsers(mapped);
+        // Add partners
+        partners.forEach((p: { name: string; email?: string; salon?: { name: string }; is_active?: boolean }) => {
+          mapped.push({
+            name: p.name,
+            email: p.email || '',
+            role: 'Partner',
+            salon: p.salon?.name || '—',
+            status: p.is_active !== false ? 'Active' : 'Inactive',
+          });
+        });
 
-          const superAdmins = mapped.filter((u) => u.role === 'Super Admin').length || 1;
-          const owners = mapped.filter((u) => u.role === 'Owner').length;
-          setStats({ superAdmins, owners, totalStaff: mapped.length });
-        }
+        setUsers(mapped);
+
+        const owners = mapped.filter((u) => u.role === 'Owner').length;
+        setStats({ superAdmins: 1, owners, totalStaff: mapped.length });
       } catch {
-        setUsers(DEMO_USERS);
-        toast.error('Could not load live data — showing demo');
+        toast.error('Could not load users');
       } finally {
         setLoading(false);
       }
@@ -84,24 +88,28 @@ export default function AdminUsersPage() {
       <Card>
         <CardHeader className="pb-2"><CardTitle className="text-sm">Platform Users</CardTitle></CardHeader>
         <CardContent className="px-0">
-          <Table>
-            <TableHeader><TableRow>
-              <TableHead className="pl-4">Name</TableHead><TableHead>Email</TableHead><TableHead>Role</TableHead><TableHead>Salon</TableHead><TableHead className="text-center pr-4">Status</TableHead>
-            </TableRow></TableHeader>
-            <TableBody>
-              {users.map((u) => (
-                <TableRow key={u.email || u.name}>
-                  <TableCell className="pl-4 font-medium text-sm">{u.name}</TableCell>
-                  <TableCell className="text-sm text-muted-foreground">{u.email}</TableCell>
-                  <TableCell><Badge variant={u.role === 'Super Admin' ? 'destructive' : 'secondary'} className="text-[10px]">{u.role}</Badge></TableCell>
-                  <TableCell className="text-sm">{u.salon}</TableCell>
-                  <TableCell className="text-center pr-4">
-                    <Badge variant="outline" className={`text-[10px] ${u.status === 'Active' ? 'text-green-600 border-green-500/25 bg-green-500/10' : 'text-amber-600 border-amber-500/25 bg-amber-500/10'}`}>{u.status}</Badge>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+          {users.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-8 text-center">No users yet. Staff will appear as salons add team members.</p>
+          ) : (
+            <Table>
+              <TableHeader><TableRow>
+                <TableHead className="pl-4">Name</TableHead><TableHead>Email</TableHead><TableHead>Role</TableHead><TableHead>Salon</TableHead><TableHead className="text-center pr-4">Status</TableHead>
+              </TableRow></TableHeader>
+              <TableBody>
+                {users.map((u, i) => (
+                  <TableRow key={`${u.email}-${i}`}>
+                    <TableCell className="pl-4 font-medium text-sm">{u.name}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground">{u.email}</TableCell>
+                    <TableCell><Badge variant={u.role === 'Owner' ? 'default' : 'secondary'} className="text-[10px]">{u.role}</Badge></TableCell>
+                    <TableCell className="text-sm">{u.salon}</TableCell>
+                    <TableCell className="text-center pr-4">
+                      <Badge variant="outline" className={`text-[10px] ${u.status === 'Active' ? 'text-green-600 border-green-500/25 bg-green-500/10' : 'text-amber-600 border-amber-500/25 bg-amber-500/10'}`}>{u.status}</Badge>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
       </Card>
     </div>
