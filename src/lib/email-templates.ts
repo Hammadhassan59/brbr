@@ -106,6 +106,89 @@ export function passwordResetEmail(resetUrl: string): string {
   return wrapEmailHtml(body, previewText);
 }
 
+export function planRenewalReminderEmail(params: {
+  salonName: string;
+  planName: string;
+  priceRs: number;
+  daysUntilExpiry: number; // positive = days until expiry; 0 = today; negative = overdue
+  expiresOn: string; // human-readable date
+  renewUrl: string;
+}): string {
+  const { salonName, planName, priceRs, daysUntilExpiry, expiresOn, renewUrl } = params;
+
+  let headline: string;
+  let body: string;
+  let preview: string;
+  let buttonLabel: string;
+
+  if (daysUntilExpiry > 0) {
+    headline = `Your iCut plan renews in ${daysUntilExpiry} day${daysUntilExpiry === 1 ? '' : 's'}`;
+    body = `
+      <p style="margin:0 0 16px 0;font-family:Inter,-apple-system,BlinkMacSystemFont,Arial,sans-serif;font-size:15px;color:#1A1A1A;line-height:1.6;">Hi <strong>${salonName}</strong> owner,</p>
+      <p style="margin:0 0 16px 0;font-family:Inter,-apple-system,BlinkMacSystemFont,Arial,sans-serif;font-size:15px;color:#1A1A1A;line-height:1.6;">Your <strong>${planName}</strong> plan on iCut is set to renew on <strong>${expiresOn}</strong>. To keep your dashboard, POS, and staff logins active, please submit payment before then.</p>
+      <p style="margin:0 0 24px 0;font-family:Inter,-apple-system,BlinkMacSystemFont,Arial,sans-serif;font-size:15px;color:#1A1A1A;line-height:1.6;">Amount due: <strong>Rs ${priceRs.toLocaleString('en-PK')}</strong></p>
+    `;
+    preview = `Plan renews in ${daysUntilExpiry} day${daysUntilExpiry === 1 ? '' : 's'} — Rs ${priceRs.toLocaleString('en-PK')}`;
+    buttonLabel = 'Submit Payment';
+  } else {
+    headline = 'Your iCut plan has expired';
+    body = `
+      <p style="margin:0 0 16px 0;font-family:Inter,-apple-system,BlinkMacSystemFont,Arial,sans-serif;font-size:15px;color:#1A1A1A;line-height:1.6;">Hi <strong>${salonName}</strong> owner,</p>
+      <p style="margin:0 0 16px 0;font-family:Inter,-apple-system,BlinkMacSystemFont,Arial,sans-serif;font-size:15px;color:#1A1A1A;line-height:1.6;">Your <strong>${planName}</strong> plan expired on <strong>${expiresOn}</strong>. The app is now in read-only mode until you renew — your data is safe, but new bills, appointments, and edits are paused.</p>
+      <p style="margin:0 0 24px 0;font-family:Inter,-apple-system,BlinkMacSystemFont,Arial,sans-serif;font-size:15px;color:#1A1A1A;line-height:1.6;">Renewal amount: <strong>Rs ${priceRs.toLocaleString('en-PK')}</strong></p>
+    `;
+    preview = `Plan expired — renew to reactivate your salon`;
+    buttonLabel = 'Renew Now';
+  }
+
+  const fullBody = `
+    <h1 style="margin:0 0 16px 0;font-family:Inter,-apple-system,BlinkMacSystemFont,Arial,sans-serif;font-size:22px;font-weight:bold;color:#1A1A1A;">${headline}</h1>
+    ${body}
+    ${emailButton(buttonLabel, renewUrl)}
+    <p style="margin:24px 0 0 0;font-family:Inter,-apple-system,BlinkMacSystemFont,Arial,sans-serif;font-size:13px;color:#1A1A1A;opacity:0.5;">Questions? Reply to this email or contact support@icut.pk.</p>
+  `;
+  return wrapEmailHtml(fullBody, preview);
+}
+
+export function paymentApprovedEmail(params: {
+  salonName: string;
+  planName: string;
+  amountRs: number;
+  validUntil: string;
+  dashboardUrl: string;
+}): string {
+  const { salonName, planName, amountRs, validUntil, dashboardUrl } = params;
+  const preview = `Payment received — ${planName} plan active until ${validUntil}`;
+  const body = `
+    <h1 style="margin:0 0 16px 0;font-family:Inter,-apple-system,BlinkMacSystemFont,Arial,sans-serif;font-size:22px;font-weight:bold;color:#1A1A1A;">Payment received</h1>
+    <p style="margin:0 0 16px 0;font-family:Inter,-apple-system,BlinkMacSystemFont,Arial,sans-serif;font-size:15px;color:#1A1A1A;line-height:1.6;">Hi <strong>${salonName}</strong> owner,</p>
+    <p style="margin:0 0 16px 0;font-family:Inter,-apple-system,BlinkMacSystemFont,Arial,sans-serif;font-size:15px;color:#1A1A1A;line-height:1.6;">We confirmed your payment of <strong>Rs ${amountRs.toLocaleString('en-PK')}</strong> for the <strong>${planName}</strong> plan. Your salon is active through <strong>${validUntil}</strong>.</p>
+    <p style="margin:0 0 24px 0;font-family:Inter,-apple-system,BlinkMacSystemFont,Arial,sans-serif;font-size:15px;color:#1A1A1A;line-height:1.6;">Thanks for using iCut.</p>
+    ${emailButton('Open Dashboard', dashboardUrl)}
+  `;
+  return wrapEmailHtml(body, preview);
+}
+
+export function paymentDeniedEmail(params: {
+  salonName: string;
+  amountRs: number;
+  reason: string;
+  retryUrl: string;
+}): string {
+  const { salonName, amountRs, reason, retryUrl } = params;
+  const preview = `Payment request declined — ${reason}`;
+  const body = `
+    <h1 style="margin:0 0 16px 0;font-family:Inter,-apple-system,BlinkMacSystemFont,Arial,sans-serif;font-size:22px;font-weight:bold;color:#1A1A1A;">Payment request declined</h1>
+    <p style="margin:0 0 16px 0;font-family:Inter,-apple-system,BlinkMacSystemFont,Arial,sans-serif;font-size:15px;color:#1A1A1A;line-height:1.6;">Hi <strong>${salonName}</strong> owner,</p>
+    <p style="margin:0 0 16px 0;font-family:Inter,-apple-system,BlinkMacSystemFont,Arial,sans-serif;font-size:15px;color:#1A1A1A;line-height:1.6;">Your payment request for <strong>Rs ${amountRs.toLocaleString('en-PK')}</strong> could not be verified.</p>
+    <p style="margin:0 0 16px 0;font-family:Inter,-apple-system,BlinkMacSystemFont,Arial,sans-serif;font-size:15px;color:#1A1A1A;line-height:1.6;"><strong>Reason:</strong> ${reason}</p>
+    <p style="margin:0 0 24px 0;font-family:Inter,-apple-system,BlinkMacSystemFont,Arial,sans-serif;font-size:15px;color:#1A1A1A;line-height:1.6;">Please resubmit with a clearer screenshot or contact support if you believe this was a mistake.</p>
+    ${emailButton('Resubmit Payment', retryUrl)}
+    <p style="margin:24px 0 0 0;font-family:Inter,-apple-system,BlinkMacSystemFont,Arial,sans-serif;font-size:13px;color:#1A1A1A;opacity:0.5;">Questions? Reply to this email or contact support@icut.pk.</p>
+  `;
+  return wrapEmailHtml(body, preview);
+}
+
 export function udhaarReminderEmail(clientName: string, salonName: string, amount: string): string {
   const previewText = `Payment reminder from ${salonName} — Rs ${amount} outstanding.`;
   const body = `

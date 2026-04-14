@@ -2,6 +2,8 @@
 
 import { createServerClient } from '@/lib/supabase';
 import { verifySession } from './auth';
+import { sendEmail } from '@/lib/email-sender';
+import { paymentApprovedEmail, paymentDeniedEmail } from '@/lib/email-templates';
 
 type Plan = 'basic' | 'growth' | 'pro';
 type Method = 'bank' | 'jazzcash';
@@ -231,6 +233,38 @@ export async function approvePaymentRequest(
     .eq('id', id);
   if (reqErr) return { error: reqErr.message };
 
+  // Owner notification — best-effort, doesn't block approval.
+  try {
+    const { data: salonRow } = await supabase
+      .from('salons')
+      .select('name, owner_id')
+      .eq('id', request.salon_id)
+      .single();
+    if (salonRow?.owner_id) {
+      const { data: authData } = await supabase.auth.admin.getUserById(salonRow.owner_id);
+      const ownerEmail = authData?.user?.email;
+      if (ownerEmail) {
+        const dashboardUrl = process.env.NEXT_PUBLIC_APP_URL
+          ? `${process.env.NEXT_PUBLIC_APP_URL}/dashboard`
+          : 'https://icut.pk/dashboard';
+        const validUntil = new Date(newExpiry).toLocaleDateString('en-PK', { year: 'numeric', month: 'long', day: 'numeric' });
+        await sendEmail(
+          ownerEmail,
+          `iCut — Payment received, ${plan} plan active`,
+          paymentApprovedEmail({
+            salonName: salonRow.name || 'your salon',
+            planName: plan,
+            amountRs: request.amount,
+            validUntil,
+            dashboardUrl,
+          }),
+        );
+      }
+    }
+  } catch {
+    // Non-critical — approval already succeeded.
+  }
+
   return { error: null };
 }
 
@@ -246,7 +280,7 @@ export async function rejectPaymentRequest(
 
   const { data: request, error: fetchErr } = await supabase
     .from('payment_requests')
-    .select('status')
+    .select('*')
     .eq('id', id)
     .single();
   if (fetchErr || !request) return { error: 'Request not found' };
@@ -264,6 +298,37 @@ export async function rejectPaymentRequest(
     })
     .eq('id', id);
   if (error) return { error: error.message };
+
+  // Owner notification — best-effort.
+  try {
+    const { data: salonRow } = await supabase
+      .from('salons')
+      .select('name, owner_id')
+      .eq('id', request.salon_id)
+      .single();
+    if (salonRow?.owner_id) {
+      const { data: authData } = await supabase.auth.admin.getUserById(salonRow.owner_id);
+      const ownerEmail = authData?.user?.email;
+      if (ownerEmail) {
+        const retryUrl = process.env.NEXT_PUBLIC_APP_URL
+          ? `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/settings?tab=billing`
+          : 'https://icut.pk/dashboard/settings?tab=billing';
+        await sendEmail(
+          ownerEmail,
+          'iCut — Payment request declined',
+          paymentDeniedEmail({
+            salonName: salonRow.name || 'your salon',
+            amountRs: request.amount,
+            reason: options?.reason || 'Payment could not be verified.',
+            retryUrl,
+          }),
+        );
+      }
+    }
+  } catch {
+    // Non-critical — rejection already succeeded.
+  }
+
   return { error: null };
 }
 

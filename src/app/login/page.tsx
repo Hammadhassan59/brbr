@@ -289,9 +289,12 @@ export default function LoginPage() {
                         return;
                       }
                       try {
-                        const { error } = await supabase.auth.resetPasswordForEmail(email);
+                        const origin = typeof window !== 'undefined' ? window.location.origin : 'https://icut.pk';
+                        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+                          redirectTo: `${origin}/reset-password`,
+                        });
                         if (error) throw error;
-                        toast.success('Password reset email sent');
+                        toast.success('Password reset email sent — check your inbox');
                       } catch (err: unknown) {
                         toast.error(err instanceof Error ? err.message : 'Failed to send reset email');
                       }

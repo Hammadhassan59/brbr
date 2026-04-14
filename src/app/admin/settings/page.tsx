@@ -9,7 +9,6 @@ import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { DEFAULT_EMAIL_TEMPLATES } from '@/lib/email-templates';
 import toast from 'react-hot-toast';
 import { getPlatformSettings, savePlatformSetting } from '@/app/actions/admin-settings';
 import { sendTestEmail } from '@/lib/email-sender';
@@ -53,12 +52,7 @@ const DEFAULT_SETTINGS: PlatformSettings = {
   fromEmail: 'notifications@icut.pk',
   fromName: 'iCut',
   emailEnabled: false,
-  enabledTemplates: {
-    winback: true,
-    udhaar_reminder: true,
-    low_stock_alert: true,
-    daily_summary: true,
-  },
+  enabledTemplates: {},
   plans: {
     Basic: {
       price: '2500', branches: '1', staff: '3',
@@ -225,13 +219,6 @@ export default function AdminSettingsPage() {
         return { text: line, ok: true };
       })
       .filter((f) => f.text.length > 0);
-  }
-
-  function toggleTemplate(id: string) {
-    setSettings((prev) => ({
-      ...prev,
-      enabledTemplates: { ...prev.enabledTemplates, [id]: !prev.enabledTemplates[id] },
-    }));
   }
 
   async function testEmail() {
@@ -455,7 +442,7 @@ export default function AdminSettingsPage() {
                 <Switch checked={settings.emailEnabled} onCheckedChange={(v) => update('emailEnabled', v)} />
               </div>
               <p className="text-xs text-muted-foreground mt-1">
-                Sends automated emails for win-back, udhaar reminders, low stock alerts, and daily summaries to salon owners and clients.
+                Powers owner-facing emails: signup verification, password reset, plan renewal reminders, and payment status alerts.
               </p>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -492,27 +479,38 @@ export default function AdminSettingsPage() {
               </div>
 
               <div className="pt-2 border-t">
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">Email Automations</p>
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-2">
-                  {DEFAULT_EMAIL_TEMPLATES.map((tpl) => (
-                    <div key={tpl.id} className="flex items-center justify-between p-3 bg-secondary/50 rounded-lg">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <p className="text-sm font-medium">{tpl.name}</p>
-                          {settings.enabledTemplates[tpl.id] && settings.emailEnabled && (
-                            <Badge variant="outline" className="text-[10px] text-blue-600 border-blue-500/25 bg-blue-500/10">Active</Badge>
-                          )}
-                        </div>
-                        <p className="text-xs text-muted-foreground mt-0.5">Subject: {tpl.subject}</p>
-                      </div>
-                      <Switch
-                        checked={settings.enabledTemplates[tpl.id] ?? false}
-                        onCheckedChange={() => toggleTemplate(tpl.id)}
-                        disabled={!settings.emailEnabled}
-                      />
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">Owner Emails</p>
+                <ul className="grid grid-cols-1 lg:grid-cols-2 gap-2 text-sm">
+                  <li className="flex items-center justify-between p-3 bg-secondary/50 rounded-lg">
+                    <div>
+                      <p className="font-medium">Signup verification</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">Sent by Supabase Auth when a new owner signs up</p>
                     </div>
-                  ))}
-                </div>
+                    <Badge variant="outline" className="text-[10px]">Supabase</Badge>
+                  </li>
+                  <li className="flex items-center justify-between p-3 bg-secondary/50 rounded-lg">
+                    <div>
+                      <p className="font-medium">Password reset</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">Sent by Supabase Auth on forgot-password request</p>
+                    </div>
+                    <Badge variant="outline" className="text-[10px]">Supabase</Badge>
+                  </li>
+                  <li className="flex items-center justify-between p-3 bg-secondary/50 rounded-lg">
+                    <div>
+                      <p className="font-medium">Plan renewal reminder</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">T-7, T-3, and on expiry — daily cron</p>
+                    </div>
+                    <Badge variant="outline" className="text-[10px]">Cron</Badge>
+                  </li>
+                  <li className="flex items-center justify-between p-3 bg-secondary/50 rounded-lg">
+                    <div>
+                      <p className="font-medium">Payment approved / denied</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">Sent when super admin acts on a payment request</p>
+                    </div>
+                    <Badge variant="outline" className="text-[10px]">Event</Badge>
+                  </li>
+                </ul>
+                <p className="text-xs text-muted-foreground mt-2">All emails go only to the salon owner. No client-facing automation.</p>
               </div>
 
               <div className="flex items-center gap-2 pt-2">
