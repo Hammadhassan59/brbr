@@ -34,7 +34,8 @@ const DAYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as const;
 const DAY_LABELS: Record<string, string> = { mon: 'Monday', tue: 'Tuesday', wed: 'Wednesday', thu: 'Thursday', fri: 'Friday', sat: 'Saturday', sun: 'Sunday' };
 
 export default function SettingsPage() {
-  const { salon, setSalon, currentBranch, setCurrentBranch, isOwner } = useAppStore();
+  const { salon, setSalon, currentBranch, setCurrentBranch, isOwner, isPartner } = useAppStore();
+  const canManage = isOwner || isPartner;
   const { language, setLanguage } = useLanguage();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -243,21 +244,21 @@ export default function SettingsPage() {
 
   return (
     <div className="space-y-6">
-      <Tabs defaultValue="profile">
+      <Tabs defaultValue={canManage ? 'profile' : 'display'}>
         <div className="bg-card border border-border rounded-lg p-4">
           <TabsList className="bg-transparent flex-wrap h-auto gap-1.5 p-0">
-            <TabsTrigger value="profile" className="text-xs px-3.5 py-2 font-medium transition-all duration-150 border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30">Salon Profile</TabsTrigger>
-            <TabsTrigger value="hours" className="text-xs px-3.5 py-2 font-medium transition-all duration-150 border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30">Working Hours</TabsTrigger>
-            <TabsTrigger value="services" className="text-xs px-3.5 py-2 font-medium transition-all duration-150 border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30">Services</TabsTrigger>
-            <TabsTrigger value="payment" className="text-xs px-3.5 py-2 font-medium transition-all duration-150 border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30">Payments</TabsTrigger>
-            <TabsTrigger value="tax" className="text-xs px-3.5 py-2 font-medium transition-all duration-150 border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30">Tax & Billing</TabsTrigger>
+            {canManage && <TabsTrigger value="profile" className="text-xs px-3.5 py-2 font-medium transition-all duration-150 border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30">Salon Profile</TabsTrigger>}
+            {canManage && <TabsTrigger value="hours" className="text-xs px-3.5 py-2 font-medium transition-all duration-150 border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30">Working Hours</TabsTrigger>}
+            {canManage && <TabsTrigger value="services" className="text-xs px-3.5 py-2 font-medium transition-all duration-150 border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30">Services</TabsTrigger>}
+            {canManage && <TabsTrigger value="payment" className="text-xs px-3.5 py-2 font-medium transition-all duration-150 border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30">Payments</TabsTrigger>}
+            {canManage && <TabsTrigger value="tax" className="text-xs px-3.5 py-2 font-medium transition-all duration-150 border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30">Tax & Billing</TabsTrigger>}
             {isOwner && <TabsTrigger value="branches" className="text-xs px-3.5 py-2 font-medium transition-all duration-150 border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30">Branches</TabsTrigger>}
             <TabsTrigger value="display" className="text-xs px-3.5 py-2 font-medium transition-all duration-150 border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30">Display</TabsTrigger>
           </TabsList>
         </div>
 
         {/* Salon Profile */}
-        <TabsContent value="profile" className="mt-4">
+        {canManage && <TabsContent value="profile" className="mt-4">
           <div className="bg-card border border-border rounded-lg p-6 space-y-5">
           <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Salon Information</p>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -298,10 +299,10 @@ export default function SettingsPage() {
 
           <Button onClick={saveSalonProfile} disabled={saving} className="bg-gold hover:bg-gold/90 text-black font-bold h-11">{saving ? 'Saving...' : 'Save Profile'}</Button>
           </div>
-        </TabsContent>
+        </TabsContent>}
 
         {/* Working Hours */}
-        <TabsContent value="hours" className="mt-4">
+        {canManage && <TabsContent value="hours" className="mt-4">
           <div className="bg-card border border-border rounded-lg p-6 space-y-3">
           <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Weekly Schedule</p>
           {DAYS.map((day) => (
@@ -326,10 +327,10 @@ export default function SettingsPage() {
           </div>
           <Button onClick={saveWorkingHours} disabled={saving} className="bg-gold hover:bg-gold/90 text-black font-bold h-11">{saving ? 'Saving...' : 'Save Hours'}</Button>
           </div>
-        </TabsContent>
+        </TabsContent>}
 
         {/* Services */}
-        <TabsContent value="services" className="mt-4 space-y-3">
+        {canManage && <TabsContent value="services" className="mt-4 space-y-3">
           <ServiceManager
             services={services}
             salonId={salon?.id || ''}
@@ -339,10 +340,10 @@ export default function SettingsPage() {
             onUpdated={(svc) => setServices(services.map((s) => s.id === svc.id ? svc : s))}
             onRemoved={(id) => setServices(services.filter((s) => s.id !== id))}
           />
-        </TabsContent>
+        </TabsContent>}
 
         {/* Payment Methods */}
-        <TabsContent value="payment" className="mt-4">
+        {canManage && <TabsContent value="payment" className="mt-4">
           <div className="bg-card border border-border rounded-lg p-6 space-y-4">
           <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Payment Methods</p>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -369,10 +370,10 @@ export default function SettingsPage() {
           </div>
           <Button onClick={savePaymentSettings} disabled={saving} className="bg-gold hover:bg-gold/90 text-black font-bold h-11">{saving ? 'Saving...' : 'Save Payment Settings'}</Button>
           </div>
-        </TabsContent>
+        </TabsContent>}
 
         {/* Tax & Billing */}
-        <TabsContent value="tax" className="mt-4">
+        {canManage && <TabsContent value="tax" className="mt-4">
           <div className="bg-card border border-border rounded-lg p-6 space-y-4">
           <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Tax Configuration</p>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -390,7 +391,7 @@ export default function SettingsPage() {
           </div>
           <Button onClick={saveSalonProfile} disabled={saving} className="bg-gold hover:bg-gold/90 text-black font-bold h-11">{saving ? 'Saving...' : 'Save Tax Settings'}</Button>
           </div>
-        </TabsContent>
+        </TabsContent>}
 
         {/* Branches */}
         {isOwner && <TabsContent value="branches" className="mt-4">
