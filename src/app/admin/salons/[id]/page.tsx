@@ -1,0 +1,546 @@
+'use client';
+
+import { use, useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import {
+  ArrowLeft, Loader2, Save, Users, UserCheck, DollarSign, TrendingUp,
+  CreditCard, Zap, Ban, Building2, MapPin,
+} from 'lucide-react';
+import toast from 'react-hot-toast';
+import { useAppStore } from '@/store/app-store';
+import { formatPKR } from '@/lib/utils/currency';
+import { formatPKDate } from '@/lib/utils/dates';
+import {
+  getAdminSalonDetail,
+  getAdminSalonMetrics,
+  getAdminBranchForSalon,
+  updateSalon,
+  updateSubscription,
+} from '@/app/actions/admin';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+} from '@/components/ui/table';
+import type {
+  Salon, Branch, Staff, Client,
+  SalonType, SubscriptionPlan, SubscriptionStatus,
+} from '@/types/database';
+
+const STATUS_BADGE: Record<SubscriptionStatus, { label: string; cls: string }> = {
+  trial: { label: 'Trial', cls: 'bg-orange-500/15 text-orange-600 border-orange-500/25' },
+  active: { label: 'Active', cls: 'bg-green-500/15 text-green-600 border-green-500/25' },
+  expired: { label: 'Expired', cls: 'bg-red-500/15 text-red-600 border-red-500/25' },
+  suspended: { label: 'Suspended', cls: 'bg-red-500/15 text-red-600 border-red-500/25' },
+};
+
+const PLAN_PRICES: Record<SubscriptionPlan, string> = {
+  trial: 'Trial (Free)',
+  basic: 'Basic — Rs 2,500/mo',
+  growth: 'Growth — Rs 5,000/mo',
+  pro: 'Pro — Rs 9,000/mo',
+};
+
+const ROLE_LABELS: Record<string, string> = {
+  owner: 'Owner',
+  manager: 'Manager',
+  receptionist: 'Receptionist',
+  senior_stylist: 'Sr. Stylist',
+  junior_stylist: 'Jr. Stylist',
+  helper: 'Helper',
+};
+
+const PAYMENT_LABELS: Record<string, string> = {
+  cash: 'Cash',
+  jazzcash: 'JazzCash',
+  easypaisa: 'Easypaisa',
+  bank_transfer: 'Bank Transfer',
+  card: 'Card',
+  udhaar: 'Udhaar',
+  split: 'Split',
+  unknown: 'Unknown',
+};
+
+interface Metrics {
+  staffCount: number;
+  clientCount: number;
+  monthlyRevenue: number;
+  monthlyBillCount: number;
+  totalRevenue: number;
+  paymentBreakdown: Record<string, number>;
+}
+
+export default function AdminSalonDetailPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = use(params);
+  const router = useRouter();
+  const { setSalon, setCurrentBranch } = useAppStore();
+
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  // Detail data
+  const [salon, setSalonData] = useState<Salon | null>(null);
+  const [branches, setBranches] = useState<Branch[]>([]);
+  const [staff, setStaff] = useState<Staff[]>([]);
+  const [clients, setClients] = useState<Client[]>([]);
+  const [metrics, setMetrics] = useState<Metrics | null>(null);
+
+  // Editable salon fields
+  const [name, setName] = useState('');
+  const [city, setCity] = useState('');
+  const [phone, setPhone] = useState('');
+  const [address, setAddress] = useState('');
+  const [salonType, setSalonType] = useState<SalonType>('gents');
+  const [adminNotes, setAdminNotes] = useState('');
+
+  // Editable subscription fields
+  const [plan, setPlan] = useState<SubscriptionPlan>('trial');
+  const [status, setStatus] = useState<SubscriptionStatus>('trial');
+  const [expiresAt, setExpiresAt] = useState('');
+
+  useEffect(() => {
+    async function load() {
+      try {
+        const [detail, metricsData] = await Promise.all([
+          getAdminSalonDetail(id),
+          getAdminSalonMetrics(id),
+        ]);
+
+        const s = detail.salon as Salon;
+        setSalonData(s);
+        setBranches(detail.branches as Branch[]);
+        setStaff(detail.staff as Staff[]);
+        setClients(detail.clients as Client[]);
+        setMetrics(metricsData as Metrics);
+
+        // Populate editable fields
+        setName(s.name);
+        setCity(s.city || '');
+        setPhone(s.phone || '');
+        setAddress(s.address || '');
+        setSalonType(s.type);
+        setAdminNotes(s.admin_notes || '');
+        setPlan(s.subscription_plan);
+        setStatus(s.subscription_status);
+        setExpiresAt(s.subscription_expires_at ? s.subscription_expires_at.split('T')[0] : '');
+      } catch {
+        toast.error('Failed to load salon details');
+      } finally {
+        setLoading(false);
+      }
+    }
+    load();
+  }, [id]);
+
+  async function handleSave() {
+    setSaving(true);
+    try {
+      await Promise.all([
+        updateSalon(id, {
+          name,
+          city,
+          phone,
+          address,
+          type: salonType,
+          admin_notes: adminNotes,
+        }),
+        updateSubscription(id, {
+          subscription_plan: plan,
+          subscription_status: status,
+          subscription_expires_at: expiresAt || null,
+        }),
+      ]);
+      toast.success('Salon updated');
+    } catch {
+      toast.error('Failed to save changes');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleActivate() {
+    setPlan((prev) => (prev === 'trial' ? 'growth' : prev));
+    setStatus('active');
+    setSaving(true);
+    try {
+      await updateSubscription(id, {
+        subscription_plan: plan === 'trial' ? 'growth' : plan,
+        subscription_status: 'active',
+      });
+      toast.success('Subscription activated');
+    } catch {
+      toast.error('Failed to activate');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleSuspend() {
+    setStatus('suspended');
+    setSaving(true);
+    try {
+      await updateSubscription(id, { subscription_status: 'suspended' });
+      toast.success('Subscription suspended');
+    } catch {
+      toast.error('Failed to suspend');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function enterDashboard() {
+    if (!salon) return;
+    setSalon(salon);
+    try {
+      const branch = await getAdminBranchForSalon(salon.id);
+      if (branch) setCurrentBranch(branch as Branch);
+    } catch {
+      // Branch will be loaded by dashboard
+    }
+    router.push('/dashboard');
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (!salon) {
+    return (
+      <div className="text-center py-20 text-muted-foreground">
+        Salon not found
+      </div>
+    );
+  }
+
+  const activeStaff = staff.filter((s) => s.is_active).length;
+  const vipClients = clients.filter((c) => c.is_vip).length;
+  const statusBadge = STATUS_BADGE[salon.subscription_status];
+
+  return (
+    <div className="space-y-6 max-w-5xl">
+      {/* Header */}
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-9 w-9 p-0"
+            onClick={() => router.push('/admin/salons')}
+          >
+            <ArrowLeft className="w-4 h-4" />
+          </Button>
+          <div>
+            <div className="flex items-center gap-2">
+              <h2 className="font-heading text-xl font-bold">{salon.name}</h2>
+              <Badge variant="outline" className={`text-[10px] ${statusBadge.cls}`}>
+                {statusBadge.label}
+              </Badge>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {salon.city} — Joined {formatPKDate(salon.created_at)}
+            </p>
+          </div>
+        </div>
+        <Button size="sm" className="bg-gold text-black border border-gold" onClick={enterDashboard}>
+          Enter Dashboard
+        </Button>
+      </div>
+
+      {/* Metrics Row */}
+      {metrics && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <Card size="sm">
+            <CardContent className="pt-0">
+              <div className="flex items-center gap-2 mb-1">
+                <DollarSign className="w-4 h-4 text-gold" />
+                <span className="text-xs text-muted-foreground">Monthly Revenue</span>
+              </div>
+              <p className="font-heading text-lg font-bold">{formatPKR(metrics.monthlyRevenue)}</p>
+              <p className="text-[10px] text-muted-foreground">{metrics.monthlyBillCount} bills</p>
+            </CardContent>
+          </Card>
+          <Card size="sm">
+            <CardContent className="pt-0">
+              <div className="flex items-center gap-2 mb-1">
+                <TrendingUp className="w-4 h-4 text-gold" />
+                <span className="text-xs text-muted-foreground">Total Revenue</span>
+              </div>
+              <p className="font-heading text-lg font-bold">{formatPKR(metrics.totalRevenue)}</p>
+            </CardContent>
+          </Card>
+          <Card size="sm">
+            <CardContent className="pt-0">
+              <div className="flex items-center gap-2 mb-1">
+                <Users className="w-4 h-4 text-gold" />
+                <span className="text-xs text-muted-foreground">Staff</span>
+              </div>
+              <p className="font-heading text-lg font-bold">{metrics.staffCount}</p>
+              <p className="text-[10px] text-muted-foreground">{activeStaff} active</p>
+            </CardContent>
+          </Card>
+          <Card size="sm">
+            <CardContent className="pt-0">
+              <div className="flex items-center gap-2 mb-1">
+                <UserCheck className="w-4 h-4 text-gold" />
+                <span className="text-xs text-muted-foreground">Clients</span>
+              </div>
+              <p className="font-heading text-lg font-bold">{metrics.clientCount}</p>
+              <p className="text-[10px] text-muted-foreground">{vipClients} VIP</p>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Salon Profile Edit */}
+      <Card>
+        <CardHeader className="border-b">
+          <CardTitle>Salon Profile</CardTitle>
+        </CardHeader>
+        <CardContent className="pt-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="salon-name">Name</Label>
+              <Input id="salon-name" value={name} onChange={(e) => setName(e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="salon-city">City</Label>
+              <Input id="salon-city" value={city} onChange={(e) => setCity(e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="salon-phone">Phone</Label>
+              <Input id="salon-phone" value={phone} onChange={(e) => setPhone(e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="salon-type">Type</Label>
+              <select
+                id="salon-type"
+                value={salonType}
+                onChange={(e) => setSalonType(e.target.value as SalonType)}
+                className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-1 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+              >
+                <option value="gents">Gents</option>
+                <option value="ladies">Ladies</option>
+                <option value="unisex">Unisex</option>
+              </select>
+            </div>
+            <div className="space-y-1.5 md:col-span-2">
+              <Label htmlFor="salon-address">Address</Label>
+              <Input id="salon-address" value={address} onChange={(e) => setAddress(e.target.value)} />
+            </div>
+            <div className="space-y-1.5 md:col-span-2">
+              <Label htmlFor="admin-notes">Admin Notes</Label>
+              <Textarea
+                id="admin-notes"
+                value={adminNotes}
+                onChange={(e) => setAdminNotes(e.target.value)}
+                placeholder="Internal notes about this salon..."
+              />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Subscription Management */}
+      <Card className="border-gold/40">
+        <CardHeader className="border-b">
+          <CardTitle className="flex items-center gap-2">
+            <CreditCard className="w-4 h-4 text-gold" />
+            Subscription Management
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="pt-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="sub-plan">Plan</Label>
+              <select
+                id="sub-plan"
+                value={plan}
+                onChange={(e) => setPlan(e.target.value as SubscriptionPlan)}
+                className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-1 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+              >
+                {Object.entries(PLAN_PRICES).map(([key, label]) => (
+                  <option key={key} value={key}>{label}</option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="sub-status">Status</Label>
+              <select
+                id="sub-status"
+                value={status}
+                onChange={(e) => setStatus(e.target.value as SubscriptionStatus)}
+                className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-1 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+              >
+                <option value="trial">Trial</option>
+                <option value="active">Active</option>
+                <option value="expired">Expired</option>
+                <option value="suspended">Suspended</option>
+              </select>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="sub-expires">Expires At</Label>
+              <Input
+                id="sub-expires"
+                type="date"
+                value={expiresAt}
+                onChange={(e) => setExpiresAt(e.target.value)}
+              />
+            </div>
+          </div>
+          <div className="flex items-center gap-2 mt-4 pt-4 border-t">
+            <Button
+              size="sm"
+              className="bg-green-600 text-white hover:bg-green-700 gap-1"
+              onClick={handleActivate}
+              disabled={saving}
+            >
+              <Zap className="w-3 h-3" />
+              Activate
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="text-red-600 border-red-500/25 hover:bg-red-500/10 gap-1"
+              onClick={handleSuspend}
+              disabled={saving}
+            >
+              <Ban className="w-3 h-3" />
+              Suspend
+            </Button>
+            {salon.subscription_started_at && (
+              <span className="text-xs text-muted-foreground ml-auto">
+                Started {formatPKDate(salon.subscription_started_at)}
+              </span>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Payment Methods Breakdown */}
+      {metrics && Object.keys(metrics.paymentBreakdown).length > 0 && (
+        <Card>
+          <CardHeader className="border-b">
+            <CardTitle>Payment Methods — This Month</CardTitle>
+          </CardHeader>
+          <CardContent className="pt-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              {Object.entries(metrics.paymentBreakdown).map(([method, amount]) => (
+                <div key={method} className="border rounded-lg p-3">
+                  <p className="text-xs text-muted-foreground mb-1">
+                    {PAYMENT_LABELS[method] || method}
+                  </p>
+                  <p className="font-heading font-semibold">{formatPKR(amount)}</p>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Staff Table */}
+      <Card>
+        <CardHeader className="border-b">
+          <CardTitle>Staff ({staff.length})</CardTitle>
+        </CardHeader>
+        <CardContent className="pt-0 px-0">
+          {staff.length === 0 ? (
+            <p className="text-sm text-muted-foreground px-4 py-6 text-center">No staff registered</p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Role</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Phone</TableHead>
+                  <TableHead>Status</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {staff.map((member) => (
+                  <TableRow key={member.id}>
+                    <TableCell className="font-medium">{member.name}</TableCell>
+                    <TableCell>{ROLE_LABELS[member.role] || member.role}</TableCell>
+                    <TableCell className="text-muted-foreground">{member.email || '—'}</TableCell>
+                    <TableCell className="text-muted-foreground">{member.phone || '—'}</TableCell>
+                    <TableCell>
+                      {member.is_active ? (
+                        <Badge variant="outline" className="text-[10px] text-green-600 border-green-500/25 bg-green-500/10">
+                          Active
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="text-[10px] text-red-600 border-red-500/25 bg-red-500/10">
+                          Inactive
+                        </Badge>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Branches */}
+      <Card>
+        <CardHeader className="border-b">
+          <CardTitle className="flex items-center gap-2">
+            <Building2 className="w-4 h-4" />
+            Branches ({branches.length})
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="pt-4">
+          {branches.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-4">No branches</p>
+          ) : (
+            <div className="space-y-3">
+              {branches.map((branch) => (
+                <div key={branch.id} className="flex items-start gap-3 border rounded-lg p-3">
+                  <MapPin className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p className="font-medium text-sm">{branch.name}</p>
+                      {branch.is_main && (
+                        <Badge variant="outline" className="text-[10px] bg-gold/10 text-gold border-gold/25">
+                          Main
+                        </Badge>
+                      )}
+                    </div>
+                    {branch.address && (
+                      <p className="text-xs text-muted-foreground mt-0.5">{branch.address}</p>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Save Button */}
+      <div className="flex justify-end pb-6">
+        <Button
+          className="bg-gold text-black border border-gold gap-2"
+          onClick={handleSave}
+          disabled={saving}
+        >
+          {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+          Save Changes
+        </Button>
+      </div>
+    </div>
+  );
+}

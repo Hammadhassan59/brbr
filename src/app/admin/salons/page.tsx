@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Eye, Plus, Loader2 } from 'lucide-react';
+import { Eye, Plus, Loader2, Settings } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAppStore } from '@/store/app-store';
 import { formatPKR } from '@/lib/utils/currency';
@@ -93,9 +93,14 @@ export default function AdminSalonsPage() {
                 <p className="text-[10px] text-muted-foreground mb-3">
                   {salon.address} · Joined {formatPKDate(salon.created_at)}
                 </p>
-                <Button variant="outline" size="sm" className="w-full text-xs gap-1" onClick={() => enterSalon(salon)}>
-                  <Eye className="w-3 h-3" /> Enter Salon Dashboard
-                </Button>
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" className="flex-1 text-xs gap-1" onClick={() => router.push(`/admin/salons/${salon.id}`)}>
+                    <Settings className="w-3 h-3" /> Manage
+                  </Button>
+                  <Button variant="outline" size="sm" className="flex-1 text-xs gap-1" onClick={() => enterSalon(salon)}>
+                    <Eye className="w-3 h-3" /> Enter
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           );
