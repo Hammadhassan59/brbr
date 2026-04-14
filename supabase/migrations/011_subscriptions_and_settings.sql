@@ -21,7 +21,7 @@ ALTER TABLE platform_settings ENABLE ROW LEVEL SECURITY;
 -- Seed default settings
 INSERT INTO platform_settings (key, value) VALUES
   ('general', '{"platformName":"iCut","platformDomain":"icut.pk","supportWhatsApp":"","supportEmail":"support@icut.pk"}'::jsonb),
-  ('email', '{"enabled":false,"fromEmail":"notifications@icut.pk","fromName":"iCut","sendgridKey":"","enabledTemplates":{"winback":true,"udhaar_reminder":true,"low_stock_alert":true,"daily_summary":true}}'::jsonb),
+  ('email', '{"enabled":false,"fromEmail":"notifications@icut.pk","fromName":"iCut","resendKey":"","enabledTemplates":{"winback":true,"udhaar_reminder":true,"low_stock_alert":true,"daily_summary":true}}'::jsonb),
   ('plans', '{"basic":{"price":2500,"branches":1,"staff":3},"growth":{"price":5000,"branches":1,"staff":0},"pro":{"price":9000,"branches":3,"staff":0}}'::jsonb),
   ('trial', '{"durationDays":14,"graceDays":3,"requirePayment":false}'::jsonb),
   ('payment', '{"jazzcashAccount":"","bankAccount":""}'::jsonb)

@@ -23,7 +23,7 @@ interface PlatformSettings {
   platformDomain: string;
   supportWhatsApp: string;
   supportEmail: string;
-  sendgridKey: string;
+  resendKey: string;
   fromEmail: string;
   fromName: string;
   emailEnabled: boolean;
@@ -41,7 +41,7 @@ const DEFAULT_SETTINGS: PlatformSettings = {
   platformDomain: 'icut.pk',
   supportWhatsApp: '', // Set your real WhatsApp number here
   supportEmail: 'support@icut.pk',
-  sendgridKey: '',
+  resendKey: '',
   fromEmail: 'notifications@icut.pk',
   fromName: 'iCut',
   emailEnabled: false,
@@ -103,7 +103,7 @@ export default function AdminSettingsPage() {
           emailEnabled: Boolean(e.enabled ?? DEFAULT_SETTINGS.emailEnabled),
           fromEmail: String(e.fromEmail ?? DEFAULT_SETTINGS.fromEmail),
           fromName: String(e.fromName ?? DEFAULT_SETTINGS.fromName),
-          sendgridKey: String(e.sendgridKey ?? DEFAULT_SETTINGS.sendgridKey),
+          resendKey: String(e.resendKey ?? DEFAULT_SETTINGS.resendKey),
           enabledTemplates: (e.enabledTemplates as Record<string, boolean>) ?? DEFAULT_SETTINGS.enabledTemplates,
           plans,
           trialDuration: String(tr.durationDays ?? DEFAULT_SETTINGS.trialDuration),
@@ -140,7 +140,7 @@ export default function AdminSettingsPage() {
   }
 
   function testEmail() {
-    if (!settings.sendgridKey) { toast.error('Enter a SendGrid API key first'); return; }
+    if (!settings.resendKey) { toast.error('Enter a Resend API key first'); return; }
     if (!settings.fromEmail) { toast.error('Enter a from email address'); return; }
     toast.error('Email sending not yet connected to backend');
   }
@@ -164,7 +164,7 @@ export default function AdminSettingsPage() {
           enabled: settings.emailEnabled,
           fromEmail: settings.fromEmail,
           fromName: settings.fromName,
-          sendgridKey: settings.sendgridKey,
+          resendKey: settings.resendKey,
           enabledTemplates: settings.enabledTemplates,
         }),
         savePlatformSetting('plans', {
@@ -243,7 +243,7 @@ export default function AdminSettingsPage() {
       <Card className="border-blue-500/25">
         <CardHeader className="pb-2">
           <div className="flex items-center justify-between">
-            <CardTitle className="text-sm flex items-center gap-2"><Mail className="w-4 h-4 text-blue-600" /> Email Automation (SendGrid)</CardTitle>
+            <CardTitle className="text-sm flex items-center gap-2"><Mail className="w-4 h-4 text-blue-600" /> Email Automation (Resend)</CardTitle>
             <Switch checked={settings.emailEnabled} onCheckedChange={(v) => update('emailEnabled', v)} />
           </div>
           <p className="text-xs text-muted-foreground mt-1">
@@ -253,13 +253,13 @@ export default function AdminSettingsPage() {
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             <div className="lg:col-span-2">
-              <Label className="text-xs">SendGrid API Key</Label>
+              <Label className="text-xs">Resend API Key</Label>
               <div className="relative mt-1">
                 <Input
                   type={showApiKey ? 'text' : 'password'}
-                  value={settings.sendgridKey}
-                  onChange={(e) => update('sendgridKey', e.target.value)}
-                  placeholder="SG.xxxxxxxxxxxxxxxxxxxxxxxx"
+                  value={settings.resendKey}
+                  onChange={(e) => update('resendKey', e.target.value)}
+                  placeholder="re_xxxxxxxxxxxxxxxxxxxxxxxx"
                   className="pr-10"
                 />
                 <button
