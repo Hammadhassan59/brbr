@@ -191,14 +191,15 @@ export default function LoginPage() {
     if (!IS_DEV) return;
     const { setIsSuperAdmin } = useAppStore.getState();
     setIsSuperAdmin(false);
-    setIsOwner(false);
+    const isDemoOwner = staffData.role === 'owner';
+    setIsOwner(isDemoOwner);
     setSalon(salonData);
     setBranches(allBranches || [branchData]);
     setCurrentBranch(branchData);
     setCurrentStaff(staffData);
     setCurrentPartner(null);
     setIsPartner(false);
-    setSessionCookie('staff');
+    setSessionCookie(isDemoOwner ? 'owner' : 'staff');
     await signSession({ salonId: salonData.id, staffId: staffData.id, role: staffData.role, branchId: branchData.id, name: staffData.name });
     toast.success(`Logged in as ${staffData.name} (${staffData.role.replace('_', ' ')}) — ${salonData.name}`);
     router.push('/dashboard');
