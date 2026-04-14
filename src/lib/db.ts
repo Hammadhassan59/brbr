@@ -485,16 +485,28 @@ export async function createBillItems(items: BillItemInsert[]) {
   return data as BillItem[];
 }
 
-export async function generateBillNumber(branchId: string) {
-  const today = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-  const { count, error } = await supabase
+export async function generateBillNumber(_branchId: string) {
+  const todayISO = new Date().toISOString().slice(0, 10);
+  const prefix = `BB-${todayISO.replace(/-/g, '')}-`;
+
+  // Find the highest bill number for today to avoid duplicates
+  const { data, error } = await supabase
     .from('bills')
-    .select('*', { count: 'exact', head: true })
-    .eq('branch_id', branchId)
-    .gte('created_at', `${new Date().toISOString().slice(0, 10)}T00:00:00`);
+    .select('bill_number')
+    .like('bill_number', `${prefix}%`)
+    .order('bill_number', { ascending: false })
+    .limit(1);
+
   if (error) throw error;
-  const seq = String((count || 0) + 1).padStart(3, '0');
-  return `BB-${today}-${seq}`;
+
+  let nextSeq = 1;
+  if (data && data.length > 0) {
+    const lastNum = data[0].bill_number;
+    const lastSeq = parseInt(lastNum.replace(prefix, ''), 10);
+    if (!isNaN(lastSeq)) nextSeq = lastSeq + 1;
+  }
+
+  return `${prefix}${String(nextSeq).padStart(3, '0')}`;
 }
 
 // ═══════════════════════════════════════
