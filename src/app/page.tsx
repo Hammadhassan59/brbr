@@ -60,8 +60,10 @@ const FALLBACK_PLANS: DisplayPlan[] = [
     limits: '1 branch · up to 10 staff',
     features: [
       { text: 'POS + billing', ok: true }, { text: 'Bookings + walk-in queue', ok: true },
-      { text: 'Cash, mobile, card payments', ok: true }, { text: 'Basic daily report', ok: true },
-      { text: 'Commission tracking', ok: true }, { text: 'Inventory', ok: false }, { text: 'Payroll', ok: false },
+      { text: 'Cash, mobile, card payments', ok: true }, { text: 'Client database + udhaar ledger', ok: true },
+      { text: 'WhatsApp receipts + reminders', ok: true }, { text: 'Basic daily report', ok: true },
+      { text: 'Commission tracking', ok: true }, { text: 'Prayer + lunch break blocks', ok: true },
+      { text: 'Inventory', ok: false }, { text: 'Payroll + attendance', ok: false }, { text: 'Multi-branch', ok: false },
     ],
   },
   {
@@ -70,8 +72,11 @@ const FALLBACK_PLANS: DisplayPlan[] = [
     limits: '3 branches · 10 staff each',
     features: [
       { text: 'POS + billing', ok: true }, { text: 'Bookings + walk-in queue', ok: true },
-      { text: 'Cash, mobile, card payments', ok: true }, { text: 'Full daily reports', ok: true },
-      { text: 'Commission tracking', ok: true }, { text: 'Inventory', ok: true }, { text: 'Payroll + attendance', ok: true },
+      { text: 'Cash, mobile, card payments', ok: true }, { text: 'Client database + udhaar ledger', ok: true },
+      { text: 'WhatsApp receipts, reminders + birthdays', ok: true }, { text: 'Full daily + monthly reports', ok: true },
+      { text: 'Commission tracking', ok: true }, { text: 'Prayer + lunch break blocks', ok: true },
+      { text: 'Inventory + low-stock alerts', ok: true }, { text: 'Payroll + attendance + advances', ok: true },
+      { text: 'Up to 3 branches', ok: true },
     ],
   },
   {
@@ -79,8 +84,9 @@ const FALLBACK_PLANS: DisplayPlan[] = [
     name: 'Enterprise', price: '9,000', originalPrice: '20,000', pitch: 'For salon chains', popular: false,
     limits: '10 branches · 100 staff',
     features: [
-      { text: 'Everything in Business', ok: true }, { text: 'Cross-branch reports', ok: true },
-      { text: 'Partner/co-owner logins', ok: true }, { text: 'Priority support', ok: true },
+      { text: 'Everything in Business', ok: true }, { text: 'WhatsApp blasts + bulk reminders', ok: true },
+      { text: 'Cross-branch reports', ok: true }, { text: 'Partner/co-owner logins', ok: true },
+      { text: 'Up to 10 branches', ok: true }, { text: 'Priority support', ok: true },
     ],
   },
 ];

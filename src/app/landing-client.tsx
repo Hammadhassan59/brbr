@@ -356,6 +356,75 @@ export default function LandingClient({ initialPlans, supportWhatsApp }: Landing
             </Reveal>
           </div>
 
+          {/* Row 3: WhatsApp (full width, mirrors Appointments) */}
+          <Reveal className="mt-3.5">
+            <div className="relative bg-white p-6 md:p-8 border border-[#E8E8E8] overflow-hidden transition-all duration-300 hover:-translate-y-1" style={{ borderRadius: R, boxShadow: '0 2px 4px rgba(0,0,0,0.04), 0 8px 32px rgba(0,0,0,0.06)' }}>
+              <div className="flex flex-col md:flex-row md:items-start gap-6">
+                <div className="md:w-[38%] shrink-0">
+                  <p className="text-[10px] text-gold uppercase tracking-[1.5px] font-bold mb-2">WHATSAPP</p>
+                  <p className="text-xl md:text-2xl font-extrabold text-[#1A1A1A] leading-snug mb-3">Receipts and reminders on WhatsApp</p>
+                  <p className="text-[13px] text-[#888] leading-relaxed mb-4">Send the bill, the next-day reminder, the udhaar nudge, the birthday message — one tap, your number, your tone. You review every message before it goes.</p>
+                  <div className="inline-flex items-center gap-1.5 bg-[#25D366]/10 border border-[#25D366]/25 px-3 py-1.5 rounded-full text-[10px] text-[#1A8754] font-semibold">
+                    <svg viewBox="0 0 24 24" className="w-3 h-3" fill="#25D366"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+                    Your number, your tone — never automated
+                  </div>
+                </div>
+                <div className="md:flex-1 p-4 overflow-hidden" style={{ background: '#E5DDD5', borderRadius: Ri, boxShadow: '0 4px 20px rgba(0,0,0,0.08)', backgroundImage: 'radial-gradient(rgba(0,0,0,0.03) 1px, transparent 1px)', backgroundSize: '12px 12px' }}>
+                  {/* Mini topbar — WhatsApp-style */}
+                  <div className="flex items-center gap-2 mb-3 pb-2 border-b border-black/10">
+                    <div className="w-6 h-6 rounded-full bg-[#1A1A1A] text-white text-[8px] font-bold flex items-center justify-center">AM</div>
+                    <div>
+                      <p className="text-[9px] font-bold text-[#1A1A1A] leading-tight">Anna M.</p>
+                      <p className="text-[7px] text-[#666] leading-tight">+92 300 ••• 4421</p>
+                    </div>
+                    <span className="ml-auto text-[7px] text-[#888]">12:14</span>
+                  </div>
+                  {/* Chat bubbles */}
+                  <div className="space-y-2">
+                    {/* Sent: Receipt */}
+                    <div className="flex justify-end">
+                      <div className="bg-[#DCF8C6] px-3 py-2 max-w-[78%] relative" style={{ borderRadius: '8px 8px 2px 8px', boxShadow: '0 1px 1px rgba(0,0,0,0.08)' }}>
+                        <p className="text-[9px] font-bold text-[#1A1A1A] leading-snug">Glow Studio · Receipt #0147</p>
+                        <p className="text-[9px] text-[#1A1A1A] leading-snug mt-0.5">Haircut · Hair Color · Deep Conditioning</p>
+                        <p className="text-[10px] font-bold text-[#1A1A1A] mt-1">Total: ₨ 5,500</p>
+                        <p className="text-[8px] text-[#1A1A1A]/60 mt-1">Thank you, Anna. See you next month.</p>
+                        <div className="flex items-center gap-1 justify-end mt-1">
+                          <span className="text-[7px] text-[#888]">12:14</span>
+                          <Check className="w-2.5 h-2.5 text-[#34B7F1]" strokeWidth={3} />
+                        </div>
+                      </div>
+                    </div>
+                    {/* Sent: Reminder */}
+                    <div className="flex justify-end">
+                      <div className="bg-[#DCF8C6] px-3 py-2 max-w-[78%] relative" style={{ borderRadius: '8px 8px 2px 8px', boxShadow: '0 1px 1px rgba(0,0,0,0.08)' }}>
+                        <p className="text-[9px] text-[#1A1A1A] leading-snug">Hi Anna, just a reminder — your appointment with <span className="font-bold">Sara</span> is tomorrow at <span className="font-bold">11:00 AM</span>.</p>
+                        <div className="flex items-center gap-1 justify-end mt-1">
+                          <span className="text-[7px] text-[#888]">12:15</span>
+                          <Check className="w-2.5 h-2.5 text-[#34B7F1]" strokeWidth={3} />
+                        </div>
+                      </div>
+                    </div>
+                    {/* Reply */}
+                    <div className="flex justify-start">
+                      <div className="bg-white px-3 py-2 max-w-[60%]" style={{ borderRadius: '8px 8px 8px 2px', boxShadow: '0 1px 1px rgba(0,0,0,0.08)' }}>
+                        <p className="text-[9px] text-[#1A1A1A] leading-snug">See you then.</p>
+                        <span className="text-[7px] text-[#888] block text-right mt-0.5">12:16</span>
+                      </div>
+                    </div>
+                  </div>
+                  {/* Templates strip */}
+                  <div className="flex gap-1 mt-3 flex-wrap">
+                    {['Receipt', 'Reminder', 'Udhaar', 'Birthday', 'Thank you'].map((t, i) => (
+                      <span key={t} className={`text-[7px] py-1 px-2 font-semibold ${i === 0 ? 'bg-[#1A1A1A] text-white' : 'bg-white text-[#666] border border-black/10'}`} style={{ borderRadius: '999px' }}>
+                        {t}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </Reveal>
+
           {/* Trust points — folded into features */}
           <Reveal className="mt-10">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
