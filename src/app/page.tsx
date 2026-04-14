@@ -4,7 +4,6 @@ import Link from 'next/link';
 import { useState, useEffect, useRef } from 'react';
 import { Scissors, ChevronDown, Check, Lock, Zap, Smartphone, Ticket, Coffee } from 'lucide-react';
 import PublicLayout from '@/components/public-layout';
-import { DataNotice } from '@/components/data-notice';
 import { DashboardHeroPreview } from './components/dashboard-hero-preview';
 
 // ── Scroll reveal ──
@@ -88,8 +87,6 @@ export default function LandingPage() {
 
   return (
     <PublicLayout showHomeNav>
-      <DataNotice />
-
       {/* ══════════════════════════════════════ */}
       {/* HERO                                  */}
       {/* ══════════════════════════════════════ */}

@@ -201,20 +201,45 @@ export default function AdminSettingsPage() {
   }
 
   return (
-    <div className="space-y-4 max-w-2xl">
+    <div className="space-y-4">
       <h2 className="font-heading text-xl font-bold">Platform Settings</h2>
 
-      <Card>
-        <CardHeader className="pb-2"><CardTitle className="text-sm">General</CardTitle></CardHeader>
-        <CardContent className="space-y-4">
-          <div><Label className="text-xs">Platform Name</Label><Input value={settings.platformName} onChange={(e) => update('platformName', e.target.value)} className="mt-1" /></div>
-          <div><Label className="text-xs">Platform Domain</Label><Input value={settings.platformDomain} onChange={(e) => update('platformDomain', e.target.value)} className="mt-1" /></div>
-          <div><Label className="text-xs">Support WhatsApp</Label><Input value={settings.supportWhatsApp} onChange={(e) => update('supportWhatsApp', e.target.value)} className="mt-1" /></div>
-          <div><Label className="text-xs">Support Email</Label><Input value={settings.supportEmail} onChange={(e) => update('supportEmail', e.target.value)} className="mt-1" /></div>
-        </CardContent>
-      </Card>
+      {/* Row 1: General + Payment Collection */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <Card>
+          <CardHeader className="pb-2"><CardTitle className="text-sm">General</CardTitle></CardHeader>
+          <CardContent className="space-y-4">
+            <div><Label className="text-xs">Platform Name</Label><Input value={settings.platformName} onChange={(e) => update('platformName', e.target.value)} className="mt-1" /></div>
+            <div><Label className="text-xs">Platform Domain</Label><Input value={settings.platformDomain} onChange={(e) => update('platformDomain', e.target.value)} className="mt-1" /></div>
+            <div><Label className="text-xs">Support WhatsApp</Label><Input value={settings.supportWhatsApp} onChange={(e) => update('supportWhatsApp', e.target.value)} className="mt-1" /></div>
+            <div><Label className="text-xs">Support Email</Label><Input value={settings.supportEmail} onChange={(e) => update('supportEmail', e.target.value)} className="mt-1" /></div>
+          </CardContent>
+        </Card>
 
-      {/* ── Email / SendGrid Configuration ── */}
+        <div className="space-y-4">
+          <Card>
+            <CardHeader className="pb-2"><CardTitle className="text-sm">Payment Collection</CardTitle></CardHeader>
+            <CardContent className="space-y-3">
+              <div><Label className="text-xs">JazzCash Account (for subscription payments)</Label><Input value={settings.jazzcashAccount} onChange={(e) => update('jazzcashAccount', e.target.value)} className="mt-1" /></div>
+              <div><Label className="text-xs">Bank Account (HBL)</Label><Input value={settings.bankAccount} onChange={(e) => update('bankAccount', e.target.value)} className="mt-1" /></div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-2"><CardTitle className="text-sm">Trial Settings</CardTitle></CardHeader>
+            <CardContent className="space-y-3">
+              <div><Label className="text-xs">Trial Duration (days)</Label><Input type="number" value={settings.trialDuration} onChange={(e) => update('trialDuration', e.target.value)} className="mt-1 w-24" /></div>
+              <div><Label className="text-xs">Grace Period After Trial (days)</Label><Input type="number" value={settings.gracePeriod} onChange={(e) => update('gracePeriod', e.target.value)} className="mt-1 w-24" /></div>
+              <div className="flex items-center justify-between p-3 border rounded-lg">
+                <div><p className="text-sm font-medium">Require Payment on Signup</p><p className="text-xs text-muted-foreground">If off, users start trial without payment</p></div>
+                <Switch checked={settings.requirePaymentOnSignup} onCheckedChange={(v) => update('requirePaymentOnSignup', v)} />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+
+      {/* Row 2: Email Automation (full width) */}
       <Card className="border-blue-500/25">
         <CardHeader className="pb-2">
           <div className="flex items-center justify-between">
@@ -226,40 +251,41 @@ export default function AdminSettingsPage() {
           </p>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div>
-            <Label className="text-xs">SendGrid API Key</Label>
-            <div className="relative mt-1">
-              <Input
-                type={showApiKey ? 'text' : 'password'}
-                value={settings.sendgridKey}
-                onChange={(e) => update('sendgridKey', e.target.value)}
-                placeholder="SG.xxxxxxxxxxxxxxxxxxxxxxxx"
-                className="pr-10"
-              />
-              <button
-                type="button"
-                onClick={() => setShowApiKey(!showApiKey)}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-              >
-                {showApiKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              </button>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <div className="lg:col-span-2">
+              <Label className="text-xs">SendGrid API Key</Label>
+              <div className="relative mt-1">
+                <Input
+                  type={showApiKey ? 'text' : 'password'}
+                  value={settings.sendgridKey}
+                  onChange={(e) => update('sendgridKey', e.target.value)}
+                  placeholder="SG.xxxxxxxxxxxxxxxxxxxxxxxx"
+                  className="pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowApiKey(!showApiKey)}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  {showApiKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
             </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label className="text-xs">From Email</Label>
-              <Input value={settings.fromEmail} onChange={(e) => update('fromEmail', e.target.value)} placeholder="notifications@icut.pk" className="mt-1" />
-            </div>
-            <div>
-              <Label className="text-xs">From Name</Label>
-              <Input value={settings.fromName} onChange={(e) => update('fromName', e.target.value)} placeholder="iCut" className="mt-1" />
+            <div className="grid grid-cols-2 lg:grid-cols-2 gap-4">
+              <div>
+                <Label className="text-xs">From Email</Label>
+                <Input value={settings.fromEmail} onChange={(e) => update('fromEmail', e.target.value)} placeholder="notifications@icut.pk" className="mt-1" />
+              </div>
+              <div>
+                <Label className="text-xs">From Name</Label>
+                <Input value={settings.fromName} onChange={(e) => update('fromName', e.target.value)} placeholder="iCut" className="mt-1" />
+              </div>
             </div>
           </div>
 
           <div className="pt-2 border-t">
             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">Email Automations</p>
-            <div className="space-y-2">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-2">
               {DEFAULT_EMAIL_TEMPLATES.map((tpl) => (
                 <div key={tpl.id} className="flex items-center justify-between p-3 bg-secondary/50 rounded-lg">
                   <div className="flex-1 min-w-0">
@@ -290,9 +316,10 @@ export default function AdminSettingsPage() {
         </CardContent>
       </Card>
 
+      {/* Row 3: Subscription Plans (full width) */}
       <Card>
         <CardHeader className="pb-2"><CardTitle className="text-sm">Subscription Plans</CardTitle></CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-2">
           {Object.entries(settings.plans).map(([name, plan]) => (
             <div key={name} className="flex items-center gap-3 p-3 bg-secondary/50 rounded-lg">
               <span className="font-medium text-sm w-16">{name}</span>
@@ -301,26 +328,6 @@ export default function AdminSettingsPage() {
               <div><Label className="text-[10px]">Staff</Label><Input value={plan.staff} onChange={(e) => updatePlan(name, 'staff', e.target.value)} className="w-24 h-7 text-xs" /></div>
             </div>
           ))}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader className="pb-2"><CardTitle className="text-sm">Trial Settings</CardTitle></CardHeader>
-        <CardContent className="space-y-3">
-          <div><Label className="text-xs">Trial Duration (days)</Label><Input type="number" value={settings.trialDuration} onChange={(e) => update('trialDuration', e.target.value)} className="mt-1 w-24" /></div>
-          <div><Label className="text-xs">Grace Period After Trial (days)</Label><Input type="number" value={settings.gracePeriod} onChange={(e) => update('gracePeriod', e.target.value)} className="mt-1 w-24" /></div>
-          <div className="flex items-center justify-between p-3 border rounded-lg">
-            <div><p className="text-sm font-medium">Require Payment Method on Signup</p><p className="text-xs text-muted-foreground">If off, users can start trial without payment info</p></div>
-            <Switch checked={settings.requirePaymentOnSignup} onCheckedChange={(v) => update('requirePaymentOnSignup', v)} />
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader className="pb-2"><CardTitle className="text-sm">Payment Collection</CardTitle></CardHeader>
-        <CardContent className="space-y-3">
-          <div><Label className="text-xs">JazzCash Account (for subscription payments)</Label><Input value={settings.jazzcashAccount} onChange={(e) => update('jazzcashAccount', e.target.value)} className="mt-1" /></div>
-          <div><Label className="text-xs">Bank Account (HBL)</Label><Input value={settings.bankAccount} onChange={(e) => update('bankAccount', e.target.value)} className="mt-1" /></div>
         </CardContent>
       </Card>
 
