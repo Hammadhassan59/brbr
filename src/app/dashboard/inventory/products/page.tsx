@@ -246,7 +246,7 @@ function ProductsContent() {
       {loading ? (
         <div className="space-y-2">{[1, 2, 3, 4].map((i) => <div key={i} className="h-12 bg-muted rounded-lg animate-pulse" />)}</div>
       ) : filtered.length === 0 ? (
-        <EmptyState icon={PackageIcon} text="noProductsYet" ctaLabel="addProduct" ctaHref="/dashboard/inventory/products?action=new" />
+        <EmptyState icon={PackageIcon} text="noProductsYet" ctaLabel="addProduct" onAction={() => openForm()} />
       ) : (
         <div className="bg-card border border-border rounded-lg overflow-hidden overflow-x-auto">
           <Table>

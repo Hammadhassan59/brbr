@@ -24,7 +24,7 @@ import { destroySession } from '@/app/actions/auth';
 interface NavItem {
   href: string;
   icon: typeof LayoutDashboard;
-  labelKey: 'dashboard' | 'appointments' | 'clients' | 'pos' | 'staff' | 'inventory' | 'expenses' | 'reports' | 'settings' | 'more';
+  labelKey: 'dashboard' | 'appointments' | 'clients' | 'pos' | 'staff' | 'inventory' | 'expenses' | 'reports' | 'settings' | 'packages';
   access: StaffRoleAccess[];
 }
 
@@ -36,7 +36,7 @@ const ALL_NAV_ITEMS: NavItem[] = [
   { href: '/dashboard/staff', icon: UserCog, labelKey: 'staff', access: ['full'] },
   { href: '/dashboard/inventory', icon: Package, labelKey: 'inventory', access: ['full'] },
   { href: '/dashboard/expenses', icon: Wallet, labelKey: 'expenses', access: ['full', 'front_desk'] },
-  { href: '/dashboard/packages', icon: Gift, labelKey: 'more', access: ['full'] },
+  { href: '/dashboard/packages', icon: Gift, labelKey: 'packages', access: ['full'] },
   { href: '/dashboard/reports', icon: BarChart3, labelKey: 'reports', access: ['full'] },
 ];
 
@@ -45,7 +45,7 @@ const ALL_MOBILE_NAV: NavItem[] = [
   { href: '/dashboard/appointments', icon: CalendarDays, labelKey: 'appointments', access: ['full', 'front_desk', 'stylist'] },
   { href: '/dashboard/clients', icon: Users, labelKey: 'clients', access: ['full', 'front_desk'] },
   { href: '/dashboard/pos', icon: Receipt, labelKey: 'pos', access: ['full', 'front_desk'] },
-  { href: '/dashboard/settings', icon: Settings, labelKey: 'more', access: ['full', 'front_desk', 'stylist', 'minimal'] },
+  { href: '/dashboard/settings', icon: Settings, labelKey: 'settings', access: ['full', 'front_desk', 'stylist', 'minimal'] },
 ];
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {

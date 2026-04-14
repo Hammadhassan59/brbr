@@ -211,7 +211,7 @@ function ClientsContent() {
           ))}
         </div>
       ) : sorted.length === 0 ? (
-        <EmptyState icon={UserRound} text="noClientsYet" ctaLabel="addClient" ctaHref="/dashboard/clients?action=new" />
+        <EmptyState icon={UserRound} text="noClientsYet" ctaLabel="addClient" ctaHref="/dashboard/clients/new" />
       ) : viewMode === 'card' ? (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 stagger-children">
           {sorted.map((client) => (

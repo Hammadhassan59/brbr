@@ -182,7 +182,7 @@ export default function StaffListPage() {
           {[1, 2, 3, 4].map((i) => <div key={i} className="h-32 bg-muted rounded-lg animate-pulse" />)}
         </div>
       ) : filteredStaff.length === 0 ? (
-        <EmptyState icon={Users} text="noStaffYet" ctaLabel="addStaff" ctaHref="/dashboard/staff?action=new" />
+        <EmptyState icon={Users} text="noStaffYet" ctaLabel="addStaff" ctaHref="/dashboard/staff/new" />
       ) : viewMode === 'card' ? (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 stagger-children">
           {filteredStaff.map((s) => (

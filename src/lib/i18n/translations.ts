@@ -64,7 +64,7 @@ export const translations = {
     settings: 'Settings',
     logout: 'Logout',
     newAppointment: 'New Appointment',
-    more: 'More',
+    packages: 'Packages',
 
     // Dashboard
     todayRevenue: "Today's Revenue",
@@ -192,7 +192,7 @@ export const translations = {
     settings: 'سیٹنگز',
     logout: 'لاگ آؤٹ',
     newAppointment: 'نئی اپائنٹمنٹ',
-    more: 'مزید',
+    packages: 'پیکجز',
 
     // Dashboard
     todayRevenue: 'آج کی آمدنی',

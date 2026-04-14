@@ -149,7 +149,7 @@ export default function PackagesPage() {
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">{[1, 2, 3].map((i) => <div key={i} className="h-36 bg-muted rounded-lg animate-pulse" />)}</div>
       ) : filtered.length === 0 ? (
-        <EmptyState icon={Gift} text="noPackagesYet" ctaLabel="addPackage" ctaHref="/dashboard/packages?action=new" />
+        <EmptyState icon={Gift} text="noPackagesYet" ctaLabel="addPackage" onAction={() => openForm()} />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 stagger-children">
           {filtered.map((pkg) => {

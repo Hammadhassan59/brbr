@@ -10,10 +10,13 @@ interface EmptyStateProps {
   text: TranslationKey;
   ctaLabel?: TranslationKey;
   ctaHref?: string;
+  onAction?: () => void;
 }
 
-export function EmptyState({ icon: Icon, text, ctaLabel, ctaHref }: EmptyStateProps) {
+export function EmptyState({ icon: Icon, text, ctaLabel, ctaHref, onAction }: EmptyStateProps) {
   const { t } = useLanguage();
+
+  const ctaClassName = "mt-4 bg-gold hover:bg-gold/90 px-5 py-2.5 text-xs font-bold text-black min-h-[44px] flex items-center";
 
   return (
     <div className="flex flex-col items-center justify-center py-16 text-center">
@@ -22,12 +25,14 @@ export function EmptyState({ icon: Icon, text, ctaLabel, ctaHref }: EmptyStatePr
       </div>
       <p className="mt-3 font-bold text-sm">{t(text)}</p>
       {ctaLabel && ctaHref && (
-        <Link
-          href={ctaHref}
-          className="mt-4 bg-gold hover:bg-gold/90 px-5 py-2.5 text-xs font-bold text-black min-h-[44px] flex items-center"
-        >
+        <Link href={ctaHref} className={ctaClassName}>
           {t(ctaLabel)}
         </Link>
+      )}
+      {ctaLabel && !ctaHref && onAction && (
+        <button type="button" onClick={onAction} className={ctaClassName}>
+          {t(ctaLabel)}
+        </button>
       )}
     </div>
   );

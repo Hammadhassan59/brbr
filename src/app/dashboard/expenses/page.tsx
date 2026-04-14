@@ -425,7 +425,7 @@ export default function ExpensesPage() {
           {[1, 2, 3].map((i) => <div key={i} className="h-16 bg-muted rounded-lg animate-pulse" />)}
         </div>
       ) : expenses.length === 0 ? (
-        <EmptyState icon={Wallet} text="noExpensesYet" ctaLabel="addExpense" ctaHref="/dashboard/expenses?action=new" />
+        <EmptyState icon={Wallet} text="noExpensesYet" ctaLabel="addExpense" onAction={() => { setEditingExpense(null); setCategory(''); setCustomCategory(''); setAmount(''); setDescription(''); setShowAdd(true); }} />
       ) : (
         <div className="space-y-4 stagger-children">
         {Object.entries(groupedByDate).sort(([a], [b]) => b.localeCompare(a)).map(([date, dayExpenses]) => (

@@ -341,7 +341,7 @@ function AppointmentsContent() {
           </div>
         </div>
       ) : !loading && stylists.length === 0 ? (
-        <EmptyState icon={CalendarDays} text="noAppointmentsYet" ctaLabel="bookAppointmentCta" ctaHref="/dashboard/appointments?action=new" />
+        <EmptyState icon={CalendarDays} text="noAppointmentsYet" ctaLabel="bookAppointmentCta" ctaHref="/dashboard/appointments?new=true" />
       ) : (
         <div className="bg-card border border-border rounded-lg overflow-hidden">
           <CalendarGrid

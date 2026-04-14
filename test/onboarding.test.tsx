@@ -114,10 +114,10 @@ describe('EmptyState', () => {
   })
 
   it('renders CTA button with link when provided', () => {
-    render(<EmptyState icon={UserRound} text="noClientsYet" ctaLabel="addClient" ctaHref="/dashboard/clients?action=new" />)
+    render(<EmptyState icon={UserRound} text="noClientsYet" ctaLabel="addClient" ctaHref="/dashboard/clients/new" />)
     const link = screen.getByText('Add Client')
     expect(link.closest('a')).toBeDefined()
-    expect(link.closest('a')?.getAttribute('href')).toBe('/dashboard/clients?action=new')
+    expect(link.closest('a')?.getAttribute('href')).toBe('/dashboard/clients/new')
   })
 
   it('renders without CTA when no ctaLabel provided', () => {
