@@ -184,13 +184,15 @@ export default function DashboardPage() {
         });
       }
 
+      // Pakistan is UTC+5 (no DST). Anchor day boundaries to PKT so bills rung
+      // in the evening/night are attributed to the right local day.
       const { data: billsData } = await supabase
         .from('bills')
         .select('total_amount, created_at, payment_method, staff_id, appointment_id')
         .eq('branch_id', currentBranch.id)
         .eq('status', 'paid')
-        .gte('created_at', `${startDate}T00:00:00`)
-        .lte('created_at', `${endDateFinal}T23:59:59`);
+        .gte('created_at', `${startDate}T00:00:00+05:00`)
+        .lte('created_at', `${endDateFinal}T23:59:59+05:00`);
 
       // Count POS-direct walk-ins: paid bills with no linked appointment.
       // Walk-in appointments are already counted via appointments.is_walkin,
@@ -212,7 +214,8 @@ export default function DashboardPage() {
 
         if (billsData) {
           billsData.forEach((bill: { total_amount: number; created_at: string }) => {
-            const billDate = bill.created_at.slice(0, 10);
+            // Bucket by Pakistan local date (bills.created_at is UTC)
+            const billDate = new Date(bill.created_at).toLocaleDateString('en-CA', { timeZone: 'Asia/Karachi' });
             const key = Object.keys(dayMap).find(k => k.startsWith(billDate));
             if (key) {
               dayMap[key].revenue += bill.total_amount;
@@ -259,8 +262,11 @@ export default function DashboardPage() {
         }
 
         if (billsData) {
+          const hourFmt = new Intl.DateTimeFormat('en-US', {
+            timeZone: 'Asia/Karachi', hour: 'numeric', hour12: false,
+          });
           billsData.forEach((bill: { total_amount: number; created_at: string }) => {
-            const hour = new Date(bill.created_at).getHours();
+            const hour = Number(hourFmt.format(new Date(bill.created_at)));
             const label = hour === 0 ? '12AM' : hour < 12 ? `${hour}AM` : hour === 12 ? '12PM' : `${hour - 12}PM`;
             if (hourMap[label]) {
               hourMap[label].revenue += bill.total_amount;
