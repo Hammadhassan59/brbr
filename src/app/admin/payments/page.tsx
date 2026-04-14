@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import {
-  Check, X, Clock, Search, Phone, Building2, AlertCircle, Loader2,
+  Check, X, Clock, Search, Phone, Building2, AlertCircle, Loader2, ImageIcon, ExternalLink,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import {
@@ -64,6 +64,9 @@ export default function AdminPaymentsPage() {
   const [rejectTarget, setRejectTarget] = useState<PaymentRequestWithSalon | null>(null);
   const [rejectReason, setRejectReason] = useState('');
   const [rejecting, setRejecting] = useState(false);
+
+  // Screenshot lightbox
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
   const fetchRequests = useCallback(async () => {
     setLoading(true);
@@ -214,6 +217,31 @@ export default function AdminPaymentsPage() {
             <Card key={r.id} className="border-border">
               <CardContent className="p-4">
                 <div className="flex items-start gap-4">
+                  {/* Screenshot thumbnail */}
+                  {r.screenshot_url ? (
+                    <button
+                      type="button"
+                      onClick={() => setPreviewUrl(r.screenshot_url)}
+                      className="shrink-0 w-20 h-20 rounded border border-border overflow-hidden bg-secondary/30 hover:ring-2 hover:ring-gold transition-all relative group"
+                      title="Click to view full screenshot"
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={r.screenshot_url}
+                        alt="Payment proof"
+                        className="w-full h-full object-cover"
+                      />
+                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center">
+                        <ExternalLink className="w-4 h-4 text-white opacity-0 group-hover:opacity-100" />
+                      </div>
+                    </button>
+                  ) : (
+                    <div className="shrink-0 w-20 h-20 rounded border border-dashed border-border flex flex-col items-center justify-center text-muted-foreground bg-secondary/30">
+                      <ImageIcon className="w-5 h-5" />
+                      <span className="text-[9px] mt-1">No proof</span>
+                    </div>
+                  )}
+
                   {/* Salon info */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
@@ -378,6 +406,33 @@ export default function AdminPaymentsPage() {
                   {approving ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Approve & Activate'}
                 </Button>
               </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Screenshot lightbox */}
+      <Dialog open={!!previewUrl} onOpenChange={(o) => !o && setPreviewUrl(null)}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Payment Screenshot</DialogTitle>
+          </DialogHeader>
+          {previewUrl && (
+            <div className="flex flex-col gap-2">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={previewUrl}
+                alt="Payment screenshot full"
+                className="w-full max-h-[70vh] object-contain bg-black/5 rounded"
+              />
+              <a
+                href={previewUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs text-muted-foreground hover:text-gold underline self-start"
+              >
+                Open in new tab
+              </a>
             </div>
           )}
         </DialogContent>

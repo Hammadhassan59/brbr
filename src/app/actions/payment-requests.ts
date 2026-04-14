@@ -16,6 +16,7 @@ export interface PaymentRequest {
   method: Method | null;
   status: Status;
   duration_days: number;
+  screenshot_url: string | null;
   reviewed_by: string | null;
   reviewed_at: string | null;
   reviewer_notes: string | null;
@@ -62,15 +63,13 @@ async function lookupPlanPrice(plan: Plan): Promise<number> {
 
 /**
  * Owner-side: create a pending payment request for the current salon.
- * Called when the owner clicks "Send Screenshot on WhatsApp" on the paywall —
- * we record their intent so the admin sees it in the queue alongside the WhatsApp
- * message they'll receive.
+ * Accepts a FormData payload with the screenshot file plus form fields.
+ * Uploads the screenshot to the payment-screenshots bucket then inserts the
+ * request row referencing the public URL.
  */
-export async function submitPaymentRequest(input: {
-  plan: Plan;
-  reference?: string | null;
-  method?: Method | null;
-}): Promise<{ data: PaymentRequest | null; error: string | null }> {
+export async function submitPaymentRequest(
+  formData: FormData
+): Promise<{ data: PaymentRequest | null; error: string | null }> {
   let session;
   try {
     session = await verifySession();
@@ -81,27 +80,63 @@ export async function submitPaymentRequest(input: {
     return { data: null, error: 'No salon associated with this session' };
   }
 
-  if (!['basic', 'growth', 'pro'].includes(input.plan)) {
+  const plan = String(formData.get('plan') || '') as Plan;
+  const reference = String(formData.get('reference') || '').trim() || null;
+  const method = (String(formData.get('method') || '') as Method) || null;
+  const screenshot = formData.get('screenshot');
+
+  if (!['basic', 'growth', 'pro'].includes(plan)) {
     return { data: null, error: 'Invalid plan' };
+  }
+  if (!(screenshot instanceof File) || screenshot.size === 0) {
+    return { data: null, error: 'Payment screenshot is required' };
+  }
+  if (screenshot.size > 10 * 1024 * 1024) {
+    return { data: null, error: 'Screenshot too large (10MB max)' };
   }
 
   const supabase = createServerClient();
-  const amount = await lookupPlanPrice(input.plan);
+
+  // Upload screenshot first. Path is salon_id/uuid.ext so it's namespaced and
+  // not enumerable. Bucket is public-read but paths are random.
+  const ext = screenshot.name.split('.').pop()?.toLowerCase().replace(/[^a-z0-9]/g, '') || 'jpg';
+  const uuid = crypto.randomUUID();
+  const path = `${session.salonId}/${uuid}.${ext}`;
+
+  const { error: uploadErr } = await supabase.storage
+    .from('payment-screenshots')
+    .upload(path, screenshot, {
+      contentType: screenshot.type || 'image/jpeg',
+      upsert: false,
+    });
+  if (uploadErr) return { data: null, error: `Upload failed: ${uploadErr.message}` };
+
+  const { data: urlData } = supabase.storage
+    .from('payment-screenshots')
+    .getPublicUrl(path);
+  const screenshot_url = urlData.publicUrl;
+
+  const amount = await lookupPlanPrice(plan);
 
   const { data, error } = await supabase
     .from('payment_requests')
     .insert({
       salon_id: session.salonId,
-      plan: input.plan,
+      plan,
       amount,
-      reference: input.reference?.trim() || null,
-      method: input.method || null,
+      reference,
+      method,
+      screenshot_url,
       status: 'pending',
     })
     .select()
     .single();
 
-  if (error) return { data: null, error: error.message };
+  if (error) {
+    // Try to clean up the orphaned screenshot
+    await supabase.storage.from('payment-screenshots').remove([path]).catch(() => {});
+    return { data: null, error: error.message };
+  }
   return { data: data as PaymentRequest, error: null };
 }
 

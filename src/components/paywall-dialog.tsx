@@ -1,8 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { Lock, Check, CreditCard, Building2, Copy } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Lock, Check, CreditCard, Copy, Upload, X, FileImage } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAppStore } from '@/store/app-store';
 import { getPublicPlatformConfig } from '@/app/actions/admin-settings';
@@ -45,7 +44,6 @@ function copyToClipboard(text: string, label: string) {
 
 export function PaywallDialog() {
   const { showPaywall, setShowPaywall, salon } = useAppStore();
-  const router = useRouter();
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
   const [plans, setPlans] = useState<PlanRow[]>(() =>
     PLAN_META.map((m) => ({
@@ -57,10 +55,13 @@ export function PaywallDialog() {
   );
   const [bankAccount, setBankAccount] = useState('');
   const [jazzcash, setJazzcash] = useState('');
-  const [supportWhatsApp, setSupportWhatsApp] = useState('');
   const [reference, setReference] = useState('');
+  const [method, setMethod] = useState<'bank' | 'jazzcash'>('bank');
+  const [screenshot, setScreenshot] = useState<File | null>(null);
+  const [screenshotPreview, setScreenshotPreview] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Fetch plans + payment details from superadmin settings on mount
   useEffect(() => {
@@ -82,7 +83,6 @@ export function PaywallDialog() {
         );
         setBankAccount(cfg.payment.bankAccount);
         setJazzcash(cfg.payment.jazzcashAccount);
-        setSupportWhatsApp(cfg.supportWhatsApp);
       })
       .catch(() => {
         // Keep fallbacks silently
@@ -90,14 +90,29 @@ export function PaywallDialog() {
     return () => { cancelled = true; };
   }, [showPaywall]);
 
+  // Revoke object URLs to avoid leaks
+  useEffect(() => {
+    return () => {
+      if (screenshotPreview) URL.revokeObjectURL(screenshotPreview);
+    };
+  }, [screenshotPreview]);
+
   const currentPlan = salon?.subscription_plan || 'none';
+
+  function resetForm() {
+    setSelectedPlan(null);
+    setReference('');
+    setMethod('bank');
+    if (screenshotPreview) URL.revokeObjectURL(screenshotPreview);
+    setScreenshot(null);
+    setScreenshotPreview(null);
+    setSubmitted(false);
+  }
 
   function handleOpenChange(open: boolean) {
     if (!open) {
       setShowPaywall(false);
-      setSelectedPlan(null);
-      setReference('');
-      setSubmitted(false);
+      resetForm();
     }
   }
 
@@ -106,31 +121,53 @@ export function PaywallDialog() {
     setSubmitted(false);
   }, [selectedPlan]);
 
-  async function handleSubmitAndOpenWhatsApp(plan: PlanRow) {
-    if (submitting) return;
-    setSubmitting(true);
-    try {
-      const { error } = await submitPaymentRequest({
-        plan: plan.key as 'basic' | 'growth' | 'pro',
-        reference: reference || null,
-      });
-      if (error) {
-        // Don't block the WhatsApp link on submit failure — admin can still
-        // manually activate from /admin/salons. But surface the error.
-        toast.error(`Couldn't record request: ${error}. Send the screenshot anyway.`);
-      } else {
-        setSubmitted(true);
-        toast.success('Request submitted. Send your screenshot to activate.');
-      }
-    } finally {
-      setSubmitting(false);
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please upload an image (jpg, png, webp)');
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('Image too large (10MB max)');
+      return;
+    }
+    if (screenshotPreview) URL.revokeObjectURL(screenshotPreview);
+    setScreenshot(file);
+    setScreenshotPreview(URL.createObjectURL(file));
+  }
+
+  function clearScreenshot() {
+    if (screenshotPreview) URL.revokeObjectURL(screenshotPreview);
+    setScreenshot(null);
+    setScreenshotPreview(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  }
+
+  async function handleSubmit() {
+    if (submitting || !selectedPlan) return;
+    if (!screenshot) {
+      toast.error('Please upload your payment screenshot');
+      return;
     }
 
-    // Always open WhatsApp regardless of submit outcome
-    if (supportWhatsApp) {
-      const phone = supportWhatsApp.replace(/\D/g, '');
-      const msg = `Hi, I want to subscribe to the ${plan.name} plan (Rs ${plan.price.toLocaleString()}/mo) for my salon "${salon?.name || ''}".${reference ? ` Transaction ref: ${reference}.` : ''} I'm sending the payment screenshot.`;
-      window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank', 'noopener');
+    setSubmitting(true);
+    try {
+      const fd = new FormData();
+      fd.append('plan', selectedPlan);
+      fd.append('reference', reference);
+      fd.append('method', method);
+      fd.append('screenshot', screenshot);
+
+      const { error } = await submitPaymentRequest(fd);
+      if (error) {
+        toast.error(error);
+        return;
+      }
+      setSubmitted(true);
+      toast.success('Payment submitted! Admin will activate within minutes.');
+    } finally {
+      setSubmitting(false);
     }
   }
 
@@ -151,7 +188,28 @@ export function PaywallDialog() {
           </DialogDescription>
         </DialogHeader>
 
-        {salon?.subscription_status !== 'suspended' && (
+        {salon?.subscription_status === 'suspended' ? (
+          <div className="mt-2 bg-red-500/5 border border-red-500/20 rounded p-3 text-xs text-red-700">
+            Account suspended. Please contact the platform admin for reactivation.
+          </div>
+        ) : submitted ? (
+          /* Success state — request submitted */
+          <div className="mt-2 space-y-3">
+            <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-4 text-center">
+              <Check className="w-10 h-10 text-green-600 mx-auto mb-2 p-2 bg-green-500/20 rounded-full" />
+              <p className="font-semibold text-sm">Payment Submitted</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                The admin will review your screenshot and activate your account within minutes. You can close this dialog.
+              </p>
+            </div>
+            <Button
+              onClick={() => handleOpenChange(false)}
+              className="w-full bg-gold text-black hover:bg-gold/90 font-semibold"
+            >
+              Close
+            </Button>
+          </div>
+        ) : (
           <>
             {/* Plan cards */}
             <div className="space-y-2 mt-2">
@@ -201,62 +259,85 @@ export function PaywallDialog() {
               })}
             </div>
 
-            {/* Bank details (shown after plan selection) */}
+            {/* Payment form (after plan selection) */}
             {selectedPlan && (
               <div className="mt-3 space-y-3">
+                {/* Always show bank + jazzcash blocks. Empty means admin hasn't
+                    configured them yet — surface that clearly. */}
                 <div className="border border-border rounded-lg p-3 space-y-2">
                   <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
                     <CreditCard className="w-3.5 h-3.5" />
-                    Payment Details
+                    Pay To
                   </p>
 
-                  <div className="space-y-1.5 text-sm">
-                    {bankAccount && (
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-xs text-muted-foreground">Bank Account</p>
-                          <p className="font-medium font-mono whitespace-pre-wrap">{bankAccount}</p>
-                        </div>
-                        <button onClick={() => copyToClipboard(bankAccount, 'Bank account')} className="p-1 hover:bg-secondary rounded shrink-0">
+                  <div className="space-y-2 text-sm">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs text-muted-foreground">Bank Account</p>
+                        {bankAccount ? (
+                          <p className="font-medium font-mono whitespace-pre-wrap break-words">{bankAccount}</p>
+                        ) : (
+                          <p className="text-xs italic text-muted-foreground">Not configured — ask admin to add</p>
+                        )}
+                      </div>
+                      {bankAccount && (
+                        <button onClick={() => copyToClipboard(bankAccount, 'Bank account')} className="p-1.5 hover:bg-secondary rounded shrink-0">
                           <Copy className="w-3.5 h-3.5 text-muted-foreground" />
                         </button>
-                      </div>
-                    )}
-                    {jazzcash && (
-                      <div className={`${bankAccount ? 'border-t border-border pt-1.5 ' : ''}flex items-center justify-between`}>
-                        <div>
-                          <p className="text-xs text-muted-foreground">JazzCash</p>
+                      )}
+                    </div>
+                    <div className="border-t border-border pt-2 flex items-start justify-between gap-2">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs text-muted-foreground">JazzCash</p>
+                        {jazzcash ? (
                           <p className="font-medium font-mono">{jazzcash}</p>
-                        </div>
-                        <button onClick={() => copyToClipboard(jazzcash, 'JazzCash number')} className="p-1 hover:bg-secondary rounded shrink-0">
+                        ) : (
+                          <p className="text-xs italic text-muted-foreground">Not configured — ask admin to add</p>
+                        )}
+                      </div>
+                      {jazzcash && (
+                        <button onClick={() => copyToClipboard(jazzcash, 'JazzCash number')} className="p-1.5 hover:bg-secondary rounded shrink-0">
                           <Copy className="w-3.5 h-3.5 text-muted-foreground" />
                         </button>
-                      </div>
-                    )}
-                    {!bankAccount && !jazzcash && (
-                      <p className="text-xs text-muted-foreground">
-                        Contact support on WhatsApp for payment details.
-                      </p>
-                    )}
+                      )}
+                    </div>
                   </div>
 
                   <div className="bg-gold/5 border border-gold/20 rounded p-2 mt-2">
                     <p className="text-xs">
-                      <span className="font-semibold">Amount:</span>{' '}
+                      <span className="font-semibold">Amount to transfer:</span>{' '}
                       Rs {plans.find((p) => p.key === selectedPlan)?.price.toLocaleString()}/month
                     </p>
                   </div>
                 </div>
 
-                <div className="text-xs text-muted-foreground space-y-1">
-                  <p>1. Transfer the amount to the account above</p>
-                  <p>2. Submit your transaction reference and send screenshot on WhatsApp</p>
-                  <p>3. Admin will approve within minutes and your account activates</p>
-                </div>
-
+                {/* Method picker */}
                 <div>
                   <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                    Transaction Reference (optional)
+                    Payment Method
+                  </label>
+                  <div className="grid grid-cols-2 gap-2 mt-1">
+                    {(['bank', 'jazzcash'] as const).map((m) => (
+                      <button
+                        key={m}
+                        type="button"
+                        onClick={() => setMethod(m)}
+                        className={`py-2 text-xs font-medium border rounded-md transition-all ${
+                          method === m
+                            ? 'border-gold bg-gold/10 text-foreground'
+                            : 'border-border text-muted-foreground hover:border-gold/40'
+                        }`}
+                      >
+                        {m === 'bank' ? 'Bank Transfer' : 'JazzCash'}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Reference */}
+                <div>
+                  <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    Transaction ID / Reference (optional)
                   </label>
                   <input
                     type="text"
@@ -268,73 +349,62 @@ export function PaywallDialog() {
                   />
                 </div>
 
-                {submitted && (
-                  <div className="bg-green-500/10 border border-green-500/30 rounded p-2 text-xs text-green-700">
-                    Request submitted. Admin sees it in the queue. Send your screenshot
-                    via WhatsApp to confirm.
-                  </div>
-                )}
-
-                {(() => {
-                  const plan = plans.find((p) => p.key === selectedPlan);
-                  if (!plan) return null;
-                  if (!supportWhatsApp) {
-                    return (
-                      <Button disabled className="w-full bg-gold/40 text-black/60 font-semibold">
-                        Support WhatsApp not configured
-                      </Button>
-                    );
-                  }
-                  return (
-                    <Button
-                      onClick={() => handleSubmitAndOpenWhatsApp(plan)}
-                      disabled={submitting}
-                      className="w-full bg-gold text-black hover:bg-gold/90 font-semibold"
+                {/* Screenshot upload (required) */}
+                <div>
+                  <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    Payment Screenshot <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleFileChange}
+                    className="hidden"
+                  />
+                  {screenshotPreview ? (
+                    <div className="mt-1 relative border border-border rounded-md overflow-hidden bg-secondary/30">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={screenshotPreview} alt="Payment screenshot" className="w-full h-40 object-contain" />
+                      <button
+                        type="button"
+                        onClick={clearScreenshot}
+                        className="absolute top-1.5 right-1.5 p-1 bg-black/60 hover:bg-black/80 text-white rounded-full"
+                        aria-label="Remove screenshot"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                      <div className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-[10px] px-2 py-1 flex items-center gap-1">
+                        <FileImage className="w-3 h-3" />
+                        {screenshot?.name} ({screenshot ? Math.round(screenshot.size / 1024) : 0}KB)
+                      </div>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="w-full mt-1 border-2 border-dashed border-border hover:border-gold/50 rounded-md p-4 text-center transition-colors group"
                     >
-                      {submitting ? 'Submitting...' : submitted ? 'Resend on WhatsApp' : 'Submit Request & Send Screenshot'}
-                    </Button>
-                  );
-                })()}
+                      <Upload className="w-5 h-5 text-muted-foreground group-hover:text-gold mx-auto mb-1" />
+                      <p className="text-xs font-medium">Tap to upload screenshot</p>
+                      <p className="text-[10px] text-muted-foreground mt-0.5">JPG, PNG or WebP, max 10MB</p>
+                    </button>
+                  )}
+                </div>
+
+                <Button
+                  onClick={handleSubmit}
+                  disabled={submitting || !screenshot}
+                  className="w-full bg-gold text-black hover:bg-gold/90 font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {submitting ? 'Submitting...' : 'Submit Payment'}
+                </Button>
+
+                <p className="text-[10px] text-muted-foreground text-center">
+                  Admin reviews within minutes during business hours
+                </p>
               </div>
             )}
-
-            {!selectedPlan && (
-              <Button
-                variant="outline"
-                className="w-full mt-2"
-                onClick={() => {
-                  setShowPaywall(false);
-                  router.push('/dashboard/settings?tab=subscription');
-                }}
-              >
-                <Building2 className="w-4 h-4 mr-2" />
-                View Full Details in Settings
-              </Button>
-            )}
           </>
-        )}
-
-        {salon?.subscription_status === 'suspended' && (
-          <div className="mt-2">
-            {supportWhatsApp ? (
-              <a
-                href={`https://wa.me/${supportWhatsApp.replace(/\D/g, '')}?text=${encodeURIComponent(
-                  'Hi, my iCut account has been suspended. Please help me reactivate it.'
-                )}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="block"
-              >
-                <Button className="w-full bg-gold text-black hover:bg-gold/90 font-semibold">
-                  Contact Support on WhatsApp
-                </Button>
-              </a>
-            ) : (
-              <Button disabled className="w-full bg-gold/40 text-black/60 font-semibold">
-                Support WhatsApp not configured
-              </Button>
-            )}
-          </div>
         )}
       </DialogContent>
     </Dialog>
