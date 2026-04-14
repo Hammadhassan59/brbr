@@ -478,6 +478,7 @@ export default function DashboardPage() {
         walkIns={walkIns}
         cashInDrawer={cashInDrawer}
         loading={loading}
+        activeFilter={activeFilter}
       />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">

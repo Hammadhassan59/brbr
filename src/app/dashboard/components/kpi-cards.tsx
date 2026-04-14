@@ -12,14 +12,29 @@ interface KPICardsProps {
   walkIns: number;
   cashInDrawer: number;
   loading: boolean;
+  activeFilter?: string;
 }
 
-export function KPICards({ summary, appointmentsDone, appointmentsTotal, walkIns, cashInDrawer, loading }: KPICardsProps) {
+export function KPICards({ summary, appointmentsDone, appointmentsTotal, walkIns, cashInDrawer, loading, activeFilter }: KPICardsProps) {
   const { t } = useLanguage();
+
+  const revenueLabel = (() => {
+    if (!activeFilter || activeFilter === 'today') return t('todayRevenue');
+    if (activeFilter === '7d') return '7-Day Revenue';
+    if (activeFilter === '30d') return '30-Day Revenue';
+    if (activeFilter.startsWith('mon-')) {
+      const months = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      const d = new Date();
+      d.setMonth(d.getMonth() - Number(activeFilter.split('-')[1]));
+      return `${months[d.getMonth() + 1]} Revenue`;
+    }
+    if (activeFilter === 'custom') return 'Period Revenue';
+    return t('todayRevenue');
+  })();
 
   const cards = [
     {
-      label: t('todayRevenue'),
+      label: revenueLabel,
       value: formatPKR(summary?.total_revenue ?? 0),
       icon: DollarSign,
     },
