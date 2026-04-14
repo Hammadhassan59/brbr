@@ -86,11 +86,45 @@ export async function getAdminUsers() {
     { data: partners },
   ] = await Promise.all([
     supabase.from('staff').select('*, salon:salons(name)').order('created_at', { ascending: false }),
-    supabase.from('salons').select('id, name, owner_id'),
+    supabase.from('salons').select('id, name, owner_id, created_at'),
     supabase.from('salon_partners').select('*, salon:salons(name)').order('created_at', { ascending: false }),
   ]);
 
-  return { staff: staff || [], salons: salons || [], partners: partners || [] };
+  // Build owner list from salons (owners aren't in staff table)
+  const ownerIds = (salons || []).map((s: { owner_id: string | null }) => s.owner_id).filter(Boolean) as string[];
+  let authUsers: { id: string; email: string; created_at: string }[] = [];
+
+  if (ownerIds.length > 0) {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+    const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+
+    const res = await fetch(`${supabaseUrl}/auth/v1/admin/users?per_page=100`, {
+      headers: { 'Authorization': `Bearer ${serviceKey}`, 'apikey': anonKey },
+    });
+    if (res.ok) {
+      const data = await res.json();
+      authUsers = (data.users || data || []).map((u: { id: string; email: string; created_at: string }) => ({
+        id: u.id, email: u.email, created_at: u.created_at,
+      }));
+    }
+  }
+
+  // Map owners
+  const owners = (salons || [])
+    .filter((s: { owner_id: string | null }) => s.owner_id)
+    .map((s: { id: string; name: string; owner_id: string; created_at: string }) => {
+      const authUser = authUsers.find((u) => u.id === s.owner_id);
+      return {
+        id: s.owner_id,
+        name: s.name + ' Owner',
+        email: authUser?.email || '',
+        salon_name: s.name,
+        created_at: s.created_at,
+      };
+    });
+
+  return { staff: staff || [], salons: salons || [], partners: partners || [], owners };
 }
 
 export async function getAdminSalons() {

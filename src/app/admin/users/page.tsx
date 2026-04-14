@@ -1,24 +1,26 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Users, Shield, Store, Loader2 } from 'lucide-react';
+import { useState, useEffect, useMemo } from 'react';
+import { Users, Shield, Store, Loader2, Search, Filter } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { getAdminUsers } from '@/app/actions/admin';
 import { toggleStaffActive, resetUserPassword } from '@/app/actions/admin-users';
 import { formatPKDate } from '@/lib/utils/dates';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
-interface StaffUser {
+interface PlatformUser {
   id: string;
   name: string;
   email: string;
   role: string;
+  roleKey: string;
   salon: string;
   isActive: boolean;
   lastLogin: string | null;
-  status: string;
+  type: 'owner' | 'staff' | 'partner';
 }
 
 const ROLE_LABELS: Record<string, string> = {
@@ -31,16 +33,39 @@ const ROLE_LABELS: Record<string, string> = {
 };
 
 export default function AdminUsersPage() {
-  const [users, setUsers] = useState<StaffUser[]>([]);
+  const [users, setUsers] = useState<PlatformUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
-  const [stats, setStats] = useState({ superAdmins: 1, owners: 0, totalStaff: 0 });
+
+  // Filters
+  const [search, setSearch] = useState('');
+  const [filterRole, setFilterRole] = useState('all');
+  const [filterSalon, setFilterSalon] = useState('all');
+  const [filterStatus, setFilterStatus] = useState('all');
 
   async function fetchUsers() {
     try {
-      const { staff, salons, partners } = await getAdminUsers();
+      const { staff, salons, partners, owners } = await getAdminUsers();
 
-      const mapped: StaffUser[] = staff.map((s: {
+      const mapped: PlatformUser[] = [];
+
+      // Add salon owners
+      (owners as { id: string; name: string; email: string; salon_name: string }[]).forEach((o) => {
+        mapped.push({
+          id: o.id,
+          name: o.name,
+          email: o.email,
+          role: 'Owner',
+          roleKey: 'owner',
+          salon: o.salon_name,
+          isActive: true,
+          lastLogin: null,
+          type: 'owner',
+        });
+      });
+
+      // Add staff
+      staff.forEach((s: {
         id: string;
         name: string;
         email?: string;
@@ -48,16 +73,19 @@ export default function AdminUsersPage() {
         salon?: { name: string };
         is_active?: boolean;
         last_login_at?: string | null;
-      }) => ({
-        id: s.id,
-        name: s.name,
-        email: s.email || '',
-        role: ROLE_LABELS[s.role] || s.role,
-        salon: s.salon?.name || '—',
-        isActive: s.is_active !== false,
-        lastLogin: s.last_login_at ?? null,
-        status: s.is_active !== false ? 'Active' : 'Inactive',
-      }));
+      }) => {
+        mapped.push({
+          id: s.id,
+          name: s.name,
+          email: s.email || '',
+          role: ROLE_LABELS[s.role] || s.role,
+          roleKey: s.role,
+          salon: s.salon?.name || '—',
+          isActive: s.is_active !== false,
+          lastLogin: s.last_login_at ?? null,
+          type: 'staff',
+        });
+      });
 
       // Add partners
       partners.forEach((p: {
@@ -73,17 +101,15 @@ export default function AdminUsersPage() {
           name: p.name,
           email: p.email || '',
           role: 'Partner',
+          roleKey: 'partner',
           salon: p.salon?.name || '—',
           isActive: p.is_active !== false,
           lastLogin: p.last_login_at ?? null,
-          status: p.is_active !== false ? 'Active' : 'Inactive',
+          type: 'partner',
         });
       });
 
       setUsers(mapped);
-
-      const owners = mapped.filter((u) => u.role === 'Owner').length;
-      setStats({ superAdmins: 1, owners, totalStaff: mapped.length });
     } catch {
       toast.error('Could not load users');
     } finally {
@@ -96,7 +122,44 @@ export default function AdminUsersPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  async function handleToggleActive(user: StaffUser) {
+  // Derived data
+  const salonNames = useMemo(() => {
+    const names = new Set<string>();
+    users.forEach((u) => { if (u.salon !== '—') names.add(u.salon); });
+    return Array.from(names).sort();
+  }, [users]);
+
+  const roleOptions = useMemo(() => {
+    const roles = new Set<string>();
+    users.forEach((u) => roles.add(u.role));
+    return Array.from(roles).sort();
+  }, [users]);
+
+  const filtered = useMemo(() => {
+    return users.filter((u) => {
+      if (search) {
+        const q = search.toLowerCase();
+        if (!u.name.toLowerCase().includes(q) && !u.email.toLowerCase().includes(q)) return false;
+      }
+      if (filterRole !== 'all' && u.role !== filterRole) return false;
+      if (filterSalon !== 'all' && u.salon !== filterSalon) return false;
+      if (filterStatus === 'active' && !u.isActive) return false;
+      if (filterStatus === 'inactive' && u.isActive) return false;
+      return true;
+    });
+  }, [users, search, filterRole, filterSalon, filterStatus]);
+
+  const stats = useMemo(() => ({
+    superAdmins: 1,
+    owners: users.filter((u) => u.type === 'owner').length,
+    totalStaff: users.length,
+  }), [users]);
+
+  async function handleToggleActive(user: PlatformUser) {
+    if (user.type === 'owner') {
+      toast.error('Cannot deactivate salon owners from here');
+      return;
+    }
     const nextState = !user.isActive;
     const label = nextState ? 'activate' : 'deactivate';
     setActionLoading(`toggle-${user.id}`);
@@ -105,15 +168,14 @@ export default function AdminUsersPage() {
       toast.success(`${user.name} ${label}d`);
       setLoading(true);
       await fetchUsers();
-    } catch (err) {
+    } catch {
       toast.error(`Failed to ${label} user`);
-      console.error(err);
     } finally {
       setActionLoading(null);
     }
   }
 
-  async function handleResetPassword(user: StaffUser) {
+  async function handleResetPassword(user: PlatformUser) {
     if (!user.email) {
       toast.error('No email address on file for this user');
       return;
@@ -128,9 +190,8 @@ export default function AdminUsersPage() {
     try {
       await resetUserPassword(user.email, newPassword);
       toast.success(`Password reset for ${user.name}`);
-    } catch (err) {
+    } catch {
       toast.error('Failed to reset password');
-      console.error(err);
     } finally {
       setActionLoading(null);
     }
@@ -148,17 +209,77 @@ export default function AdminUsersPage() {
     <div className="space-y-4">
       <h2 className="font-heading text-xl font-bold">Platform Users</h2>
 
+      {/* Stats */}
       <div className="grid grid-cols-3 gap-3">
         <Card><CardContent className="p-4 text-center"><Shield className="w-5 h-5 text-red-500 mx-auto mb-1" /><p className="text-2xl font-bold">{stats.superAdmins}</p><p className="text-xs text-muted-foreground">Super Admins</p></CardContent></Card>
         <Card><CardContent className="p-4 text-center"><Store className="w-5 h-5 text-gold mx-auto mb-1" /><p className="text-2xl font-bold">{stats.owners}</p><p className="text-xs text-muted-foreground">Salon Owners</p></CardContent></Card>
-        <Card><CardContent className="p-4 text-center"><Users className="w-5 h-5 text-blue-500 mx-auto mb-1" /><p className="text-2xl font-bold">{stats.totalStaff}</p><p className="text-xs text-muted-foreground">Total Staff</p></CardContent></Card>
+        <Card><CardContent className="p-4 text-center"><Users className="w-5 h-5 text-blue-500 mx-auto mb-1" /><p className="text-2xl font-bold">{stats.totalStaff}</p><p className="text-xs text-muted-foreground">Total Users</p></CardContent></Card>
       </div>
 
+      {/* Filters */}
       <Card>
-        <CardHeader className="pb-2"><CardTitle className="text-sm">Platform Users</CardTitle></CardHeader>
+        <CardContent className="p-4">
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="relative flex-1 min-w-[200px]">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                placeholder="Search by name or email..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="pl-9 h-9 text-sm"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <Filter className="w-4 h-4 text-muted-foreground" />
+              <select
+                value={filterRole}
+                onChange={(e) => setFilterRole(e.target.value)}
+                className="h-9 rounded-md border border-border bg-white px-3 text-sm"
+              >
+                <option value="all">All Roles</option>
+                {roleOptions.map((r) => <option key={r} value={r}>{r}</option>)}
+              </select>
+              <select
+                value={filterSalon}
+                onChange={(e) => setFilterSalon(e.target.value)}
+                className="h-9 rounded-md border border-border bg-white px-3 text-sm"
+              >
+                <option value="all">All Salons</option>
+                {salonNames.map((s) => <option key={s} value={s}>{s}</option>)}
+              </select>
+              <select
+                value={filterStatus}
+                onChange={(e) => setFilterStatus(e.target.value)}
+                className="h-9 rounded-md border border-border bg-white px-3 text-sm"
+              >
+                <option value="all">All Status</option>
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+              </select>
+            </div>
+          </div>
+          {(search || filterRole !== 'all' || filterSalon !== 'all' || filterStatus !== 'all') && (
+            <div className="flex items-center gap-2 mt-2">
+              <p className="text-xs text-muted-foreground">Showing {filtered.length} of {users.length} users</p>
+              <button
+                onClick={() => { setSearch(''); setFilterRole('all'); setFilterSalon('all'); setFilterStatus('all'); }}
+                className="text-xs text-gold hover:underline"
+              >
+                Clear filters
+              </button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Users Table */}
+      <Card>
+        <CardHeader className="pb-2"><CardTitle className="text-sm">Platform Users ({filtered.length})</CardTitle></CardHeader>
         <CardContent className="px-0">
-          {users.length === 0 ? (
-            <p className="text-sm text-muted-foreground py-8 text-center">No users yet. Staff will appear as salons add team members.</p>
+          {filtered.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-8 text-center">
+              {users.length === 0 ? 'No users yet. Staff will appear as salons add team members.' : 'No users match the current filters.'}
+            </p>
           ) : (
             <Table>
               <TableHeader>
@@ -173,38 +294,51 @@ export default function AdminUsersPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {users.map((u, i) => (
-                  <TableRow key={`${u.email}-${i}`}>
+                {filtered.map((u, i) => (
+                  <TableRow key={`${u.id}-${i}`}>
                     <TableCell className="pl-4 font-medium text-sm">{u.name}</TableCell>
-                    <TableCell className="text-sm text-muted-foreground">{u.email}</TableCell>
-                    <TableCell><Badge variant={u.role === 'Owner' ? 'default' : 'secondary'} className="text-[10px]">{u.role}</Badge></TableCell>
+                    <TableCell className="text-sm text-muted-foreground">{u.email || '—'}</TableCell>
+                    <TableCell>
+                      <Badge
+                        variant={u.type === 'owner' ? 'default' : 'secondary'}
+                        className={`text-[10px] ${u.type === 'owner' ? 'bg-gold text-black' : ''}`}
+                      >
+                        {u.role}
+                      </Badge>
+                    </TableCell>
                     <TableCell className="text-sm">{u.salon}</TableCell>
                     <TableCell className="text-sm text-muted-foreground">
                       {u.lastLogin ? formatPKDate(u.lastLogin) : '—'}
                     </TableCell>
                     <TableCell className="text-center">
-                      <Badge variant="outline" className={`text-[10px] ${u.isActive ? 'text-green-600 border-green-500/25 bg-green-500/10' : 'text-amber-600 border-amber-500/25 bg-amber-500/10'}`}>{u.status}</Badge>
+                      <Badge variant="outline" className={`text-[10px] ${u.isActive ? 'text-green-600 border-green-500/25 bg-green-500/10' : 'text-amber-600 border-amber-500/25 bg-amber-500/10'}`}>
+                        {u.isActive ? 'Active' : 'Inactive'}
+                      </Badge>
                     </TableCell>
                     <TableCell className="pr-4 text-right">
                       <div className="flex items-center justify-end gap-2">
-                        <button
-                          onClick={() => handleToggleActive(u)}
-                          disabled={actionLoading === `toggle-${u.id}`}
-                          className="text-[11px] px-2 py-1 border rounded font-medium disabled:opacity-50 hover:bg-muted transition-colors"
-                        >
-                          {actionLoading === `toggle-${u.id}` ? (
-                            <Loader2 className="w-3 h-3 animate-spin" />
-                          ) : u.isActive ? 'Deactivate' : 'Activate'}
-                        </button>
-                        <button
-                          onClick={() => handleResetPassword(u)}
-                          disabled={actionLoading === `reset-${u.id}`}
-                          className="text-[11px] px-2 py-1 border rounded font-medium disabled:opacity-50 hover:bg-muted transition-colors"
-                        >
-                          {actionLoading === `reset-${u.id}` ? (
-                            <Loader2 className="w-3 h-3 animate-spin" />
-                          ) : 'Reset PW'}
-                        </button>
+                        {u.type !== 'owner' && (
+                          <button
+                            onClick={() => handleToggleActive(u)}
+                            disabled={actionLoading === `toggle-${u.id}`}
+                            className="text-[11px] px-2 py-1 border rounded font-medium disabled:opacity-50 hover:bg-muted transition-colors"
+                          >
+                            {actionLoading === `toggle-${u.id}` ? (
+                              <Loader2 className="w-3 h-3 animate-spin" />
+                            ) : u.isActive ? 'Deactivate' : 'Activate'}
+                          </button>
+                        )}
+                        {u.email && (
+                          <button
+                            onClick={() => handleResetPassword(u)}
+                            disabled={actionLoading === `reset-${u.id}`}
+                            className="text-[11px] px-2 py-1 border rounded font-medium disabled:opacity-50 hover:bg-muted transition-colors"
+                          >
+                            {actionLoading === `reset-${u.id}` ? (
+                              <Loader2 className="w-3 h-3 animate-spin" />
+                            ) : 'Reset PW'}
+                          </button>
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>
