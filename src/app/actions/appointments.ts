@@ -1,6 +1,6 @@
 'use server';
 
-import { verifyWriteAccess } from './auth';
+import { checkWriteAccess } from './auth';
 import { createServerClient } from '@/lib/supabase';
 
 const VALID_STATUSES = [
@@ -32,7 +32,9 @@ export async function createAppointment(data: {
   isWalkin?: boolean;
   notes?: string | null;
 }) {
-  const session = await verifyWriteAccess();
+  const writeCheck = await checkWriteAccess();
+  if (writeCheck.error !== null) return { data: null, error: writeCheck.error };
+  const session = writeCheck.session;
   const supabase = createServerClient();
 
   // Verify the branch belongs to this salon
@@ -120,7 +122,9 @@ export async function updateAppointment(id: string, data: {
   endTime: string;
   notes?: string | null;
 }) {
-  const session = await verifyWriteAccess();
+  const writeCheck = await checkWriteAccess();
+  if (writeCheck.error !== null) return { data: null, error: writeCheck.error };
+  const session = writeCheck.session;
   const supabase = createServerClient();
 
   // Ownership: the appointment must already belong to this salon
@@ -212,7 +216,9 @@ export async function replaceAppointmentServices(appointmentId: string, services
   price: number;
   durationMinutes: number;
 }>) {
-  const session = await verifyWriteAccess();
+  const writeCheck = await checkWriteAccess();
+  if (writeCheck.error !== null) return { error: writeCheck.error };
+  const session = writeCheck.session;
   const supabase = createServerClient();
 
   const { data: apt } = await supabase
@@ -256,7 +262,9 @@ export interface AppointmentServiceInput {
 }
 
 export async function deleteAppointment(id: string) {
-  const session = await verifyWriteAccess();
+  const writeCheck = await checkWriteAccess();
+  if (writeCheck.error !== null) return { error: writeCheck.error };
+  const session = writeCheck.session;
   const supabase = createServerClient();
 
   const { error } = await supabase
@@ -270,7 +278,9 @@ export async function deleteAppointment(id: string) {
 }
 
 export async function createAppointmentServices(appointmentId: string, services: AppointmentServiceInput[]) {
-  const session = await verifyWriteAccess();
+  const writeCheck = await checkWriteAccess();
+  if (writeCheck.error !== null) return { error: writeCheck.error };
+  const session = writeCheck.session;
   const supabase = createServerClient();
 
   // Verify the appointment belongs to this salon before attaching services
@@ -327,7 +337,9 @@ export async function createAppointmentWithServices(
   },
   services: AppointmentServiceInput[]
 ) {
-  const session = await verifyWriteAccess();
+  const writeCheck = await checkWriteAccess();
+  if (writeCheck.error !== null) return { data: null, error: writeCheck.error };
+  const session = writeCheck.session;
   const supabase = createServerClient();
 
   // Ownership: branch must belong to this salon
@@ -419,7 +431,9 @@ export async function createAppointmentWithServices(
 }
 
 export async function updateAppointmentStatus(id: string, status: string) {
-  const session = await verifyWriteAccess();
+  const writeCheck = await checkWriteAccess();
+  if (writeCheck.error !== null) return { error: writeCheck.error };
+  const session = writeCheck.session;
 
   if (!isValidStatus(status)) {
     return { error: 'Invalid status' };

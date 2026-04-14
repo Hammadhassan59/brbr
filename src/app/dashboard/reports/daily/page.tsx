@@ -17,6 +17,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
 import toast from 'react-hot-toast';
+import { showActionError, handleSubscriptionError } from '@/components/paywall-dialog';
 import { createExpense, updateCashDrawerExpenses } from '@/app/actions/expenses';
 import { openCashDrawer as openCashDrawerAction, closeCashDrawer as closeCashDrawerAction } from '@/app/actions/cash-drawer';
 import type { DailySummary, Bill, BillItem, CashDrawer, Expense } from '@/types/database';
@@ -102,10 +103,13 @@ export default function DailyReportPage() {
         branchId: currentBranch.id, date, openingBalance: Number(openingBalance) || 0,
         openedBy: currentStaff?.id || null,
       });
-      if (result?.error) throw new Error(result.error);
+      if (showActionError(result?.error)) return;
       toast.success('Cash drawer opened');
       setShowOpenDrawer(false); fetchData();
-    } catch (err: unknown) { toast.error(err instanceof Error ? err.message : 'Failed'); }
+    } catch (err: unknown) {
+      if (handleSubscriptionError(err)) return;
+      toast.error(err instanceof Error ? err.message : 'Failed');
+    }
     finally { setSaving(false); }
   }
 
@@ -128,7 +132,7 @@ export default function DailyReportPage() {
         amount: Number(expAmount), description: expDesc || null, date,
         createdBy: currentStaff?.id || null,
       });
-      if (expError) throw new Error(expError);
+      if (showActionError(expError)) return;
       // Update cash drawer expenses
       if (drawer) {
         await updateCashDrawerExpenses(currentBranch.id, date, (drawer.total_expenses || 0) + Number(expAmount));
@@ -136,7 +140,10 @@ export default function DailyReportPage() {
       toast.success('Expense added');
       setShowAddExpense(false); setExpCategory(''); setExpAmount(''); setExpDesc('');
       fetchData();
-    } catch (err: unknown) { toast.error(err instanceof Error ? err.message : 'Failed'); }
+    } catch (err: unknown) {
+      if (handleSubscriptionError(err)) return;
+      toast.error(err instanceof Error ? err.message : 'Failed');
+    }
     finally { setSaving(false); }
   }
 

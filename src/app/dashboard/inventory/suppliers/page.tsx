@@ -14,6 +14,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import toast from 'react-hot-toast';
+import { showActionError, handleSubscriptionError } from '@/components/paywall-dialog';
 import type { Supplier } from '@/types/database';
 
 export default function SuppliersPage() {
@@ -55,15 +56,18 @@ export default function SuppliersPage() {
     try {
       if (editSupplier) {
         const { error } = await updateSupplier(editSupplier.id, { name: formName.trim(), phone: formPhone || null, notes: formNotes || null });
-        if (error) throw new Error(error);
+        if (showActionError(error)) return;
         toast.success('Supplier updated');
       } else {
         const { error } = await createSupplier({ name: formName.trim(), phone: formPhone || null, notes: formNotes || null });
-        if (error) throw new Error(error);
+        if (showActionError(error)) return;
         toast.success('Supplier added');
       }
       setShowForm(false); fetch();
-    } catch (err: unknown) { toast.error(err instanceof Error ? err.message : 'Failed'); }
+    } catch (err: unknown) {
+      if (handleSubscriptionError(err)) return;
+      toast.error(err instanceof Error ? err.message : 'Failed');
+    }
     finally { setSaving(false); }
   }
 
@@ -75,10 +79,13 @@ export default function SuppliersPage() {
       const amount = Number(payAmount);
       if (amount > paySupplier.udhaar_balance) { toast.error('Payment amount exceeds outstanding balance'); setSavingPay(false); return; }
       const { error } = await recordSupplierPayment(paySupplier.id, amount, paySupplier.udhaar_balance);
-      if (error) throw new Error(error);
+      if (showActionError(error)) return;
       toast.success(`Payment of ${formatPKR(amount)} recorded`);
       setShowPayment(false); setPayAmount(''); fetch();
-    } catch (err: unknown) { toast.error(err instanceof Error ? err.message : 'Failed'); }
+    } catch (err: unknown) {
+      if (handleSubscriptionError(err)) return;
+      toast.error(err instanceof Error ? err.message : 'Failed');
+    }
     finally { setSavingPay(false); }
   }
 

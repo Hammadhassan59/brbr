@@ -1,6 +1,6 @@
 'use server';
 
-import { verifyWriteAccess } from './auth';
+import { checkWriteAccess } from './auth';
 import { createServerClient } from '@/lib/supabase';
 
 /**
@@ -47,7 +47,9 @@ export async function createBill(data: {
   loyaltyPointsEarned?: number;
   promoCode?: string | null;
 }) {
-  const session = await verifyWriteAccess();
+  const writeCheck = await checkWriteAccess();
+  if (writeCheck.error !== null) return { data: null, error: writeCheck.error };
+  const session = writeCheck.session;
   const supabase = createServerClient();
 
   // Retry up to 3 times on bill_number collision
@@ -101,7 +103,8 @@ export async function createBillItems(billId: string, items: Array<{
   unitPrice: number;
   totalPrice: number;
 }>) {
-  await verifyWriteAccess();
+  const { error: writeError } = await checkWriteAccess();
+  if (writeError) return { error: writeError };
   const supabase = createServerClient();
 
   const { error } = await supabase
@@ -122,7 +125,8 @@ export async function createBillItems(billId: string, items: Array<{
 }
 
 export async function recordTip(staffId: string, billId: string, amount: number) {
-  await verifyWriteAccess();
+  const { error: writeError } = await checkWriteAccess();
+  if (writeError) return { error: writeError };
   const supabase = createServerClient();
 
   const { error } = await supabase
@@ -134,7 +138,8 @@ export async function recordTip(staffId: string, billId: string, amount: number)
 }
 
 export async function updateCashDrawer(branchId: string, cashAmount: number) {
-  await verifyWriteAccess();
+  const { error: writeError } = await checkWriteAccess();
+  if (writeError) return { error: writeError };
   const supabase = createServerClient();
 
   const today = new Date().toISOString().slice(0, 10);
@@ -157,7 +162,8 @@ export async function updateCashDrawer(branchId: string, cashAmount: number) {
 }
 
 export async function updatePromoCodeUsage(code: string) {
-  await verifyWriteAccess();
+  const { error: writeError } = await checkWriteAccess();
+  if (writeError) return { error: writeError };
   const supabase = createServerClient();
 
   const { data: promo } = await supabase
@@ -177,7 +183,8 @@ export async function updatePromoCodeUsage(code: string) {
 }
 
 export async function rollbackBill(billId: string) {
-  await verifyWriteAccess();
+  const { error: writeError } = await checkWriteAccess();
+  if (writeError) return { error: writeError };
   const supabase = createServerClient();
 
   try {

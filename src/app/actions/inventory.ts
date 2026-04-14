@@ -1,6 +1,6 @@
 'use server';
 
-import { verifyWriteAccess } from './auth';
+import { checkWriteAccess } from './auth';
 import { createServerClient } from '@/lib/supabase';
 
 export async function createProduct(data: {
@@ -16,7 +16,9 @@ export async function createProduct(data: {
   currentStock?: number;
   lowStockThreshold?: number;
 }) {
-  const session = await verifyWriteAccess();
+  const writeCheck = await checkWriteAccess();
+  if (writeCheck.error !== null) return { data: null, error: writeCheck.error };
+  const session = writeCheck.session;
   const supabase = createServerClient();
 
   const { data: result, error } = await supabase
@@ -43,7 +45,9 @@ export async function createProduct(data: {
 }
 
 export async function updateProduct(id: string, data: Record<string, unknown>) {
-  const session = await verifyWriteAccess();
+  const writeCheck = await checkWriteAccess();
+  if (writeCheck.error !== null) return { error: writeCheck.error };
+  const session = writeCheck.session;
   const supabase = createServerClient();
   data.salon_id = session.salonId;
 
@@ -60,7 +64,8 @@ export async function syncProductServiceLinks(productId: string, links: Array<{
   serviceId: string;
   qtyPerUse: number;
 }>) {
-  await verifyWriteAccess();
+  const { error: writeError } = await checkWriteAccess();
+  if (writeError) return { error: writeError };
   const supabase = createServerClient();
 
   await supabase.from('product_service_links').delete().eq('product_id', productId);
@@ -80,7 +85,8 @@ export async function syncProductServiceLinks(productId: string, links: Array<{
 }
 
 export async function adjustStock(productId: string, branchId: string, quantity: number, notes?: string | null) {
-  await verifyWriteAccess();
+  const { error: writeError } = await checkWriteAccess();
+  if (writeError) return { error: writeError };
   const supabase = createServerClient();
 
   // Get current stock
@@ -122,7 +128,8 @@ export async function createPurchaseOrder(data: {
   totalAmount: number;
   notes?: string | null;
 }) {
-  await verifyWriteAccess();
+  const { error: writeError } = await checkWriteAccess();
+  if (writeError) return { error: writeError };
   const supabase = createServerClient();
 
   const { error } = await supabase
@@ -140,7 +147,8 @@ export async function createPurchaseOrder(data: {
 }
 
 export async function updateOrderStatus(orderId: string, status: string) {
-  await verifyWriteAccess();
+  const { error: writeError } = await checkWriteAccess();
+  if (writeError) return { error: writeError };
   const supabase = createServerClient();
 
   const { error } = await supabase
@@ -157,7 +165,9 @@ export async function createSupplier(data: {
   phone?: string | null;
   notes?: string | null;
 }) {
-  const session = await verifyWriteAccess();
+  const writeCheck = await checkWriteAccess();
+  if (writeCheck.error !== null) return { error: writeCheck.error };
+  const session = writeCheck.session;
   const supabase = createServerClient();
 
   const { error } = await supabase
@@ -178,7 +188,9 @@ export async function updateSupplier(id: string, data: {
   phone?: string | null;
   notes?: string | null;
 }) {
-  const session = await verifyWriteAccess();
+  const writeCheck = await checkWriteAccess();
+  if (writeCheck.error !== null) return { error: writeCheck.error };
+  const session = writeCheck.session;
   const supabase = createServerClient();
 
   const { error } = await supabase
@@ -196,7 +208,8 @@ export async function updateSupplier(id: string, data: {
 }
 
 export async function recordSupplierPayment(supplierId: string, amount: number, currentBalance: number) {
-  await verifyWriteAccess();
+  const { error: writeError } = await checkWriteAccess();
+  if (writeError) return { error: writeError };
   const supabase = createServerClient();
 
   const { error } = await supabase

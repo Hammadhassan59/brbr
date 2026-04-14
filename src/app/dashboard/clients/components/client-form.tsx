@@ -11,6 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import toast from 'react-hot-toast';
+import { showActionError, handleSubscriptionError } from '@/components/paywall-dialog';
 import { isValidPKPhone } from '@/lib/utils/phone';
 import type { Client } from '@/types/database';
 
@@ -60,7 +61,7 @@ export function ClientForm({ client, onSaved }: ClientFormProps) {
 
       if (isEditing && client) {
         const { error } = await updateClient(client.id, data);
-        if (error) throw new Error(error);
+        if (showActionError(error)) return;
         toast.success('Client updated');
       } else {
         // Check for duplicate phone
@@ -90,13 +91,14 @@ export function ClientForm({ client, onSaved }: ClientFormProps) {
           isBlacklisted: isBlacklisted,
           udhaarLimit: udhaarLimit === '' ? 5000 : Number(udhaarLimit),
         });
-        if (error) throw new Error(error);
+        if (showActionError(error)) return;
         toast.success('Client added');
         router.push(`/dashboard/clients/${newClient.id}`);
       }
 
       onSaved?.();
     } catch (err: unknown) {
+      if (handleSubscriptionError(err)) return;
       toast.error(err instanceof Error ? err.message : 'Failed to save');
     } finally {
       setSaving(false);

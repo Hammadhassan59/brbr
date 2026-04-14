@@ -17,6 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import toast from 'react-hot-toast';
+import { showActionError, handleSubscriptionError } from '@/components/paywall-dialog';
 import { EmptyState } from '@/components/empty-state';
 import type { Product, InventoryType, Service, ProductServiceLink } from '@/types/database';
 
@@ -161,7 +162,7 @@ function ProductsContent() {
           purchase_price: Number(formPurchasePrice) || 0,
           retail_price: Number(formRetailPrice) || 0, current_stock: Number(formStock) || 0, low_stock_threshold: Number(formThreshold) || 5,
         });
-        if (error) throw new Error(error);
+        if (showActionError(error)) return;
         productId = editProduct.id;
         toast.success('Product updated');
       } else {
@@ -172,20 +173,23 @@ function ProductsContent() {
           purchasePrice: Number(formPurchasePrice) || 0,
           retailPrice: Number(formRetailPrice) || 0, currentStock: Number(formStock) || 0, lowStockThreshold: Number(formThreshold) || 5,
         });
-        if (error) throw new Error(error);
-        productId = newProd.id;
+        if (showActionError(error)) return;
+        productId = newProd!.id;
         toast.success('Product added');
       }
 
       // Sync service links
       if (formType === 'backbar') {
         const { error } = await syncProductServiceLinks(productId, formLinks.map(l => ({ serviceId: l.serviceId, qtyPerUse: l.qtyPerUse })));
-        if (error) throw new Error(error);
+        if (showActionError(error)) return;
       }
 
       setShowForm(false);
       fetchProducts();
-    } catch (err: unknown) { toast.error(err instanceof Error ? err.message : 'Failed'); }
+    } catch (err: unknown) {
+      if (handleSubscriptionError(err)) return;
+      toast.error(err instanceof Error ? err.message : 'Failed');
+    }
     finally { setSaving(false); }
   }
 
@@ -195,11 +199,14 @@ function ProductsContent() {
     try {
       const qty = Number(adjustQty);
       const { error } = await adjustStock(adjustProduct.id, currentBranch.id, qty, adjustReason || null);
-      if (error) throw new Error(error);
+      if (showActionError(error)) return;
       toast.success('Stock adjusted');
       setShowAdjust(false); setAdjustQty(''); setAdjustReason('');
       fetchProducts();
-    } catch (err: unknown) { toast.error(err instanceof Error ? err.message : 'Failed'); }
+    } catch (err: unknown) {
+      if (handleSubscriptionError(err)) return;
+      toast.error(err instanceof Error ? err.message : 'Failed');
+    }
     finally { setSavingAdjust(false); }
   }
 

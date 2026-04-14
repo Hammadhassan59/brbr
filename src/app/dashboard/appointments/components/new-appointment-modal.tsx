@@ -13,6 +13,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import toast from 'react-hot-toast';
+import { showActionError, handleSubscriptionError } from '@/components/paywall-dialog';
 import { createAppointmentWithServices, updateAppointment, replaceAppointmentServices } from '@/app/actions/appointments';
 import { createClient } from '@/app/actions/clients';
 import type { AppointmentWithDetails, Client, Staff, Service, ServiceCategory, WorkingHours } from '@/types/database';
@@ -200,7 +201,7 @@ export function NewAppointmentModal({
 
       if (isNewClient && newClientName) {
         const { data: newClient, error } = await createClient({ name: newClientName, phone: newClientPhone || null });
-        if (error) throw new Error(error);
+        if (showActionError(error)) return;
         clientId = newClient!.id;
       } else if (selectedClient) {
         clientId = selectedClient.id;
@@ -231,13 +232,13 @@ export function NewAppointmentModal({
           branchId: currentBranch.id, clientId, staffId: selectedStaffId,
           date, startTime: time, endTime, notes: notes || null,
         });
-        if (aptErr) throw new Error(aptErr);
+        if (showActionError(aptErr)) return;
 
         const { error: svcErr } = await replaceAppointmentServices(editing.id, selectedServices.map((s) => ({
           serviceId: s.id, serviceName: s.name,
           price: s.base_price, durationMinutes: s.duration_minutes,
         })));
-        if (svcErr) throw new Error(svcErr);
+        if (showActionError(svcErr)) return;
 
         toast.success('Appointment updated');
       } else {
@@ -253,12 +254,13 @@ export function NewAppointmentModal({
             price: s.base_price, durationMinutes: s.duration_minutes,
           }))
         );
-        if (aptErr) throw new Error(aptErr);
+        if (showActionError(aptErr)) return;
 
         toast.success('Appointment booked!');
       }
       reset(); onCreated(); onClose();
     } catch (err: unknown) {
+      if (handleSubscriptionError(err)) return;
       toast.error(err instanceof Error ? err.message : 'Failed to create appointment');
     } finally {
       setSaving(false);

@@ -7,7 +7,7 @@ import { supabase } from '@/lib/supabase';
 import { createClient, updateClientStats } from '@/app/actions/clients';
 import { createBill, createBillItems, recordTip, updateCashDrawer, updatePromoCodeUsage, rollbackBill } from '@/app/actions/bills';
 import { updateAppointmentStatus } from '@/app/actions/appointments';
-import { handleSubscriptionError } from '@/components/paywall-dialog';
+import { showActionError, handleSubscriptionError } from '@/components/paywall-dialog';
 import { useAppStore } from '@/store/app-store';
 import { formatPKR } from '@/lib/utils/currency';
 import { Button } from '@/components/ui/button';
@@ -172,7 +172,7 @@ function POSContent() {
         name: newClientName.trim(),
         phone: newClientPhone?.trim() || null,
       });
-      if (error) throw new Error(error);
+      if (showActionError(error)) return;
       setSelectedClient(data as Client);
       setClientSearch('');
       setClientResults([]);
@@ -181,6 +181,7 @@ function POSContent() {
       setNewClientPhone('');
       toast.success(`Client "${data.name}" created`);
     } catch (err: unknown) {
+      if (handleSubscriptionError(err)) return;
       toast.error(err instanceof Error ? err.message : 'Failed to create client');
     }
   }
@@ -312,7 +313,7 @@ function POSContent() {
         loyaltyPointsEarned: pointsEarned,
         promoCode: promoCode || null,
       });
-      if (billErr) throw new Error(billErr);
+      if (showActionError(billErr)) return;
 
       try {
         // Create bill items

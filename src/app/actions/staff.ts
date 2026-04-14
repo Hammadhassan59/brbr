@@ -1,6 +1,6 @@
 'use server';
 
-import { verifyWriteAccess, getPlanLimits } from './auth';
+import { checkWriteAccess, getPlanLimits } from './auth';
 import { createServerClient } from '@/lib/supabase';
 
 export async function createStaff(data: {
@@ -15,7 +15,9 @@ export async function createStaff(data: {
   commissionType?: string;
   commissionRate?: number;
 }) {
-  const session = await verifyWriteAccess();
+  const writeCheck = await checkWriteAccess();
+  if (writeCheck.error !== null) return { data: null, error: writeCheck.error };
+  const session = writeCheck.session;
   const supabase = createServerClient();
 
   // Enforce staff limit based on plan
@@ -72,7 +74,9 @@ export async function createStaff(data: {
 }
 
 export async function updateStaff(id: string, data: Record<string, unknown>) {
-  const session = await verifyWriteAccess();
+  const writeCheck = await checkWriteAccess();
+  if (writeCheck.error !== null) return { error: writeCheck.error };
+  const session = writeCheck.session;
   const supabase = createServerClient();
 
   // Ensure salon_id matches session
@@ -98,7 +102,8 @@ export async function upsertAttendance(data: {
   lateMinutes?: number;
   deductionAmount?: number;
 }) {
-  await verifyWriteAccess();
+  const { error: writeError } = await checkWriteAccess();
+  if (writeError) return { error: writeError };
   const supabase = createServerClient();
 
   const { error } = await supabase
@@ -122,7 +127,8 @@ export async function upsertAttendance(data: {
 }
 
 export async function recordAdvance(staffId: string, amount: number, reason?: string | null) {
-  await verifyWriteAccess();
+  const { error: writeError } = await checkWriteAccess();
+  if (writeError) return { data: null, error: writeError };
   const supabase = createServerClient();
 
   const { data: result, error } = await supabase

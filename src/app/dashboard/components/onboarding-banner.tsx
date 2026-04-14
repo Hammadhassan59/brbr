@@ -24,7 +24,7 @@ export function OnboardingBanner({ salonId: _salonId }: OnboardingBannerProps) {
 
   useEffect(() => {
     getOnboardingStatus()
-      .then(setStatus)
+      .then((res) => { if (res.data) setStatus(res.data); })
       .catch(() => {});
   }, []);
 

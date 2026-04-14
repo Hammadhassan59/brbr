@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
 import toast from 'react-hot-toast';
+import { showActionError, handleSubscriptionError } from '@/components/paywall-dialog';
 import type { Branch } from '@/types/database';
 
 export default function BranchesPage() {
@@ -69,20 +70,21 @@ export default function BranchesPage() {
     try {
       if (editingId) {
         const { data, error } = await updateBranch(editingId, { name: name.trim(), address, phone });
-        if (error) throw new Error(error);
+        if (showActionError(error)) return;
         const updated = branches.map((b) => b.id === editingId ? data as Branch : b);
         setBranches(updated);
         if (currentBranch?.id === editingId) setCurrentBranch(data as Branch);
         toast.success(`"${name.trim()}" updated`);
       } else {
         const { data, error } = await createBranch({ name: name.trim(), address, phone });
-        if (error) throw new Error(error);
+        if (showActionError(error)) return;
         setBranches([...branches, data as Branch]);
         toast.success(`"${name.trim()}" created`);
       }
       resetForm();
       fetchStats();
     } catch (err: unknown) {
+      if (handleSubscriptionError(err)) return;
       toast.error(err instanceof Error ? err.message : 'Failed to save branch');
     } finally {
       setSaving(false);
@@ -94,12 +96,13 @@ export default function BranchesPage() {
     if (!confirm(`Delete "${branch.name}"? This cannot be undone.`)) return;
     try {
       const { error } = await deleteBranch(branch.id);
-      if (error) throw new Error(error);
+      if (showActionError(error)) return;
       const updated = branches.filter((b) => b.id !== branch.id);
       setBranches(updated);
       if (editingId === branch.id) resetForm();
       toast.success(`"${branch.name}" deleted`);
     } catch (err: unknown) {
+      if (handleSubscriptionError(err)) return;
       toast.error(err instanceof Error ? err.message : 'Failed to delete');
     }
   }

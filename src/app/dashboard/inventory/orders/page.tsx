@@ -15,6 +15,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import toast from 'react-hot-toast';
+import { showActionError, handleSubscriptionError } from '@/components/paywall-dialog';
 import type { PurchaseOrder, Supplier, PurchaseOrderStatus } from '@/types/database';
 
 const STATUS_COLORS: Record<PurchaseOrderStatus, string> = {
@@ -76,17 +77,20 @@ export default function OrdersPage() {
         supplierId: formSupplierId, branchId: currentBranch.id,
         items, totalAmount: Number(formTotal), notes: formNotes || null,
       });
-      if (error) throw new Error(error);
+      if (showActionError(error)) return;
       toast.success('Order created');
       setShowForm(false); setFormSupplierId(''); setFormItems(''); setFormTotal(''); setFormNotes('');
       fetch();
-    } catch (err: unknown) { toast.error(err instanceof Error ? err.message : 'Failed'); }
+    } catch (err: unknown) {
+      if (handleSubscriptionError(err)) return;
+      toast.error(err instanceof Error ? err.message : 'Failed');
+    }
     finally { setSaving(false); }
   }
 
   async function updateStatus(orderId: string, status: PurchaseOrderStatus) {
     const { error } = await updateOrderStatus(orderId, status);
-    if (error) { toast.error(error); return; }
+    if (showActionError(error)) return;
     toast.success(`Order marked as ${status}`);
     fetch();
   }

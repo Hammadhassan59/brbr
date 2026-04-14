@@ -43,15 +43,18 @@ vi.mock('next/link', () => ({
 
 vi.mock('@/app/actions/onboarding', () => ({
   getOnboardingStatus: vi.fn().mockResolvedValue({
-    has_clients: false,
-    has_appointments: false,
-    has_sale: false,
-    has_payment_methods: false,
-    staff_logged_in: false,
-    onboarding_dismissed: false,
+    data: {
+      has_clients: false,
+      has_appointments: false,
+      has_sale: false,
+      has_payment_methods: false,
+      staff_logged_in: false,
+      onboarding_dismissed: false,
+    },
+    error: null,
   }),
-  dismissOnboarding: vi.fn().mockResolvedValue({ success: true }),
-  markFirstLoginSeen: vi.fn().mockResolvedValue({ success: true }),
+  dismissOnboarding: vi.fn().mockResolvedValue({ error: null }),
+  markFirstLoginSeen: vi.fn().mockResolvedValue({ error: null }),
 }))
 
 describe('OnboardingBanner', () => {

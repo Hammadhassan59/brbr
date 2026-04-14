@@ -15,6 +15,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import toast from 'react-hot-toast';
+import { showActionError, handleSubscriptionError } from '@/components/paywall-dialog';
 import { createPromo, updatePromo } from '@/app/actions/packages';
 import type { PromoCode, DiscountType } from '@/types/database';
 
@@ -77,15 +78,18 @@ export default function PromosPage() {
       };
       if (editPromo) {
         const { error } = await updatePromo(editPromo.id, data);
-        if (error) throw new Error(error);
+        if (showActionError(error)) return;
         toast.success('Promo updated');
       } else {
         const { error } = await createPromo(data);
-        if (error) throw new Error(error);
+        if (showActionError(error)) return;
         toast.success('Promo created');
       }
       setShowForm(false); fetch();
-    } catch (err: unknown) { toast.error(err instanceof Error ? err.message : 'Failed'); }
+    } catch (err: unknown) {
+      if (handleSubscriptionError(err)) return;
+      toast.error(err instanceof Error ? err.message : 'Failed');
+    }
     finally { setSaving(false); }
   }
 

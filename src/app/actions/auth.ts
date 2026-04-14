@@ -56,6 +56,10 @@ export async function verifySession(): Promise<SessionPayload> {
  * Verify session AND check that the salon subscription allows writes.
  * Use this instead of verifySession() for any action that creates/updates/deletes data.
  * Only salons with status='active' can write. All others are read-only.
+ *
+ * Returns the session on success. On subscription failure, throws a
+ * SubscriptionError that server actions should catch and return as
+ * { data: null, error: 'SUBSCRIPTION_REQUIRED' }.
  */
 export async function verifyWriteAccess(): Promise<SessionPayload> {
   const session = await verifySession();
@@ -78,6 +82,23 @@ export async function verifyWriteAccess(): Promise<SessionPayload> {
   }
 
   return session;
+}
+
+/**
+ * Wraps verifyWriteAccess() and catches SUBSCRIPTION_REQUIRED,
+ * returning it as { session: null, error } instead of throwing.
+ * All other errors (auth failures) still throw.
+ */
+export async function checkWriteAccess(): Promise<{ session: SessionPayload; error: null } | { session: null; error: string }> {
+  try {
+    const session = await verifyWriteAccess();
+    return { session, error: null };
+  } catch (e) {
+    if (e instanceof Error && e.message === 'SUBSCRIPTION_REQUIRED') {
+      return { session: null, error: 'SUBSCRIPTION_REQUIRED' };
+    }
+    throw e;
+  }
 }
 
 /**

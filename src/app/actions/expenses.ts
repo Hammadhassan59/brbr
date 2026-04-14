@@ -1,6 +1,6 @@
 'use server';
 
-import { verifyWriteAccess } from './auth';
+import { checkWriteAccess } from './auth';
 import { createServerClient } from '@/lib/supabase';
 
 export async function createExpense(data: {
@@ -11,7 +11,8 @@ export async function createExpense(data: {
   date: string;
   createdBy?: string | null;
 }) {
-  await verifyWriteAccess();
+  const { error: writeError } = await checkWriteAccess();
+  if (writeError) return { error: writeError };
   const supabase = createServerClient();
 
   const { error } = await supabase
@@ -37,7 +38,8 @@ export async function createExpenses(items: Array<{
   date: string;
   createdBy?: string | null;
 }>) {
-  await verifyWriteAccess();
+  const { error: writeError } = await checkWriteAccess();
+  if (writeError) return { error: writeError };
   const supabase = createServerClient();
 
   const { error } = await supabase
@@ -60,7 +62,8 @@ export async function updateExpense(id: string, data: {
   amount: number;
   description?: string | null;
 }) {
-  await verifyWriteAccess();
+  const { error: writeError } = await checkWriteAccess();
+  if (writeError) return { error: writeError };
   const supabase = createServerClient();
 
   const { error } = await supabase
@@ -77,7 +80,8 @@ export async function updateExpense(id: string, data: {
 }
 
 export async function deleteExpense(id: string) {
-  await verifyWriteAccess();
+  const { error: writeError } = await checkWriteAccess();
+  if (writeError) return { error: writeError };
   const supabase = createServerClient();
 
   const { error } = await supabase
@@ -90,7 +94,8 @@ export async function deleteExpense(id: string) {
 }
 
 export async function deleteSalaryExpenses(description: string, startDate: string, endDate: string) {
-  await verifyWriteAccess();
+  const { error: writeError } = await checkWriteAccess();
+  if (writeError) return { error: writeError };
   const supabase = createServerClient();
 
   const { error } = await supabase
@@ -106,7 +111,8 @@ export async function deleteSalaryExpenses(description: string, startDate: strin
 }
 
 export async function updateCashDrawerExpenses(branchId: string, date: string, totalExpenses: number) {
-  await verifyWriteAccess();
+  const { error: writeError } = await checkWriteAccess();
+  if (writeError) return { error: writeError };
   const supabase = createServerClient();
 
   const { data: drawer } = await supabase

@@ -11,6 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import toast from 'react-hot-toast';
+import { showActionError, handleSubscriptionError } from '@/components/paywall-dialog';
 import { saveLoyaltyRules } from '@/app/actions/packages';
 import type { LoyaltyRules, Client } from '@/types/database';
 
@@ -55,10 +56,13 @@ export default function LoyaltyPage() {
         birthdayBonusMultiplier: Number(bdayMultiplier) || 2,
       };
       const { error } = await saveLoyaltyRules(rules?.id ?? null, data);
-      if (error) throw new Error(error);
+      if (showActionError(error)) return;
       toast.success('Loyalty settings saved');
       fetch();
-    } catch (err: unknown) { toast.error(err instanceof Error ? err.message : 'Failed'); }
+    } catch (err: unknown) {
+      if (handleSubscriptionError(err)) return;
+      toast.error(err instanceof Error ? err.message : 'Failed');
+    }
     finally { setSaving(false); }
   }
 

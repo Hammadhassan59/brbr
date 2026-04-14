@@ -11,6 +11,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import toast from 'react-hot-toast';
+import { showActionError, handleSubscriptionError } from '@/components/paywall-dialog';
 import type { Staff, StaffRole, CommissionType } from '@/types/database';
 
 interface StaffFormProps {
@@ -69,7 +70,7 @@ export function StaffForm({ staff, onSaved }: StaffFormProps) {
         };
 
         const { error } = await updateStaff(staff.id, data);
-        if (error) throw new Error(error);
+        if (showActionError(error)) return;
         toast.success('Staff updated');
       } else {
         const { data: newStaff, error } = await createStaff({
@@ -84,13 +85,14 @@ export function StaffForm({ staff, onSaved }: StaffFormProps) {
           commissionType,
           commissionRate: Number(commissionRate) || 0,
         });
-        if (error) throw new Error(error);
+        if (showActionError(error)) return;
         toast.success('Staff member added');
-        router.push(`/dashboard/staff/${newStaff.id}`);
+        router.push(`/dashboard/staff/${newStaff!.id}`);
         return;
       }
       onSaved?.();
     } catch (err: unknown) {
+      if (handleSubscriptionError(err)) return;
       toast.error(err instanceof Error ? err.message : 'Failed to save');
     } finally {
       setSaving(false);

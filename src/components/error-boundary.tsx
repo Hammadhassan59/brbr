@@ -1,6 +1,7 @@
 'use client';
 
 import { Component, type ReactNode } from 'react';
+import { useAppStore } from '@/store/app-store';
 
 interface Props {
   children: ReactNode;
@@ -24,6 +25,16 @@ export class ErrorBoundary extends Component<Props, State> {
 
   render() {
     if (this.state.hasError) {
+      const msg = this.state.error?.message || '';
+
+      // Subscription errors → show paywall dialog instead of error screen
+      if (msg === 'SUBSCRIPTION_REQUIRED' || msg.includes('SUBSCRIPTION_REQUIRED')) {
+        useAppStore.getState().setShowPaywall(true);
+        // Reset error state so the page renders normally behind the dialog
+        setTimeout(() => this.setState({ hasError: false, error: null }), 0);
+        return this.props.children;
+      }
+
       if (this.props.fallback) return this.props.fallback;
       return (
         <div className="flex items-center justify-center min-h-[200px] p-8">

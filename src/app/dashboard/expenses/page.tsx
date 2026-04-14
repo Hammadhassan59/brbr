@@ -14,6 +14,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 import toast from 'react-hot-toast';
+import { showActionError, handleSubscriptionError } from '@/components/paywall-dialog';
 import type { Expense, Staff, Advance } from '@/types/database';
 import { createExpense, updateExpense, deleteExpense as deleteExpenseAction, updateCashDrawerExpenses } from '@/app/actions/expenses';
 import { recordAdvance } from '@/app/actions/staff';
@@ -133,7 +134,6 @@ export default function ExpensesPage() {
     setSavingAdv(true);
     try {
       if (editingAdvanceId) {
-        const { createServerClient } = await import('@/lib/supabase');
         const { error } = await supabase
           .from('advances')
           .update({ amount: Number(advAmount), reason: advReason || null })
@@ -142,7 +142,7 @@ export default function ExpensesPage() {
         toast.success('Advance updated');
       } else {
         const { error } = await recordAdvance(advStaffId, Number(advAmount), advReason || null);
-        if (error) throw new Error(error);
+        if (showActionError(error)) return;
         const staffName = staffList.find((s) => s.id === advStaffId)?.name || 'Staff';
         toast.success(`Advance of Rs ${advAmount} recorded for ${staffName}`);
       }
@@ -150,6 +150,7 @@ export default function ExpensesPage() {
       setAdvStaffId(''); setAdvAmount(''); setAdvReason(''); setEditingAdvanceId(null);
       fetchExpenses();
     } catch (err: unknown) {
+      if (handleSubscriptionError(err)) return;
       toast.error(err instanceof Error ? err.message : 'Failed to save advance');
     } finally {
       setSavingAdv(false);
@@ -183,7 +184,7 @@ export default function ExpensesPage() {
           amount: newAmount,
           description: description || null,
         });
-        if (updateError) throw new Error(updateError);
+        if (showActionError(updateError)) return;
 
         if (oldAmount !== newAmount) {
           try {
@@ -216,7 +217,7 @@ export default function ExpensesPage() {
           date: todayPKT,
           createdBy: createdBy || null,
         });
-        if (createError) throw new Error(createError);
+        if (showActionError(createError)) return;
 
         try {
           const { data: drawer } = await supabase
@@ -244,6 +245,7 @@ export default function ExpensesPage() {
       setCategory(''); setCustomCategory(''); setAmount(''); setDescription('');
       fetchExpenses();
     } catch (err: unknown) {
+      if (handleSubscriptionError(err)) return;
       toast.error(err instanceof Error ? err.message : 'Failed to save expense');
     } finally {
       setSaving(false);
@@ -254,10 +256,11 @@ export default function ExpensesPage() {
     if (!confirm('Delete this expense?')) return;
     try {
       const { error } = await deleteExpenseAction(expense.id);
-      if (error) throw new Error(error);
+      if (showActionError(error)) return;
       toast.success('Expense deleted');
       fetchExpenses();
-    } catch {
+    } catch (err: unknown) {
+      if (handleSubscriptionError(err)) return;
       toast.error('Failed to delete');
     }
   }

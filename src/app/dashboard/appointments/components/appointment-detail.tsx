@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import toast from 'react-hot-toast';
+import { showActionError, handleSubscriptionError } from '@/components/paywall-dialog';
 import { updateAppointmentStatus } from '@/app/actions/appointments';
 import type { AppointmentWithDetails, AppointmentStatus } from '@/types/database';
 
@@ -48,7 +49,7 @@ export function AppointmentDetail({ appointment, open, onClose, onUpdated, onEdi
     setUpdatingStatus(true);
     try {
       const { error } = await updateAppointmentStatus(apt.id, status);
-      if (error) throw new Error(error);
+      if (showActionError(error)) return;
 
       toast.success(`Appointment ${status === 'done' ? 'completed' : status}`);
       onUpdated();
@@ -58,6 +59,7 @@ export function AppointmentDetail({ appointment, open, onClose, onUpdated, onEdi
         router.push(`/dashboard/pos?appointment=${apt.id}`);
       }
     } catch (err) {
+      if (handleSubscriptionError(err)) return;
       const message = err instanceof Error ? err.message : 'Failed to update status';
       toast.error(message);
     } finally {

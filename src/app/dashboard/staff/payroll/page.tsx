@@ -15,6 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import toast from 'react-hot-toast';
+import { showActionError, handleSubscriptionError } from '@/components/paywall-dialog';
 import type { Staff } from '@/types/database';
 
 interface PayrollRow {
@@ -134,11 +135,13 @@ export default function PayrollPage() {
         date: new Date().toISOString().split('T')[0],
         createdBy: currentStaff?.id || null,
       });
+      if (showActionError(error)) return;
       if (error) { toast.error('Failed to save payment'); return; }
       toast.success(`${row.staff.name} marked as paid`);
     } else {
       // Unmark — delete the expense record
       const { error } = await deleteSalaryExpenses(salaryDesc, startDate, endDate);
+      if (showActionError(error)) return;
       if (error) { toast.error('Failed to undo payment'); return; }
       toast.success(`${row.staff.name} unmarked as paid`);
     }
@@ -167,11 +170,12 @@ export default function PayrollPage() {
       }));
 
       const { error } = await createExpenses(items);
-      if (error) throw new Error(error);
+      if (showActionError(error)) return;
 
       setRows(rows.map((r) => ({ ...r, paid: r.paid || r.netPayable > 0 })));
       toast.success(`${unpaid.length} staff marked as paid`);
     } catch (err: unknown) {
+      if (handleSubscriptionError(err)) return;
       toast.error(err instanceof Error ? err.message : 'Failed to mark all paid');
     } finally {
       setMarkingPaid(false);

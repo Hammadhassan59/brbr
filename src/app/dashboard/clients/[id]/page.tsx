@@ -23,6 +23,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import toast from 'react-hot-toast';
+import { showActionError, handleSubscriptionError } from '@/components/paywall-dialog';
 import type { Client, Bill, BillItem, UdhaarPayment, ClientPackage, Package as PkgType } from '@/types/database';
 
 export default function ClientProfilePage() {
@@ -52,11 +53,12 @@ export default function ClientProfilePage() {
     setSavingNotes(true);
     try {
       const { error } = await updateClientNotes(client.id, field, editingNotesValue);
-      if (error) throw new Error(error);
+      if (showActionError(error)) return;
       setClient({ ...client, [field]: editingNotesValue });
       setEditingNotes(null);
       toast.success('Notes updated');
     } catch (err: unknown) {
+      if (handleSubscriptionError(err)) return;
       toast.error(err instanceof Error ? err.message : 'Failed to save');
     } finally {
       setSavingNotes(false);
@@ -114,13 +116,14 @@ export default function ClientProfilePage() {
       if (amount <= 0) throw new Error('Invalid amount');
 
       const { error } = await recordUdhaarPayment(client.id, amount, paymentMethod);
-      if (error) throw new Error(error);
+      if (showActionError(error)) return;
 
       toast.success(`Payment of ${formatPKR(amount)} recorded`);
       setShowUdhaarModal(false);
       setPaymentAmount('');
       fetchData();
     } catch (err: unknown) {
+      if (handleSubscriptionError(err)) return;
       toast.error(err instanceof Error ? err.message : 'Failed');
     } finally {
       setSavingPayment(false);

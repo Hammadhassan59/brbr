@@ -243,3 +243,17 @@ export function handleSubscriptionError(error: unknown): boolean {
   }
   return false;
 }
+
+/**
+ * Show an error toast, but intercept SUBSCRIPTION_REQUIRED to show paywall instead.
+ * Use this anywhere you'd normally do: if (error) toast.error(error)
+ */
+export function showActionError(error: string | null | undefined): boolean {
+  if (!error) return false;
+  if (error === 'SUBSCRIPTION_REQUIRED') {
+    useAppStore.getState().setShowPaywall(true);
+    return true;
+  }
+  toast.error(error);
+  return true;
+}

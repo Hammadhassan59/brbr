@@ -16,6 +16,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import toast from 'react-hot-toast';
+import { showActionError, handleSubscriptionError } from '@/components/paywall-dialog';
 import { createPackage, updatePackage } from '@/app/actions/packages';
 import { EmptyState } from '@/components/empty-state';
 import type { Package as PkgType, Service } from '@/types/database';
@@ -113,15 +114,18 @@ export default function PackagesPage() {
       };
       if (editPkg) {
         const { error } = await updatePackage(editPkg.id, data);
-        if (error) throw new Error(error);
+        if (showActionError(error)) return;
         toast.success('Package updated');
       } else {
         const { error } = await createPackage(data);
-        if (error) throw new Error(error);
+        if (showActionError(error)) return;
         toast.success('Package created');
       }
       setShowForm(false); fetch();
-    } catch (err: unknown) { toast.error(err instanceof Error ? err.message : 'Failed'); }
+    } catch (err: unknown) {
+      if (handleSubscriptionError(err)) return;
+      toast.error(err instanceof Error ? err.message : 'Failed');
+    }
     finally { setSaving(false); }
   }
 

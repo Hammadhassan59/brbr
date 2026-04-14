@@ -20,7 +20,7 @@ vi.mock('@/lib/supabase', () => ({
 
 vi.mock('@/app/actions/auth', () => ({
   verifySession: vi.fn().mockResolvedValue({ salonId: 'salon-1', staffId: 'staff-1', role: 'owner' }),
-  verifyWriteAccess: vi.fn().mockResolvedValue({ salonId: 'salon-1', staffId: 'staff-1', role: 'owner' }),
+  checkWriteAccess: vi.fn().mockResolvedValue({ session: { salonId: 'salon-1', staffId: 'staff-1', role: 'owner' }, error: null }),
 }))
 
 describe('onboarding actions', () => {
@@ -31,19 +31,20 @@ describe('onboarding actions', () => {
   it('getOnboardingStatus returns status object', async () => {
     const { getOnboardingStatus } = await import('../src/app/actions/onboarding')
     const result = await getOnboardingStatus()
-    expect(result).toHaveProperty('has_clients')
-    expect(result).toHaveProperty('onboarding_dismissed')
+    expect(result.data).toHaveProperty('has_clients')
+    expect(result.data).toHaveProperty('onboarding_dismissed')
+    expect(result.error).toBeNull()
   })
 
   it('dismissOnboarding calls update on salons table', async () => {
     const { dismissOnboarding } = await import('../src/app/actions/onboarding')
     const result = await dismissOnboarding()
-    expect(result).toEqual({ success: true })
+    expect(result).toEqual({ error: null })
   })
 
   it('markFirstLoginSeen calls update on staff table', async () => {
     const { markFirstLoginSeen } = await import('../src/app/actions/onboarding')
     const result = await markFirstLoginSeen()
-    expect(result).toEqual({ success: true })
+    expect(result).toEqual({ error: null })
   })
 })

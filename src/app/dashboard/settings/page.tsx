@@ -15,6 +15,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import toast from 'react-hot-toast';
+import { showActionError, handleSubscriptionError } from '@/components/paywall-dialog';
 import type { Salon, Branch, WorkingHours, DayHours, Service, ServiceCategory } from '@/types/database';
 
 const SERVICE_CATEGORIES: { value: ServiceCategory; label: string }[] = [
@@ -160,10 +161,10 @@ export default function SettingsPage() {
         prayer_block_enabled: prayerBlockEnabled,
         privacy_mode: privacyMode,
       });
-      if (error) throw error;
+      if (showActionError(error)) return;
       setSalon(data as Salon);
       toast.success('Salon profile saved');
-    } catch (err: unknown) { toast.error(err instanceof Error ? err.message : 'Failed'); }
+    } catch (err: unknown) { if (handleSubscriptionError(err)) return; toast.error(err instanceof Error ? err.message : 'Failed'); }
     finally { setSaving(false); }
   }
 
@@ -187,12 +188,12 @@ export default function SettingsPage() {
         updateBranchWorkingHours(currentBranch.id, wh),
         salon ? updateSalon({ prayer_block_enabled: prayerBlockEnabled }) : Promise.resolve({ data: null, error: null }),
       ]);
-      if (branchRes.error) throw branchRes.error;
-      if (salonRes.error) throw salonRes.error;
+      if (showActionError(branchRes.error)) return;
+      if (showActionError(salonRes.error)) return;
       setCurrentBranch(branchRes.data as Branch);
       if (salonRes.data) setSalon(salonRes.data as Salon);
       toast.success('Working hours saved');
-    } catch (err: unknown) { toast.error(err instanceof Error ? err.message : 'Failed'); }
+    } catch (err: unknown) { if (handleSubscriptionError(err)) return; toast.error(err instanceof Error ? err.message : 'Failed'); }
     finally { setSaving(false); }
   }
 
@@ -207,10 +208,10 @@ export default function SettingsPage() {
         bank_account: bankAccount || null,
         bank_title: bankTitle || null,
       });
-      if (error) throw error;
+      if (showActionError(error)) return;
       setSalon(data as Salon);
       toast.success('Payment settings saved');
-    } catch (err: unknown) { toast.error(err instanceof Error ? err.message : 'Failed'); }
+    } catch (err: unknown) { if (handleSubscriptionError(err)) return; toast.error(err instanceof Error ? err.message : 'Failed'); }
     finally { setSaving(false); }
   }
 
@@ -480,7 +481,7 @@ function ServiceManager({
           duration_minutes: Number(duration) || 30,
           base_price: Number(price),
         });
-        if (error) throw error;
+        if (showActionError(error)) return;
         onUpdated(data as Service);
         toast.success(`"${name.trim()}" updated`);
       } else {
@@ -491,12 +492,13 @@ function ServiceManager({
           basePrice: Number(price),
           sortOrder: services.length + 1,
         });
-        if (error) throw error;
+        if (showActionError(error)) return;
         onAdded(data as Service);
         toast.success(`"${name.trim()}" added`);
       }
       resetForm();
     } catch (err: unknown) {
+      if (handleSubscriptionError(err)) return;
       toast.error(err instanceof Error ? err.message : 'Failed to save service');
     } finally {
       setSaving(false);
@@ -507,11 +509,12 @@ function ServiceManager({
     if (!confirm(`Remove "${svc.name}"? This cannot be undone.`)) return;
     try {
       const { error } = await deleteService(svc.id);
-      if (error) throw error;
+      if (showActionError(error)) return;
       onRemoved(svc.id);
       toast.success(`"${svc.name}" removed`);
       if (editingId === svc.id) resetForm();
     } catch (err: unknown) {
+      if (handleSubscriptionError(err)) return;
       toast.error(err instanceof Error ? err.message : 'Failed to remove');
     }
   }
@@ -627,7 +630,7 @@ function BranchManager({
           address: branchAddress,
           phone: branchPhone,
         });
-        if (error) throw new Error(error);
+        if (showActionError(error)) return;
         onUpdated(data as Branch);
         toast.success(`"${name.trim()}" updated`);
       } else {
@@ -636,12 +639,13 @@ function BranchManager({
           address: branchAddress,
           phone: branchPhone,
         });
-        if (error) throw new Error(error);
+        if (showActionError(error)) return;
         onAdded(data as Branch);
         toast.success(`"${name.trim()}" created`);
       }
       resetForm();
     } catch (err: unknown) {
+      if (handleSubscriptionError(err)) return;
       toast.error(err instanceof Error ? err.message : 'Failed to save branch');
     } finally {
       setSaving(false);
@@ -653,11 +657,12 @@ function BranchManager({
     if (!confirm(`Delete "${branch.name}"? This cannot be undone.`)) return;
     try {
       const { error } = await deleteBranch(branch.id);
-      if (error) throw new Error(error);
+      if (showActionError(error)) return;
       onRemoved(branch.id);
       toast.success(`"${branch.name}" deleted`);
       if (editingId === branch.id) resetForm();
     } catch (err: unknown) {
+      if (handleSubscriptionError(err)) return;
       toast.error(err instanceof Error ? err.message : 'Failed to delete');
     }
   }

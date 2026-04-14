@@ -1,6 +1,6 @@
 'use server';
 
-import { verifyWriteAccess } from './auth';
+import { checkWriteAccess } from './auth';
 import { createServerClient } from '@/lib/supabase';
 
 export async function createPackage(data: {
@@ -11,7 +11,9 @@ export async function createPackage(data: {
   isActive?: boolean;
   services: unknown;
 }) {
-  const session = await verifyWriteAccess();
+  const writeCheck = await checkWriteAccess();
+  if (writeCheck.error !== null) return { error: writeCheck.error };
+  const session = writeCheck.session;
   const supabase = createServerClient();
 
   const { error } = await supabase
@@ -38,7 +40,9 @@ export async function updatePackage(id: string, data: {
   isActive?: boolean;
   services: unknown;
 }) {
-  const session = await verifyWriteAccess();
+  const writeCheck = await checkWriteAccess();
+  if (writeCheck.error !== null) return { error: writeCheck.error };
+  const session = writeCheck.session;
   const supabase = createServerClient();
 
   const { error } = await supabase
@@ -67,7 +71,9 @@ export async function createPromo(data: {
   expiryDate?: string | null;
   isActive?: boolean;
 }) {
-  const session = await verifyWriteAccess();
+  const writeCheck = await checkWriteAccess();
+  if (writeCheck.error !== null) return { error: writeCheck.error };
+  const session = writeCheck.session;
   const supabase = createServerClient();
 
   const { error } = await supabase
@@ -97,7 +103,9 @@ export async function updatePromo(id: string, data: {
   expiryDate?: string | null;
   isActive?: boolean;
 }) {
-  const session = await verifyWriteAccess();
+  const writeCheck = await checkWriteAccess();
+  if (writeCheck.error !== null) return { error: writeCheck.error };
+  const session = writeCheck.session;
   const supabase = createServerClient();
 
   const { error } = await supabase
@@ -123,7 +131,9 @@ export async function saveLoyaltyRules(existingId: string | null, data: {
   pkrPerPointRedemption: number;
   birthdayBonusMultiplier: number;
 }) {
-  const session = await verifyWriteAccess();
+  const writeCheck = await checkWriteAccess();
+  if (writeCheck.error !== null) return { error: writeCheck.error };
+  const session = writeCheck.session;
   const supabase = createServerClient();
 
   const row = {

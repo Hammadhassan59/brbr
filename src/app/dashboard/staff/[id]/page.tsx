@@ -21,6 +21,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import toast from 'react-hot-toast';
+import { showActionError, handleSubscriptionError } from '@/components/paywall-dialog';
 import type { Staff, Attendance, Advance, AppointmentWithDetails, AttendanceStatus } from '@/types/database';
 
 const ROLE_COLORS: Record<string, string> = {
@@ -107,11 +108,14 @@ export default function StaffProfilePage() {
         lateMinutes: attStatus === 'late' ? 30 : 0,
         deductionAmount: attStatus === 'late' ? 100 : attStatus === 'absent' ? 500 : 0,
       });
-      if (error) throw new Error(error);
+      if (showActionError(error)) return;
       toast.success('Attendance saved');
       setShowAttModal(false);
       fetchData();
-    } catch (err: unknown) { toast.error(err instanceof Error ? err.message : 'Failed'); }
+    } catch (err: unknown) {
+      if (handleSubscriptionError(err)) return;
+      toast.error(err instanceof Error ? err.message : 'Failed');
+    }
     finally { setSavingAtt(false); }
   }
 
@@ -119,12 +123,15 @@ export default function StaffProfilePage() {
     setSavingAdv(true);
     try {
       const { error } = await recordAdvance(staffId, Number(advAmount), advReason || null);
-      if (error) throw new Error(error);
+      if (showActionError(error)) return;
       toast.success('Advance recorded');
       setShowAdvModal(false);
       setAdvAmount(''); setAdvReason('');
       fetchData();
-    } catch (err: unknown) { toast.error(err instanceof Error ? err.message : 'Failed'); }
+    } catch (err: unknown) {
+      if (handleSubscriptionError(err)) return;
+      toast.error(err instanceof Error ? err.message : 'Failed');
+    }
     finally { setSavingAdv(false); }
   }
 
