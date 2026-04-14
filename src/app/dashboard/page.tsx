@@ -12,7 +12,6 @@ import { AppointmentsFeed } from './components/appointments-feed';
 import { AlertsPanel, buildAlerts } from './components/alerts-panel';
 import { StylistDashboard } from './components/stylist-dashboard';
 import { OnboardingBanner } from './components/onboarding-banner';
-import { StaffWelcome } from './components/staff-welcome';
 import { Store, ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { formatPKDate } from '@/lib/utils/dates';
@@ -38,13 +37,7 @@ export default function DashboardPage() {
   const [branchStaff, setBranchStaff] = useState<Staff[]>([]);
   const [stylistTips, setStylistTips] = useState(0);
 
-  const [showWelcome, setShowWelcome] = useState(false);
 
-  useEffect(() => {
-    if (currentStaff && !currentStaff.first_login_seen && currentStaff.role !== 'owner') {
-      setShowWelcome(true);
-    }
-  }, [currentStaff]);
 
   const isStylist = currentStaff?.role === 'senior_stylist' || currentStaff?.role === 'junior_stylist';
   const todayPKT = getTodayPKT();
@@ -405,14 +398,6 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      {showWelcome && currentStaff && salon && (
-        <StaffWelcome
-          name={currentStaff.name}
-          role={currentStaff.role}
-          salonName={salon.name}
-          onDismiss={() => setShowWelcome(false)}
-        />
-      )}
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold">{salon?.name ?? 'Dashboard'}</h1>
