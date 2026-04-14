@@ -401,6 +401,11 @@ export const DEMO_ALL_SALONS: Salon[] = [
     onboarding_dismissed: true,
     owner_id: null,
     created_at: '2025-03-01T00:00:00Z',
+    subscription_plan: 'basic',
+    subscription_status: 'active',
+    subscription_expires_at: null,
+    subscription_started_at: '2025-03-01T00:00:00Z',
+    admin_notes: null,
   },
   {
     id: 'cccccccc-cccc-cccc-cccc-cccccccccccc',
@@ -427,6 +432,11 @@ export const DEMO_ALL_SALONS: Salon[] = [
     onboarding_dismissed: false,
     owner_id: null,
     created_at: '2025-03-15T00:00:00Z',
+    subscription_plan: 'trial',
+    subscription_status: 'trial',
+    subscription_expires_at: null,
+    subscription_started_at: '2025-03-15T00:00:00Z',
+    admin_notes: null,
   },
 ];
 
