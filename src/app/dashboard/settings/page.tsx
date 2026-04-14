@@ -40,6 +40,7 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState(false);
   const [services, setServices] = useState<Service[]>([]);
   const [branches, setBranches] = useState<Branch[]>([]);
+  const [branchStats, setBranchStats] = useState<Record<string, { staffCount: number; todayRevenue: number; todayAppointments: number }>>({});
 
   // Salon profile
   const [salonName, setSalonName] = useState('');
@@ -111,8 +112,9 @@ export default function SettingsPage() {
     setPrivacyMode(salon.privacy_mode || false);
 
     if (branchRes.data) {
-      setBranches(branchRes.data as Branch[]);
-      const main = branchRes.data[0] as Branch;
+      const branchList = branchRes.data as Branch[];
+      setBranches(branchList);
+      const main = branchList[0];
       if (main?.working_hours) {
         const wh = main.working_hours as WorkingHours;
         const h: Record<string, { open: string; close: string; off: boolean }> = {};
@@ -120,6 +122,21 @@ export default function SettingsPage() {
         setHours(h);
         setJummahBreak(!!(wh.fri as DayHours & { jummah_break?: boolean }).jummah_break);
       }
+
+      // Fetch per-branch stats
+      const today = new Date().toISOString().slice(0, 10);
+      const branchIds = branchList.map((b) => b.id);
+      const [staffRes, billsRes, aptsRes] = await Promise.all([
+        supabase.from('staff').select('branch_id').eq('salon_id', salon.id).eq('is_active', true),
+        supabase.from('bills').select('branch_id, total').eq('salon_id', salon.id).gte('created_at', today + 'T00:00:00').lt('created_at', today + 'T23:59:59'),
+        supabase.from('appointments').select('branch_id').eq('salon_id', salon.id).eq('appointment_date', today),
+      ]);
+      const stats: Record<string, { staffCount: number; todayRevenue: number; todayAppointments: number }> = {};
+      branchIds.forEach((id) => { stats[id] = { staffCount: 0, todayRevenue: 0, todayAppointments: 0 }; });
+      staffRes.data?.forEach((s: { branch_id: string | null }) => { if (s.branch_id && stats[s.branch_id]) stats[s.branch_id].staffCount++; });
+      billsRes.data?.forEach((b: { branch_id: string | null; total: number }) => { if (b.branch_id && stats[b.branch_id]) stats[b.branch_id].todayRevenue += b.total; });
+      aptsRes.data?.forEach((a: { branch_id: string | null }) => { if (a.branch_id && stats[a.branch_id]) stats[a.branch_id].todayAppointments++; });
+      setBranchStats(stats);
     }
     if (svcRes.data) setServices(svcRes.data as Service[]);
     setLoading(false);
@@ -381,6 +398,8 @@ export default function SettingsPage() {
             branches={branches}
             salonId={salon?.id || ''}
             currentBranchId={currentBranch?.id || ''}
+            branchStats={branchStats}
+            ownerName={salon?.name || ''}
             onAdded={(branch) => {
               setBranches([...branches, branch]);
               const { setBranches: setStoreBranches } = useAppStore.getState();
@@ -581,11 +600,13 @@ function ServiceManager({
 // ───────────────────────────────────────
 
 function BranchManager({
-  branches, salonId, currentBranchId, onAdded, onUpdated, onRemoved,
+  branches, salonId, currentBranchId, branchStats, ownerName, onAdded, onUpdated, onRemoved,
 }: {
   branches: Branch[];
   salonId: string;
   currentBranchId: string;
+  branchStats: Record<string, { staffCount: number; todayRevenue: number; todayAppointments: number }>;
+  ownerName: string;
   onAdded: (branch: Branch) => void;
   onUpdated: (branch: Branch) => void;
   onRemoved: (id: string) => void;
@@ -689,30 +710,58 @@ function BranchManager({
         </Card>
       )}
 
-      {branches.map((branch) => (
-        <div key={branch.id} className={`flex items-center gap-3 p-4 bg-card border border-border ${editingId === branch.id ? 'ring-2 ring-gold/40' : ''}`}>
-          <div className="w-10 h-10 bg-gold/10 flex items-center justify-center shrink-0">
-            <MapPin className="w-5 h-5 text-gold" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-medium">{branch.name}</span>
-              {branch.is_main && <span className="text-[10px] px-1.5 py-0.5 bg-gold/20 text-gold font-medium">Main</span>}
-              {branch.id === currentBranchId && <span className="text-[10px] px-1.5 py-0.5 bg-green-500/20 text-green-600 font-medium">Active</span>}
-            </div>
-            {branch.address && <p className="text-xs text-muted-foreground mt-0.5">{branch.address}</p>}
-            {branch.phone && <p className="text-xs text-muted-foreground">{branch.phone}</p>}
-          </div>
-          <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => startEdit(branch)}>
-            <Pencil className="w-3.5 h-3.5" />
-          </Button>
-          {!branch.is_main && (
-            <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-destructive hover:text-destructive" onClick={() => removeBranch(branch)}>
-              <Trash2 className="w-3.5 h-3.5" />
-            </Button>
-          )}
-        </div>
-      ))}
+      {branches.map((branch) => {
+        const stats = branchStats[branch.id];
+        return (
+          <Card key={branch.id} className={`border-border ${editingId === branch.id ? 'ring-2 ring-gold/40' : ''}`}>
+            <CardContent className="p-4">
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 bg-gold/10 flex items-center justify-center shrink-0">
+                  <MapPin className="w-5 h-5 text-gold" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-sm font-medium">{branch.name}</span>
+                    {branch.is_main && <span className="text-[10px] px-1.5 py-0.5 bg-gold/20 text-gold font-medium">Main</span>}
+                    {branch.id === currentBranchId && <span className="text-[10px] px-1.5 py-0.5 bg-green-500/20 text-green-600 font-medium">Active</span>}
+                  </div>
+                  {branch.address && <p className="text-xs text-muted-foreground mt-0.5">{branch.address}</p>}
+                  {branch.phone && <p className="text-xs text-muted-foreground">{branch.phone}</p>}
+                </div>
+                <div className="flex items-center gap-1 shrink-0">
+                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => startEdit(branch)}>
+                    <Pencil className="w-3.5 h-3.5" />
+                  </Button>
+                  {!branch.is_main && (
+                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-destructive hover:text-destructive" onClick={() => removeBranch(branch)}>
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </Button>
+                  )}
+                </div>
+              </div>
+              {stats && (
+                <div className="grid grid-cols-3 gap-3 mt-3 pt-3 border-t border-border">
+                  <div>
+                    <p className="text-xs text-muted-foreground">Staff</p>
+                    <p className="text-sm font-medium">{stats.staffCount}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Today</p>
+                    <p className="text-sm font-medium">{stats.todayAppointments} appts</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Revenue</p>
+                    <p className="text-sm font-medium">Rs {stats.todayRevenue.toLocaleString()}</p>
+                  </div>
+                </div>
+              )}
+              <div className="mt-2 pt-2 border-t border-border">
+                <p className="text-[11px] text-muted-foreground">Owner: <span className="text-foreground">{ownerName}</span></p>
+              </div>
+            </CardContent>
+          </Card>
+        );
+      })}
     </div>
   );
 }
