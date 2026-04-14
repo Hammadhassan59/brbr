@@ -230,11 +230,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <span>{t('settings')}</span>
           </Link>
           <button
-            onClick={async () => {
+            onClick={() => {
               document.cookie = 'icut-session=; path=/; max-age=0';
               document.cookie = 'icut-role=; path=/; max-age=0';
-              await destroySession();
               useAppStore.getState().reset();
+              destroySession().catch(() => {});
               window.location.href = '/login';
             }}
             className="flex items-center gap-3 px-3 py-3 rounded-lg text-sm text-slate-400 hover:bg-sidebar-accent hover:text-slate-200 transition-all duration-200 w-full"
@@ -332,11 +332,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   <span>{t('settings')}</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem
-                  onClick={async () => {
+                  onClick={() => {
                     document.cookie = 'icut-session=; path=/; max-age=0';
                     document.cookie = 'icut-role=; path=/; max-age=0';
-                    await destroySession();
                     useAppStore.getState().reset();
+                    destroySession().catch(() => {});
                     window.location.href = '/login';
                   }}
                   className="flex items-center gap-3 p-3 cursor-pointer text-red-600"

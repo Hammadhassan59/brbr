@@ -41,11 +41,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     );
   }
 
-  async function handleLogout() {
+  function handleLogout() {
     document.cookie = 'icut-session=; path=/; max-age=0';
     document.cookie = 'icut-role=; path=/; max-age=0';
-    await destroySession();
     reset();
+    destroySession().catch(() => {});
     window.location.href = '/login';
   }
 
