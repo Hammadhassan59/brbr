@@ -349,7 +349,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
         </header>
 
-        {/* Subscription status banner */}
+        {/* Subscription status banners */}
         {salon && (salon.subscription_status === 'suspended' || salon.subscription_status === 'expired') && (
           <div className={`px-4 lg:px-6 py-3 text-sm font-medium flex items-center gap-2 no-print ${
             salon.subscription_status === 'suspended'
@@ -362,6 +362,28 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               : 'Your trial has expired. Contact support to activate your subscription.'}
           </div>
         )}
+        {salon && salon.subscription_status === 'trial' && isOwner && (() => {
+          const started = salon.subscription_started_at ? new Date(salon.subscription_started_at) : null;
+          if (!started) return null;
+          const trialEnd = new Date(started);
+          trialEnd.setDate(trialEnd.getDate() + 14);
+          const now = new Date();
+          const daysLeft = Math.max(0, Math.ceil((trialEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
+          if (daysLeft > 7) return null;
+          return (
+            <div className="px-4 lg:px-6 py-2.5 text-sm flex items-center justify-between gap-2 no-print bg-gold/10 border-b border-gold/20">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 shrink-0 text-gold" />
+                <span className="font-medium text-foreground">
+                  {daysLeft === 0 ? 'Your free trial ends today.' : `${daysLeft} day${daysLeft !== 1 ? 's' : ''} left in your free trial.`}
+                </span>
+              </div>
+              <a href="https://wa.me/923001234567?text=Hi%2C%20I%20want%20to%20upgrade%20my%20iCut%20plan" target="_blank" rel="noopener noreferrer" className="text-xs font-semibold bg-gold text-black px-3 py-1.5 rounded-md hover:bg-gold/90 transition-all shrink-0">
+                Upgrade Now
+              </a>
+            </div>
+          );
+        })()}
 
         {/* Page content */}
         <main className="flex-1 overflow-y-auto p-4 lg:p-6 pb-20 lg:pb-6">

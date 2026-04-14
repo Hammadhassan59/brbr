@@ -238,6 +238,7 @@ export default function SettingsPage() {
             {canManage && <TabsTrigger value="payment" className="text-xs px-3.5 py-2 font-medium transition-all duration-150 border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30">Payments</TabsTrigger>}
             {canManage && <TabsTrigger value="tax" className="text-xs px-3.5 py-2 font-medium transition-all duration-150 border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30">Tax & Billing</TabsTrigger>}
             {isOwner && <TabsTrigger value="branches" className="text-xs px-3.5 py-2 font-medium transition-all duration-150 border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30">Branches</TabsTrigger>}
+            {isOwner && <TabsTrigger value="subscription" className="text-xs px-3.5 py-2 font-medium transition-all duration-150 border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30">Subscription</TabsTrigger>}
             <TabsTrigger value="display" className="text-xs px-3.5 py-2 font-medium transition-all duration-150 border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30">Display</TabsTrigger>
           </TabsList>
         </div>
@@ -405,6 +406,79 @@ export default function SettingsPage() {
               setStoreBranches(updated);
             }}
           />
+        </TabsContent>}
+
+        {/* Subscription */}
+        {isOwner && <TabsContent value="subscription" className="mt-4">
+          <div className="bg-card border border-border rounded-lg p-6 space-y-6">
+            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Your Plan</p>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="bg-secondary/30 p-4 border border-border rounded-lg">
+                <p className="text-xs text-muted-foreground">Current Plan</p>
+                <p className="text-lg font-bold capitalize mt-1">{salon?.subscription_plan || 'Trial'}</p>
+              </div>
+              <div className="bg-secondary/30 p-4 border border-border rounded-lg">
+                <p className="text-xs text-muted-foreground">Status</p>
+                <p className={`text-lg font-bold capitalize mt-1 ${
+                  salon?.subscription_status === 'active' ? 'text-green-600' :
+                  salon?.subscription_status === 'trial' ? 'text-gold' :
+                  'text-red-600'
+                }`}>{salon?.subscription_status || 'Trial'}</p>
+              </div>
+              <div className="bg-secondary/30 p-4 border border-border rounded-lg">
+                <p className="text-xs text-muted-foreground">
+                  {salon?.subscription_status === 'trial' ? 'Trial Ends' : 'Renews On'}
+                </p>
+                <p className="text-lg font-bold mt-1">
+                  {salon?.subscription_expires_at
+                    ? new Date(salon.subscription_expires_at).toLocaleDateString('en-PK', { day: 'numeric', month: 'short', year: 'numeric' })
+                    : salon?.subscription_started_at
+                      ? (() => {
+                          const d = new Date(salon.subscription_started_at);
+                          d.setDate(d.getDate() + 14);
+                          return d.toLocaleDateString('en-PK', { day: 'numeric', month: 'short', year: 'numeric' });
+                        })()
+                      : '—'}
+                </p>
+              </div>
+            </div>
+
+            <div className="border border-border rounded-lg p-5 space-y-3">
+              <p className="text-sm font-semibold">Pricing Plans</p>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                {[
+                  { name: 'Basic', price: 'Rs 2,500/mo', features: ['1 branch', 'Up to 3 staff', 'All features'] },
+                  { name: 'Growth', price: 'Rs 5,000/mo', features: ['1 branch', 'Unlimited staff', 'All features'] },
+                  { name: 'Pro', price: 'Rs 9,000/mo', features: ['Up to 3 branches', 'Unlimited staff', 'Priority support'] },
+                ].map((plan) => (
+                  <div key={plan.name} className={`border rounded-lg p-4 ${
+                    salon?.subscription_plan === plan.name.toLowerCase() ? 'border-gold bg-gold/5' : 'border-border'
+                  }`}>
+                    <p className="font-semibold">{plan.name}</p>
+                    <p className="text-lg font-bold mt-1">{plan.price}</p>
+                    <ul className="mt-3 space-y-1">
+                      {plan.features.map((f) => (
+                        <li key={f} className="text-xs text-muted-foreground flex items-center gap-1.5">
+                          <span className="text-gold">+</span> {f}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="bg-secondary/30 p-4 border border-border rounded-lg flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium">Need to upgrade or have questions?</p>
+                <p className="text-xs text-muted-foreground">Contact us on WhatsApp for instant help</p>
+              </div>
+              <a href="https://wa.me/923001234567?text=Hi%2C%20I%20want%20to%20upgrade%20my%20iCut%20plan" target="_blank" rel="noopener noreferrer" className="text-xs font-semibold bg-gold text-black px-4 py-2 rounded-md hover:bg-gold/90 transition-all shrink-0">
+                Contact Support
+              </a>
+            </div>
+          </div>
         </TabsContent>}
 
         {/* Display */}
