@@ -18,11 +18,17 @@ export default function AdminAnalyticsPage() {
   const [salonRevenue, setSalonRevenue] = useState<{ name: string; revenue: number }[]>([]);
   const [cityDist, setCityDist] = useState<{ name: string; value: number }[]>([]);
   const [keyMetrics, setKeyMetrics] = useState<{ label: string; value: string; change: string }[]>([]);
+  const [subscriptionMrr, setSubscriptionMrr] = useState(0);
+  const [activeSubscribers, setActiveSubscribers] = useState(0);
+  const [mrrByPlan, setMrrByPlan] = useState<Record<string, { count: number; revenue: number }>>({});
 
   useEffect(() => {
     async function fetchAnalytics() {
       try {
-        const { salons, cityDist: liveCityDist, bills, salonNameMap } = await getAdminAnalytics();
+        const { salons, cityDist: liveCityDist, bills, salonNameMap, subscriptionMrr: mrr, activeSubscribers: subs, mrrByPlan: byPlan } = await getAdminAnalytics();
+        setSubscriptionMrr(mrr ?? 0);
+        setActiveSubscribers(subs ?? 0);
+        setMrrByPlan(byPlan ?? {});
 
         setCityDist(liveCityDist);
 
@@ -95,6 +101,41 @@ export default function AdminAnalyticsPage() {
   return (
     <div className="space-y-4">
       <h2 className="font-heading text-xl font-bold">Platform Analytics</h2>
+
+      {/* Super admin subscription revenue (MRR) — separate from platform gross */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card>
+          <CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground">Your Subscription MRR</CardTitle></CardHeader>
+          <CardContent>
+            <p className="text-3xl font-bold">{formatPKR(subscriptionMrr)}</p>
+            <p className="text-xs text-muted-foreground mt-1">Recurring monthly revenue from active salons</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground">Active Subscribers</CardTitle></CardHeader>
+          <CardContent>
+            <p className="text-3xl font-bold">{activeSubscribers}</p>
+            <p className="text-xs text-muted-foreground mt-1">Salons on a paid plan</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground">By Plan</CardTitle></CardHeader>
+          <CardContent>
+            {Object.keys(mrrByPlan).length === 0 ? (
+              <p className="text-sm text-muted-foreground">No active subscribers yet.</p>
+            ) : (
+              <ul className="space-y-1 text-sm">
+                {Object.entries(mrrByPlan).map(([plan, b]) => (
+                  <li key={plan} className="flex justify-between">
+                    <span className="capitalize">{plan}</span>
+                    <span className="font-medium">{b.count} × {formatPKR(b.count > 0 ? b.revenue / b.count : 0)}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </CardContent>
+        </Card>
+      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Platform revenue trend */}

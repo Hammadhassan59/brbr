@@ -6,6 +6,7 @@ import { ArrowLeft, Search, UserPlus, X } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { createClient, updateClientStats } from '@/app/actions/clients';
 import { createBill, createBillItems, recordTip, updateCashDrawer, updatePromoCodeUsage, rollbackBill } from '@/app/actions/bills';
+import { deductStockForBill } from '@/app/actions/inventory';
 import { updateAppointmentStatus } from '@/app/actions/appointments';
 import { showActionError, handleSubscriptionError } from '@/components/paywall-dialog';
 import { useAppStore } from '@/store/app-store';
@@ -362,6 +363,24 @@ function POSContent() {
           if (aptErr) throw new Error(aptErr);
         }
 
+        // Deduct inventory: retail products sold + back-bar used by services.
+        // Best-effort: we don't roll back the bill on inventory failure, but we
+        // do surface a toast so the owner knows to reconcile.
+        const stockRes = await deductStockForBill({
+          branchId: currentBranch.id,
+          billId: bill.id,
+          items: items.map((i) => ({
+            type: i.type,
+            serviceId: i.serviceId || null,
+            productId: i.productId || null,
+            quantity: i.quantity,
+            name: i.name,
+          })),
+        });
+        if (stockRes.error) {
+          toast.error(`Inventory not updated: ${stockRes.error}`);
+        }
+
         // Update promo used_count
         if (promoCode) {
           try {
@@ -627,7 +646,7 @@ function POSContent() {
         total={total}
         paymentMethod={(isSplit ? 'split' : paymentMethod) || ''}
         cashReceived={cashReceived}
-        change={paymentMethod === 'cash' ? Math.max(0, cashReceived - total) : 0}
+        change={paymentMethod === 'cash' ? Math.max(0, cashReceived - (total + tipAmount)) : 0}
         pointsEarned={pointsEarned}
         tipAmount={tipAmount}
       />

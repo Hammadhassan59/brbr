@@ -1,6 +1,8 @@
 'use server';
 
 import { createServerClient } from '@/lib/supabase';
+import { sendEmail } from '@/lib/email-sender';
+import { welcomeEmail } from '@/lib/email-templates';
 
 // Setup does NOT call verifySession — there is no session yet during first-time setup.
 // The owner is authenticated via Supabase Auth (owner_id comes from getUser()).
@@ -19,7 +21,7 @@ export async function setupSalon(data: {
   workingHours: Record<string, unknown>;
   services: Array<{ name: string; category: string; price: number; duration: number }>;
   partners: Array<{ name: string; email: string; password: string }>;
-  staff: Array<{ name: string; email: string; role: string; password: string }>;
+  staff: Array<{ name: string; email: string; role: string; password: string; baseSalary?: number; commissionType?: string; commissionRate?: number }>;
 }) {
   const supabase = createServerClient();
 
@@ -113,8 +115,29 @@ export async function setupSalon(data: {
       auth_user_id: authUser.user.id,
       role: s.role,
       pin_code: null,
+      base_salary: s.baseSalary ?? 0,
+      commission_type: s.commissionType && s.commissionType !== 'none' ? s.commissionType : null,
+      commission_rate: s.commissionRate ?? 0,
     });
     if (staffErr) return { data: null, error: staffErr.message };
+  }
+
+  // Send welcome email — best-effort, failures don't block setup.
+  try {
+    const { data: authData } = await supabase.auth.admin.getUserById(data.ownerId);
+    const ownerEmail = authData?.user?.email;
+    if (ownerEmail) {
+      const dashboardUrl = process.env.NEXT_PUBLIC_APP_URL
+        ? `${process.env.NEXT_PUBLIC_APP_URL}/dashboard`
+        : '/dashboard';
+      await sendEmail(
+        ownerEmail,
+        `Welcome to iCut — ${data.name} is live`,
+        welcomeEmail(data.name, dashboardUrl),
+      );
+    }
+  } catch {
+    // Welcome email is non-critical
   }
 
   return { data: { salon: newSalon, branch }, error: null };

@@ -62,6 +62,9 @@ interface StaffEntry {
   email: string;
   password: string;
   confirmPassword: string;
+  baseSalary: string;
+  commissionType: 'none' | 'percentage' | 'flat';
+  commissionRate: string;
 }
 
 interface DaySchedule {
@@ -111,7 +114,7 @@ export default function SetupPage() {
 
   // Step 5 — Staff
   const [staffList, setStaffList] = useState<StaffEntry[]>([
-    { name: '', role: 'junior_stylist', email: '', password: '', confirmPassword: '' },
+    { name: '', role: 'junior_stylist', email: '', password: '', confirmPassword: '', baseSalary: '', commissionType: 'none', commissionRate: '' },
   ]);
 
   // Derived
@@ -157,7 +160,7 @@ export default function SetupPage() {
   }
 
   function addStaffRow() {
-    setStaffList([...staffList, { name: '', role: 'junior_stylist', email: '', password: '', confirmPassword: '' }]);
+    setStaffList([...staffList, { name: '', role: 'junior_stylist', email: '', password: '', confirmPassword: '', baseSalary: '', commissionType: 'none', commissionRate: '' }]);
   }
 
   function updateStaff(index: number, field: keyof StaffEntry, value: string) {
@@ -218,7 +221,15 @@ export default function SetupPage() {
         workingHours,
         services: selectedServices.map(s => ({ name: s.name, category: s.category, price: s.price, duration: s.duration })),
         partners: validPartners.map(p => ({ name: p.name, email: p.email, password: p.password })),
-        staff: validStaff.map(s => ({ name: s.name, email: s.email, role: s.role, password: s.password })),
+        staff: validStaff.map(s => ({
+          name: s.name,
+          email: s.email,
+          role: s.role,
+          password: s.password,
+          baseSalary: Number(s.baseSalary) || 0,
+          commissionType: s.commissionType,
+          commissionRate: Number(s.commissionRate) || 0,
+        })),
       });
       if (result.error) throw new Error(result.error);
 
@@ -240,7 +251,10 @@ export default function SetupPage() {
       });
 
       toast.success('Salon setup complete!');
-      router.push('/dashboard');
+      // Hard navigation: the JWT cookie was just re-signed with the new salonId,
+      // and Zustand just got fresh salon/branch data. A full page load ensures
+      // the dashboard reads consistent state from both cookie and store.
+      window.location.href = '/dashboard';
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Setup failed';
       toast.error(message);
@@ -610,6 +624,43 @@ export default function SetupPage() {
                       <p className="text-xs text-destructive mt-1">Passwords don&apos;t match</p>
                     )}
                   </div>
+                </div>
+                <div>
+                  <Label>Base Salary (PKR / month)</Label>
+                  <Input
+                    type="number"
+                    inputMode="numeric"
+                    value={staff.baseSalary}
+                    onChange={(e) => updateStaff(i, 'baseSalary', e.target.value)}
+                    placeholder="e.g. 25000"
+                    className="mt-1"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label>Commission</Label>
+                    <Select value={staff.commissionType} onValueChange={(v) => { if (v) updateStaff(i, 'commissionType', v); }}>
+                      <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">None</SelectItem>
+                        <SelectItem value="percentage">Percentage (%)</SelectItem>
+                        <SelectItem value="flat">Flat (PKR)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {staff.commissionType !== 'none' && (
+                    <div>
+                      <Label>{staff.commissionType === 'percentage' ? 'Rate (%)' : 'Amount per service'}</Label>
+                      <Input
+                        type="number"
+                        inputMode="decimal"
+                        value={staff.commissionRate}
+                        onChange={(e) => updateStaff(i, 'commissionRate', e.target.value)}
+                        placeholder={staff.commissionType === 'percentage' ? 'e.g. 10' : 'e.g. 100'}
+                        className="mt-1"
+                      />
+                    </div>
+                  )}
                 </div>
               </div>
             ))}

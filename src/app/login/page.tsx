@@ -155,7 +155,9 @@ export default function LoginPage() {
           name: data.user.email || email,
         });
         toast.success('Account created!');
-        router.push('/setup');
+        // Hard navigation so server-set cookies are attached to the next request
+        // and the middleware (proxy.ts) sees icut-session on the /setup load.
+        window.location.href = '/setup';
         return;
       }
 

@@ -175,7 +175,45 @@ export async function getAdminAnalytics() {
   const salonNameMap: Record<string, string> = {};
   salons.forEach((s) => { salonNameMap[s.id] = s.name; });
 
-  return { salons, cityDist, bills: billsData || [], salonNameMap };
+  // Subscription MRR: sum of active salons' plan prices from platform_settings.plans
+  const { data: plansSetting } = await supabase
+    .from('platform_settings')
+    .select('value')
+    .eq('key', 'plans')
+    .maybeSingle();
+
+  const planPrices: Record<string, number> = {};
+  if (plansSetting?.value) {
+    const plans = plansSetting.value as Record<string, { price?: number }>;
+    Object.entries(plans).forEach(([key, p]) => {
+      planPrices[key] = Number(p?.price) || 0;
+    });
+  }
+
+  let subscriptionMrr = 0;
+  let activeSubscribers = 0;
+  const mrrByPlan: Record<string, { count: number; revenue: number }> = {};
+  salons.forEach((s) => {
+    if (s.subscription_status === 'active' && s.subscription_plan && s.subscription_plan !== 'none') {
+      const price = planPrices[s.subscription_plan] ?? 0;
+      subscriptionMrr += price;
+      activeSubscribers += 1;
+      const bucket = mrrByPlan[s.subscription_plan] ?? { count: 0, revenue: 0 };
+      bucket.count += 1;
+      bucket.revenue += price;
+      mrrByPlan[s.subscription_plan] = bucket;
+    }
+  });
+
+  return {
+    salons,
+    cityDist,
+    bills: billsData || [],
+    salonNameMap,
+    subscriptionMrr,
+    activeSubscribers,
+    mrrByPlan,
+  };
 }
 
 export async function getAdminBranchForSalon(salonId: string) {

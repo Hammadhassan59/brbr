@@ -419,6 +419,7 @@ export interface SalonPartner {
   auth_user_id: string | null;
   pin_code: string | null;
   is_active: boolean;
+  profit_share_percentage: number;
   created_at: string;
 }
 

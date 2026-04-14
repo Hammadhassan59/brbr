@@ -341,6 +341,7 @@ export const DEMO_PARTNER_ROYAL: SalonPartner = {
   auth_user_id: null,
   pin_code: '9999',
   is_active: true,
+  profit_share_percentage: 40,
   created_at: '2025-03-01T00:00:00Z',
 };
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { DollarSign, CalendarDays, Footprints, Wallet } from 'lucide-react';
+import { DollarSign, CalendarDays, Footprints, Wallet, Banknote, CreditCard } from 'lucide-react';
 import { formatPKR } from '@/lib/utils/currency';
 import { useLanguage } from '@/components/providers/language-provider';
 import type { DailySummary } from '@/types/database';
@@ -53,10 +53,25 @@ export function KPICards({ summary, appointmentsDone, appointmentsTotal, walkIns
       value: formatPKR(cashInDrawer),
       icon: Wallet,
     },
+    {
+      label: 'Cash Received',
+      value: formatPKR(summary?.cash_amount ?? 0),
+      icon: Banknote,
+    },
+    {
+      label: 'Online + Card',
+      value: formatPKR(
+        (summary?.jazzcash_amount ?? 0) +
+        (summary?.easypaisa_amount ?? 0) +
+        (summary?.card_amount ?? 0) +
+        (summary?.bank_transfer_amount ?? 0)
+      ),
+      icon: CreditCard,
+    },
   ];
 
   return (
-    <div className={`grid grid-cols-2 lg:grid-cols-4 gap-4 ${!loading ? 'stagger-children' : ''}`}>
+    <div className={`grid grid-cols-2 lg:grid-cols-3 gap-4 ${!loading ? 'stagger-children' : ''}`}>
       {cards.map((card) => (
         <div
           key={card.label}

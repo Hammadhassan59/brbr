@@ -36,6 +36,7 @@ export default function DashboardPage() {
   const [udhaarInfo, setUdhaarInfo] = useState({ clients: 0, total: 0 });
   const [branchStaff, setBranchStaff] = useState<Staff[]>([]);
   const [stylistTips, setStylistTips] = useState(0);
+  const [posWalkInCount, setPosWalkInCount] = useState(0);
 
 
 
@@ -185,11 +186,18 @@ export default function DashboardPage() {
 
       const { data: billsData } = await supabase
         .from('bills')
-        .select('total_amount, created_at, payment_method, staff_id')
+        .select('total_amount, created_at, payment_method, staff_id, appointment_id')
         .eq('branch_id', currentBranch.id)
         .eq('status', 'paid')
         .gte('created_at', `${startDate}T00:00:00`)
         .lte('created_at', `${endDateFinal}T23:59:59`);
+
+      // Count POS-direct walk-ins: paid bills with no linked appointment.
+      // Walk-in appointments are already counted via appointments.is_walkin,
+      // and those bills have appointment_id set, so this doesn't double count.
+      setPosWalkInCount(
+        (billsData || []).filter((b: { appointment_id: string | null }) => !b.appointment_id).length
+      );
 
       if (multiDay) {
         const dayMap: Record<string, { revenue: number; appointments: number }> = {};
@@ -348,7 +356,7 @@ export default function DashboardPage() {
           </div>
           <div className="bg-card border border-border rounded-lg p-5">
             <span className="text-xs text-muted-foreground uppercase tracking-wider font-medium">Walk-ins</span>
-            <p className="text-2xl font-bold mt-3">{appointments.filter((a) => a.is_walkin).length}</p>
+            <p className="text-2xl font-bold mt-3">{appointments.filter((a) => a.is_walkin).length + posWalkInCount}</p>
           </div>
         </div>
         <AppointmentsFeed appointments={appointments} loading={loading} />
@@ -382,7 +390,7 @@ export default function DashboardPage() {
   }
 
   const appointmentsDone = appointments.filter((a) => a.status === 'done').length;
-  const walkIns = appointments.filter((a) => a.is_walkin).length;
+  const walkIns = appointments.filter((a) => a.is_walkin).length + posWalkInCount;
   const noShowCount = appointments.filter((a) => a.status === 'no_show').length;
 
   const staffPerf = summary?.staff_performance?.map((sp) => {

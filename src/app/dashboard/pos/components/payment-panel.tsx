@@ -59,7 +59,7 @@ export function PaymentPanel({
 }: PaymentPanelProps) {
   const [showTip, setShowTip] = useState(false);
 
-  const change = selectedPaymentMethod === 'cash' ? Math.max(0, cashReceived - total) : 0;
+  const change = selectedPaymentMethod === 'cash' ? Math.max(0, cashReceived - (total + tipAmount)) : 0;
   const udhaarAfter = clientUdhaarBalance + total;
   const overLimit = udhaarAfter > clientUdhaarLimit;
 

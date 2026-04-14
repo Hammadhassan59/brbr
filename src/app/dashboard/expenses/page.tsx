@@ -15,9 +15,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 
 import toast from 'react-hot-toast';
 import { showActionError, handleSubscriptionError } from '@/components/paywall-dialog';
-import type { Expense, Staff, Advance } from '@/types/database';
+import type { Expense, Staff, Advance, SalonPartner } from '@/types/database';
 import { createExpense, updateExpense, deleteExpense as deleteExpenseAction, updateCashDrawerExpenses } from '@/app/actions/expenses';
 import { recordAdvance } from '@/app/actions/staff';
+import { updatePartnerProfitShare } from '@/app/actions/partners';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { EmptyState } from '@/components/empty-state';
 
@@ -33,7 +34,7 @@ const CATEGORIES = [
 ];
 
 export default function ExpensesPage() {
-  const { salon, currentBranch, currentStaff, currentPartner, isPartner } = useAppStore();
+  const { salon, currentBranch, currentStaff, currentPartner, isPartner, isOwner } = useAppStore();
   const [loading, setLoading] = useState(true);
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [income, setIncome] = useState(0);
@@ -44,6 +45,10 @@ export default function ExpensesPage() {
 
   // Advances display
   const [recentAdvances, setRecentAdvances] = useState<(Advance & { staff_name?: string })[]>([]);
+
+  // Partners for profit-sharing display
+  const [partners, setPartners] = useState<SalonPartner[]>([]);
+  const [savingPartnerId, setSavingPartnerId] = useState<string | null>(null);
 
   // Advance state
   const [showAdvance, setShowAdvance] = useState(false);
@@ -113,6 +118,14 @@ export default function ExpensesPage() {
       if (advData) {
         setRecentAdvances(advData.map((a: Advance) => ({ ...a, staff_name: staffMap.get(a.staff_id) || 'Unknown' })));
       }
+
+      const { data: partnerData } = await supabase
+        .from('salon_partners')
+        .select('*')
+        .eq('salon_id', salon.id)
+        .eq('is_active', true)
+        .order('name');
+      if (partnerData) setPartners(partnerData as SalonPartner[]);
     }
 
     setLoading(false);
@@ -356,6 +369,75 @@ export default function ExpensesPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Partner profit sharing — only show if partners exist */}
+      {partners.length > 0 && (() => {
+        const netProfit = income - totalAmount - totalAdvances;
+        const totalPartnerPct = partners.reduce((s, p) => s + (Number(p.profit_share_percentage) || 0), 0);
+        const ownerPct = Math.max(0, 100 - totalPartnerPct);
+        const overAllocated = totalPartnerPct > 100;
+        return (
+          <Card className="border-border">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm">Profit Split {overAllocated && <span className="text-destructive font-normal ml-2">— over 100%</span>}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                {partners.map((p) => {
+                  const pct = Number(p.profit_share_percentage) || 0;
+                  const share = netProfit * (pct / 100);
+                  return (
+                    <div key={p.id} className="flex items-center gap-3">
+                      <span className="text-sm flex-1">{p.name}</span>
+                      {isOwner ? (
+                        <Input
+                          type="number"
+                          min={0}
+                          max={100}
+                          step={0.01}
+                          defaultValue={pct}
+                          disabled={savingPartnerId === p.id}
+                          onBlur={async (e) => {
+                            const next = Number(e.target.value);
+                            if (Number.isNaN(next) || next === pct) return;
+                            setSavingPartnerId(p.id);
+                            const res = await updatePartnerProfitShare(p.id, next);
+                            if (res.error) {
+                              toast.error(res.error);
+                            } else {
+                              toast.success(`${p.name}'s share: ${next}%`);
+                              setPartners((prev) => prev.map((x) => x.id === p.id ? { ...x, profit_share_percentage: next } : x));
+                            }
+                            setSavingPartnerId(null);
+                          }}
+                          className="w-20 text-right"
+                        />
+                      ) : (
+                        <span className="text-sm font-medium w-20 text-right">{pct}%</span>
+                      )}
+                      <span className="text-xs text-muted-foreground">%</span>
+                      <span className={`text-sm font-medium w-28 text-right ${share >= 0 ? 'text-foreground' : 'text-destructive'}`}>
+                        {formatPKR(share)}
+                      </span>
+                    </div>
+                  );
+                })}
+                <div className="flex items-center gap-3 pt-2 border-t border-border">
+                  <span className="text-sm flex-1 font-medium">Owner</span>
+                  <span className="text-sm font-medium w-20 text-right">{ownerPct.toFixed(2)}</span>
+                  <span className="text-xs text-muted-foreground">%</span>
+                  <span className={`text-sm font-medium w-28 text-right ${netProfit * (ownerPct / 100) >= 0 ? 'text-green-600' : 'text-destructive'}`}>
+                    {formatPKR(netProfit * (ownerPct / 100))}
+                  </span>
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground mt-3">
+                {isOwner ? 'Edit each partner\'s percentage. Owner gets the remainder.' : 'Percentages set by the salon owner.'}
+              </p>
+            </CardContent>
+          </Card>
+        );
+      })()}
 
       {/* Category breakdown */}
       {sortedCategories.length > 0 && (
