@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useState, useEffect, useRef } from 'react';
-import { Scissors, ChevronDown, Check, Lock, Zap, Smartphone, Ticket, Coffee, Building2, Users } from 'lucide-react';
+import { Scissors, ChevronDown, Check, Lock, Zap, Smartphone, Ticket, Coffee } from 'lucide-react';
 import PublicLayout from '@/components/public-layout';
 import { DashboardHeroPreview } from './components/dashboard-hero-preview';
 
@@ -480,15 +480,6 @@ export default function LandingClient({ initialPlans, supportWhatsApp }: Landing
               const priceNum = parseInt(plan.price.replace(/,/g, ''), 10) || 0;
               const origNum = parseInt(plan.originalPrice.replace(/,/g, ''), 10) || 0;
               const discount = origNum > 0 && priceNum > 0 ? Math.round((1 - priceNum / origNum) * 100) : 0;
-              // Surface branches as the headline metric (like per-seat SaaS pricing).
-              // Parse from limits string ("1 branch · up to 10 staff") so admins can
-              // still edit the source of truth in one place.
-              const limitsParts = plan.limits.split('·').map((s) => s.trim());
-              const branchPart = limitsParts[0] || '';
-              const staffPart = limitsParts.slice(1).join(' · ');
-              const branchMatch = branchPart.match(/(\d+)/);
-              const branchCount = branchMatch ? parseInt(branchMatch[1], 10) : 1;
-              const branchLabel = branchCount === 1 ? 'branch' : 'branches';
               return (
               <Reveal key={plan.key}>
                 <div className={`p-7 md:p-8 flex flex-col h-full relative overflow-hidden transition-all duration-300 hover:-translate-y-1 ${
@@ -514,28 +505,7 @@ export default function LandingClient({ initialPlans, supportWhatsApp }: Landing
                     <p className="text-[38px] md:text-[42px] font-black tabular-nums leading-none mt-1">
                       <span className={`text-[16px] font-semibold ${plan.popular ? 'text-white/60' : 'text-[#1A1A1A]'}`}>Rs. </span>{plan.price}
                     </p>
-                    <p className={`text-[12px] font-medium mt-1.5 ${plan.popular ? 'text-white/60' : 'text-[#888]'}`}>per month, billed monthly</p>
-                  </div>
-
-                  {/* Branch + staff anchor — modeled after per-seat SaaS pricing */}
-                  <div
-                    className={`flex items-stretch border ${plan.popular ? 'border-white/20 bg-white/5' : 'border-[#E8E8E8] bg-[#FAFAF8]'}`}
-                    style={{ borderRadius: Ri }}
-                  >
-                    <div className="flex-1 px-3 py-3 flex items-center gap-2.5" style={{ borderRightWidth: '1px', borderRightStyle: 'solid', borderRightColor: plan.popular ? 'rgba(255,255,255,0.18)' : '#E8E8E8' }}>
-                      <Building2 className={`w-5 h-5 shrink-0 ${plan.popular ? 'text-gold' : 'text-[#B8860B]'}`} strokeWidth={2.25} />
-                      <div className="leading-tight">
-                        <p className={`text-[18px] font-black tabular-nums ${plan.popular ? 'text-white' : 'text-[#1A1A1A]'}`}>{branchCount}</p>
-                        <p className={`text-[10px] font-bold uppercase tracking-wider ${plan.popular ? 'text-white/60' : 'text-[#888]'}`}>{branchLabel}</p>
-                      </div>
-                    </div>
-                    <div className="flex-1 px-3 py-3 flex items-center gap-2.5">
-                      <Users className={`w-5 h-5 shrink-0 ${plan.popular ? 'text-white/70' : 'text-[#1A1A1A]/60'}`} strokeWidth={2.25} />
-                      <div className="leading-tight">
-                        <p className={`text-[12px] font-bold ${plan.popular ? 'text-white' : 'text-[#1A1A1A]'}`}>{staffPart || '—'}</p>
-                        <p className={`text-[10px] font-medium ${plan.popular ? 'text-white/55' : 'text-[#888]'}`}>included</p>
-                      </div>
-                    </div>
+                    <p className={`text-[13px] font-medium mt-1.5 ${plan.popular ? 'text-white/60' : 'text-[#1A1A1A]'}`}>per month · {plan.limits}</p>
                   </div>
 
                   {/* Features */}
