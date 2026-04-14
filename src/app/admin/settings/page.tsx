@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { DEFAULT_EMAIL_TEMPLATES } from '@/lib/email-templates';
 import toast from 'react-hot-toast';
 import { getPlatformSettings, savePlatformSetting } from '@/app/actions/admin-settings';
@@ -311,177 +312,199 @@ export default function AdminSettingsPage() {
     }
   }
 
+  const tabTrigger = 'text-xs px-3.5 py-2 font-medium transition-all duration-150 border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30';
+
   return (
     <div className="space-y-4">
-      <h2 className="font-heading text-xl font-bold">Platform Settings</h2>
-
-      {/* Row 1: General + Payment Collection */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <Card>
-          <CardHeader className="pb-2"><CardTitle className="text-sm">General</CardTitle></CardHeader>
-          <CardContent className="space-y-4">
-            <div><Label className="text-xs">Platform Name</Label><Input value={settings.platformName} onChange={(e) => update('platformName', e.target.value)} className="mt-1" /></div>
-            <div><Label className="text-xs">Platform Domain</Label><Input value={settings.platformDomain} onChange={(e) => update('platformDomain', e.target.value)} className="mt-1" /></div>
-            <div><Label className="text-xs">Support WhatsApp</Label><Input value={settings.supportWhatsApp} onChange={(e) => update('supportWhatsApp', e.target.value)} className="mt-1" /></div>
-            <div><Label className="text-xs">Support Email</Label><Input value={settings.supportEmail} onChange={(e) => update('supportEmail', e.target.value)} className="mt-1" /></div>
-          </CardContent>
-        </Card>
-
-        <div className="space-y-4">
-          <Card>
-            <CardHeader className="pb-2"><CardTitle className="text-sm">Payment Collection</CardTitle></CardHeader>
-            <CardContent className="space-y-3">
-              <div><Label className="text-xs">JazzCash Account (for subscription payments)</Label><Input value={settings.jazzcashAccount} onChange={(e) => update('jazzcashAccount', e.target.value)} className="mt-1" /></div>
-              <div><Label className="text-xs">Bank Account (HBL)</Label><Input value={settings.bankAccount} onChange={(e) => update('bankAccount', e.target.value)} className="mt-1" /></div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-2"><CardTitle className="text-sm">Trial Settings</CardTitle></CardHeader>
-            <CardContent className="space-y-3">
-              <div><Label className="text-xs">Trial Duration (days)</Label><Input type="number" value={settings.trialDuration} onChange={(e) => update('trialDuration', e.target.value)} className="mt-1 w-24" /></div>
-              <div><Label className="text-xs">Grace Period After Trial (days)</Label><Input type="number" value={settings.gracePeriod} onChange={(e) => update('gracePeriod', e.target.value)} className="mt-1 w-24" /></div>
-              <div className="flex items-center justify-between p-3 border rounded-lg">
-                <div><p className="text-sm font-medium">Require Payment on Signup</p><p className="text-xs text-muted-foreground">If off, users start trial without payment</p></div>
-                <Switch checked={settings.requirePaymentOnSignup} onCheckedChange={(v) => update('requirePaymentOnSignup', v)} />
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+      <div className="flex items-center justify-between">
+        <h2 className="font-heading text-xl font-bold">Platform Settings</h2>
+        <Button onClick={saveSettings} className="bg-gold text-black border border-gold">Save Platform Settings</Button>
       </div>
 
-      {/* Row 2: Email Automation (full width) */}
-      <Card className="border-blue-500/25">
-        <CardHeader className="pb-2">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-sm flex items-center gap-2"><Mail className="w-4 h-4 text-blue-600" /> Email Automation (Resend)</CardTitle>
-            <Switch checked={settings.emailEnabled} onCheckedChange={(v) => update('emailEnabled', v)} />
-          </div>
-          <p className="text-xs text-muted-foreground mt-1">
-            Sends automated emails for win-back, udhaar reminders, low stock alerts, and daily summaries to salon owners and clients.
-          </p>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-            <div className="lg:col-span-2">
-              <Label className="text-xs">Resend API Key</Label>
-              <div className="relative mt-1">
-                <Input
-                  type={showApiKey ? 'text' : 'password'}
-                  value={settings.resendKey}
-                  onChange={(e) => update('resendKey', e.target.value)}
-                  placeholder="re_xxxxxxxxxxxxxxxxxxxxxxxx"
-                  className="pr-10"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowApiKey(!showApiKey)}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                >
-                  {showApiKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 lg:grid-cols-2 gap-4">
-              <div>
-                <Label className="text-xs">From Email</Label>
-                <Input value={settings.fromEmail} onChange={(e) => update('fromEmail', e.target.value)} placeholder="notifications@icut.pk" className="mt-1" />
-              </div>
-              <div>
-                <Label className="text-xs">From Name</Label>
-                <Input value={settings.fromName} onChange={(e) => update('fromName', e.target.value)} placeholder="iCut" className="mt-1" />
-              </div>
-            </div>
-          </div>
+      <Tabs defaultValue="general">
+        <TabsList className="flex flex-wrap gap-1 h-auto">
+          <TabsTrigger value="general" className={tabTrigger}>General</TabsTrigger>
+          <TabsTrigger value="plans" className={tabTrigger}>Subscription Plans</TabsTrigger>
+          <TabsTrigger value="payments" className={tabTrigger}>Payments &amp; Trial</TabsTrigger>
+          <TabsTrigger value="email" className={tabTrigger}>Email Automation</TabsTrigger>
+        </TabsList>
 
-          <div className="pt-2 border-t">
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">Email Automations</p>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-2">
-              {DEFAULT_EMAIL_TEMPLATES.map((tpl) => (
-                <div key={tpl.id} className="flex items-center justify-between p-3 bg-secondary/50 rounded-lg">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <p className="text-sm font-medium">{tpl.name}</p>
-                      {settings.enabledTemplates[tpl.id] && settings.emailEnabled && (
-                        <Badge variant="outline" className="text-[10px] text-blue-600 border-blue-500/25 bg-blue-500/10">Active</Badge>
-                      )}
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-0.5">Subject: {tpl.subject}</p>
+        {/* ── General ───────────────────────────────────────────── */}
+        <TabsContent value="general" className="mt-4">
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm">General</CardTitle>
+              <p className="text-xs text-muted-foreground mt-1">
+                Platform-wide identity and the contacts surfaced on public pages.
+              </p>
+            </CardHeader>
+            <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div><Label className="text-xs">Platform Name</Label><Input value={settings.platformName} onChange={(e) => update('platformName', e.target.value)} className="mt-1" /></div>
+              <div><Label className="text-xs">Platform Domain</Label><Input value={settings.platformDomain} onChange={(e) => update('platformDomain', e.target.value)} className="mt-1" /></div>
+              <div><Label className="text-xs">Support WhatsApp</Label><Input value={settings.supportWhatsApp} onChange={(e) => update('supportWhatsApp', e.target.value)} className="mt-1" /></div>
+              <div><Label className="text-xs">Support Email</Label><Input value={settings.supportEmail} onChange={(e) => update('supportEmail', e.target.value)} className="mt-1" /></div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* ── Subscription Plans ────────────────────────────────── */}
+        <TabsContent value="plans" className="mt-4">
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm">Subscription Plans</CardTitle>
+              <p className="text-xs text-muted-foreground mt-1">
+                These values drive the homepage pricing section and the in-app paywall. Marketing copy (display name, pitch, features) only shows on the homepage. Exactly one plan can be marked Most Popular.
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {Object.entries(settings.plans).map(([name, plan]) => (
+                <div key={name} className="p-3 bg-secondary/50 rounded-lg space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="font-semibold text-sm">{name}</span>
+                    <label className="flex items-center gap-2 text-xs cursor-pointer">
+                      <input
+                        type="radio"
+                        name="popularPlan"
+                        checked={plan.popular}
+                        onChange={() => setPopularPlan(name)}
+                      />
+                      Most Popular (homepage highlight)
+                    </label>
                   </div>
-                  <Switch
-                    checked={settings.enabledTemplates[tpl.id] ?? false}
-                    onCheckedChange={() => toggleTemplate(tpl.id)}
-                    disabled={!settings.emailEnabled}
-                  />
+
+                  <div className="flex flex-wrap items-end gap-3">
+                    <div><Label className="text-[10px]">Rs/month</Label><Input value={plan.price} onChange={(e) => updatePlan(name, 'price', e.target.value)} className="w-24 h-7 text-xs" /></div>
+                    <div><Label className="text-[10px]">Branches</Label><Input value={plan.branches} onChange={(e) => updatePlan(name, 'branches', e.target.value)} className="w-20 h-7 text-xs" /></div>
+                    <div><Label className="text-[10px]">Staff</Label><Input value={plan.staff} onChange={(e) => updatePlan(name, 'staff', e.target.value)} className="w-24 h-7 text-xs" /></div>
+                    <div><Label className="text-[10px]">Original Rs (strikethrough)</Label><Input value={plan.originalPrice} onChange={(e) => updatePlan(name, 'originalPrice', e.target.value)} className="w-28 h-7 text-xs" /></div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div><Label className="text-[10px]">Display Name (homepage)</Label><Input value={plan.displayName} onChange={(e) => updatePlan(name, 'displayName', e.target.value)} className="h-8 text-xs" /></div>
+                    <div><Label className="text-[10px]">Pitch (one line)</Label><Input value={plan.pitch} onChange={(e) => updatePlan(name, 'pitch', e.target.value)} className="h-8 text-xs" /></div>
+                    <div><Label className="text-[10px]">Limits line (under price)</Label><Input value={plan.limits} onChange={(e) => updatePlan(name, 'limits', e.target.value)} className="h-8 text-xs" /></div>
+                  </div>
+
+                  <div>
+                    <Label className="text-[10px]">Features (one per line · prefix with <code>~</code> to cross out)</Label>
+                    <textarea
+                      value={plan.features}
+                      onChange={(e) => updatePlan(name, 'features', e.target.value)}
+                      rows={7}
+                      className="mt-1 w-full px-2 py-1.5 text-xs border border-border rounded-md bg-background focus:outline-none focus:border-gold font-mono"
+                      placeholder={'POS + billing\nBookings\n~ Inventory'}
+                    />
+                  </div>
                 </div>
               ))}
-            </div>
-          </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
 
-          <div className="flex items-center gap-2 pt-2">
-            <Button variant="outline" size="sm" onClick={testEmail} disabled={!settings.emailEnabled} className="text-xs gap-1">
-              <Mail className="w-3 h-3" /> Send Test Email
-            </Button>
-            <p className="text-xs text-muted-foreground">Sends a test email to the support inbox</p>
-          </div>
-        </CardContent>
-      </Card>
+        {/* ── Payments & Trial ──────────────────────────────────── */}
+        <TabsContent value="payments" className="mt-4">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <Card>
+              <CardHeader className="pb-2"><CardTitle className="text-sm">Payment Collection</CardTitle></CardHeader>
+              <CardContent className="space-y-3">
+                <div><Label className="text-xs">JazzCash Account (for subscription payments)</Label><Input value={settings.jazzcashAccount} onChange={(e) => update('jazzcashAccount', e.target.value)} className="mt-1" /></div>
+                <div><Label className="text-xs">Bank Account (HBL)</Label><Input value={settings.bankAccount} onChange={(e) => update('bankAccount', e.target.value)} className="mt-1" /></div>
+              </CardContent>
+            </Card>
 
-      {/* Row 3: Subscription Plans (full width) */}
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm">Subscription Plans</CardTitle>
-          <p className="text-xs text-muted-foreground mt-1">
-            These values drive the homepage pricing section and the in-app paywall. Marketing copy (display name, pitch, features) only shows on the homepage. Exactly one plan can be marked Most Popular.
-          </p>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {Object.entries(settings.plans).map(([name, plan]) => (
-            <div key={name} className="p-3 bg-secondary/50 rounded-lg space-y-3">
+            <Card>
+              <CardHeader className="pb-2"><CardTitle className="text-sm">Trial Settings</CardTitle></CardHeader>
+              <CardContent className="space-y-3">
+                <div><Label className="text-xs">Trial Duration (days)</Label><Input type="number" value={settings.trialDuration} onChange={(e) => update('trialDuration', e.target.value)} className="mt-1 w-24" /></div>
+                <div><Label className="text-xs">Grace Period After Trial (days)</Label><Input type="number" value={settings.gracePeriod} onChange={(e) => update('gracePeriod', e.target.value)} className="mt-1 w-24" /></div>
+                <div className="flex items-center justify-between p-3 border rounded-lg">
+                  <div><p className="text-sm font-medium">Require Payment on Signup</p><p className="text-xs text-muted-foreground">If off, users start trial without payment</p></div>
+                  <Switch checked={settings.requirePaymentOnSignup} onCheckedChange={(v) => update('requirePaymentOnSignup', v)} />
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        {/* ── Email Automation ──────────────────────────────────── */}
+        <TabsContent value="email" className="mt-4">
+          <Card className="border-blue-500/25">
+            <CardHeader className="pb-2">
               <div className="flex items-center justify-between">
-                <span className="font-semibold text-sm">{name}</span>
-                <label className="flex items-center gap-2 text-xs cursor-pointer">
-                  <input
-                    type="radio"
-                    name="popularPlan"
-                    checked={plan.popular}
-                    onChange={() => setPopularPlan(name)}
-                  />
-                  Most Popular (homepage highlight)
-                </label>
+                <CardTitle className="text-sm flex items-center gap-2"><Mail className="w-4 h-4 text-blue-600" /> Email Automation (Resend)</CardTitle>
+                <Switch checked={settings.emailEnabled} onCheckedChange={(v) => update('emailEnabled', v)} />
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Sends automated emails for win-back, udhaar reminders, low stock alerts, and daily summaries to salon owners and clients.
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                <div className="lg:col-span-2">
+                  <Label className="text-xs">Resend API Key</Label>
+                  <div className="relative mt-1">
+                    <Input
+                      type={showApiKey ? 'text' : 'password'}
+                      value={settings.resendKey}
+                      onChange={(e) => update('resendKey', e.target.value)}
+                      placeholder="re_xxxxxxxxxxxxxxxxxxxxxxxx"
+                      className="pr-10"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowApiKey(!showApiKey)}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    >
+                      {showApiKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 lg:grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-xs">From Email</Label>
+                    <Input value={settings.fromEmail} onChange={(e) => update('fromEmail', e.target.value)} placeholder="notifications@icut.pk" className="mt-1" />
+                  </div>
+                  <div>
+                    <Label className="text-xs">From Name</Label>
+                    <Input value={settings.fromName} onChange={(e) => update('fromName', e.target.value)} placeholder="iCut" className="mt-1" />
+                  </div>
+                </div>
               </div>
 
-              {/* Operational: price + limits used by paywall + backend */}
-              <div className="flex flex-wrap items-end gap-3">
-                <div><Label className="text-[10px]">Rs/month</Label><Input value={plan.price} onChange={(e) => updatePlan(name, 'price', e.target.value)} className="w-24 h-7 text-xs" /></div>
-                <div><Label className="text-[10px]">Branches</Label><Input value={plan.branches} onChange={(e) => updatePlan(name, 'branches', e.target.value)} className="w-20 h-7 text-xs" /></div>
-                <div><Label className="text-[10px]">Staff</Label><Input value={plan.staff} onChange={(e) => updatePlan(name, 'staff', e.target.value)} className="w-24 h-7 text-xs" /></div>
-                <div><Label className="text-[10px]">Original Rs (strikethrough)</Label><Input value={plan.originalPrice} onChange={(e) => updatePlan(name, 'originalPrice', e.target.value)} className="w-28 h-7 text-xs" /></div>
+              <div className="pt-2 border-t">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">Email Automations</p>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-2">
+                  {DEFAULT_EMAIL_TEMPLATES.map((tpl) => (
+                    <div key={tpl.id} className="flex items-center justify-between p-3 bg-secondary/50 rounded-lg">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className="text-sm font-medium">{tpl.name}</p>
+                          {settings.enabledTemplates[tpl.id] && settings.emailEnabled && (
+                            <Badge variant="outline" className="text-[10px] text-blue-600 border-blue-500/25 bg-blue-500/10">Active</Badge>
+                          )}
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-0.5">Subject: {tpl.subject}</p>
+                      </div>
+                      <Switch
+                        checked={settings.enabledTemplates[tpl.id] ?? false}
+                        onCheckedChange={() => toggleTemplate(tpl.id)}
+                        disabled={!settings.emailEnabled}
+                      />
+                    </div>
+                  ))}
+                </div>
               </div>
 
-              {/* Marketing: homepage display */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                <div><Label className="text-[10px]">Display Name (homepage)</Label><Input value={plan.displayName} onChange={(e) => updatePlan(name, 'displayName', e.target.value)} className="h-8 text-xs" /></div>
-                <div><Label className="text-[10px]">Pitch (one line)</Label><Input value={plan.pitch} onChange={(e) => updatePlan(name, 'pitch', e.target.value)} className="h-8 text-xs" /></div>
-                <div><Label className="text-[10px]">Limits line (under price)</Label><Input value={plan.limits} onChange={(e) => updatePlan(name, 'limits', e.target.value)} className="h-8 text-xs" /></div>
+              <div className="flex items-center gap-2 pt-2">
+                <Button variant="outline" size="sm" onClick={testEmail} disabled={!settings.emailEnabled} className="text-xs gap-1">
+                  <Mail className="w-3 h-3" /> Send Test Email
+                </Button>
+                <p className="text-xs text-muted-foreground">Sends a test email to the support inbox</p>
               </div>
-
-              <div>
-                <Label className="text-[10px]">Features (one per line · prefix with <code>~</code> to cross out)</Label>
-                <textarea
-                  value={plan.features}
-                  onChange={(e) => updatePlan(name, 'features', e.target.value)}
-                  rows={7}
-                  className="mt-1 w-full px-2 py-1.5 text-xs border border-border rounded-md bg-background focus:outline-none focus:border-gold font-mono"
-                  placeholder={'POS + billing\nBookings\n~ Inventory'}
-                />
-              </div>
-            </div>
-          ))}
-        </CardContent>
-      </Card>
-
-      <Button onClick={saveSettings} className="bg-gold text-black border border-gold">Save Platform Settings</Button>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
