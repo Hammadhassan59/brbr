@@ -84,6 +84,7 @@ export interface Salon {
   subscription_expires_at: string | null;
   subscription_started_at: string | null;
   admin_notes: string | null;
+  sold_by_agent_id: string | null;
 }
 
 export interface PlatformSetting {
