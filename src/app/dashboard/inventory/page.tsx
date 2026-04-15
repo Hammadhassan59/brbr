@@ -25,7 +25,9 @@ export default function InventoryDashboardPage() {
     try {
       const [prodRes, movRes] = await Promise.all([
         supabase.from('products').select('*').eq('salon_id', salon.id).eq('is_active', true).order('name'),
-        supabase.from('stock_movements').select('*, product:products(name)').order('created_at', { ascending: false }).limit(10),
+        // stock_movements has no salon_id column — inner-join products and filter
+        // by product.salon_id so we never surface another tenant's movements.
+        supabase.from('stock_movements').select('*, product:products!inner(name, salon_id)').eq('product.salon_id', salon.id).order('created_at', { ascending: false }).limit(10),
       ]);
       if (prodRes.data) setProducts(prodRes.data as Product[]);
       if (movRes.data) setMovements(movRes.data.map((m: Record<string, unknown>) => ({

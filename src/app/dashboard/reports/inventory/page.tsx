@@ -42,11 +42,15 @@ export default function InventoryReportPage() {
   const fetchData = useCallback(async () => {
     if (!salon) return;
     setLoading(true);
+    // Tenant-scope every cross-table query: stock_movements, product_service_links
+    // and bill_items have no salon_id column, so inner-join a salon-scoped parent
+    // (products or bills) and filter. Otherwise these reads would surface other
+    // tenants' data when the service-role client bypasses RLS.
     const [movRes, prodRes, linksRes, billItemsRes] = await Promise.all([
-      supabase.from('stock_movements').select('*, product:products(*)').gte('created_at', `${dateFrom}T00:00:00`).lte('created_at', `${dateTo}T23:59:59`).order('created_at', { ascending: false }).limit(200),
+      supabase.from('stock_movements').select('*, product:products!inner(*, salon_id)').eq('product.salon_id', salon.id).gte('created_at', `${dateFrom}T00:00:00`).lte('created_at', `${dateTo}T23:59:59`).order('created_at', { ascending: false }).limit(200),
       supabase.from('products').select('*').eq('salon_id', salon.id).eq('is_active', true),
-      supabase.from('product_service_links').select('*'),
-      supabase.from('bill_items').select('*, bill:bills!inner(created_at)').eq('item_type', 'service').gte('bill.created_at', `${dateFrom}T00:00:00`).lte('bill.created_at', `${dateTo}T23:59:59`),
+      supabase.from('product_service_links').select('*, product:products!inner(salon_id)').eq('product.salon_id', salon.id),
+      supabase.from('bill_items').select('*, bill:bills!inner(created_at, salon_id)').eq('bill.salon_id', salon.id).eq('item_type', 'service').gte('bill.created_at', `${dateFrom}T00:00:00`).lte('bill.created_at', `${dateTo}T23:59:59`),
     ]);
     if (movRes.data) setMovements(movRes.data as (StockMovement & { product?: Product })[]);
     if (prodRes.data) setProducts(prodRes.data as Product[]);
@@ -122,6 +126,7 @@ export default function InventoryReportPage() {
     setLoading(false);
   }, [salon, dateFrom, dateTo]);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { fetchData(); }, [fetchData]);
 
   // Backbar consumption
