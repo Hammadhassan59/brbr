@@ -1,11 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Scissors, ChevronRight, ChevronLeft, Check, Plus, X, Sparkles, Users } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { supabase } from '@/lib/supabase';
-import { setupSalon } from '@/app/actions/setup';
+import { setupSalon, checkEmailAvailable } from '@/app/actions/setup';
 import { useLanguage } from '@/components/providers/language-provider';
 import { useAppStore } from '@/store/app-store';
 import { Button } from '@/components/ui/button';
@@ -136,6 +136,65 @@ export default function SetupPage() {
   const validStaff = staffList.filter((s) => s.name && s.email && s.phone.trim() && s.password.length >= 6 && s.password === s.confirmPassword);
   const validPartners = partners.filter((p) => p.name && p.email && p.phone.trim() && p.password.length >= 6 && p.password === p.confirmPassword);
 
+  // ─── Email availability warnings ───
+  // Keyed by lowercase email; true = taken. Surfaced inline below the input.
+  const [takenEmails, setTakenEmails] = useState<Record<string, boolean>>({});
+  const emailCheckSeq = useRef(0);
+
+  async function verifyEmail(email: string) {
+    const key = email.trim().toLowerCase();
+    if (!key) return;
+    if (key in takenEmails) return; // already checked
+    const seq = ++emailCheckSeq.current;
+    const res = await checkEmailAvailable(key);
+    if (seq !== emailCheckSeq.current) return; // stale
+    setTakenEmails((prev) => ({ ...prev, [key]: res.reason === 'taken' }));
+  }
+
+  function emailIsTaken(email: string): boolean {
+    return takenEmails[email.trim().toLowerCase()] === true;
+  }
+
+  // ─── Draft persistence ───
+  // Save wizard state to localStorage on every change; restore on mount; clear on finish.
+  const DRAFT_KEY = 'icut-setup-draft-v1';
+  const hydrated = useRef(false);
+
+  useEffect(() => {
+    try {
+      const raw = typeof window !== 'undefined' ? localStorage.getItem(DRAFT_KEY) : null;
+      if (raw) {
+        const d = JSON.parse(raw);
+        if (typeof d.step === 'number' && d.step >= 1 && d.step <= 7) setStep(d.step);
+        if (typeof d.salonName === 'string') setSalonName(d.salonName);
+        if (d.salonType) setSalonType(d.salonType);
+        if (typeof d.city === 'string') setCity(d.city);
+        if (typeof d.address === 'string') setAddress(d.address);
+        if (typeof d.phone === 'string') setPhone(d.phone);
+        if (typeof d.whatsapp === 'string') setWhatsapp(d.whatsapp);
+        if (typeof d.sameAsPhone === 'boolean') setSameAsPhone(d.sameAsPhone);
+        if (typeof d.branchName === 'string') setBranchName(d.branchName);
+        if (d.ownershipType) setOwnershipType(d.ownershipType);
+        if (Array.isArray(d.partners) && d.partners.length) setPartners(d.partners);
+        if (d.hours) setHours(d.hours);
+        if (typeof d.jummahBreak === 'boolean') setJummahBreak(d.jummahBreak);
+        if (typeof d.prayerBlocks === 'boolean') setPrayerBlocks(d.prayerBlocks);
+        if (Array.isArray(d.services)) setServices(d.services);
+        if (Array.isArray(d.staffList) && d.staffList.length) setStaffList(d.staffList);
+      }
+    } catch { /* corrupt draft — ignore */ }
+    hydrated.current = true;
+  }, []);
+
+  useEffect(() => {
+    if (!hydrated.current || typeof window === 'undefined') return;
+    const draft = {
+      step, salonName, salonType, city, address, phone, whatsapp, sameAsPhone, branchName,
+      ownershipType, partners, hours, jummahBreak, prayerBlocks, services, staffList,
+    };
+    try { localStorage.setItem(DRAFT_KEY, JSON.stringify(draft)); } catch { /* quota */ }
+  }, [step, salonName, salonType, city, address, phone, whatsapp, sameAsPhone, branchName, ownershipType, partners, hours, jummahBreak, prayerBlocks, services, staffList]);
+
   function addPartnerRow() {
     setPartners([...partners, { name: '', email: '', phone: '', password: '', confirmPassword: '' }]);
   }
@@ -193,6 +252,10 @@ export default function SetupPage() {
     if (step === 2 && !phone.trim()) { toast.error('Phone number is required'); return; }
     if (step === 2 && !branchName.trim()) { toast.error('Branch name is required'); return; }
     if (step === 3 && ownershipType === 'multiple' && validPartners.length === 0) { toast.error('Add at least one partner with name, email, phone, and password'); return; }
+    if (step === 3 && ownershipType === 'multiple' && partners.some(p => p.email && emailIsTaken(p.email))) {
+      toast.error('Fix partner emails that are already registered before continuing');
+      return;
+    }
     if (step === 4) {
       const invalidDay = DAYS.find(d => !hours[d].off && hours[d].close <= hours[d].open);
       if (invalidDay) {
@@ -201,6 +264,10 @@ export default function SetupPage() {
       }
     }
     if (step === 6 && validStaff.length === 0) { toast.error('Add at least 1 staff member'); return; }
+    if (step === 6 && staffList.some(s => s.email && emailIsTaken(s.email))) {
+      toast.error('Fix staff emails that are already registered before continuing');
+      return;
+    }
     const nextStep = step + 1;
     setStep(nextStep);
     if (nextStep === 5) initServices();
@@ -269,6 +336,7 @@ export default function SetupPage() {
       });
 
       toast.success('Salon setup complete!');
+      try { localStorage.removeItem(DRAFT_KEY); } catch { /* ignore */ }
       // Hard navigation: the JWT cookie was just re-signed with the new salonId,
       // and Zustand just got fresh salon/branch data. A full page load ensures
       // the dashboard reads consistent state from both cookie and store.
@@ -460,7 +528,10 @@ export default function SetupPage() {
                       </div>
                       <div>
                         <Label>Email *</Label>
-                        <Input type="email" inputMode="email" autoComplete="email" value={partner.email} onChange={(e) => updatePartner(i, 'email', e.target.value)} placeholder="partner@email.com" className="mt-1" />
+                        <Input type="email" inputMode="email" autoComplete="email" value={partner.email} onChange={(e) => updatePartner(i, 'email', e.target.value)} onBlur={(e) => verifyEmail(e.target.value)} placeholder="partner@email.com" className="mt-1" />
+                        {partner.email && emailIsTaken(partner.email) && (
+                          <p className="text-xs text-destructive mt-1">This email is already registered. Use a different email or log in instead.</p>
+                        )}
                       </div>
                     </div>
                     <div>
@@ -634,7 +705,10 @@ export default function SetupPage() {
                 </div>
                 <div>
                   <Label>Email *</Label>
-                  <Input type="email" inputMode="email" autoComplete="email" value={staff.email} onChange={(e) => updateStaff(i, 'email', e.target.value)} placeholder="staff@email.com" className="mt-1" />
+                  <Input type="email" inputMode="email" autoComplete="email" value={staff.email} onChange={(e) => updateStaff(i, 'email', e.target.value)} onBlur={(e) => verifyEmail(e.target.value)} placeholder="staff@email.com" className="mt-1" />
+                  {staff.email && emailIsTaken(staff.email) && (
+                    <p className="text-xs text-destructive mt-1">This email is already registered. Use a different email.</p>
+                  )}
                 </div>
                 <div>
                   <Label>Phone *</Label>

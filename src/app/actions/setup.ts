@@ -4,6 +4,62 @@ import { createServerClient } from '@/lib/supabase';
 import { sendEmail } from '@/lib/email-sender';
 import { welcomeEmail } from '@/lib/email-templates';
 
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/**
+ * Check whether an email is already registered with Supabase Auth.
+ * Used by the setup wizard to warn partner/staff email fields onBlur
+ * so the user finds out early — not at the final "Go to dashboard" click.
+ */
+export async function checkEmailAvailable(
+  email: string
+): Promise<{ available: boolean; reason?: 'invalid' | 'taken' | 'error' }> {
+  const normalized = email?.trim().toLowerCase();
+  if (!normalized || !EMAIL_RE.test(normalized)) {
+    return { available: false, reason: 'invalid' };
+  }
+
+  const supabase = createServerClient();
+
+  // Primary path: PostgREST query against the auth.users table (service role).
+  try {
+    const { data, error } = await (supabase as unknown as { schema: (s: string) => { from: (t: string) => { select: (c: string) => { eq: (c: string, v: string) => { limit: (n: number) => { maybeSingle: () => Promise<{ data: { id: string } | null; error: unknown }> } } } } } })
+      .schema('auth')
+      .from('users')
+      .select('id')
+      .eq('email', normalized)
+      .limit(1)
+      .maybeSingle();
+    if (!error) {
+      return data ? { available: false, reason: 'taken' } : { available: true };
+    }
+  } catch {
+    // fall through to REST fallback below
+  }
+
+  // Fallback: GoTrue admin REST. Self-hosted Supabase exposes /auth/v1/admin/users
+  // — use the service-role key as the bearer.
+  try {
+    const url = new URL('/auth/v1/admin/users', process.env.NEXT_PUBLIC_SUPABASE_URL!);
+    url.searchParams.set('email', normalized);
+    url.searchParams.set('per_page', '1');
+    const res = await fetch(url.toString(), {
+      headers: {
+        Authorization: `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY || ''}`,
+        apikey: process.env.SUPABASE_SERVICE_ROLE_KEY || '',
+      },
+      cache: 'no-store',
+    });
+    if (!res.ok) return { available: true, reason: 'error' };
+    const body = (await res.json()) as { users?: Array<{ email?: string }> };
+    const users = body.users || [];
+    const taken = users.some((u) => u.email?.toLowerCase() === normalized);
+    return taken ? { available: false, reason: 'taken' } : { available: true };
+  } catch {
+    return { available: true, reason: 'error' };
+  }
+}
+
 // Setup does NOT call verifySession — there is no session yet during first-time setup.
 // The owner is authenticated via Supabase Auth (owner_id comes from getUser()).
 
