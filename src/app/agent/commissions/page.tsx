@@ -2,12 +2,21 @@
 
 import { useEffect, useState } from 'react';
 import { Wallet } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { listMyCommissions, type AgentCommissionWithSalon } from '@/app/actions/agent-commissions';
+import { requestPayout } from '@/app/actions/agent-payouts';
+import { Button } from '@/components/ui/button';
 
 export default function AgentCommissionsPage() {
   const [rows, setRows] = useState<AgentCommissionWithSalon[]>([]);
+  const [requesting, setRequesting] = useState(false);
 
-  useEffect(() => { listMyCommissions().then(r => setRows(r.data)); }, []);
+  async function reload() {
+    const r = await listMyCommissions();
+    setRows(r.data);
+  }
+
+  useEffect(() => { reload(); }, []);
 
   const totals = rows.reduce(
     (acc, r) => {
@@ -21,6 +30,17 @@ export default function AgentCommissionsPage() {
     { available: 0, pending: 0, paid: 0, reversed: 0 },
   );
 
+  async function handleRequest() {
+    if (totals.available <= 0) return;
+    if (!confirm(`Request payout of Rs ${totals.available.toFixed(2)}?`)) return;
+    setRequesting(true);
+    const { error } = await requestPayout();
+    setRequesting(false);
+    if (error) { toast.error(error); return; }
+    toast.success('Payout requested — superadmin will process');
+    await reload();
+  }
+
   return (
     <div className="space-y-4">
       <h2 className="font-heading text-2xl font-semibold">Commissions</h2>
@@ -30,6 +50,12 @@ export default function AgentCommissionsPage() {
         <Summary label="Pending payout" value={totals.pending} />
         <Summary label="Lifetime paid" value={totals.paid} />
         <Summary label="Reversed" value={totals.reversed} negative />
+      </div>
+
+      <div className="flex justify-end">
+        <Button onClick={handleRequest} disabled={requesting || totals.available <= 0}>
+          {requesting ? 'Requesting…' : `Request payout (Rs ${totals.available.toFixed(2)})`}
+        </Button>
       </div>
 
       {rows.length === 0 ? (
@@ -68,7 +94,9 @@ export default function AgentCommissionsPage() {
         </div>
       )}
 
-      <p className="text-xs text-muted-foreground">Payout requests arrive in the next release.</p>
+      <p className="text-xs text-muted-foreground">
+        Payout history is on the <a href="/agent/payouts" className="text-gold hover:underline">Payouts</a> page.
+      </p>
     </div>
   );
 }
