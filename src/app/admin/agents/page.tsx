@@ -121,7 +121,7 @@ function NewAgentDialog({ open, onClose, onCreated }: { open: boolean; onClose: 
         <form onSubmit={submit} className="space-y-4">
           <div>
             <Label htmlFor="email">Email</Label>
-            <Input id="email" type="email" required value={form.email}
+            <Input id="email" type="email" inputMode="email" autoComplete="email" required value={form.email}
               onChange={e => setForm({ ...form, email: e.target.value })} />
           </div>
           <div>
@@ -132,7 +132,7 @@ function NewAgentDialog({ open, onClose, onCreated }: { open: boolean; onClose: 
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label htmlFor="phone">Phone *</Label>
-              <Input id="phone" required value={form.phone}
+              <Input id="phone" type="tel" inputMode="tel" autoComplete="tel" required value={form.phone}
                 onChange={e => setForm({ ...form, phone: e.target.value })} />
             </div>
             <div>

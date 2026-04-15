@@ -332,7 +332,7 @@ export default function AdminSalonDetailPage({
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="salon-phone">Phone</Label>
-              <Input id="salon-phone" value={phone} onChange={(e) => setPhone(e.target.value)} />
+              <Input id="salon-phone" type="tel" inputMode="tel" autoComplete="tel" value={phone} onChange={(e) => setPhone(e.target.value)} />
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="salon-type">Type</Label>

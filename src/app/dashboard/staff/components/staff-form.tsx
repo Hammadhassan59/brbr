@@ -113,7 +113,7 @@ export function StaffForm({ staff, onSaved }: StaffFormProps) {
           </div>
           <div>
             <Label>Email *</Label>
-            <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="staff@example.com" className="mt-1" disabled={isEditing} />
+            <Input type="email" inputMode="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="staff@example.com" className="mt-1" disabled={isEditing} />
           </div>
         </div>
 
@@ -147,7 +147,7 @@ export function StaffForm({ staff, onSaved }: StaffFormProps) {
 
         <div>
           <Label>Phone *</Label>
-          <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="03XX-XXXXXXX" className="mt-1 w-64" required />
+          <Input type="tel" inputMode="tel" autoComplete="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="03XX-XXXXXXX" className="mt-1 w-64" required />
         </div>
       </div>
 

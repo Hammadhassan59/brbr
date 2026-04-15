@@ -134,7 +134,7 @@ export default function BranchesPage() {
               </div>
               <div>
                 <Label className="text-xs">Phone</Label>
-                <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="03XX-XXXXXXX" className="mt-1" />
+                <Input type="tel" inputMode="tel" autoComplete="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="03XX-XXXXXXX" className="mt-1" />
               </div>
             </div>
             <Button onClick={saveBranch} disabled={saving} className="bg-gold hover:bg-gold/90 text-black font-semibold h-11">

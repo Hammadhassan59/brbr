@@ -122,14 +122,14 @@ export function ClientForm({ client, onSaved }: ClientFormProps) {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <Label>Phone Number *</Label>
-            <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="03XX-XXXXXXX" className="mt-1" />
+            <Input type="tel" inputMode="tel" autoComplete="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="03XX-XXXXXXX" className="mt-1" />
           </div>
           <div>
             <Label>WhatsApp</Label>
             {sameAsPhone ? (
-              <Input value={phone} disabled className="mt-1" />
+              <Input type="tel" value={phone} disabled className="mt-1" />
             ) : (
-              <Input value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)} placeholder="03XX-XXXXXXX" className="mt-1" />
+              <Input type="tel" inputMode="tel" autoComplete="tel" value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)} placeholder="03XX-XXXXXXX" className="mt-1" />
             )}
             <label className="flex items-center gap-2 mt-1.5 text-xs text-muted-foreground cursor-pointer">
               <input type="checkbox" checked={sameAsPhone} onChange={(e) => setSameAsPhone(e.target.checked)} className="rounded" />

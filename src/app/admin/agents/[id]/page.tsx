@@ -62,7 +62,7 @@ export default function AgentDetailPage() {
         <h3 className="font-medium">Profile</h3>
         <div className="grid grid-cols-1 gap-3">
           <div><Label>Name</Label><Input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} /></div>
-          <div><Label>Phone *</Label><Input required value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} /></div>
+          <div><Label>Phone *</Label><Input type="tel" inputMode="tel" autoComplete="tel" required value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} /></div>
           <div><Label>City</Label><Input value={form.city} onChange={e => setForm({ ...form, city: e.target.value })} /></div>
         </div>
         <h3 className="font-medium pt-2">Commission rates</h3>

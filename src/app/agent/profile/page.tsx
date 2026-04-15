@@ -31,7 +31,7 @@ export default function AgentProfilePage() {
       <h2 className="font-heading text-2xl font-semibold">Profile</h2>
       <div className="space-y-3 border rounded-lg p-5">
         <div><Label>Name</Label><Input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} /></div>
-        <div><Label>Phone *</Label><Input required value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} /></div>
+        <div><Label>Phone *</Label><Input type="tel" inputMode="tel" autoComplete="tel" required value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} /></div>
         <div><Label>City</Label><Input value={form.city} readOnly disabled /></div>
         <div className="flex justify-end">
           <Button onClick={save} disabled={saving || !form.name || !form.phone.trim()}>{saving ? 'Saving…' : 'Save'}</Button>

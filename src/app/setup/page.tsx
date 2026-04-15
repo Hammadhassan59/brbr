@@ -368,15 +368,15 @@ export default function SetupPage() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label>{t('phone')} *</Label>
-                <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="03XX-XXXXXXX" className="mt-1.5" required />
+                <Input type="tel" inputMode="tel" autoComplete="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="03XX-XXXXXXX" className="mt-1.5" required />
               </div>
               <div>
                 <Label>{t('whatsapp')}</Label>
                 <div className="flex items-center gap-2 mt-1.5">
                   {sameAsPhone ? (
-                    <Input value={phone} disabled className="flex-1" />
+                    <Input type="tel" value={phone} disabled className="flex-1" />
                   ) : (
-                    <Input value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)} placeholder="03XX-XXXXXXX" className="flex-1" />
+                    <Input type="tel" inputMode="tel" autoComplete="tel" value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)} placeholder="03XX-XXXXXXX" className="flex-1" />
                   )}
                 </div>
                 <label className="flex items-center gap-2 mt-2 text-sm text-muted-foreground cursor-pointer">
@@ -432,12 +432,12 @@ export default function SetupPage() {
                       </div>
                       <div>
                         <Label>Email *</Label>
-                        <Input type="email" value={partner.email} onChange={(e) => updatePartner(i, 'email', e.target.value)} placeholder="partner@email.com" className="mt-1" />
+                        <Input type="email" inputMode="email" autoComplete="email" value={partner.email} onChange={(e) => updatePartner(i, 'email', e.target.value)} placeholder="partner@email.com" className="mt-1" />
                       </div>
                     </div>
                     <div>
                       <Label>Phone *</Label>
-                      <Input value={partner.phone} onChange={(e) => updatePartner(i, 'phone', e.target.value)} placeholder="03XX-XXXXXXX" className="mt-1" />
+                      <Input type="tel" inputMode="tel" autoComplete="tel" value={partner.phone} onChange={(e) => updatePartner(i, 'phone', e.target.value)} placeholder="03XX-XXXXXXX" className="mt-1" />
                     </div>
                     <div className="grid grid-cols-2 gap-3">
                       <div>
@@ -606,11 +606,11 @@ export default function SetupPage() {
                 </div>
                 <div>
                   <Label>Email *</Label>
-                  <Input type="email" value={staff.email} onChange={(e) => updateStaff(i, 'email', e.target.value)} placeholder="staff@email.com" className="mt-1" />
+                  <Input type="email" inputMode="email" autoComplete="email" value={staff.email} onChange={(e) => updateStaff(i, 'email', e.target.value)} placeholder="staff@email.com" className="mt-1" />
                 </div>
                 <div>
                   <Label>Phone *</Label>
-                  <Input value={staff.phone} onChange={(e) => updateStaff(i, 'phone', e.target.value)} placeholder="03XX-XXXXXXX" className="mt-1" />
+                  <Input type="tel" inputMode="tel" autoComplete="tel" value={staff.phone} onChange={(e) => updateStaff(i, 'phone', e.target.value)} placeholder="03XX-XXXXXXX" className="mt-1" />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>

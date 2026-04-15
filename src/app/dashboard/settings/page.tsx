@@ -266,8 +266,8 @@ export default function SettingsPage() {
             <div><Label>Address</Label><Input value={address} onChange={(e) => setAddress(e.target.value)} className="mt-1" /></div>
           </div>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <div><Label>Phone</Label><Input value={phone} onChange={(e) => setPhone(e.target.value)} className="mt-1" /></div>
-            <div><Label>WhatsApp</Label><Input value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)} className="mt-1" /></div>
+            <div><Label>Phone</Label><Input type="tel" inputMode="tel" autoComplete="tel" value={phone} onChange={(e) => setPhone(e.target.value)} className="mt-1" /></div>
+            <div><Label>WhatsApp</Label><Input type="tel" inputMode="tel" autoComplete="tel" value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)} className="mt-1" /></div>
           </div>
           <div>
             <Label>Language</Label>

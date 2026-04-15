@@ -64,7 +64,7 @@ export default function AgentLeadDetailPage() {
       <div className="space-y-4 border rounded-lg p-5">
         <div><Label>Owner name</Label><Input value={form.owner_name} onChange={e => setForm({ ...form, owner_name: e.target.value })} /></div>
         <div className="grid grid-cols-2 gap-3">
-          <div><Label>Phone</Label><Input value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} /></div>
+          <div><Label>Phone</Label><Input type="tel" inputMode="tel" autoComplete="tel" value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} /></div>
           <div><Label>City</Label><Input value={form.city} onChange={e => setForm({ ...form, city: e.target.value })} /></div>
         </div>
         <div>
