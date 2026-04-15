@@ -31,17 +31,31 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const pathname = usePathname();
   const router = useRouter();
   const { salon, currentStaff, isSuperAdmin, reset } = useAppStore();
+  const [isHydrated, setIsHydrated] = useState(false);
   const [authChecked, setAuthChecked] = useState(false);
   const [pendingPayments, setPendingPayments] = useState(0);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
+  // Wait one tick for Zustand persist to rehydrate from localStorage before
+  // running the auth check — otherwise the initial render sees the default
+  // `isSuperAdmin: false` and flashes the login redirect.
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => { setIsHydrated(true); }, []);
+
   useEffect(() => {
+    if (!isHydrated) return;
     if (!isSuperAdmin) {
+      // If the server set a super_admin role cookie, trust it and wait
+      // for the store to catch up instead of bouncing to /login.
+      if (typeof document !== 'undefined' && document.cookie.includes('icut-role=super_admin')) {
+        return;
+      }
       router.push('/login');
       return;
     }
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setAuthChecked(true);
-  }, [isSuperAdmin, router]);
+  }, [isHydrated, isSuperAdmin, router]);
 
   // Refresh pending count when route changes (cheap query, head: true)
   useEffect(() => {
@@ -51,6 +65,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   // Close the drawer whenever the route changes (mobile UX)
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSidebarOpen(false);
   }, [pathname]);
 

@@ -24,15 +24,26 @@ export default function AgentLayout({ children }: { children: React.ReactNode })
   const pathname = usePathname();
   const router = useRouter();
   const { isSalesAgent, reset } = useAppStore();
+  const [isHydrated, setIsHydrated] = useState(false);
   const [authChecked, setAuthChecked] = useState(false);
 
+  // Wait for Zustand persist to rehydrate before the auth check — otherwise
+  // the initial `isSalesAgent: false` state triggers a flash redirect.
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => { setIsHydrated(true); }, []);
+
   useEffect(() => {
+    if (!isHydrated) return;
     if (!isSalesAgent) {
+      if (typeof document !== 'undefined' && document.cookie.includes('icut-role=sales_agent')) {
+        return;
+      }
       router.push('/login');
       return;
     }
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setAuthChecked(true);
-  }, [isSalesAgent, router]);
+  }, [isHydrated, isSalesAgent, router]);
 
   if (!authChecked) {
     return (
