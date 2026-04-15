@@ -3,13 +3,14 @@
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import {
-  Check, X, Clock, Search, Phone, Building2, AlertCircle, Loader2, ImageIcon, ExternalLink,
+  Check, X, Clock, Search, Phone, Building2, AlertCircle, Loader2, ImageIcon, ExternalLink, Undo2, User,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import {
   listPaymentRequests,
   approvePaymentRequest,
   rejectPaymentRequest,
+  reversePaymentRequest,
   type PaymentRequestWithSalon,
 } from '@/app/actions/payment-requests';
 import { Button } from '@/components/ui/button';
@@ -133,6 +134,20 @@ export default function AdminPaymentsPage() {
     } finally {
       setApproving(false);
     }
+  }
+
+  async function handleReverse(pr: PaymentRequestWithSalon) {
+    const agentNote = pr.salon?.sold_by_agent
+      ? `\n\nAny commission already paid to ${pr.salon.sold_by_agent.name} will show as a negative balance.`
+      : '';
+    const reason = window.prompt(
+      `Reverse this approved payment?${agentNote}\n\nReason (optional):`,
+    );
+    if (reason === null) return;
+    const { error } = await reversePaymentRequest(pr.id, { reason: reason.trim() || undefined });
+    if (error) { toast.error(error); return; }
+    toast.success('Payment reversed');
+    fetchRequests();
   }
 
   async function confirmReject() {
@@ -283,6 +298,12 @@ export default function AdminPaymentsPage() {
                           </span>
                         </span>
                       )}
+                      <span className="flex items-center gap-1">
+                        <User className="w-3 h-3" /> Agent:{' '}
+                        <span className="font-medium">
+                          {r.salon?.sold_by_agent?.name || '—'}
+                        </span>
+                      </span>
                     </div>
                     <div className="flex items-center gap-4 mt-3 text-sm flex-wrap">
                       <div>
@@ -330,6 +351,18 @@ export default function AdminPaymentsPage() {
                         className="border-red-500/30 text-red-600 hover:bg-red-500/10 gap-1"
                       >
                         <X className="w-4 h-4" /> Reject
+                      </Button>
+                    </div>
+                  )}
+                  {r.status === 'approved' && (
+                    <div className="flex items-center gap-2 shrink-0">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleReverse(r)}
+                        className="border-red-500/30 text-red-600 hover:bg-red-500/10 gap-1"
+                      >
+                        <Undo2 className="w-4 h-4" /> Reverse
                       </Button>
                     </div>
                   )}

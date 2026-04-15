@@ -34,6 +34,8 @@ export interface PaymentRequestWithSalon extends PaymentRequest {
     phone: string | null;
     subscription_plan: string | null;
     subscription_status: string | null;
+    sold_by_agent_id: string | null;
+    sold_by_agent: { id: string; name: string } | null;
   } | null;
 }
 
@@ -154,7 +156,7 @@ export async function listPaymentRequests(
 
   let query = supabase
     .from('payment_requests')
-    .select('*, salon:salons(id, name, city, phone, subscription_plan, subscription_status)')
+    .select('*, salon:salons(id, name, city, phone, subscription_plan, subscription_status, sold_by_agent_id, sold_by_agent:sales_agents!salons_sold_by_agent_id_fkey(id, name))')
     .order('created_at', { ascending: false });
 
   if (filter?.status && filter.status !== 'all') {
