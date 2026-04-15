@@ -42,9 +42,13 @@ export default function LoginPage() {
 
   // Redirect already-authenticated users to dashboard
   useEffect(() => {
-    const { salon, currentStaff, currentPartner, isSuperAdmin } = useAppStore.getState();
-    if (salon || currentStaff || currentPartner || isSuperAdmin) {
-      router.replace(isSuperAdmin ? '/admin' : '/dashboard');
+    const { salon, currentStaff, currentPartner, isSuperAdmin, isSalesAgent } = useAppStore.getState();
+    if (salon || currentStaff || currentPartner || isSuperAdmin || isSalesAgent) {
+      router.replace(
+        isSuperAdmin ? '/admin' :
+        isSalesAgent ? '/agent' :
+        '/dashboard',
+      );
     }
   }, [router]);
 
@@ -62,6 +66,31 @@ export default function LoginPage() {
 
       const { setIsSuperAdmin } = useAppStore.getState();
       if (superAdmin) setIsSuperAdmin(true);
+
+      if (result.type === 'sales_agent' && result.agent) {
+        const { setIsSalesAgent, setAgentId, setIsSuperAdmin } = useAppStore.getState();
+        setIsSuperAdmin(false);
+        setIsOwner(false);
+        setIsPartner(false);
+        setCurrentStaff(null);
+        setCurrentPartner(null);
+        setSalon(null);
+        setBranches([]);
+        setCurrentBranch(null);
+        setIsSalesAgent(true);
+        setAgentId(result.agent.id);
+        setSessionCookie('sales_agent');
+        await signSession({
+          salonId: '',
+          staffId: data.user.id,
+          role: 'sales_agent',
+          branchId: '',
+          name: result.agent.name,
+          agentId: result.agent.id,
+        });
+        router.push('/agent');
+        return;
+      }
 
       if (result.type === 'none') {
         if (superAdmin) {
