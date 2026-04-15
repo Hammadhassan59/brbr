@@ -39,6 +39,11 @@ jobs:
           git fetch origin main
           git reset --hard "$TARGET_SHA"
           echo "=== building ==="
+          # docker compose substitutes \${VAR} in docker-compose.yml from the shell,
+          # not from env_file. Export .env.local so build args get real values.
+          set -a
+          . .env.local
+          set +a
           docker compose up -d --build app
           echo "=== after ==="
           git log -1 --oneline
