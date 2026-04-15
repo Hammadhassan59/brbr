@@ -117,3 +117,44 @@ describe('leads server actions', () => {
     await expect(updateMyLead('lead-1', { status: 'visited' })).rejects.toThrow('Unauthorized');
   });
 });
+
+describe('convertLeadToSalon', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('rejects non-agent', async () => {
+    mockVerifySession.mockResolvedValue({ role: 'owner' });
+    const { convertLeadToSalon } = await import('../src/app/actions/leads');
+    await expect(convertLeadToSalon({
+      leadId: 'l-1', ownerEmail: 'a@b.c', plan: 'basic', amount: 2500, method: 'cash', reference: null,
+    })).rejects.toThrow('Unauthorized');
+  });
+
+  it('rejects invalid plan', async () => {
+    mockVerifySession.mockResolvedValue({ role: 'sales_agent', agentId: 'agent-1', staffId: 'u-1' });
+    const { convertLeadToSalon } = await import('../src/app/actions/leads');
+    const res = await convertLeadToSalon({
+      leadId: 'l-1', ownerEmail: 'a@b.c', plan: 'invalid' as 'basic', amount: 2500, method: 'cash', reference: null,
+    });
+    expect(res.error).toMatch(/invalid plan/i);
+  });
+
+  it('rejects invalid amount', async () => {
+    mockVerifySession.mockResolvedValue({ role: 'sales_agent', agentId: 'agent-1', staffId: 'u-1' });
+    const { convertLeadToSalon } = await import('../src/app/actions/leads');
+    const res = await convertLeadToSalon({
+      leadId: 'l-1', ownerEmail: 'a@b.c', plan: 'basic', amount: 0, method: 'cash', reference: null,
+    });
+    expect(res.error).toMatch(/invalid amount/i);
+  });
+
+  it('rejects missing owner email', async () => {
+    mockVerifySession.mockResolvedValue({ role: 'sales_agent', agentId: 'agent-1', staffId: 'u-1' });
+    const { convertLeadToSalon } = await import('../src/app/actions/leads');
+    const res = await convertLeadToSalon({
+      leadId: 'l-1', ownerEmail: '', plan: 'basic', amount: 2500, method: 'cash', reference: null,
+    });
+    expect(res.error).toMatch(/owner email/i);
+  });
+});
