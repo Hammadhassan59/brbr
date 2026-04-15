@@ -119,7 +119,7 @@ export default function AdminUsersPage() {
 
   useEffect(() => {
     fetchUsers();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, []);
 
   // Derived data
@@ -209,11 +209,17 @@ export default function AdminUsersPage() {
     <div className="space-y-4">
       <h2 className="font-heading text-lg sm:text-xl font-bold">Platform Users</h2>
 
-      {/* Stats */}
+      {/* Stats — clickable filters */}
       <div className="grid grid-cols-3 gap-2 sm:gap-3">
-        <Card><CardContent className="p-3 sm:p-4 text-center"><Shield className="w-5 h-5 text-red-500 mx-auto mb-1" /><p className="text-xl sm:text-2xl font-bold">{stats.superAdmins}</p><p className="text-[10px] sm:text-xs text-muted-foreground">Super Admins</p></CardContent></Card>
-        <Card><CardContent className="p-3 sm:p-4 text-center"><Store className="w-5 h-5 text-gold mx-auto mb-1" /><p className="text-xl sm:text-2xl font-bold">{stats.owners}</p><p className="text-[10px] sm:text-xs text-muted-foreground">Salon Owners</p></CardContent></Card>
-        <Card><CardContent className="p-3 sm:p-4 text-center"><Users className="w-5 h-5 text-blue-500 mx-auto mb-1" /><p className="text-xl sm:text-2xl font-bold">{stats.totalStaff}</p><p className="text-[10px] sm:text-xs text-muted-foreground">Total Users</p></CardContent></Card>
+        <button type="button" onClick={() => setFilterRole(filterRole === 'super_admin' ? 'all' : 'super_admin')} className={`text-left transition-all ${filterRole === 'super_admin' ? 'ring-2 ring-red-500/50' : ''}`}>
+          <Card className="hover:border-red-500/30 cursor-pointer"><CardContent className="p-3 sm:p-4 text-center"><Shield className="w-5 h-5 text-red-500 mx-auto mb-1" /><p className="text-xl sm:text-2xl font-bold">{stats.superAdmins}</p><p className="text-[10px] sm:text-xs text-muted-foreground">Super Admins</p></CardContent></Card>
+        </button>
+        <button type="button" onClick={() => setFilterRole(filterRole === 'owner' ? 'all' : 'owner')} className={`text-left transition-all ${filterRole === 'owner' ? 'ring-2 ring-gold/50' : ''}`}>
+          <Card className="hover:border-gold/30 cursor-pointer"><CardContent className="p-3 sm:p-4 text-center"><Store className="w-5 h-5 text-gold mx-auto mb-1" /><p className="text-xl sm:text-2xl font-bold">{stats.owners}</p><p className="text-[10px] sm:text-xs text-muted-foreground">Salon Owners</p></CardContent></Card>
+        </button>
+        <button type="button" onClick={() => { setFilterRole('all'); setFilterSalon('all'); setFilterStatus('all'); setSearch(''); }} className={`text-left transition-all ${filterRole === 'all' && filterSalon === 'all' && filterStatus === 'all' && !search ? 'ring-2 ring-blue-500/50' : ''}`}>
+          <Card className="hover:border-blue-500/30 cursor-pointer"><CardContent className="p-3 sm:p-4 text-center"><Users className="w-5 h-5 text-blue-500 mx-auto mb-1" /><p className="text-xl sm:text-2xl font-bold">{stats.totalStaff}</p><p className="text-[10px] sm:text-xs text-muted-foreground">Total Users</p></CardContent></Card>
+        </button>
       </div>
 
       {/* Filters */}

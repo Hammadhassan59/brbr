@@ -21,7 +21,7 @@ import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { getTodayPKT, formatPKDate } from '@/lib/utils/dates';
 import type { Branch } from '@/types/database';
-import { destroySession, refreshSalonData } from '@/app/actions/auth';
+import { destroySession, refreshSalonData, getDashboardBootstrap } from '@/app/actions/auth';
 
 interface NavItem {
   href: string;
@@ -58,20 +58,62 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const setSalon = useAppStore((s) => s.setSalon);
+  const setBranchesStore = useAppStore((s) => s.setBranches);
+  const setCurrentBranchStore = useAppStore((s) => s.setCurrentBranch);
+  const setIsOwnerStore = useAppStore((s) => s.setIsOwner);
+  const setIsPartnerStore = useAppStore((s) => s.setIsPartner);
+  const setIsSuperAdminStore = useAppStore((s) => s.setIsSuperAdmin);
+  const setCurrentStaffStore = useAppStore((s) => s.setCurrentStaff);
+  const setCurrentPartnerStore = useAppStore((s) => s.setCurrentPartner);
 
   // Zustand 5 persist hydrates synchronously from localStorage on the client,
   // but during SSR there is no localStorage so the first render has empty state.
   // Wait one tick so the client-side store is populated before running the auth check.
   const [isHydrated, setIsHydrated] = useState(false);
+   
   useEffect(() => { setIsHydrated(true); }, []);
 
-  // Refresh salon data from DB on mount so subscription status is always current
+  // Self-heal: if the client-side store is missing salon/branches (e.g. an
+  // admin just impersonated and the setters didn't flush before the hard
+  // navigation) OR if localStorage was cleared, bootstrap everything from
+  // the server session. This makes the dashboard resilient to any impersonation
+  // hand-off race and also refreshes stale data.
   useEffect(() => {
-    if (!isHydrated || !salon || isSuperAdmin) return;
-    refreshSalonData().then((result) => {
-      if (result?.salon) setSalon(result.salon as unknown as typeof salon);
+    if (!isHydrated) return;
+    getDashboardBootstrap().then((boot) => {
+      if (!boot) return;
+       
+      setSalon(boot.salon as unknown as typeof salon);
+      if (boot.branches?.length) {
+         
+        setBranchesStore((boot.branches as unknown) as typeof branches);
+      }
+      if (boot.mainBranch && !currentBranch) {
+         
+        setCurrentBranchStore(boot.mainBranch as unknown as typeof currentBranch);
+      }
+      // If we're impersonating, ensure the role flags reflect an owner session.
+      if (boot.isImpersonating && boot.role === 'owner') {
+         
+        setIsOwnerStore(true);
+         
+        setIsPartnerStore(false);
+         
+        setIsSuperAdminStore(false);
+         
+        setCurrentStaffStore(null);
+         
+        setCurrentPartnerStore(null);
+      }
     }).catch(() => {});
-  }, [isHydrated, salon?.id, isSuperAdmin, setSalon]);
+    // Keep the old refreshSalonData call as a quick update when only salon is stale.
+    if (salon && !isSuperAdmin) {
+      refreshSalonData().then((result) => {
+         
+        if (result?.salon) setSalon(result.salon as unknown as typeof salon);
+      }).catch(() => {});
+    }
+  }, [isHydrated, salon?.id, isSuperAdmin, setSalon, setBranchesStore, setCurrentBranchStore, setIsOwnerStore, setIsPartnerStore, setIsSuperAdminStore, setCurrentStaffStore, setCurrentPartnerStore, currentBranch]);
 
   const roleAccess: StaffRoleAccess = (isOwner || isPartner) ? 'full' : getRoleAccess(currentStaff?.role || 'helper');
   const canSwitchBranch = branches.length > 1 && (roleAccess === 'full' || isOwner || isPartner);
@@ -99,6 +141,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   // Redirect to login if no session
   const hasSession = !!(salon || currentStaff || currentPartner || isSuperAdmin);
   if (!hasSession && typeof window !== 'undefined') {
+    // eslint-disable-next-line react-hooks/immutability
     window.location.href = '/login?redirect=' + encodeURIComponent(pathname);
     return null;
   }

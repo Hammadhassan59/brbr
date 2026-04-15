@@ -133,6 +133,41 @@ export async function refreshSalonData(): Promise<{ salon: Record<string, unknow
   return salon ? { salon } : null;
 }
 
+/**
+ * Fetch everything the /dashboard needs to bootstrap the Zustand store
+ * from the current server session. Used as a safety net — e.g. when an
+ * admin just impersonated a salon and the client-side setters didn't
+ * flush before the hard navigation. Returns null if the session has no
+ * salon (super admin, no tenant, etc.).
+ */
+export async function getDashboardBootstrap(): Promise<{
+  salon: Record<string, unknown>;
+  branches: Array<Record<string, unknown>>;
+  mainBranch: Record<string, unknown> | null;
+  isImpersonating: boolean;
+  role: string;
+} | null> {
+  const session = await verifySession();
+  if (!session.salonId || session.salonId === 'super-admin') return null;
+
+  const { createServerClient } = await import('@/lib/supabase');
+  const supabase = createServerClient();
+  const [{ data: salon }, { data: branches }] = await Promise.all([
+    supabase.from('salons').select('*').eq('id', session.salonId).maybeSingle(),
+    supabase.from('branches').select('*').eq('salon_id', session.salonId).order('is_main', { ascending: false }),
+  ]);
+  if (!salon) return null;
+  const list = branches || [];
+  const mainBranch = list.find((b: { is_main?: boolean }) => b.is_main) || list[0] || null;
+  return {
+    salon,
+    branches: list,
+    mainBranch,
+    isImpersonating: !!session.impersonatedBy,
+    role: session.role,
+  };
+}
+
 /** Plan limits from platform_settings (fallback to hardcoded defaults) */
 export interface PlanLimits {
   branches: number;
