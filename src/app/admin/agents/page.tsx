@@ -93,10 +93,15 @@ function NewAgentDialog({ open, onClose, onCreated }: { open: boolean; onClose: 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setSubmitting(true);
+    if (!form.phone.trim()) {
+      setSubmitting(false);
+      toast.error('Phone is required');
+      return;
+    }
     const { error } = await createSalesAgent({
       email: form.email.trim().toLowerCase(),
       name: form.name.trim(),
-      phone: form.phone.trim() || null,
+      phone: form.phone.trim(),
       city: form.city.trim() || null,
       firstSalePct: Number(form.firstSalePct),
       renewalPct: Number(form.renewalPct),
@@ -126,8 +131,8 @@ function NewAgentDialog({ open, onClose, onCreated }: { open: boolean; onClose: 
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <Label htmlFor="phone">Phone</Label>
-              <Input id="phone" value={form.phone}
+              <Label htmlFor="phone">Phone *</Label>
+              <Input id="phone" required value={form.phone}
                 onChange={e => setForm({ ...form, phone: e.target.value })} />
             </div>
             <div>

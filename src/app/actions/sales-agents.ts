@@ -16,7 +16,7 @@ async function requireSuperAdmin() {
 export interface CreateAgentInput {
   email: string;
   name: string;
-  phone: string | null;
+  phone: string;
   city: string | null;
   firstSalePct: number;
   renewalPct: number;
@@ -35,6 +35,7 @@ export async function createSalesAgent(
   const pctErr = validatePct(input.firstSalePct) ?? validatePct(input.renewalPct);
   if (pctErr) return { data: null, error: pctErr };
   if (!input.email || !input.name) return { data: null, error: 'Email and name required' };
+  if (!input.phone?.trim()) return { data: null, error: 'Phone is required' };
 
   const supabase = createServerClient();
 
@@ -55,7 +56,7 @@ export async function createSalesAgent(
     .insert({
       user_id: authData.user.id,
       name: input.name,
-      phone: input.phone,
+      phone: input.phone.trim(),
       city: input.city,
       first_sale_pct: input.firstSalePct,
       renewal_pct: input.renewalPct,
@@ -148,25 +149,29 @@ export async function setAgentActive(
 
 export async function updateAgentProfile(
   id: string,
-  fields: { name?: string; phone?: string | null; city?: string | null },
+  fields: { name?: string; phone?: string; city?: string | null },
 ): Promise<{ error: string | null }> {
   await requireSuperAdmin();
+  if (fields.phone !== undefined && !fields.phone.trim()) {
+    return { error: 'Phone cannot be empty' };
+  }
   const supabase = createServerClient();
   const { error } = await supabase.from('sales_agents').update(fields).eq('id', id);
   return { error: error?.message ?? null };
 }
 
 export async function updateOwnAgentProfile(
-  fields: { name: string; phone: string | null },
+  fields: { name: string; phone: string },
 ): Promise<{ error: string | null }> {
   const session = await verifySession();
   if (!session || session.role !== 'sales_agent' || !session.agentId) {
     throw new Error('Unauthorized');
   }
+  if (!fields.phone?.trim()) return { error: 'Phone is required' };
   const supabase = createServerClient();
   const { error } = await supabase
     .from('sales_agents')
-    .update({ name: fields.name, phone: fields.phone })
+    .update({ name: fields.name, phone: fields.phone.trim() })
     .eq('id', session.agentId);
   return { error: error?.message ?? null };
 }

@@ -18,8 +18,9 @@ export default function AgentProfilePage() {
   }, []);
 
   async function save() {
+    if (!form.phone.trim()) { toast.error('Phone is required'); return; }
     setSaving(true);
-    const { error } = await updateOwnAgentProfile({ name: form.name, phone: form.phone || null });
+    const { error } = await updateOwnAgentProfile({ name: form.name, phone: form.phone.trim() });
     setSaving(false);
     if (error) { toast.error(error); return; }
     toast.success('Saved');
@@ -30,10 +31,10 @@ export default function AgentProfilePage() {
       <h2 className="font-heading text-2xl font-semibold">Profile</h2>
       <div className="space-y-3 border rounded-lg p-5">
         <div><Label>Name</Label><Input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} /></div>
-        <div><Label>Phone</Label><Input value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} /></div>
+        <div><Label>Phone *</Label><Input required value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} /></div>
         <div><Label>City</Label><Input value={form.city} readOnly disabled /></div>
         <div className="flex justify-end">
-          <Button onClick={save} disabled={saving || !form.name}>{saving ? 'Saving…' : 'Save'}</Button>
+          <Button onClick={save} disabled={saving || !form.name || !form.phone.trim()}>{saving ? 'Saving…' : 'Save'}</Button>
         </div>
       </div>
       <p className="text-sm text-muted-foreground">

@@ -48,6 +48,7 @@ export function StaffForm({ staff, onSaved }: StaffFormProps) {
   async function handleSave() {
     if (!salon || !currentBranch) return;
     if (!name.trim()) { toast.error('Name is required'); return; }
+    if (!phone.trim()) { toast.error('Phone is required'); return; }
     if (!isEditing && !email.trim()) { toast.error('Email is required'); return; }
     if (!isEditing && password.length < 6) { toast.error('Password must be at least 6 characters'); return; }
     if (!isEditing && password !== confirmPassword) { toast.error('Passwords do not match'); return; }
@@ -60,7 +61,7 @@ export function StaffForm({ staff, onSaved }: StaffFormProps) {
         const data: Record<string, unknown> = {
           name: name.trim(),
           email: email.trim() || undefined,
-          phone: phone || null,
+          phone: phone.trim(),
           role,
           join_date: joinDate,
           base_salary: Number(baseSalary) || 0,
@@ -78,7 +79,7 @@ export function StaffForm({ staff, onSaved }: StaffFormProps) {
           name: name.trim(),
           email: email.trim(),
           password,
-          phone: phone || null,
+          phone: phone.trim(),
           role,
           joinDate,
           baseSalary: Number(baseSalary) || 0,
@@ -145,8 +146,8 @@ export function StaffForm({ staff, onSaved }: StaffFormProps) {
         </div>
 
         <div>
-          <Label>Phone (optional)</Label>
-          <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="03XX-XXXXXXX" className="mt-1 w-64" />
+          <Label>Phone *</Label>
+          <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="03XX-XXXXXXX" className="mt-1 w-64" required />
         </div>
       </div>
 

@@ -52,6 +52,7 @@ interface ServiceEntry {
 interface PartnerEntry {
   name: string;
   email: string;
+  phone: string;
   password: string;
   confirmPassword: string;
 }
@@ -60,6 +61,7 @@ interface StaffEntry {
   name: string;
   role: StaffRole;
   email: string;
+  phone: string;
   password: string;
   confirmPassword: string;
   baseSalary: string;
@@ -93,7 +95,7 @@ export default function SetupPage() {
   // Step 3 — Ownership
   const [ownershipType, setOwnershipType] = useState<'single' | 'multiple'>('single');
   const [partners, setPartners] = useState<PartnerEntry[]>([
-    { name: '', email: '', password: '', confirmPassword: '' },
+    { name: '', email: '', phone: '', password: '', confirmPassword: '' },
   ]);
 
   // Step 4 — Working Hours
@@ -114,16 +116,16 @@ export default function SetupPage() {
 
   // Step 5 — Staff
   const [staffList, setStaffList] = useState<StaffEntry[]>([
-    { name: '', role: 'junior_stylist', email: '', password: '', confirmPassword: '', baseSalary: '', commissionType: 'none', commissionRate: '' },
+    { name: '', role: 'junior_stylist', email: '', phone: '', password: '', confirmPassword: '', baseSalary: '', commissionType: 'none', commissionRate: '' },
   ]);
 
   // Derived
   const selectedServices = services.filter((s) => s.selected);
-  const validStaff = staffList.filter((s) => s.name && s.email && s.password.length >= 6 && s.password === s.confirmPassword);
-  const validPartners = partners.filter((p) => p.name && p.email && p.password.length >= 6 && p.password === p.confirmPassword);
+  const validStaff = staffList.filter((s) => s.name && s.email && s.phone.trim() && s.password.length >= 6 && s.password === s.confirmPassword);
+  const validPartners = partners.filter((p) => p.name && p.email && p.phone.trim() && p.password.length >= 6 && p.password === p.confirmPassword);
 
   function addPartnerRow() {
-    setPartners([...partners, { name: '', email: '', password: '', confirmPassword: '' }]);
+    setPartners([...partners, { name: '', email: '', phone: '', password: '', confirmPassword: '' }]);
   }
 
   function updatePartner(index: number, field: keyof PartnerEntry, value: string) {
@@ -160,7 +162,7 @@ export default function SetupPage() {
   }
 
   function addStaffRow() {
-    setStaffList([...staffList, { name: '', role: 'junior_stylist', email: '', password: '', confirmPassword: '', baseSalary: '', commissionType: 'none', commissionRate: '' }]);
+    setStaffList([...staffList, { name: '', role: 'junior_stylist', email: '', phone: '', password: '', confirmPassword: '', baseSalary: '', commissionType: 'none', commissionRate: '' }]);
   }
 
   function updateStaff(index: number, field: keyof StaffEntry, value: string) {
@@ -176,7 +178,8 @@ export default function SetupPage() {
 
   function handleNext() {
     if (step === 2 && !salonName) { toast.error('Salon name required'); return; }
-    if (step === 3 && ownershipType === 'multiple' && validPartners.length === 0) { toast.error('Add at least one partner with name, email, and password'); return; }
+    if (step === 2 && !phone.trim()) { toast.error('Phone number is required'); return; }
+    if (step === 3 && ownershipType === 'multiple' && validPartners.length === 0) { toast.error('Add at least one partner with name, email, phone, and password'); return; }
     if (step === 4) {
       const invalidDay = DAYS.find(d => !hours[d].off && hours[d].close <= hours[d].open);
       if (invalidDay) {
@@ -220,10 +223,11 @@ export default function SetupPage() {
         prayerBlockEnabled: prayerBlocks,
         workingHours,
         services: selectedServices.map(s => ({ name: s.name, category: s.category, price: s.price, duration: s.duration })),
-        partners: validPartners.map(p => ({ name: p.name, email: p.email, password: p.password })),
+        partners: validPartners.map(p => ({ name: p.name, email: p.email, phone: p.phone.trim(), password: p.password })),
         staff: validStaff.map(s => ({
           name: s.name,
           email: s.email,
+          phone: s.phone.trim(),
           role: s.role,
           password: s.password,
           baseSalary: Number(s.baseSalary) || 0,
@@ -363,8 +367,8 @@ export default function SetupPage() {
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label>{t('phone')}</Label>
-                <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="03XX-XXXXXXX" className="mt-1.5" />
+                <Label>{t('phone')} *</Label>
+                <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="03XX-XXXXXXX" className="mt-1.5" required />
               </div>
               <div>
                 <Label>{t('whatsapp')}</Label>
@@ -430,6 +434,10 @@ export default function SetupPage() {
                         <Label>Email *</Label>
                         <Input type="email" value={partner.email} onChange={(e) => updatePartner(i, 'email', e.target.value)} placeholder="partner@email.com" className="mt-1" />
                       </div>
+                    </div>
+                    <div>
+                      <Label>Phone *</Label>
+                      <Input value={partner.phone} onChange={(e) => updatePartner(i, 'phone', e.target.value)} placeholder="03XX-XXXXXXX" className="mt-1" />
                     </div>
                     <div className="grid grid-cols-2 gap-3">
                       <div>
@@ -599,6 +607,10 @@ export default function SetupPage() {
                 <div>
                   <Label>Email *</Label>
                   <Input type="email" value={staff.email} onChange={(e) => updateStaff(i, 'email', e.target.value)} placeholder="staff@email.com" className="mt-1" />
+                </div>
+                <div>
+                  <Label>Phone *</Label>
+                  <Input value={staff.phone} onChange={(e) => updateStaff(i, 'phone', e.target.value)} placeholder="03XX-XXXXXXX" className="mt-1" />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>

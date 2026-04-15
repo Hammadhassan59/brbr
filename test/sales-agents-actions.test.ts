@@ -81,14 +81,14 @@ describe('sales-agents server actions', () => {
     mockVerifySession.mockResolvedValue({ role: 'owner', salonId: 's', staffId: 'x', branchId: '', name: '' });
     const { createSalesAgent } = await import('../src/app/actions/sales-agents');
     await expect(createSalesAgent({
-      email: 'a@b.c', name: 'X', phone: null, city: null, firstSalePct: 0, renewalPct: 0,
+      email: 'a@b.c', name: 'X', phone: '0300', city: null, firstSalePct: 0, renewalPct: 0,
     })).rejects.toThrow('Unauthorized');
   });
 
   it('createSalesAgent rejects invalid pct', async () => {
     const { createSalesAgent } = await import('../src/app/actions/sales-agents');
     const res = await createSalesAgent({
-      email: 'a@b.c', name: 'X', phone: null, city: null, firstSalePct: 200, renewalPct: 5,
+      email: 'a@b.c', name: 'X', phone: '0300', city: null, firstSalePct: 200, renewalPct: 5,
     });
     expect(res.error).toMatch(/between 0 and 100/i);
   });
@@ -117,7 +117,7 @@ describe('sales-agents server actions', () => {
   it('updateOwnAgentProfile rejects non-agent', async () => {
     mockVerifySession.mockResolvedValue({ role: 'super_admin', staffId: 'sa-1' });
     const { updateOwnAgentProfile } = await import('../src/app/actions/sales-agents');
-    await expect(updateOwnAgentProfile({ name: 'X', phone: null })).rejects.toThrow('Unauthorized');
+    await expect(updateOwnAgentProfile({ name: 'X', phone: '0300' })).rejects.toThrow('Unauthorized');
   });
 
   it('getMyAgentProfile requires agentId in session', async () => {

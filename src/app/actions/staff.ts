@@ -8,7 +8,7 @@ export async function createStaff(data: {
   name: string;
   email: string;
   password: string;
-  phone?: string | null;
+  phone: string;
   role: string;
   joinDate?: string;
   baseSalary?: number;
@@ -19,6 +19,8 @@ export async function createStaff(data: {
   if (writeCheck.error !== null) return { data: null, error: writeCheck.error };
   const session = writeCheck.session;
   const supabase = createServerClient();
+
+  if (!data.phone?.trim()) return { data: null, error: 'Phone is required' };
 
   // Enforce staff limit based on plan
   const { data: salon } = await supabase
@@ -59,7 +61,7 @@ export async function createStaff(data: {
       name: data.name.trim(),
       email: data.email,
       auth_user_id: authUser.user.id,
-      phone: data.phone || null,
+      phone: data.phone.trim(),
       role: data.role,
       join_date: data.joinDate,
       base_salary: data.baseSalary || 0,

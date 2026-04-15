@@ -34,9 +34,10 @@ export default function AgentDetailPage() {
 
   async function saveProfile() {
     if (!agent) return;
+    if (!form.phone.trim()) { toast.error('Phone is required'); return; }
     setSaving(true);
     const [p, r] = await Promise.all([
-      updateAgentProfile(agent.id, { name: form.name, phone: form.phone || null, city: form.city || null }),
+      updateAgentProfile(agent.id, { name: form.name, phone: form.phone.trim(), city: form.city || null }),
       updateAgentRates(agent.id, { firstSalePct: Number(form.firstSalePct), renewalPct: Number(form.renewalPct) }),
     ]);
     setSaving(false);
@@ -61,7 +62,7 @@ export default function AgentDetailPage() {
         <h3 className="font-medium">Profile</h3>
         <div className="grid grid-cols-1 gap-3">
           <div><Label>Name</Label><Input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} /></div>
-          <div><Label>Phone</Label><Input value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} /></div>
+          <div><Label>Phone *</Label><Input required value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} /></div>
           <div><Label>City</Label><Input value={form.city} onChange={e => setForm({ ...form, city: e.target.value })} /></div>
         </div>
         <h3 className="font-medium pt-2">Commission rates</h3>

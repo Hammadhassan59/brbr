@@ -20,10 +20,18 @@ export async function setupSalon(data: {
   prayerBlockEnabled: boolean;
   workingHours: Record<string, unknown>;
   services: Array<{ name: string; category: string; price: number; duration: number }>;
-  partners: Array<{ name: string; email: string; password: string }>;
-  staff: Array<{ name: string; email: string; role: string; password: string; baseSalary?: number; commissionType?: string; commissionRate?: number }>;
+  partners: Array<{ name: string; email: string; phone: string; password: string }>;
+  staff: Array<{ name: string; email: string; phone: string; role: string; password: string; baseSalary?: number; commissionType?: string; commissionRate?: number }>;
 }) {
   const supabase = createServerClient();
+
+  if (!data.phone?.trim()) return { data: null, error: 'Salon phone is required' };
+  for (const p of data.partners) {
+    if (!p.phone?.trim()) return { data: null, error: `Phone is required for partner ${p.name}` };
+  }
+  for (const s of data.staff) {
+    if (!s.phone?.trim()) return { data: null, error: `Phone is required for staff ${s.name}` };
+  }
 
   // Create salon
   const { data: newSalon, error: salonErr } = await supabase
@@ -91,6 +99,7 @@ export async function setupSalon(data: {
       salon_id: newSalon.id,
       name: p.name,
       email: p.email,
+      phone: p.phone,
       auth_user_id: authUser.user.id,
       pin_code: null,
     });
@@ -112,6 +121,7 @@ export async function setupSalon(data: {
       branch_id: branch.id,
       name: s.name,
       email: s.email,
+      phone: s.phone,
       auth_user_id: authUser.user.id,
       role: s.role,
       pin_code: null,
