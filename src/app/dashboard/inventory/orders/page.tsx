@@ -97,9 +97,9 @@ export default function OrdersPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="font-heading text-xl font-bold">Purchase Orders</h2>
-        <Button onClick={() => setShowForm(true)} className="bg-gold hover:bg-gold/90 text-black font-bold" size="sm"><Plus className="w-4 h-4 mr-1" /> New Order</Button>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+        <h2 className="font-heading text-xl sm:text-2xl font-bold">Purchase Orders</h2>
+        <Button onClick={() => setShowForm(true)} className="bg-gold hover:bg-gold/90 text-black font-bold w-full sm:w-auto" size="sm"><Plus className="w-4 h-4 mr-1" /> New Order</Button>
       </div>
 
       {loading ? (
@@ -136,7 +136,7 @@ export default function OrdersPage() {
 
       {/* Create Order Modal */}
       <Dialog open={showForm} onOpenChange={setShowForm}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>New Purchase Order</DialogTitle></DialogHeader>
           <div className="space-y-3">
             <div><Label className="text-xs">Supplier *</Label>

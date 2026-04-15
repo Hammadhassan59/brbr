@@ -270,19 +270,19 @@ export default function AdminSalonDetailPage({
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
+        <div className="flex items-start gap-3 min-w-0">
           <Button
             variant="outline"
             size="sm"
-            className="h-9 w-9 p-0"
+            className="h-9 w-9 p-0 shrink-0"
             onClick={() => router.push('/admin/salons')}
           >
             <ArrowLeft className="w-4 h-4" />
           </Button>
-          <div>
-            <div className="flex items-center gap-2">
-              <h2 className="font-heading text-xl font-bold">{salon.name}</h2>
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <h2 className="font-heading text-lg sm:text-xl font-bold break-words">{salon.name}</h2>
               <Badge variant="outline" className={`text-[10px] ${statusBadge.cls}`}>
                 {statusBadge.label}
               </Badge>
@@ -292,11 +292,11 @@ export default function AdminSalonDetailPage({
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <Button size="sm" variant="outline" className="text-destructive border-destructive/40 hover:bg-destructive/10" onClick={deleteTenant}>
+        <div className="flex items-center gap-2 sm:shrink-0">
+          <Button size="sm" variant="outline" className="flex-1 sm:flex-initial h-10 sm:h-9 text-destructive border-destructive/40 hover:bg-destructive/10" onClick={deleteTenant}>
             Delete Tenant
           </Button>
-          <Button size="sm" className="bg-gold text-black border border-gold" onClick={enterDashboard}>
+          <Button size="sm" className="flex-1 sm:flex-initial h-10 sm:h-9 bg-gold text-black border border-gold" onClick={enterDashboard}>
             Enter Dashboard
           </Button>
         </div>
@@ -304,14 +304,14 @@ export default function AdminSalonDetailPage({
 
       {/* Metrics Row */}
       {metrics && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
           <Card size="sm">
             <CardContent className="pt-0">
               <div className="flex items-center gap-2 mb-1">
                 <DollarSign className="w-4 h-4 text-gold" />
                 <span className="text-xs text-muted-foreground">Monthly Revenue</span>
               </div>
-              <p className="font-heading text-lg font-bold">{formatPKR(metrics.monthlyRevenue)}</p>
+              <p className="font-heading text-base sm:text-lg font-bold break-all">{formatPKR(metrics.monthlyRevenue)}</p>
               <p className="text-[10px] text-muted-foreground">{metrics.monthlyBillCount} bills</p>
             </CardContent>
           </Card>
@@ -321,7 +321,7 @@ export default function AdminSalonDetailPage({
                 <TrendingUp className="w-4 h-4 text-gold" />
                 <span className="text-xs text-muted-foreground">Total Revenue</span>
               </div>
-              <p className="font-heading text-lg font-bold">{formatPKR(metrics.totalRevenue)}</p>
+              <p className="font-heading text-base sm:text-lg font-bold break-all">{formatPKR(metrics.totalRevenue)}</p>
             </CardContent>
           </Card>
           <Card size="sm">
@@ -330,7 +330,7 @@ export default function AdminSalonDetailPage({
                 <Users className="w-4 h-4 text-gold" />
                 <span className="text-xs text-muted-foreground">Staff</span>
               </div>
-              <p className="font-heading text-lg font-bold">{metrics.staffCount}</p>
+              <p className="font-heading text-base sm:text-lg font-bold">{metrics.staffCount}</p>
               <p className="text-[10px] text-muted-foreground">{activeStaff} active</p>
             </CardContent>
           </Card>
@@ -340,7 +340,7 @@ export default function AdminSalonDetailPage({
                 <UserCheck className="w-4 h-4 text-gold" />
                 <span className="text-xs text-muted-foreground">Clients</span>
               </div>
-              <p className="font-heading text-lg font-bold">{metrics.clientCount}</p>
+              <p className="font-heading text-base sm:text-lg font-bold">{metrics.clientCount}</p>
               <p className="text-[10px] text-muted-foreground">{vipClients} VIP</p>
             </CardContent>
           </Card>
@@ -443,10 +443,10 @@ export default function AdminSalonDetailPage({
               />
             </div>
           </div>
-          <div className="flex items-center gap-2 mt-4 pt-4 border-t">
+          <div className="flex flex-wrap items-center gap-2 mt-4 pt-4 border-t">
             <Button
               size="sm"
-              className="bg-green-600 text-white hover:bg-green-700 gap-1"
+              className="h-10 sm:h-9 bg-green-600 text-white hover:bg-green-700 gap-1"
               onClick={handleActivate}
               disabled={saving}
             >
@@ -456,7 +456,7 @@ export default function AdminSalonDetailPage({
             <Button
               size="sm"
               variant="outline"
-              className="text-red-600 border-red-500/25 hover:bg-red-500/10 gap-1"
+              className="h-10 sm:h-9 text-red-600 border-red-500/25 hover:bg-red-500/10 gap-1"
               onClick={handleSuspend}
               disabled={saving}
             >
@@ -464,7 +464,7 @@ export default function AdminSalonDetailPage({
               Suspend
             </Button>
             {salon.subscription_started_at && (
-              <span className="text-xs text-muted-foreground ml-auto">
+              <span className="text-xs text-muted-foreground w-full sm:w-auto sm:ml-auto">
                 Started {formatPKDate(salon.subscription_started_at)}
               </span>
             )}
@@ -518,7 +518,7 @@ export default function AdminSalonDetailPage({
                   <p className="text-xs text-muted-foreground mb-1">
                     {PAYMENT_LABELS[method] || method}
                   </p>
-                  <p className="font-heading font-semibold">{formatPKR(amount)}</p>
+                  <p className="font-heading font-semibold break-all">{formatPKR(amount)}</p>
                 </div>
               ))}
             </div>
@@ -535,38 +535,40 @@ export default function AdminSalonDetailPage({
           {staff.length === 0 ? (
             <p className="text-sm text-muted-foreground px-4 py-6 text-center">No staff registered</p>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Role</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Phone</TableHead>
-                  <TableHead>Status</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {staff.map((member) => (
-                  <TableRow key={member.id}>
-                    <TableCell className="font-medium">{member.name}</TableCell>
-                    <TableCell>{ROLE_LABELS[member.role] || member.role}</TableCell>
-                    <TableCell className="text-muted-foreground">{member.email || '—'}</TableCell>
-                    <TableCell className="text-muted-foreground">{member.phone || '—'}</TableCell>
-                    <TableCell>
-                      {member.is_active ? (
-                        <Badge variant="outline" className="text-[10px] text-green-600 border-green-500/25 bg-green-500/10">
-                          Active
-                        </Badge>
-                      ) : (
-                        <Badge variant="outline" className="text-[10px] text-red-600 border-red-500/25 bg-red-500/10">
-                          Inactive
-                        </Badge>
-                      )}
-                    </TableCell>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Role</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead>Phone</TableHead>
+                    <TableHead>Status</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {staff.map((member) => (
+                    <TableRow key={member.id}>
+                      <TableCell className="font-medium whitespace-nowrap">{member.name}</TableCell>
+                      <TableCell className="whitespace-nowrap">{ROLE_LABELS[member.role] || member.role}</TableCell>
+                      <TableCell className="text-muted-foreground whitespace-nowrap">{member.email || '—'}</TableCell>
+                      <TableCell className="text-muted-foreground whitespace-nowrap">{member.phone || '—'}</TableCell>
+                      <TableCell>
+                        {member.is_active ? (
+                          <Badge variant="outline" className="text-[10px] text-green-600 border-green-500/25 bg-green-500/10">
+                            Active
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="text-[10px] text-red-600 border-red-500/25 bg-red-500/10">
+                            Inactive
+                          </Badge>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           )}
         </CardContent>
       </Card>
@@ -608,9 +610,9 @@ export default function AdminSalonDetailPage({
       </Card>
 
       {/* Save Button */}
-      <div className="flex justify-end pb-6">
+      <div className="flex justify-stretch sm:justify-end pb-6">
         <Button
-          className="bg-gold text-black border border-gold gap-2"
+          className="w-full sm:w-auto h-11 sm:h-10 bg-gold text-black border border-gold gap-2"
           onClick={handleSave}
           disabled={saving}
         >

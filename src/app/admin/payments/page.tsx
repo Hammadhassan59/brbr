@@ -181,26 +181,28 @@ export default function AdminPaymentsPage() {
       </div>
 
       {/* Filter tabs */}
-      <div className="flex flex-wrap gap-2 items-center">
-        {([
-          ['pending', `Pending (${counts.pending})`],
-          ['approved', `Approved (${counts.approved})`],
-          ['rejected', `Rejected (${counts.rejected})`],
-          ['all', 'All'],
-        ] as const).map(([value, label]) => (
-          <button
-            key={value}
-            onClick={() => setFilter(value)}
-            className={`px-3.5 py-2 text-xs font-medium rounded-lg transition-all duration-150 ${
-              filter === value
-                ? 'bg-foreground text-white'
-                : 'text-muted-foreground hover:text-foreground border border-border'
-            }`}
-          >
-            {label}
-          </button>
-        ))}
-        <div className="ml-auto relative w-64">
+      <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2 sm:items-center">
+        <div className="flex gap-2 overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0 sm:flex-wrap pb-1 sm:pb-0">
+          {([
+            ['pending', `Pending (${counts.pending})`],
+            ['approved', `Approved (${counts.approved})`],
+            ['rejected', `Rejected (${counts.rejected})`],
+            ['all', 'All'],
+          ] as const).map(([value, label]) => (
+            <button
+              key={value}
+              onClick={() => setFilter(value)}
+              className={`shrink-0 px-3.5 py-2 text-xs font-medium rounded-lg transition-all duration-150 ${
+                filter === value
+                  ? 'bg-foreground text-white'
+                  : 'text-muted-foreground hover:text-foreground border border-border'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        <div className="relative w-full sm:w-64 sm:ml-auto">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
           <Input
             value={search}
@@ -232,14 +234,14 @@ export default function AdminPaymentsPage() {
         <div className="space-y-3">
           {filtered.map((r) => (
             <Card key={r.id} className="border-border">
-              <CardContent className="p-4">
-                <div className="flex items-start gap-4">
+              <CardContent className="p-3 sm:p-4">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-start gap-3 sm:gap-4">
                   {/* Screenshot thumbnail */}
                   {r.screenshot_url ? (
                     <button
                       type="button"
                       onClick={() => setPreviewUrl(r.screenshot_url)}
-                      className="shrink-0 w-20 h-20 rounded border border-border overflow-hidden bg-secondary/30 hover:ring-2 hover:ring-gold transition-all relative group"
+                      className="shrink-0 w-full sm:w-20 h-32 sm:h-20 rounded border border-border overflow-hidden bg-secondary/30 hover:ring-2 hover:ring-gold transition-all relative group"
                       title="Click to view full screenshot"
                     >
                       {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -253,7 +255,7 @@ export default function AdminPaymentsPage() {
                       </div>
                     </button>
                   ) : (
-                    <div className="shrink-0 w-20 h-20 rounded border border-dashed border-border flex flex-col items-center justify-center text-muted-foreground bg-secondary/30">
+                    <div className="shrink-0 w-full sm:w-20 h-20 rounded border border-dashed border-border flex flex-col items-center justify-center text-muted-foreground bg-secondary/30">
                       <ImageIcon className="w-5 h-5" />
                       <span className="text-[9px] mt-1">No proof</span>
                     </div>
@@ -338,11 +340,11 @@ export default function AdminPaymentsPage() {
 
                   {/* Actions */}
                   {r.status === 'pending' && (
-                    <div className="flex items-center gap-2 shrink-0">
+                    <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto">
                       <Button
                         size="sm"
                         onClick={() => openApprove(r)}
-                        className="bg-green-600 hover:bg-green-700 text-white gap-1"
+                        className="bg-green-600 hover:bg-green-700 text-white gap-1 flex-1 sm:flex-none"
                       >
                         <Check className="w-4 h-4" /> Approve
                       </Button>
@@ -350,19 +352,19 @@ export default function AdminPaymentsPage() {
                         size="sm"
                         variant="outline"
                         onClick={() => openReject(r)}
-                        className="border-red-500/30 text-red-600 hover:bg-red-500/10 gap-1"
+                        className="border-red-500/30 text-red-600 hover:bg-red-500/10 gap-1 flex-1 sm:flex-none"
                       >
                         <X className="w-4 h-4" /> Reject
                       </Button>
                     </div>
                   )}
                   {r.status === 'approved' && (
-                    <div className="flex items-center gap-2 shrink-0">
+                    <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto">
                       <Button
                         size="sm"
                         variant="outline"
                         onClick={() => handleReverse(r)}
-                        className="border-red-500/30 text-red-600 hover:bg-red-500/10 gap-1"
+                        className="border-red-500/30 text-red-600 hover:bg-red-500/10 gap-1 w-full sm:w-auto"
                       >
                         <Undo2 className="w-4 h-4" /> Reverse
                       </Button>

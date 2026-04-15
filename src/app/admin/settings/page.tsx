@@ -323,18 +323,20 @@ export default function AdminSettingsPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <h2 className="font-heading text-xl font-bold">Platform Settings</h2>
-        <Button onClick={saveSettings} className="bg-gold text-black border border-gold">Save Platform Settings</Button>
+        <Button onClick={saveSettings} className="bg-gold text-black border border-gold w-full sm:w-auto">Save Platform Settings</Button>
       </div>
 
       <Tabs defaultValue="general">
-        <TabsList className="gap-1 h-auto">
-          <TabsTrigger value="general" className={tabTrigger}>General</TabsTrigger>
-          <TabsTrigger value="plans" className={tabTrigger}>Subscription Plans</TabsTrigger>
-          <TabsTrigger value="payments" className={tabTrigger}>Payments &amp; Trial</TabsTrigger>
-          <TabsTrigger value="email" className={tabTrigger}>Email Automation</TabsTrigger>
-        </TabsList>
+        <div className="-mx-4 px-4 overflow-x-auto hide-scrollbar lg:mx-0 lg:px-0 lg:overflow-visible">
+          <TabsList className="gap-1 h-auto w-max lg:w-auto">
+            <TabsTrigger value="general" className={tabTrigger}>General</TabsTrigger>
+            <TabsTrigger value="plans" className={tabTrigger}>Subscription Plans</TabsTrigger>
+            <TabsTrigger value="payments" className={tabTrigger}>Payments &amp; Trial</TabsTrigger>
+            <TabsTrigger value="email" className={tabTrigger}>Email Automation</TabsTrigger>
+          </TabsList>
+        </div>
 
         {/* ── General ───────────────────────────────────────────── */}
         <TabsContent value="general" className="mt-4">
@@ -366,7 +368,7 @@ export default function AdminSettingsPage() {
             <CardContent className="space-y-4">
               {Object.entries(settings.plans).map(([name, plan]) => (
                 <div key={name} className="p-3 bg-secondary/50 rounded-lg space-y-3">
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                     <span className="font-semibold text-sm">{name}</span>
                     <label className="flex items-center gap-2 text-xs cursor-pointer">
                       <input
@@ -379,11 +381,11 @@ export default function AdminSettingsPage() {
                     </label>
                   </div>
 
-                  <div className="flex flex-wrap items-end gap-3">
-                    <div><Label className="text-[10px]">Rs/month</Label><Input value={plan.price} onChange={(e) => updatePlan(name, 'price', e.target.value)} className="w-24 h-7 text-xs" /></div>
-                    <div><Label className="text-[10px]">Branches</Label><Input value={plan.branches} onChange={(e) => updatePlan(name, 'branches', e.target.value)} className="w-20 h-7 text-xs" /></div>
-                    <div><Label className="text-[10px]">Staff</Label><Input value={plan.staff} onChange={(e) => updatePlan(name, 'staff', e.target.value)} className="w-24 h-7 text-xs" /></div>
-                    <div><Label className="text-[10px]">Original Rs (strikethrough)</Label><Input value={plan.originalPrice} onChange={(e) => updatePlan(name, 'originalPrice', e.target.value)} className="w-28 h-7 text-xs" /></div>
+                  <div className="grid grid-cols-2 sm:flex sm:flex-wrap sm:items-end gap-3">
+                    <div><Label className="text-[10px]">Rs/month</Label><Input value={plan.price} onChange={(e) => updatePlan(name, 'price', e.target.value)} className="w-full sm:w-24 h-7 text-xs" /></div>
+                    <div><Label className="text-[10px]">Branches</Label><Input value={plan.branches} onChange={(e) => updatePlan(name, 'branches', e.target.value)} className="w-full sm:w-20 h-7 text-xs" /></div>
+                    <div><Label className="text-[10px]">Staff</Label><Input value={plan.staff} onChange={(e) => updatePlan(name, 'staff', e.target.value)} className="w-full sm:w-24 h-7 text-xs" /></div>
+                    <div><Label className="text-[10px]">Original Rs (strikethrough)</Label><Input value={plan.originalPrice} onChange={(e) => updatePlan(name, 'originalPrice', e.target.value)} className="w-full sm:w-28 h-7 text-xs" /></div>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -422,8 +424,8 @@ export default function AdminSettingsPage() {
             <Card>
               <CardHeader className="pb-2"><CardTitle className="text-sm">Trial Settings</CardTitle></CardHeader>
               <CardContent className="space-y-3">
-                <div><Label className="text-xs">Trial Duration (days)</Label><Input type="number" value={settings.trialDuration} onChange={(e) => update('trialDuration', e.target.value)} className="mt-1 w-24" /></div>
-                <div><Label className="text-xs">Grace Period After Trial (days)</Label><Input type="number" value={settings.gracePeriod} onChange={(e) => update('gracePeriod', e.target.value)} className="mt-1 w-24" /></div>
+                <div><Label className="text-xs">Trial Duration (days)</Label><Input type="number" value={settings.trialDuration} onChange={(e) => update('trialDuration', e.target.value)} className="mt-1 w-full sm:w-24" /></div>
+                <div><Label className="text-xs">Grace Period After Trial (days)</Label><Input type="number" value={settings.gracePeriod} onChange={(e) => update('gracePeriod', e.target.value)} className="mt-1 w-full sm:w-24" /></div>
                 <div className="flex items-center justify-between p-3 border rounded-lg">
                   <div><p className="text-sm font-medium">Require Payment on Signup</p><p className="text-xs text-muted-foreground">If off, users start trial without payment</p></div>
                   <Switch checked={settings.requirePaymentOnSignup} onCheckedChange={(v) => update('requirePaymentOnSignup', v)} />
@@ -466,7 +468,7 @@ export default function AdminSettingsPage() {
                     </button>
                   </div>
                 </div>
-                <div className="grid grid-cols-2 lg:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <Label className="text-xs">From Email</Label>
                     <Input value={settings.fromEmail} onChange={(e) => update('fromEmail', e.target.value)} placeholder="notifications@icut.pk" className="mt-1" />

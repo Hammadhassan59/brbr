@@ -207,34 +207,36 @@ export default function AdminUsersPage() {
 
   return (
     <div className="space-y-4">
-      <h2 className="font-heading text-xl font-bold">Platform Users</h2>
+      <h2 className="font-heading text-lg sm:text-xl font-bold">Platform Users</h2>
 
       {/* Stats */}
-      <div className="grid grid-cols-3 gap-3">
-        <Card><CardContent className="p-4 text-center"><Shield className="w-5 h-5 text-red-500 mx-auto mb-1" /><p className="text-2xl font-bold">{stats.superAdmins}</p><p className="text-xs text-muted-foreground">Super Admins</p></CardContent></Card>
-        <Card><CardContent className="p-4 text-center"><Store className="w-5 h-5 text-gold mx-auto mb-1" /><p className="text-2xl font-bold">{stats.owners}</p><p className="text-xs text-muted-foreground">Salon Owners</p></CardContent></Card>
-        <Card><CardContent className="p-4 text-center"><Users className="w-5 h-5 text-blue-500 mx-auto mb-1" /><p className="text-2xl font-bold">{stats.totalStaff}</p><p className="text-xs text-muted-foreground">Total Users</p></CardContent></Card>
+      <div className="grid grid-cols-3 gap-2 sm:gap-3">
+        <Card><CardContent className="p-3 sm:p-4 text-center"><Shield className="w-5 h-5 text-red-500 mx-auto mb-1" /><p className="text-xl sm:text-2xl font-bold">{stats.superAdmins}</p><p className="text-[10px] sm:text-xs text-muted-foreground">Super Admins</p></CardContent></Card>
+        <Card><CardContent className="p-3 sm:p-4 text-center"><Store className="w-5 h-5 text-gold mx-auto mb-1" /><p className="text-xl sm:text-2xl font-bold">{stats.owners}</p><p className="text-[10px] sm:text-xs text-muted-foreground">Salon Owners</p></CardContent></Card>
+        <Card><CardContent className="p-3 sm:p-4 text-center"><Users className="w-5 h-5 text-blue-500 mx-auto mb-1" /><p className="text-xl sm:text-2xl font-bold">{stats.totalStaff}</p><p className="text-[10px] sm:text-xs text-muted-foreground">Total Users</p></CardContent></Card>
       </div>
 
       {/* Filters */}
       <Card>
         <CardContent className="p-4">
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="relative flex-1 min-w-[200px]">
+          <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-2 sm:gap-3">
+            <div className="relative flex-1 min-w-0 sm:min-w-[200px]">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
                 placeholder="Search by name or email..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="pl-9 h-9 text-sm"
+                className="pl-9 h-10 sm:h-9 text-sm"
               />
             </div>
-            <div className="flex items-center gap-2">
-              <Filter className="w-4 h-4 text-muted-foreground" />
+            <div className="grid grid-cols-1 sm:flex sm:items-center gap-2">
+              <div className="hidden sm:flex items-center">
+                <Filter className="w-4 h-4 text-muted-foreground" />
+              </div>
               <select
                 value={filterRole}
                 onChange={(e) => setFilterRole(e.target.value)}
-                className="h-9 rounded-md border border-border bg-white px-3 text-sm"
+                className="h-10 sm:h-9 w-full sm:w-auto rounded-md border border-border bg-white px-3 text-sm"
               >
                 <option value="all">All Roles</option>
                 {roleOptions.map((r) => <option key={r} value={r}>{r}</option>)}
@@ -242,7 +244,7 @@ export default function AdminUsersPage() {
               <select
                 value={filterSalon}
                 onChange={(e) => setFilterSalon(e.target.value)}
-                className="h-9 rounded-md border border-border bg-white px-3 text-sm"
+                className="h-10 sm:h-9 w-full sm:w-auto rounded-md border border-border bg-white px-3 text-sm"
               >
                 <option value="all">All Salons</option>
                 {salonNames.map((s) => <option key={s} value={s}>{s}</option>)}
@@ -250,7 +252,7 @@ export default function AdminUsersPage() {
               <select
                 value={filterStatus}
                 onChange={(e) => setFilterStatus(e.target.value)}
-                className="h-9 rounded-md border border-border bg-white px-3 text-sm"
+                className="h-10 sm:h-9 w-full sm:w-auto rounded-md border border-border bg-white px-3 text-sm"
               >
                 <option value="all">All Status</option>
                 <option value="active">Active</option>
@@ -281,70 +283,72 @@ export default function AdminUsersPage() {
               {users.length === 0 ? 'No users yet. Staff will appear as salons add team members.' : 'No users match the current filters.'}
             </p>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="pl-4">Name</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Role</TableHead>
-                  <TableHead>Salon</TableHead>
-                  <TableHead>Last Login</TableHead>
-                  <TableHead className="text-center">Status</TableHead>
-                  <TableHead className="pr-4 text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filtered.map((u, i) => (
-                  <TableRow key={`${u.id}-${i}`}>
-                    <TableCell className="pl-4 font-medium text-sm">{u.name}</TableCell>
-                    <TableCell className="text-sm text-muted-foreground">{u.email || '—'}</TableCell>
-                    <TableCell>
-                      <Badge
-                        variant={u.type === 'owner' ? 'default' : 'secondary'}
-                        className={`text-[10px] ${u.type === 'owner' ? 'bg-gold text-black' : ''}`}
-                      >
-                        {u.role}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-sm">{u.salon}</TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {u.lastLogin ? formatPKDate(u.lastLogin) : '—'}
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <Badge variant="outline" className={`text-[10px] ${u.isActive ? 'text-green-600 border-green-500/25 bg-green-500/10' : 'text-amber-600 border-amber-500/25 bg-amber-500/10'}`}>
-                        {u.isActive ? 'Active' : 'Inactive'}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="pr-4 text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        {u.type !== 'owner' && (
-                          <button
-                            onClick={() => handleToggleActive(u)}
-                            disabled={actionLoading === `toggle-${u.id}`}
-                            className="text-[11px] px-2 py-1 border rounded font-medium disabled:opacity-50 hover:bg-muted transition-colors"
-                          >
-                            {actionLoading === `toggle-${u.id}` ? (
-                              <Loader2 className="w-3 h-3 animate-spin" />
-                            ) : u.isActive ? 'Deactivate' : 'Activate'}
-                          </button>
-                        )}
-                        {u.email && (
-                          <button
-                            onClick={() => handleResetPassword(u)}
-                            disabled={actionLoading === `reset-${u.id}`}
-                            className="text-[11px] px-2 py-1 border rounded font-medium disabled:opacity-50 hover:bg-muted transition-colors"
-                          >
-                            {actionLoading === `reset-${u.id}` ? (
-                              <Loader2 className="w-3 h-3 animate-spin" />
-                            ) : 'Reset PW'}
-                          </button>
-                        )}
-                      </div>
-                    </TableCell>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="pl-4">Name</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead>Role</TableHead>
+                    <TableHead>Salon</TableHead>
+                    <TableHead>Last Login</TableHead>
+                    <TableHead className="text-center">Status</TableHead>
+                    <TableHead className="pr-4 text-right">Actions</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {filtered.map((u, i) => (
+                    <TableRow key={`${u.id}-${i}`}>
+                      <TableCell className="pl-4 font-medium text-sm whitespace-nowrap">{u.name}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground whitespace-nowrap">{u.email || '—'}</TableCell>
+                      <TableCell className="whitespace-nowrap">
+                        <Badge
+                          variant={u.type === 'owner' ? 'default' : 'secondary'}
+                          className={`text-[10px] ${u.type === 'owner' ? 'bg-gold text-black' : ''}`}
+                        >
+                          {u.role}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-sm whitespace-nowrap">{u.salon}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
+                        {u.lastLogin ? formatPKDate(u.lastLogin) : '—'}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <Badge variant="outline" className={`text-[10px] ${u.isActive ? 'text-green-600 border-green-500/25 bg-green-500/10' : 'text-amber-600 border-amber-500/25 bg-amber-500/10'}`}>
+                          {u.isActive ? 'Active' : 'Inactive'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="pr-4 text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          {u.type !== 'owner' && (
+                            <button
+                              onClick={() => handleToggleActive(u)}
+                              disabled={actionLoading === `toggle-${u.id}`}
+                              className="text-[11px] px-2 py-1 border rounded font-medium disabled:opacity-50 hover:bg-muted transition-colors whitespace-nowrap"
+                            >
+                              {actionLoading === `toggle-${u.id}` ? (
+                                <Loader2 className="w-3 h-3 animate-spin" />
+                              ) : u.isActive ? 'Deactivate' : 'Activate'}
+                            </button>
+                          )}
+                          {u.email && (
+                            <button
+                              onClick={() => handleResetPassword(u)}
+                              disabled={actionLoading === `reset-${u.id}`}
+                              className="text-[11px] px-2 py-1 border rounded font-medium disabled:opacity-50 hover:bg-muted transition-colors whitespace-nowrap"
+                            >
+                              {actionLoading === `reset-${u.id}` ? (
+                                <Loader2 className="w-3 h-3 animate-spin" />
+                              ) : 'Reset PW'}
+                            </button>
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           )}
         </CardContent>
       </Card>

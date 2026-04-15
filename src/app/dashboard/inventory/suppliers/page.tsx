@@ -91,9 +91,9 @@ export default function SuppliersPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="font-heading text-xl font-bold">Suppliers</h2>
-        <Button onClick={() => openForm()} className="bg-gold hover:bg-gold/90 text-black font-bold" size="sm"><Plus className="w-4 h-4 mr-1" /> Add Supplier</Button>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+        <h2 className="font-heading text-xl sm:text-2xl font-bold">Suppliers</h2>
+        <Button onClick={() => openForm()} className="bg-gold hover:bg-gold/90 text-black font-bold w-full sm:w-auto" size="sm"><Plus className="w-4 h-4 mr-1" /> Add Supplier</Button>
       </div>
 
       {loading ? (
@@ -128,7 +128,7 @@ export default function SuppliersPage() {
 
       {/* Supplier Form */}
       <Dialog open={showForm} onOpenChange={setShowForm}>
-        <DialogContent className="max-w-sm">
+        <DialogContent className="max-w-sm max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>{editSupplier ? 'Edit Supplier' : 'Add Supplier'}</DialogTitle></DialogHeader>
           <div className="space-y-3">
             <div><Label className="text-xs">Name *</Label><Input value={formName} onChange={(e) => setFormName(e.target.value)} className="mt-1" /></div>
@@ -141,7 +141,7 @@ export default function SuppliersPage() {
 
       {/* Payment Modal */}
       <Dialog open={showPayment} onOpenChange={setShowPayment}>
-        <DialogContent className="max-w-sm">
+        <DialogContent className="max-w-sm max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>Pay {paySupplier?.name}</DialogTitle></DialogHeader>
           <div className="space-y-3">
             <p className="text-sm">Outstanding: <span className="font-bold text-red-600">{formatPKR(paySupplier?.udhaar_balance || 0)}</span></p>

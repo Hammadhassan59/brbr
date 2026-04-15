@@ -299,8 +299,8 @@ export default function ExpensesPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="flex flex-wrap gap-1">
+      <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-3">
+        <div className="flex flex-wrap gap-1 -mx-1 px-1 overflow-x-auto sm:overflow-visible">
           {([
             { key: 'today', label: 'Today' },
             { key: '7d', label: '7 Days' },
@@ -310,60 +310,60 @@ export default function ExpensesPage() {
             { key: 'mon-2', label: getMonthLabel(2) },
           ]).map(({ key, label }) => (
             <button key={key} onClick={() => setActiveFilter(key)}
-              className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all duration-150 ${
+              className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all duration-150 whitespace-nowrap ${
                 activeFilter === key ? 'bg-foreground text-white' : 'text-muted-foreground hover:text-foreground'
               }`}
             >{label}</button>
           ))}
         </div>
-        <div className="ml-auto flex gap-2">
-          <Button variant="outline" onClick={() => { setAdvStaffId(''); setAdvAmount(''); setAdvReason(''); setEditingAdvanceId(null); setShowAdvance(true); }} className="h-10 px-4 font-medium transition-all duration-150" size="sm">
+        <div className="sm:ml-auto flex flex-col sm:flex-row gap-2">
+          <Button variant="outline" onClick={() => { setAdvStaffId(''); setAdvAmount(''); setAdvReason(''); setEditingAdvanceId(null); setShowAdvance(true); }} className="h-10 px-4 font-medium transition-all duration-150 w-full sm:w-auto" size="sm">
             <Banknote className="w-4 h-4 mr-1" /> Staff Advance
           </Button>
-          <Button onClick={() => { setEditingExpense(null); setCategory(''); setCustomCategory(''); setAmount(''); setDescription(''); setShowAdd(true); }} className="bg-gold hover:bg-gold/90 text-black font-bold h-10 px-4 transition-all duration-150" size="sm">
+          <Button onClick={() => { setEditingExpense(null); setCategory(''); setCustomCategory(''); setAmount(''); setDescription(''); setShowAdd(true); }} className="bg-gold hover:bg-gold/90 text-black font-bold h-10 px-4 transition-all duration-150 w-full sm:w-auto" size="sm">
             <Plus className="w-4 h-4 mr-1" /> Record Expense
           </Button>
         </div>
       </div>
 
       {/* Summary cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 stagger-children animate-fade-in">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 stagger-children animate-fade-in">
         <Card className="border-border">
-          <CardContent className="p-5 text-center">
+          <CardContent className="p-3 sm:p-5 text-center">
             {loading ? <div className="h-12 bg-muted rounded-lg animate-pulse" /> : (
               <>
                 <p className="text-xs text-muted-foreground uppercase tracking-wider">Income</p>
-                <p className="text-2xl font-bold text-green-600 mt-1">{formatPKR(income)}</p>
+                <p className="text-lg sm:text-2xl font-bold text-green-600 mt-1 break-all">{formatPKR(income)}</p>
               </>
             )}
           </CardContent>
         </Card>
         <Card className="border-border">
-          <CardContent className="p-5 text-center">
+          <CardContent className="p-3 sm:p-5 text-center">
             {loading ? <div className="h-12 bg-muted rounded-lg animate-pulse" /> : (
               <>
                 <p className="text-xs text-muted-foreground uppercase tracking-wider">Expenses</p>
-                <p className="text-2xl font-bold text-foreground mt-1">{formatPKR(totalAmount)}</p>
+                <p className="text-lg sm:text-2xl font-bold text-foreground mt-1 break-all">{formatPKR(totalAmount)}</p>
               </>
             )}
           </CardContent>
         </Card>
         <Card className="border-border">
-          <CardContent className="p-5 text-center">
+          <CardContent className="p-3 sm:p-5 text-center">
             {loading ? <div className="h-12 bg-muted rounded-lg animate-pulse" /> : (
               <>
                 <p className="text-xs text-muted-foreground uppercase tracking-wider">Advances</p>
-                <p className="text-2xl font-bold text-orange-600 mt-1">{formatPKR(totalAdvances)}</p>
+                <p className="text-lg sm:text-2xl font-bold text-orange-600 mt-1 break-all">{formatPKR(totalAdvances)}</p>
               </>
             )}
           </CardContent>
         </Card>
         <Card className="border-border">
-          <CardContent className="p-5 text-center">
+          <CardContent className="p-3 sm:p-5 text-center">
             {loading ? <div className="h-12 bg-muted rounded-lg animate-pulse" /> : (
               <>
                 <p className="text-xs text-muted-foreground uppercase tracking-wider">Net Profit</p>
-                <p className={`text-2xl font-bold mt-1 ${income - totalAmount - totalAdvances >= 0 ? 'text-green-600' : 'text-destructive'}`}>{formatPKR(income - totalAmount - totalAdvances)}</p>
+                <p className={`text-lg sm:text-2xl font-bold mt-1 break-all ${income - totalAmount - totalAdvances >= 0 ? 'text-green-600' : 'text-destructive'}`}>{formatPKR(income - totalAmount - totalAdvances)}</p>
               </>
             )}
           </CardContent>
@@ -387,8 +387,8 @@ export default function ExpensesPage() {
                   const pct = Number(p.profit_share_percentage) || 0;
                   const share = netProfit * (pct / 100);
                   return (
-                    <div key={p.id} className="flex items-center gap-3">
-                      <span className="text-sm flex-1">{p.name}</span>
+                    <div key={p.id} className="flex items-center gap-2 sm:gap-3">
+                      <span className="text-sm flex-1 truncate">{p.name}</span>
                       {isOwner ? (
                         <Input
                           type="number"
@@ -410,23 +410,23 @@ export default function ExpensesPage() {
                             }
                             setSavingPartnerId(null);
                           }}
-                          className="w-20 text-right"
+                          className="w-16 sm:w-20 text-right"
                         />
                       ) : (
-                        <span className="text-sm font-medium w-20 text-right">{pct}%</span>
+                        <span className="text-sm font-medium w-16 sm:w-20 text-right">{pct}%</span>
                       )}
-                      <span className="text-xs text-muted-foreground">%</span>
-                      <span className={`text-sm font-medium w-28 text-right ${share >= 0 ? 'text-foreground' : 'text-destructive'}`}>
+                      <span className="text-xs text-muted-foreground hidden sm:inline">%</span>
+                      <span className={`text-sm font-medium w-24 sm:w-28 text-right ${share >= 0 ? 'text-foreground' : 'text-destructive'}`}>
                         {formatPKR(share)}
                       </span>
                     </div>
                   );
                 })}
-                <div className="flex items-center gap-3 pt-2 border-t border-border">
+                <div className="flex items-center gap-2 sm:gap-3 pt-2 border-t border-border">
                   <span className="text-sm flex-1 font-medium">Owner</span>
-                  <span className="text-sm font-medium w-20 text-right">{ownerPct.toFixed(2)}</span>
-                  <span className="text-xs text-muted-foreground">%</span>
-                  <span className={`text-sm font-medium w-28 text-right ${netProfit * (ownerPct / 100) >= 0 ? 'text-green-600' : 'text-destructive'}`}>
+                  <span className="text-sm font-medium w-16 sm:w-20 text-right">{ownerPct.toFixed(2)}</span>
+                  <span className="text-xs text-muted-foreground hidden sm:inline">%</span>
+                  <span className={`text-sm font-medium w-24 sm:w-28 text-right ${netProfit * (ownerPct / 100) >= 0 ? 'text-green-600' : 'text-destructive'}`}>
                     {formatPKR(netProfit * (ownerPct / 100))}
                   </span>
                 </div>
@@ -446,12 +446,12 @@ export default function ExpensesPage() {
           <CardContent>
             <div className="space-y-2">
               {sortedCategories.map(([cat, total]) => (
-                <div key={cat} className="flex items-center gap-3">
-                  <span className="text-sm flex-1">{cat}</span>
-                  <div className="w-32 bg-secondary rounded-full h-2">
+                <div key={cat} className="flex items-center gap-2 sm:gap-3">
+                  <span className="text-sm flex-1 truncate">{cat}</span>
+                  <div className="hidden sm:block w-32 bg-secondary rounded-full h-2">
                     <div className="bg-gold/60 h-2" style={{ width: `${totalAmount > 0 ? (total / totalAmount) * 100 : 0}%` }} />
                   </div>
-                  <span className="text-sm font-medium w-24 text-right">{formatPKR(total)}</span>
+                  <span className="text-sm font-medium w-20 sm:w-24 text-right">{formatPKR(total)}</span>
                 </div>
               ))}
             </div>
@@ -548,7 +548,7 @@ export default function ExpensesPage() {
 
       {/* Staff Advance Dialog */}
       <Dialog open={showAdvance} onOpenChange={(open) => { setShowAdvance(open); if (!open) setEditingAdvanceId(null); }}>
-        <DialogContent className="max-w-sm">
+        <DialogContent className="max-w-sm max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>{editingAdvanceId ? 'Edit Advance' : 'Record Staff Advance'}</DialogTitle></DialogHeader>
           <div className="space-y-4">
             <div>
@@ -581,7 +581,7 @@ export default function ExpensesPage() {
 
       {/* Add Expense Dialog */}
       <Dialog open={showAdd} onOpenChange={(open) => { setShowAdd(open); if (!open) setEditingExpense(null); }}>
-        <DialogContent className="max-w-sm">
+        <DialogContent className="max-w-sm max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>{editingExpense ? 'Edit Expense' : 'Record Expense'}</DialogTitle></DialogHeader>
           <div className="space-y-4">
             <div>

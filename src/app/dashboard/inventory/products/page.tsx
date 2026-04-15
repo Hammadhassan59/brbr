@@ -220,12 +220,12 @@ function ProductsContent() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="relative flex-1 min-w-[180px]">
+      <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-2">
+        <div className="relative flex-1 min-w-0 sm:min-w-[180px]">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
           <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search products..." className="pl-8 h-9 bg-card" />
         </div>
-        <Button onClick={() => openForm()} className="bg-gold hover:bg-gold/90 text-black font-bold" size="sm"><Plus className="w-4 h-4 mr-1" /> Add Product</Button>
+        <Button onClick={() => openForm()} className="bg-gold hover:bg-gold/90 text-black font-bold w-full sm:w-auto" size="sm"><Plus className="w-4 h-4 mr-1" /> Add Product</Button>
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
@@ -255,8 +255,8 @@ function ProductsContent() {
       ) : filtered.length === 0 ? (
         <EmptyState icon={PackageIcon} text="noProductsYet" ctaLabel="addProduct" onAction={() => openForm()} />
       ) : (
-        <div className="bg-card border border-border rounded-lg overflow-hidden overflow-x-auto">
-          <Table>
+        <div className="bg-card border border-border rounded-lg overflow-hidden overflow-x-auto -mx-4 sm:mx-0 px-0">
+          <Table className="min-w-[700px]">
             <TableHeader>
               <TableRow>
                 <TableHead className="pl-4">Product</TableHead>
@@ -414,7 +414,7 @@ function ProductsContent() {
 
       {/* Stock Adjustment Modal */}
       <Dialog open={showAdjust} onOpenChange={setShowAdjust}>
-        <DialogContent className="max-w-sm">
+        <DialogContent className="max-w-sm max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>Adjust Stock — {adjustProduct?.name}</DialogTitle></DialogHeader>
           <div className="space-y-3">
             <p className="text-sm">Current stock: <span className="font-bold">{adjustProduct?.current_stock} {adjustProduct?.unit}</span></p>

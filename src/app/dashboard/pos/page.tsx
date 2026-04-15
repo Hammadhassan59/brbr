@@ -447,7 +447,7 @@ function POSContent() {
   const pointsEarned = Math.floor(total / 100) * 10;
 
   return (
-    <div className="h-[calc(100vh-3.5rem)] flex flex-col md:flex-row gap-0 -m-4 md:-m-6">
+    <div className="h-[calc(100dvh-3.5rem)] flex flex-col md:flex-row gap-0 -m-4 md:-m-6">
       {loading && (
         <div className="flex-1 flex items-center justify-center bg-background">
           <div className="bg-card border border-border rounded-lg p-8 text-center">
@@ -459,7 +459,7 @@ function POSContent() {
         </div>
       )}
       {!loading && (<>
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col overflow-hidden min-h-0">
         <div className="flex items-center gap-2 px-3 py-2 bg-card border-b border-border shrink-0 flex-wrap">
           <Button variant="ghost" size="sm" onClick={() => router.push('/dashboard')} className="transition-all duration-150">
             <ArrowLeft className="w-4 h-4" />
@@ -532,7 +532,7 @@ function POSContent() {
           )}
 
           <select value={selectedStaffId} onChange={(e) => { const v = e.target.value; if (v) { setSelectedStaffId(v); if (!tipStaffId) setTipStaffId(v); } }}
-            className="h-9 md:h-8 text-xs w-full sm:w-[140px] order-last sm:order-none border border-border bg-background rounded-md px-2">
+            className="h-10 sm:h-8 text-sm sm:text-xs w-full sm:w-[140px] order-last sm:order-none border border-border bg-background rounded-md px-2 basis-full sm:basis-auto">
               <option value="">Stylist</option>
               {stylists.map((s) => (
                 <option key={s.id} value={s.id}>{s.name}</option>
@@ -600,14 +600,14 @@ function POSContent() {
 
       {/* Mobile payment panel (full-screen overlay) */}
       {showMobilePayment && (
-        <div className="xl:hidden fixed inset-0 z-40 bg-card overflow-y-auto" style={{ scrollbarWidth: 'none' }}>
+        <div className="xl:hidden fixed inset-0 z-50 bg-card overflow-y-auto overscroll-contain" style={{ scrollbarWidth: 'none' }}>
           <div className="flex items-center justify-between px-4 py-3 border-b border-border sticky top-0 bg-card z-10">
             <h2 className="text-sm font-semibold">Payment</h2>
-            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setShowMobilePayment(false)}>
+            <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => setShowMobilePayment(false)}>
               <X className="w-4 h-4" />
             </Button>
           </div>
-          <div className="p-4">
+          <div className="p-4 pb-[calc(env(safe-area-inset-bottom)+1rem)]">
             <PaymentPanel
               total={total}
               clientUdhaarBalance={selectedClient?.udhaar_balance || 0}
@@ -636,11 +636,12 @@ function POSContent() {
         </div>
       )}
 
-      {/* Mobile checkout button - fixed above the bill bar */}
+      {/* Mobile checkout button - fixed above the bill bar + mobile bottom nav + safe-area */}
       {!loading && items.length > 0 && (
         <button
           onClick={() => setShowMobilePayment(true)}
-          className="xl:hidden fixed bottom-16 md:bottom-6 right-4 md:right-6 z-30 bg-gold text-black font-semibold px-6 py-3 rounded-lg shadow-lg active:scale-95 transition-all"
+          style={{ bottom: 'calc(env(safe-area-inset-bottom) + 8.25rem)' }}
+          className="xl:hidden fixed md:!bottom-6 right-4 md:right-6 z-40 bg-gold text-black font-semibold px-5 py-3 rounded-lg shadow-lg active:scale-95 transition-all text-sm touch-target"
         >
           Checkout {formatPKR(total)}
         </button>

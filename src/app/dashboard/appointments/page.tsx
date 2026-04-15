@@ -266,7 +266,7 @@ function AppointmentsContent() {
     <div className="space-y-4">
       <h1 className="sr-only">Appointments — {formattedDate}</h1>
       <div className="bg-card text-foreground border border-border p-3">
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-3">
           <div className="flex items-center gap-2">
             <Button
               variant="ghost"
@@ -297,15 +297,15 @@ function AppointmentsContent() {
             </Button>
           </div>
 
-          <div className="flex items-center gap-2">
-            <CalendarIcon className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
-            <h2 className="text-lg font-semibold tracking-tight text-foreground m-0">{formattedDate}</h2>
+          <div className="flex items-center gap-2 min-w-0">
+            <CalendarIcon className="w-4 h-4 text-muted-foreground shrink-0" aria-hidden="true" />
+            <h2 className="text-base sm:text-lg font-semibold tracking-tight text-foreground m-0 truncate">{formattedDate}</h2>
           </div>
 
-          <div className="flex items-center gap-2 ml-auto">
-            <Filter className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
+          <div className="flex items-center gap-2 sm:ml-auto flex-wrap">
+            <Filter className="w-4 h-4 text-muted-foreground shrink-0" aria-hidden="true" />
             <select value={filterStaffId || 'all'} onChange={(e) => setFilterStaffId(e.target.value === 'all' ? null : e.target.value)}
-              aria-label="Filter by stylist" className="h-11 w-[180px] bg-secondary border border-border text-foreground rounded-md px-3 text-sm transition-all duration-150">
+              aria-label="Filter by stylist" className="h-11 w-full sm:w-[180px] flex-1 sm:flex-none min-w-0 bg-secondary border border-border text-foreground rounded-md px-3 text-sm transition-all duration-150">
               <option value="all">All Stylists</option>
               {stylists.map((s) => (
                 <option key={s.id} value={s.id}>{s.name}</option>
@@ -324,7 +324,7 @@ function AppointmentsContent() {
               size="icon"
               onClick={fetchData}
               aria-label="Refresh appointments"
-              className="h-11 w-11 text-muted-foreground hover:text-foreground transition-all duration-150"
+              className="h-11 w-11 shrink-0 text-muted-foreground hover:text-foreground transition-all duration-150"
             >
               <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} aria-hidden="true" />
             </Button>
@@ -343,19 +343,75 @@ function AppointmentsContent() {
       ) : !loading && stylists.length === 0 ? (
         <EmptyState icon={CalendarDays} text="noAppointmentsYet" ctaLabel="bookAppointmentCta" ctaHref="/dashboard/appointments?new=true" />
       ) : (
-        <div className="bg-card border border-border rounded-lg overflow-hidden">
-          <CalendarGrid
-            date={date}
-            stylists={stylists}
-            appointments={appointments}
-            workingHours={workingHours}
-            prayerBlocks={prayerBlocks}
-            prayerBlockEnabled={prayerBlockEnabled}
-            onSlotClick={handleSlotClick}
-            onAppointmentClick={handleAppointmentClick}
-            filterStaffId={filterStaffId}
-          />
-        </div>
+        <>
+          {/* Mobile: list view grouped by stylist (calendar grid not usable on narrow screens) */}
+          <div className="md:hidden space-y-3">
+            <Button
+              onClick={() => { setNewModalPrefill({ date }); setShowNewModal(true); }}
+              className="w-full h-11 bg-[#1A1A1A] text-white hover:bg-[#2A2A2A] font-semibold"
+            >
+              + New Appointment
+            </Button>
+            {(() => {
+              const visibleStylists = filterStaffId ? stylists.filter((s) => s.id === filterStaffId) : stylists;
+              const appts = appointments.slice().sort((a, b) => (a.start_time || '').localeCompare(b.start_time || ''));
+              if (appts.length === 0) {
+                return (
+                  <div className="bg-card border border-border rounded-lg p-6 text-center">
+                    <p className="text-sm text-muted-foreground">No appointments for this day.</p>
+                  </div>
+                );
+              }
+              return visibleStylists.map((stylist) => {
+                const forStylist = appts.filter((a) => a.staff_id === stylist.id);
+                if (forStylist.length === 0) return null;
+                return (
+                  <div key={stylist.id} className="bg-card border border-border rounded-lg overflow-hidden">
+                    <div className="px-3 py-2 border-b border-border bg-secondary/40">
+                      <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{stylist.name}</p>
+                    </div>
+                    <ul className="divide-y divide-border">
+                      {forStylist.map((apt) => {
+                        const clientName = apt.client?.name || 'Walk-in';
+                        const serviceList = (apt.services || []).map((s) => s.service_name).filter(Boolean).join(', ') || '—';
+                        return (
+                          <li key={apt.id}>
+                            <button
+                              onClick={() => handleAppointmentClick(apt)}
+                              className="w-full text-left px-3 py-3 hover:bg-muted/40 transition-colors"
+                            >
+                              <div className="flex items-baseline justify-between gap-2">
+                                <span className="font-mono text-sm font-semibold">{apt.start_time?.slice(0, 5)}</span>
+                                <span className="text-[10px] uppercase tracking-wider text-muted-foreground">{apt.status || 'scheduled'}</span>
+                              </div>
+                              <p className="text-sm font-medium mt-1 truncate">{clientName}</p>
+                              <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{serviceList}</p>
+                            </button>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </div>
+                );
+              });
+            })()}
+          </div>
+
+          {/* Tablet+ : original calendar grid with drag-drop */}
+          <div className="hidden md:block bg-card border border-border rounded-lg overflow-hidden">
+            <CalendarGrid
+              date={date}
+              stylists={stylists}
+              appointments={appointments}
+              workingHours={workingHours}
+              prayerBlocks={prayerBlocks}
+              prayerBlockEnabled={prayerBlockEnabled}
+              onSlotClick={handleSlotClick}
+              onAppointmentClick={handleAppointmentClick}
+              filterStaffId={filterStaffId}
+            />
+          </div>
+        </>
       )}
 
       <NewAppointmentModal

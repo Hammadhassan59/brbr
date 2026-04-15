@@ -232,25 +232,25 @@ export default function SettingsPage() {
   return (
     <div className="space-y-6">
       <Tabs defaultValue={canManage ? 'profile' : 'display'}>
-        <div className="bg-card border border-border rounded-lg p-4">
-          <TabsList className="bg-transparent h-auto gap-1.5 p-0">
-            {canManage && <TabsTrigger value="profile" className="text-xs px-3.5 py-2 font-medium transition-all duration-150 border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30">Salon Profile</TabsTrigger>}
-            {canManage && <TabsTrigger value="hours" className="text-xs px-3.5 py-2 font-medium transition-all duration-150 border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30">Working Hours</TabsTrigger>}
-            {canManage && <TabsTrigger value="services" className="text-xs px-3.5 py-2 font-medium transition-all duration-150 border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30">Services</TabsTrigger>}
-            {canManage && <TabsTrigger value="payment" className="text-xs px-3.5 py-2 font-medium transition-all duration-150 border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30">Payments</TabsTrigger>}
-            {canManage && <TabsTrigger value="tax" className="text-xs px-3.5 py-2 font-medium transition-all duration-150 border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30">Tax & Billing</TabsTrigger>}
-            {isOwner && <TabsTrigger value="branches" className="text-xs px-3.5 py-2 font-medium transition-all duration-150 border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30">Branches</TabsTrigger>}
-            {isOwner && <TabsTrigger value="subscription" className="text-xs px-3.5 py-2 font-medium transition-all duration-150 border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30">Subscription</TabsTrigger>}
-            <TabsTrigger value="account" className="text-xs px-3.5 py-2 font-medium transition-all duration-150 border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30">Profile</TabsTrigger>
-            <TabsTrigger value="display" className="text-xs px-3.5 py-2 font-medium transition-all duration-150 border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30">Display</TabsTrigger>
+        <div className="bg-card border border-border rounded-lg p-2 sm:p-4 overflow-x-auto">
+          <TabsList className="bg-transparent h-auto gap-1.5 p-0 flex-nowrap w-max min-w-full">
+            {canManage && <TabsTrigger value="profile" className="whitespace-nowrap text-xs px-3.5 py-2 font-medium transition-all duration-150 border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30">Salon Profile</TabsTrigger>}
+            {canManage && <TabsTrigger value="hours" className="whitespace-nowrap text-xs px-3.5 py-2 font-medium transition-all duration-150 border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30">Working Hours</TabsTrigger>}
+            {canManage && <TabsTrigger value="services" className="whitespace-nowrap text-xs px-3.5 py-2 font-medium transition-all duration-150 border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30">Services</TabsTrigger>}
+            {canManage && <TabsTrigger value="payment" className="whitespace-nowrap text-xs px-3.5 py-2 font-medium transition-all duration-150 border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30">Payments</TabsTrigger>}
+            {canManage && <TabsTrigger value="tax" className="whitespace-nowrap text-xs px-3.5 py-2 font-medium transition-all duration-150 border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30">Tax & Billing</TabsTrigger>}
+            {isOwner && <TabsTrigger value="branches" className="whitespace-nowrap text-xs px-3.5 py-2 font-medium transition-all duration-150 border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30">Branches</TabsTrigger>}
+            {isOwner && <TabsTrigger value="subscription" className="whitespace-nowrap text-xs px-3.5 py-2 font-medium transition-all duration-150 border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30">Subscription</TabsTrigger>}
+            <TabsTrigger value="account" className="whitespace-nowrap text-xs px-3.5 py-2 font-medium transition-all duration-150 border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30">Profile</TabsTrigger>
+            <TabsTrigger value="display" className="whitespace-nowrap text-xs px-3.5 py-2 font-medium transition-all duration-150 border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30">Display</TabsTrigger>
           </TabsList>
         </div>
 
         {/* Salon Profile */}
         {canManage && <TabsContent value="profile" className="mt-4">
-          <div className="bg-card border border-border rounded-lg p-6 space-y-5">
+          <div className="bg-card border border-border rounded-lg p-4 sm:p-6 space-y-5">
           <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Salon Information</p>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div><Label>Salon Name</Label><Input value={salonName} onChange={(e) => setSalonName(e.target.value)} className="mt-1" /></div>
             <div>
               <Label>Salon Type</Label>
@@ -263,11 +263,11 @@ export default function SettingsPage() {
               </div>
             </div>
           </div>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div><Label>City</Label><Input value={city} onChange={(e) => setCity(e.target.value)} className="mt-1" /></div>
             <div><Label>Address</Label><Input value={address} onChange={(e) => setAddress(e.target.value)} className="mt-1" /></div>
           </div>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div><Label>Phone</Label><Input type="tel" inputMode="tel" autoComplete="tel" value={phone} onChange={(e) => setPhone(e.target.value)} className="mt-1" /></div>
             <div><Label>WhatsApp</Label><Input type="tel" inputMode="tel" autoComplete="tel" value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)} className="mt-1" /></div>
           </div>
@@ -286,35 +286,37 @@ export default function SettingsPage() {
             </div>
           )}
 
-          <Button onClick={saveSalonProfile} disabled={saving} className="bg-gold hover:bg-gold/90 text-black font-bold h-11">{saving ? 'Saving...' : 'Save Profile'}</Button>
+          <Button onClick={saveSalonProfile} disabled={saving} className="w-full sm:w-auto bg-gold hover:bg-gold/90 text-black font-bold h-11">{saving ? 'Saving...' : 'Save Profile'}</Button>
           </div>
         </TabsContent>}
 
         {/* Working Hours */}
         {canManage && <TabsContent value="hours" className="mt-4">
-          <div className="bg-card border border-border rounded-lg p-6 space-y-3">
+          <div className="bg-card border border-border rounded-lg p-4 sm:p-6 space-y-3">
           <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Weekly Schedule</p>
           {DAYS.map((day) => (
-            <div key={day} className="border-border flex items-center gap-3 p-3 bg-card border">
-              <span className="w-24 text-sm font-medium">{DAY_LABELS[day]}</span>
+            <div key={day} className="border-border flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 p-3 bg-card border">
+              <div className="flex items-center justify-between gap-3 sm:contents">
+                <span className="sm:w-24 text-sm font-medium">{DAY_LABELS[day]}</span>
+                <label className="flex items-center gap-2 text-sm sm:order-last">
+                  <Switch checked={hours[day]?.off || false} onCheckedChange={(checked) => setHours({ ...hours, [day]: { ...hours[day], off: checked } })} className="" />
+                  <span className="text-muted-foreground text-xs">Off</span>
+                </label>
+              </div>
               {hours[day]?.off ? <span className="flex-1 text-sm text-muted-foreground">Day Off</span> : (
-                <div className="flex items-center gap-2 flex-1">
-                  <Input type="time" value={hours[day]?.open || '09:00'} onChange={(e) => setHours({ ...hours, [day]: { ...hours[day], open: e.target.value } })} className="w-32" />
-                  <span className="text-muted-foreground">to</span>
-                  <Input type="time" value={hours[day]?.close || '21:00'} onChange={(e) => setHours({ ...hours, [day]: { ...hours[day], close: e.target.value } })} className="w-32" />
+                <div className="flex items-center gap-2 flex-1 min-w-0">
+                  <Input type="time" value={hours[day]?.open || '09:00'} onChange={(e) => setHours({ ...hours, [day]: { ...hours[day], open: e.target.value } })} className="flex-1 sm:flex-none sm:w-32 min-w-0" />
+                  <span className="text-muted-foreground text-xs sm:text-sm">to</span>
+                  <Input type="time" value={hours[day]?.close || '21:00'} onChange={(e) => setHours({ ...hours, [day]: { ...hours[day], close: e.target.value } })} className="flex-1 sm:flex-none sm:w-32 min-w-0" />
                 </div>
               )}
-              <label className="flex items-center gap-2 text-sm">
-                <Switch checked={hours[day]?.off || false} onCheckedChange={(checked) => setHours({ ...hours, [day]: { ...hours[day], off: checked } })} className="" />
-                <span className="text-muted-foreground text-xs">Off</span>
-              </label>
             </div>
           ))}
           <div className="space-y-3 pt-4 border-t">
             <label className="bg-secondary/30 p-4 border border-border flex items-center gap-3 cursor-pointer"><Switch checked={jummahBreak} onCheckedChange={setJummahBreak} className="" /><span className="text-sm">Jummah Break (12:30 - 2:00 PM)</span></label>
             <label className="bg-secondary/30 p-4 border border-border flex items-center gap-3 cursor-pointer"><Switch checked={prayerBlockEnabled} onCheckedChange={setPrayerBlockEnabled} className="" /><span className="text-sm">Auto-block prayer times on calendar</span></label>
           </div>
-          <Button onClick={saveWorkingHours} disabled={saving} className="bg-gold hover:bg-gold/90 text-black font-bold h-11">{saving ? 'Saving...' : 'Save Hours'}</Button>
+          <Button onClick={saveWorkingHours} disabled={saving} className="w-full sm:w-auto bg-gold hover:bg-gold/90 text-black font-bold h-11">{saving ? 'Saving...' : 'Save Hours'}</Button>
           </div>
         </TabsContent>}
 
@@ -333,9 +335,9 @@ export default function SettingsPage() {
 
         {/* Payment Methods */}
         {canManage && <TabsContent value="payment" className="mt-4">
-          <div className="bg-card border border-border rounded-lg p-6 space-y-4">
+          <div className="bg-card border border-border rounded-lg p-4 sm:p-6 space-y-4">
           <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Payment Methods</p>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Card className="border-border"><CardContent className="p-4 space-y-3">
               <p className="text-sm font-medium">Cash</p>
               <p className="text-xs text-muted-foreground">Always enabled</p>
@@ -348,24 +350,24 @@ export default function SettingsPage() {
               <p className="text-sm font-medium">EasyPaisa</p>
               <div><Label className="text-xs">Account Number</Label><Input value={easypaisaNumber} onChange={(e) => setEasypaisaNumber(e.target.value)} placeholder="03XX-XXXXXXX" className="mt-1" /></div>
             </CardContent></Card>
-            <Card className="border-border"><CardContent className="p-4 space-y-3">
+            <Card className="border-border sm:col-span-2"><CardContent className="p-4 space-y-3">
               <p className="text-sm font-medium">Bank Transfer (IBFT)</p>
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div><Label className="text-xs">Bank Name</Label><Input value={bankName} onChange={(e) => setBankName(e.target.value)} placeholder="HBL" className="mt-1" /></div>
                 <div><Label className="text-xs">Account #</Label><Input value={bankAccount} onChange={(e) => setBankAccount(e.target.value)} className="mt-1" /></div>
                 <div><Label className="text-xs">Account Title</Label><Input value={bankTitle} onChange={(e) => setBankTitle(e.target.value)} className="mt-1" /></div>
               </div>
             </CardContent></Card>
           </div>
-          <Button onClick={savePaymentSettings} disabled={saving} className="bg-gold hover:bg-gold/90 text-black font-bold h-11">{saving ? 'Saving...' : 'Save Payment Settings'}</Button>
+          <Button onClick={savePaymentSettings} disabled={saving} className="w-full sm:w-auto bg-gold hover:bg-gold/90 text-black font-bold h-11">{saving ? 'Saving...' : 'Save Payment Settings'}</Button>
           </div>
         </TabsContent>}
 
         {/* Tax & Billing */}
         {canManage && <TabsContent value="tax" className="mt-4">
-          <div className="bg-card border border-border rounded-lg p-6 space-y-4">
+          <div className="bg-card border border-border rounded-lg p-4 sm:p-6 space-y-4">
           <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Tax Configuration</p>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="bg-secondary/30 p-4 border border-border flex items-center justify-between">
               <div><p className="text-sm font-medium">GST / Sales Tax</p><p className="text-xs text-muted-foreground">Enable tax on bills</p></div>
               <Switch checked={gstEnabled} onCheckedChange={setGstEnabled} className="" />
@@ -378,7 +380,7 @@ export default function SettingsPage() {
               </>
             )}
           </div>
-          <Button onClick={saveSalonProfile} disabled={saving} className="bg-gold hover:bg-gold/90 text-black font-bold h-11">{saving ? 'Saving...' : 'Save Tax Settings'}</Button>
+          <Button onClick={saveSalonProfile} disabled={saving} className="w-full sm:w-auto bg-gold hover:bg-gold/90 text-black font-bold h-11">{saving ? 'Saving...' : 'Save Tax Settings'}</Button>
           </div>
         </TabsContent>}
 
@@ -423,11 +425,11 @@ export default function SettingsPage() {
 
         {/* Display */}
         <TabsContent value="display" className="mt-4">
-          <div className="bg-card border border-border rounded-lg p-6 space-y-4">
+          <div className="bg-card border border-border rounded-lg p-4 sm:p-6 space-y-4">
           <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Display Preferences</p>
-          <div className="bg-secondary/30 p-4 border border-border flex items-center justify-between">
-            <div><p className="text-sm font-medium">Keep Screen Awake</p><p className="text-xs text-muted-foreground">Prevent tablet from sleeping (front desk mode)</p></div>
-            <Switch checked={keepAwake} onCheckedChange={setKeepAwake} className="" />
+          <div className="bg-secondary/30 p-4 border border-border flex items-center justify-between gap-3">
+            <div className="min-w-0 flex-1"><p className="text-sm font-medium break-words">Keep Screen Awake</p><p className="text-xs text-muted-foreground break-words">Prevent tablet from sleeping (front desk mode)</p></div>
+            <Switch checked={keepAwake} onCheckedChange={setKeepAwake} className="shrink-0" />
           </div>
           </div>
         </TabsContent>
@@ -564,7 +566,7 @@ function ServiceManager({
                 <Input type="number" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="0" className="mt-1" inputMode="numeric" />
               </div>
             </div>
-            <Button onClick={saveService} disabled={saving} size="sm" className="bg-gold hover:bg-gold/90 text-black font-bold h-11">
+            <Button onClick={saveService} disabled={saving} size="sm" className="w-full sm:w-auto bg-gold hover:bg-gold/90 text-black font-bold h-11">
               {saving ? 'Saving...' : editingId ? 'Save Changes' : 'Add Service'}
             </Button>
           </CardContent>
@@ -572,16 +574,16 @@ function ServiceManager({
       )}
 
       {services.map((svc) => (
-        <div key={svc.id} className={`border-border flex items-center gap-3 p-3 bg-card border ${editingId === svc.id ? 'ring-2 ring-gold/40' : ''}`}>
-          <Switch checked={svc.is_active} onCheckedChange={(v) => onToggle(svc.id, v)} className="" />
-          <div className="flex-1 min-w-0">
-            <span className={`text-sm font-medium ${!svc.is_active ? 'line-through text-muted-foreground' : ''}`}>{svc.name}</span>
-            <div className="flex items-center gap-2 mt-0.5">
+        <div key={svc.id} className={`border-border flex flex-wrap items-center gap-2 sm:gap-3 p-3 bg-card border ${editingId === svc.id ? 'ring-2 ring-gold/40' : ''}`}>
+          <Switch checked={svc.is_active} onCheckedChange={(v) => onToggle(svc.id, v)} className="shrink-0" />
+          <div className="flex-1 min-w-0 basis-[60%] sm:basis-auto">
+            <span className={`text-sm font-medium break-words ${!svc.is_active ? 'line-through text-muted-foreground' : ''}`}>{svc.name}</span>
+            <div className="flex items-center gap-2 mt-0.5 flex-wrap">
               <span className="text-xs text-muted-foreground capitalize">{svc.category}</span>
               <span className="text-xs text-muted-foreground">{svc.duration_minutes}min</span>
             </div>
           </div>
-          <Input type="number" value={svc.base_price} onChange={(e) => onPriceChange(svc.id, Number(e.target.value))} className="w-24 h-8 text-xs text-right" inputMode="numeric" />
+          <Input type="number" value={svc.base_price} onChange={(e) => onPriceChange(svc.id, Number(e.target.value))} className="w-20 sm:w-24 h-8 text-xs text-right" inputMode="numeric" />
           <Button variant="ghost" size="sm" className="h-8 text-xs px-2" onClick={() => startEdit(svc)}>Edit</Button>
           <Button variant="ghost" size="sm" className="h-8 text-xs px-2 text-destructive hover:text-destructive" onClick={() => removeService(svc)}>Remove</Button>
         </div>
@@ -701,7 +703,7 @@ function BranchManager({
                 <Input value={branchPhone} onChange={(e) => setBranchPhone(e.target.value)} placeholder="03XX-XXXXXXX" className="mt-1" />
               </div>
             </div>
-            <Button onClick={saveBranch} disabled={saving} size="sm" className="bg-gold hover:bg-gold/90 text-black font-bold h-11">
+            <Button onClick={saveBranch} disabled={saving} size="sm" className="w-full sm:w-auto bg-gold hover:bg-gold/90 text-black font-bold h-11">
               {saving ? 'Saving...' : editingId ? 'Save Changes' : 'Add Branch'}
             </Button>
           </CardContent>
@@ -792,11 +794,11 @@ function SubscriptionTab({ salon, branches }: { salon: Salon | null; branches: B
   const currentPlan = salon?.subscription_plan || 'none';
 
   return (
-    <div className="bg-card border border-border rounded-lg p-6 space-y-6">
+    <div className="bg-card border border-border rounded-lg p-4 sm:p-6 space-y-6">
       <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Subscription</p>
 
       {/* Current status */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="bg-secondary/30 p-4 border border-border rounded-lg">
           <p className="text-xs text-muted-foreground">Current Plan</p>
           <p className="text-lg font-bold capitalize mt-1">{currentPlan === 'none' ? 'No Plan' : currentPlan}</p>
@@ -841,9 +843,9 @@ function SubscriptionTab({ salon, branches }: { salon: Salon | null; branches: B
 
       {/* Plan selection */}
       {salon?.subscription_status !== 'suspended' && (
-        <div className="border border-border rounded-lg p-5 space-y-3">
+        <div className="border border-border rounded-lg p-4 sm:p-5 space-y-3">
           <p className="text-sm font-semibold">{isActive ? 'Plans' : 'Choose a Plan'}</p>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             {PLANS.map((plan) => {
               const isCurrent = currentPlan === plan.key && isActive;
               const isSelected = selectedPlan === plan.key;
@@ -890,7 +892,7 @@ function SubscriptionTab({ salon, branches }: { salon: Salon | null; branches: B
 
       {/* Bank details (shown after plan selection) */}
       {selectedPlan && (
-        <div className="border border-border rounded-lg p-5 space-y-4">
+        <div className="border border-border rounded-lg p-4 sm:p-5 space-y-4">
           <p className="text-sm font-semibold flex items-center gap-1.5">
             <CreditCard className="w-4 h-4 text-gold" />
             Payment Details
@@ -903,33 +905,33 @@ function SubscriptionTab({ salon, branches }: { salon: Salon | null; branches: B
           </div>
 
           <div className="space-y-3 text-sm">
-            <div className="flex items-center justify-between p-3 bg-secondary/30 rounded-lg">
-              <div>
+            <div className="flex items-center justify-between gap-3 p-3 bg-secondary/30 rounded-lg">
+              <div className="min-w-0 flex-1">
                 <p className="text-xs text-muted-foreground">Bank</p>
-                <p className="font-medium">{BANK_DETAILS.bankName}</p>
+                <p className="font-medium break-words">{BANK_DETAILS.bankName}</p>
               </div>
             </div>
-            <div className="flex items-center justify-between p-3 bg-secondary/30 rounded-lg">
-              <div>
+            <div className="flex items-center justify-between gap-3 p-3 bg-secondary/30 rounded-lg">
+              <div className="min-w-0 flex-1">
                 <p className="text-xs text-muted-foreground">Account Title</p>
-                <p className="font-medium">{BANK_DETAILS.accountTitle}</p>
+                <p className="font-medium break-words">{BANK_DETAILS.accountTitle}</p>
               </div>
             </div>
-            <div className="flex items-center justify-between p-3 bg-secondary/30 rounded-lg">
-              <div>
+            <div className="flex items-center justify-between gap-3 p-3 bg-secondary/30 rounded-lg">
+              <div className="min-w-0 flex-1">
                 <p className="text-xs text-muted-foreground">Account Number</p>
-                <p className="font-medium font-mono">{BANK_DETAILS.accountNumber}</p>
+                <p className="font-medium font-mono break-all">{BANK_DETAILS.accountNumber}</p>
               </div>
-              <button onClick={() => copyText(BANK_DETAILS.accountNumber, 'Account number')} className="p-1.5 hover:bg-secondary rounded">
+              <button aria-label="Copy account number" onClick={() => copyText(BANK_DETAILS.accountNumber, 'Account number')} className="p-2 -mr-1 shrink-0 hover:bg-secondary rounded">
                 <Copy className="w-4 h-4 text-muted-foreground" />
               </button>
             </div>
-            <div className="flex items-center justify-between p-3 bg-secondary/30 rounded-lg">
-              <div>
+            <div className="flex items-center justify-between gap-3 p-3 bg-secondary/30 rounded-lg">
+              <div className="min-w-0 flex-1">
                 <p className="text-xs text-muted-foreground">JazzCash</p>
-                <p className="font-medium font-mono">{BANK_DETAILS.jazzcash}</p>
+                <p className="font-medium font-mono break-all">{BANK_DETAILS.jazzcash}</p>
               </div>
-              <button onClick={() => copyText(BANK_DETAILS.jazzcash, 'JazzCash number')} className="p-1.5 hover:bg-secondary rounded">
+              <button aria-label="Copy JazzCash number" onClick={() => copyText(BANK_DETAILS.jazzcash, 'JazzCash number')} className="p-2 -mr-1 shrink-0 hover:bg-secondary rounded">
                 <Copy className="w-4 h-4 text-muted-foreground" />
               </button>
             </div>
@@ -959,12 +961,12 @@ function SubscriptionTab({ salon, branches }: { salon: Salon | null; branches: B
 
       {/* Contact support (for suspended accounts) */}
       {salon?.subscription_status === 'suspended' && (
-        <div className="bg-secondary/30 p-4 border border-border rounded-lg flex items-center justify-between">
-          <div>
+        <div className="bg-secondary/30 p-4 border border-border rounded-lg flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div className="min-w-0">
             <p className="text-sm font-medium">Account suspended</p>
             <p className="text-xs text-muted-foreground">Contact us on WhatsApp to reactivate</p>
           </div>
-          <a href="https://wa.me/923001234567?text=Hi%2C%20my%20iCut%20account%20has%20been%20suspended.%20Please%20help." target="_blank" rel="noopener noreferrer" className="text-xs font-semibold bg-gold text-black px-4 py-2 rounded-md hover:bg-gold/90 transition-all shrink-0">
+          <a href="https://wa.me/923001234567?text=Hi%2C%20my%20iCut%20account%20has%20been%20suspended.%20Please%20help." target="_blank" rel="noopener noreferrer" className="text-xs font-semibold bg-gold text-black px-4 py-2 rounded-md hover:bg-gold/90 transition-all shrink-0 text-center">
             Contact Support
           </a>
         </div>

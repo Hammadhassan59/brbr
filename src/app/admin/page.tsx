@@ -104,7 +104,7 @@ export default function AdminDashboard() {
       </div>
 
       {/* Subscription overview */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-3 gap-2 sm:gap-3">
         <Card className="border-green-500/20 bg-green-500/10">
           <CardContent className="p-4 text-center">
             <CheckCircle className="w-5 h-5 text-green-600 mx-auto mb-1" />
@@ -136,72 +136,119 @@ export default function AdminDashboard() {
           </CardTitle>
         </CardHeader>
         <CardContent className="px-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="pl-4">Salon</TableHead>
-                <TableHead>City</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Revenue (est.)</TableHead>
-                <TableHead className="text-center pr-4">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {salons.map((salon) => {
-                const type = TYPE_BADGE[salon.type] || TYPE_BADGE.unisex;
-                const subStatus = salon.subscription_status as string | undefined;
-                const STATUS_BADGE: Record<string, string> = {
-                  active: 'text-green-600 border-green-500/25 bg-green-500/10',
-                  pending: 'text-amber-600 border-amber-500/25 bg-amber-500/10',
-                  expired: 'text-red-600 border-red-500/25 bg-red-500/10',
-                  suspended: 'text-gray-500 border-gray-400/25 bg-gray-500/10',
-                };
-                const statusCls = STATUS_BADGE[subStatus ?? ''] || 'text-gray-500 border-gray-400/25 bg-gray-500/10';
-                const statusLabel = subStatus
-                  ? subStatus.charAt(0).toUpperCase() + subStatus.slice(1)
-                  : 'Unknown';
-                return (
-                  <TableRow key={salon.id}>
-                    <TableCell className="pl-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-lg bg-gold/10 text-gold font-bold text-xs flex items-center justify-center shrink-0">
-                          {salon.name.split(' ').map((w) => w[0]).join('').slice(0, 2)}
+          {/* Mobile card list */}
+          <ul className="sm:hidden divide-y">
+            {salons.map((salon) => {
+              const type = TYPE_BADGE[salon.type] || TYPE_BADGE.unisex;
+              const subStatus = salon.subscription_status as string | undefined;
+              const STATUS_BADGE: Record<string, string> = {
+                active: 'text-green-600 border-green-500/25 bg-green-500/10',
+                pending: 'text-amber-600 border-amber-500/25 bg-amber-500/10',
+                expired: 'text-red-600 border-red-500/25 bg-red-500/10',
+                suspended: 'text-gray-500 border-gray-400/25 bg-gray-500/10',
+              };
+              const statusCls = STATUS_BADGE[subStatus ?? ''] || 'text-gray-500 border-gray-400/25 bg-gray-500/10';
+              const statusLabel = subStatus
+                ? subStatus.charAt(0).toUpperCase() + subStatus.slice(1)
+                : 'Unknown';
+              return (
+                <li key={salon.id} className="px-4 py-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-lg bg-gold/10 text-gold font-bold text-xs flex items-center justify-center shrink-0">
+                      {salon.name.split(' ').map((w) => w[0]).join('').slice(0, 2)}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="font-medium text-sm truncate">{salon.name}</p>
+                      <p className="text-[10px] text-muted-foreground truncate">{salon.phone}</p>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 text-xs gap-1 shrink-0"
+                      onClick={() => enterSalon(salon)}
+                    >
+                      <Eye className="w-3 h-3" /> View
+                    </Button>
+                  </div>
+                  <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[10px] text-muted-foreground">
+                    <span className="truncate max-w-[40%]">{salon.city}</span>
+                    <Badge variant="secondary" className={`text-[10px] ${type.cls}`}>{type.label}</Badge>
+                    <Badge variant="outline" className={`text-[10px] ${statusCls}`}>{statusLabel}</Badge>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+
+          {/* Desktop table */}
+          <div className="hidden sm:block">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="pl-4">Salon</TableHead>
+                  <TableHead>City</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Revenue (est.)</TableHead>
+                  <TableHead className="text-center pr-4">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {salons.map((salon) => {
+                  const type = TYPE_BADGE[salon.type] || TYPE_BADGE.unisex;
+                  const subStatus = salon.subscription_status as string | undefined;
+                  const STATUS_BADGE: Record<string, string> = {
+                    active: 'text-green-600 border-green-500/25 bg-green-500/10',
+                    pending: 'text-amber-600 border-amber-500/25 bg-amber-500/10',
+                    expired: 'text-red-600 border-red-500/25 bg-red-500/10',
+                    suspended: 'text-gray-500 border-gray-400/25 bg-gray-500/10',
+                  };
+                  const statusCls = STATUS_BADGE[subStatus ?? ''] || 'text-gray-500 border-gray-400/25 bg-gray-500/10';
+                  const statusLabel = subStatus
+                    ? subStatus.charAt(0).toUpperCase() + subStatus.slice(1)
+                    : 'Unknown';
+                  return (
+                    <TableRow key={salon.id}>
+                      <TableCell className="pl-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-9 h-9 rounded-lg bg-gold/10 text-gold font-bold text-xs flex items-center justify-center shrink-0">
+                            {salon.name.split(' ').map((w) => w[0]).join('').slice(0, 2)}
+                          </div>
+                          <div>
+                            <p className="font-medium text-sm">{salon.name}</p>
+                            <p className="text-[10px] text-muted-foreground">{salon.phone}</p>
+                          </div>
                         </div>
-                        <div>
-                          <p className="font-medium text-sm">{salon.name}</p>
-                          <p className="text-[10px] text-muted-foreground">{salon.phone}</p>
+                      </TableCell>
+                      <TableCell className="text-sm">{salon.city}</TableCell>
+                      <TableCell>
+                        <Badge variant="secondary" className={`text-[10px] ${type.cls}`}>{type.label}</Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className={`text-[10px] ${statusCls}`}>{statusLabel}</Badge>
+                      </TableCell>
+                      <TableCell className="text-right text-sm">
+                        <span>—</span>
+                        <Link href="/admin/analytics" className="block text-[10px] text-muted-foreground hover:text-foreground">(see Analytics)</Link>
+                      </TableCell>
+                      <TableCell className="text-center pr-4">
+                        <div className="flex items-center justify-center gap-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 text-xs gap-1"
+                            onClick={() => enterSalon(salon)}
+                          >
+                            <Eye className="w-3 h-3" /> View
+                          </Button>
                         </div>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-sm">{salon.city}</TableCell>
-                    <TableCell>
-                      <Badge variant="secondary" className={`text-[10px] ${type.cls}`}>{type.label}</Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className={`text-[10px] ${statusCls}`}>{statusLabel}</Badge>
-                    </TableCell>
-                    <TableCell className="text-right text-sm">
-                      <span>—</span>
-                      <Link href="/admin/analytics" className="block text-[10px] text-muted-foreground hover:text-foreground">(see Analytics)</Link>
-                    </TableCell>
-                    <TableCell className="text-center pr-4">
-                      <div className="flex items-center justify-center gap-1">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-7 text-xs gap-1"
-                          onClick={() => enterSalon(salon)}
-                        >
-                          <Eye className="w-3 h-3" /> View
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
         </CardContent>
       </Card>
 

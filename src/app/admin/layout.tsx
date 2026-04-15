@@ -6,7 +6,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import {
   LayoutDashboard, Store, Users, BarChart3, Settings,
   Shield, LogOut, Scissors, Loader2, CreditCard,
-  UserCog, Target, Wallet, Receipt, User,
+  UserCog, Target, Wallet, Receipt, User, Menu, X,
 } from 'lucide-react';
 import { getPendingPaymentCount } from '@/app/actions/payment-requests';
 import { useAppStore } from '@/store/app-store';
@@ -33,6 +33,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const { salon, currentStaff, isSuperAdmin, reset } = useAppStore();
   const [authChecked, setAuthChecked] = useState(false);
   const [pendingPayments, setPendingPayments] = useState(0);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
     if (!isSuperAdmin) {
@@ -47,6 +48,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     if (!isSuperAdmin) return;
     getPendingPaymentCount().then(setPendingPayments).catch(() => {});
   }, [isSuperAdmin, pathname]);
+
+  // Close the drawer whenever the route changes (mobile UX)
+  useEffect(() => {
+    setSidebarOpen(false);
+  }, [pathname]);
 
   if (!authChecked) {
     return (
@@ -66,8 +72,22 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   return (
     <div className="h-screen flex overflow-hidden bg-background">
+      {/* Mobile overlay */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/50 lg:hidden animate-in fade-in duration-200"
+          role="button"
+          aria-label="Close sidebar"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
       {/* Sidebar */}
-      <aside className="w-64 bg-sidebar text-sidebar-foreground flex flex-col shrink-0">
+      <aside
+        className={`fixed inset-y-0 left-0 z-50 w-64 bg-sidebar text-sidebar-foreground flex flex-col transition-transform duration-300 ease-[cubic-bezier(0.2,0,0,1)] lg:relative lg:translate-x-0 lg:shrink-0 ${
+          sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+        }`}
+      >
         {/* Logo */}
         <div className="flex items-center gap-2 px-5 py-4 border-b border-sidebar-border">
           <Scissors className="w-5 h-5 text-sidebar-primary" />
@@ -75,6 +95,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <span className="text-[10px] bg-red-500/20 text-red-400 px-1.5 py-0.5 rounded font-medium ml-auto flex items-center gap-1">
             <Shield className="w-3 h-3" /> ADMIN
           </span>
+          <button
+            onClick={() => setSidebarOpen(false)}
+            className="lg:hidden ml-1 text-sidebar-foreground/60 hover:text-sidebar-foreground"
+            aria-label="Close sidebar"
+          >
+            <X className="w-4 h-4" />
+          </button>
         </div>
 
         {/* Nav */}
@@ -135,10 +162,17 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
       {/* Content */}
       <div className="flex-1 flex flex-col min-w-0">
-        <header className="sticky top-0 z-30 bg-card border-b px-6 h-14 flex items-center">
-          <h1 className="font-heading text-lg font-semibold">iCut Admin Panel</h1>
+        <header className="sticky top-0 z-30 bg-card border-b px-4 lg:px-6 h-14 flex items-center gap-3">
+          <button
+            onClick={() => setSidebarOpen(true)}
+            className="lg:hidden -ml-1 p-2 rounded-lg hover:bg-accent touch-target"
+            aria-label="Open menu"
+          >
+            <Menu className="w-5 h-5" />
+          </button>
+          <h1 className="font-heading text-base lg:text-lg font-semibold truncate">iCut Admin Panel</h1>
         </header>
-        <main className="flex-1 overflow-y-auto p-6">
+        <main className="flex-1 overflow-y-auto p-4 lg:p-6">
           <ErrorBoundary>
             {children}
           </ErrorBoundary>

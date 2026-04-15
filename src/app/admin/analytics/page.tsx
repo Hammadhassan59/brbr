@@ -103,18 +103,18 @@ export default function AdminAnalyticsPage() {
       <h2 className="font-heading text-xl font-bold">Platform Analytics</h2>
 
       {/* Super admin subscription revenue (MRR) — separate from platform gross */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
         <Card>
           <CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground">Your Subscription MRR</CardTitle></CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold">{formatPKR(subscriptionMrr)}</p>
+            <p className="text-2xl sm:text-3xl font-bold break-words">{formatPKR(subscriptionMrr)}</p>
             <p className="text-xs text-muted-foreground mt-1">Recurring monthly revenue from active salons</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground">Active Subscribers</CardTitle></CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold">{activeSubscribers}</p>
+            <p className="text-2xl sm:text-3xl font-bold">{activeSubscribers}</p>
             <p className="text-xs text-muted-foreground mt-1">Salons on a paid plan</p>
           </CardContent>
         </Card>
@@ -137,52 +137,58 @@ export default function AdminAnalyticsPage() {
         </Card>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4">
         {/* Platform revenue trend */}
         <Card>
           <CardHeader className="pb-2"><CardTitle className="text-sm">Platform Revenue Growth</CardTitle></CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={250}>
-              <LineChart data={monthlyRevenue}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                <XAxis dataKey="month" tick={{ fontSize: 11 }} />
-                <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `${(v / 100000).toFixed(1)}L`} />
-                <Tooltip formatter={(v) => formatPKR(Number(v))} />
-                <Line type="monotone" dataKey="revenue" stroke="#FEBE10" strokeWidth={2.5} dot={{ fill: '#FEBE10' }} />
-              </LineChart>
-            </ResponsiveContainer>
+          <CardContent className="px-2 sm:px-6">
+            <div className="h-56 sm:h-64 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={monthlyRevenue} margin={{ top: 5, right: 8, left: 0, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                  <XAxis dataKey="month" tick={{ fontSize: 10 }} />
+                  <YAxis tick={{ fontSize: 10 }} width={40} tickFormatter={(v) => `${(v / 100000).toFixed(1)}L`} />
+                  <Tooltip formatter={(v) => formatPKR(Number(v))} />
+                  <Line type="monotone" dataKey="revenue" stroke="#FEBE10" strokeWidth={2.5} dot={{ fill: '#FEBE10' }} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
           </CardContent>
         </Card>
 
         {/* Revenue per salon */}
         <Card>
           <CardHeader className="pb-2"><CardTitle className="text-sm">Revenue by Salon (This Month)</CardTitle></CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={250}>
-              <BarChart data={salonRevenue}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                <XAxis dataKey="name" tick={{ fontSize: 10 }} />
-                <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => `${(v / 1000).toFixed(0)}K`} />
-                <Tooltip formatter={(v) => formatPKR(Number(v))} />
-                <Bar dataKey="revenue" fill="#FEBE10" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
+          <CardContent className="px-2 sm:px-6">
+            <div className="h-56 sm:h-64 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={salonRevenue} margin={{ top: 5, right: 8, left: 0, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                  <XAxis dataKey="name" tick={{ fontSize: 9 }} interval={0} angle={-20} textAnchor="end" height={50} />
+                  <YAxis tick={{ fontSize: 9 }} width={40} tickFormatter={(v) => `${(v / 1000).toFixed(0)}K`} />
+                  <Tooltip formatter={(v) => formatPKR(Number(v))} />
+                  <Bar dataKey="revenue" fill="#FEBE10" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
           </CardContent>
         </Card>
 
         {/* City distribution */}
         <Card>
           <CardHeader className="pb-2"><CardTitle className="text-sm">Salons by City</CardTitle></CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={220}>
-              <PieChart>
-                <Pie data={cityDist} cx="50%" cy="50%" outerRadius={75} dataKey="value" label>
-                  {cityDist.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-                </Pie>
-                <Tooltip />
-                <Legend wrapperStyle={{ fontSize: '11px' }} />
-              </PieChart>
-            </ResponsiveContainer>
+          <CardContent className="px-2 sm:px-6">
+            <div className="h-56 sm:h-64 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie data={cityDist} cx="50%" cy="50%" outerRadius="70%" dataKey="value" label={{ fontSize: 10 }}>
+                    {cityDist.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                  </Pie>
+                  <Tooltip />
+                  <Legend wrapperStyle={{ fontSize: '11px' }} />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
           </CardContent>
         </Card>
 
