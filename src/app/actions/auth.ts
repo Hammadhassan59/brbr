@@ -19,6 +19,7 @@ export interface SessionPayload {
   role: string;
   branchId: string;
   name: string;
+  agentId?: string;
 }
 
 export async function signSession(payload: SessionPayload) {
