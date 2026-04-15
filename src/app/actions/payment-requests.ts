@@ -169,6 +169,38 @@ export async function listPaymentRequests(
 }
 
 /**
+ * Admin-side: return total counts per status across ALL payment_requests,
+ * independent of any filter the admin UI has applied. Drives the tab badges.
+ */
+export async function getPaymentRequestCounts(): Promise<{
+  data: { pending: number; approved: number; rejected: number };
+  error: string | null;
+}> {
+  await requireSuperAdmin();
+  const supabase = createServerClient();
+
+  const [pending, approved, rejected] = await Promise.all([
+    supabase.from('payment_requests').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
+    supabase.from('payment_requests').select('id', { count: 'exact', head: true }).eq('status', 'approved'),
+    supabase.from('payment_requests').select('id', { count: 'exact', head: true }).eq('status', 'rejected'),
+  ]);
+
+  const firstError = pending.error || approved.error || rejected.error;
+  if (firstError) {
+    return { data: { pending: 0, approved: 0, rejected: 0 }, error: firstError.message };
+  }
+
+  return {
+    data: {
+      pending: pending.count ?? 0,
+      approved: approved.count ?? 0,
+      rejected: rejected.count ?? 0,
+    },
+    error: null,
+  };
+}
+
+/**
  * Admin-side: approve a pending request. Activates the salon with the requested
  * plan and extends the expiry by `duration_days` (default 30) from now (or from
  * the existing expiry if it's still in the future, so back-to-back renewals stack).

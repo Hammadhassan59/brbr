@@ -8,6 +8,7 @@ import {
 import toast from 'react-hot-toast';
 import {
   listPaymentRequests,
+  getPaymentRequestCounts,
   approvePaymentRequest,
   rejectPaymentRequest,
   reversePaymentRequest,
@@ -50,6 +51,7 @@ function formatRelative(iso: string) {
 
 export default function AdminPaymentsPage() {
   const [requests, setRequests] = useState<PaymentRequestWithSalon[]>([]);
+  const [counts, setCounts] = useState({ pending: 0, approved: 0, rejected: 0 });
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<Filter>('pending');
   const [search, setSearch] = useState('');
@@ -72,12 +74,18 @@ export default function AdminPaymentsPage() {
   const fetchRequests = useCallback(async () => {
     setLoading(true);
     try {
-      const { data, error } = await listPaymentRequests({ status: filter });
-      if (error) {
-        toast.error(error);
+      const [listResult, countsResult] = await Promise.all([
+        listPaymentRequests({ status: filter }),
+        getPaymentRequestCounts(),
+      ]);
+      if (listResult.error) {
+        toast.error(listResult.error);
         setRequests([]);
       } else {
-        setRequests(data);
+        setRequests(listResult.data);
+      }
+      if (!countsResult.error) {
+        setCounts(countsResult.data);
       }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to load requests');
@@ -97,12 +105,6 @@ export default function AdminPaymentsPage() {
       r.reference?.toLowerCase().includes(q)
     );
   });
-
-  const counts = {
-    pending: requests.filter((r) => r.status === 'pending').length,
-    approved: requests.filter((r) => r.status === 'approved').length,
-    rejected: requests.filter((r) => r.status === 'rejected').length,
-  };
 
   function openApprove(r: PaymentRequestWithSalon) {
     setApproveTarget(r);
