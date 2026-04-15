@@ -39,7 +39,9 @@ export function ImpersonationBanner() {
     s.setIsOwner(false);
     s.setIsPartner(false);
     s.setIsSuperAdmin(true);
-    // Hard navigation so proxy.ts picks up the restored super_admin role cookie.
+    // Match the login flow and reset role cookies client-side with 24h max-age.
+    document.cookie = `icut-session=1; path=/; max-age=${60 * 60 * 24}; SameSite=Strict`;
+    document.cookie = `icut-role=super_admin; path=/; max-age=${60 * 60 * 24}; SameSite=Strict`;
     window.location.href = '/admin';
   }
 

@@ -71,9 +71,13 @@ export default function AdminSalonsPage() {
       toast.error(error || 'Could not log in as this salon');
       return;
     }
-    // Mirror a normal owner login into Zustand so every {isOwner && ...} gate
-    // across /dashboard opens the right features. Without this, the impersonated
-    // session shows limited access because the store still thinks we're super_admin.
+    // Match the login flow exactly — set the session/role cookies client-side
+    // with 24h max-age. Setting via server action races with window.location.href
+    // and sometimes the browser fires GET /dashboard before processing the
+    // response's Set-Cookie headers, leaving the proxy with stale super_admin role.
+    document.cookie = `icut-session=1; path=/; max-age=${60 * 60 * 24}; SameSite=Strict`;
+    document.cookie = `icut-role=owner; path=/; max-age=${60 * 60 * 24}; SameSite=Strict`;
+    // Mirror a normal owner login into Zustand so every {isOwner && ...} gate opens.
     setSalon(data.salon as unknown as Salon);
     setBranches((data.branches as unknown) as Branch[]);
     setCurrentBranch(data.mainBranch as unknown as Branch);
@@ -82,8 +86,6 @@ export default function AdminSalonsPage() {
     setIsSuperAdmin(false);
     setCurrentStaff(null);
     setCurrentPartner(null);
-    // Hard navigation so the freshly-set icut-role=owner cookie is picked up
-    // by the proxy on the next request.
     window.location.href = '/dashboard';
   }
 
