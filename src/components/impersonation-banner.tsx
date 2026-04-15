@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { Eye } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Button } from '@/components/ui/button';
+import { useAppStore } from '@/store/app-store';
 import { exitImpersonation, getImpersonationContext } from '@/app/actions/admin';
 
 export function ImpersonationBanner() {
@@ -27,6 +28,17 @@ export function ImpersonationBanner() {
       setExiting(false);
       return;
     }
+    // Flip the client-side store back to super_admin so /admin doesn't get
+    // stuck in the "not a super admin" branch after navigation.
+    const s = useAppStore.getState();
+    s.setSalon(null);
+    s.setBranches([]);
+    s.setCurrentBranch(null);
+    s.setCurrentStaff(null);
+    s.setCurrentPartner(null);
+    s.setIsOwner(false);
+    s.setIsPartner(false);
+    s.setIsSuperAdmin(true);
     // Hard navigation so proxy.ts picks up the restored super_admin role cookie.
     window.location.href = '/admin';
   }

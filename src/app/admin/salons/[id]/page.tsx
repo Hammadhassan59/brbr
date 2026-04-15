@@ -86,7 +86,7 @@ export default function AdminSalonDetailPage({
 }) {
   const { id } = use(params);
   const router = useRouter();
-  const { setSalon, setCurrentBranch } = useAppStore();
+  const { setSalon, setBranches: setStoreBranches, setCurrentBranch, setIsOwner, setIsPartner, setIsSuperAdmin, setCurrentStaff, setCurrentPartner } = useAppStore();
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -217,14 +217,16 @@ export default function AdminSalonDetailPage({
       toast.error(error || 'Could not start impersonation');
       return;
     }
-    setSalon(salon);
-    try {
-      const branch = await getAdminBranchForSalon(salon.id);
-      if (branch) setCurrentBranch(branch as Branch);
-    } catch {
-      // Branch will be loaded by dashboard
-    }
-    // Hard navigation so the new session cookies are applied on the next request.
+    // Mirror a normal owner login into Zustand so every {isOwner && ...} gate
+    // across /dashboard opens the right features.
+    setSalon(data.salon as unknown as Salon);
+    setStoreBranches((data.branches as unknown) as Branch[]);
+    setCurrentBranch(data.mainBranch as unknown as Branch);
+    setIsOwner(true);
+    setIsPartner(false);
+    setIsSuperAdmin(false);
+    setCurrentStaff(null);
+    setCurrentPartner(null);
     window.location.href = '/dashboard';
   }
 

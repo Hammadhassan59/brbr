@@ -374,7 +374,11 @@ export async function setSalonSoldByAgent(salonId: string, agentId: string | nul
  * the user to /dashboard as an owner.
  */
 export async function impersonateSalon(salonId: string): Promise<{
-  data: { salon: { id: string; name: string }; branchId: string } | null;
+  data: {
+    salon: Record<string, unknown>;
+    branches: Array<Record<string, unknown>>;
+    mainBranch: Record<string, unknown>;
+  } | null;
   error: string | null;
 }> {
   const session = await requireSuperAdmin();
@@ -385,7 +389,7 @@ export async function impersonateSalon(salonId: string): Promise<{
 
   const { data: salon, error: salonErr } = await supabase
     .from('salons')
-    .select('id, name, owner_id')
+    .select('*')
     .eq('id', salonId)
     .maybeSingle();
   if (salonErr) return { data: null, error: salonErr.message };
@@ -393,7 +397,7 @@ export async function impersonateSalon(salonId: string): Promise<{
 
   const { data: branches } = await supabase
     .from('branches')
-    .select('id, is_main')
+    .select('*')
     .eq('salon_id', salonId)
     .order('is_main', { ascending: false });
   const mainBranch = branches?.[0];
@@ -417,7 +421,7 @@ export async function impersonateSalon(salonId: string): Promise<{
   cookieStore.set('icut-session', '1', { path: '/', sameSite: 'strict' });
   cookieStore.set('icut-role', 'owner', { path: '/', sameSite: 'strict' });
 
-  return { data: { salon: { id: salon.id, name: salon.name }, branchId: mainBranch.id }, error: null };
+  return { data: { salon, branches: branches || [], mainBranch }, error: null };
 }
 
 /**

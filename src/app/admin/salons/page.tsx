@@ -2,10 +2,10 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { Eye, Plus, Loader2, Settings, Search, LayoutGrid, List } from 'lucide-react';
+import { LogIn, Plus, Loader2, Settings, Search, LayoutGrid, List } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAppStore } from '@/store/app-store';
-import { getAdminSalons, getAdminBranchForSalon } from '@/app/actions/admin';
+import { getAdminSalons, impersonateSalon } from '@/app/actions/admin';
 import { formatPKDate } from '@/lib/utils/dates';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -31,7 +31,7 @@ const STATUS_COLORS: Record<string, string> = {
 
 export default function AdminSalonsPage() {
   const router = useRouter();
-  const { setSalon, setCurrentBranch } = useAppStore();
+  const { setSalon, setBranches, setCurrentBranch, setIsOwner, setIsPartner, setIsSuperAdmin, setCurrentStaff, setCurrentPartner } = useAppStore();
 
   const [salons, setSalons] = useState<Salon[]>([]);
   const [loading, setLoading] = useState(true);
@@ -66,14 +66,25 @@ export default function AdminSalonsPage() {
   }, [salons, search]);
 
   async function enterSalon(salon: Salon) {
-    setSalon(salon);
-    try {
-      const branch = await getAdminBranchForSalon(salon.id);
-      if (branch) setCurrentBranch(branch as Branch);
-    } catch {
-      // Branch will be loaded by dashboard
+    const { data, error } = await impersonateSalon(salon.id);
+    if (error || !data) {
+      toast.error(error || 'Could not log in as this salon');
+      return;
     }
-    router.push('/dashboard');
+    // Mirror a normal owner login into Zustand so every {isOwner && ...} gate
+    // across /dashboard opens the right features. Without this, the impersonated
+    // session shows limited access because the store still thinks we're super_admin.
+    setSalon(data.salon as unknown as Salon);
+    setBranches((data.branches as unknown) as Branch[]);
+    setCurrentBranch(data.mainBranch as unknown as Branch);
+    setIsOwner(true);
+    setIsPartner(false);
+    setIsSuperAdmin(false);
+    setCurrentStaff(null);
+    setCurrentPartner(null);
+    // Hard navigation so the freshly-set icut-role=owner cookie is picked up
+    // by the proxy on the next request.
+    window.location.href = '/dashboard';
   }
 
   function toggleView(mode: ViewMode) {
@@ -174,8 +185,8 @@ export default function AdminSalonsPage() {
                     <Button variant="outline" size="sm" className="flex-1 text-xs gap-1" onClick={() => router.push(`/admin/salons/${salon.id}`)}>
                       <Settings className="w-3 h-3" /> Manage
                     </Button>
-                    <Button variant="outline" size="sm" className="flex-1 text-xs gap-1" onClick={() => enterSalon(salon)}>
-                      <Eye className="w-3 h-3" /> Enter
+                    <Button size="sm" className="flex-1 text-xs gap-1 bg-gold text-black border border-gold hover:bg-gold/90" onClick={() => enterSalon(salon)}>
+                      <LogIn className="w-3 h-3" /> Login as Salon
                     </Button>
                   </div>
                 </CardContent>
@@ -237,8 +248,8 @@ export default function AdminSalonsPage() {
                           <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={() => router.push(`/admin/salons/${salon.id}`)}>
                             <Settings className="w-3 h-3" /> Manage
                           </Button>
-                          <Button variant="ghost" size="sm" className="h-7 text-xs gap-1" onClick={() => enterSalon(salon)}>
-                            <Eye className="w-3 h-3" /> Enter
+                          <Button size="sm" className="h-7 text-xs gap-1 bg-gold text-black border border-gold hover:bg-gold/90" onClick={() => enterSalon(salon)}>
+                            <LogIn className="w-3 h-3" /> Login
                           </Button>
                         </div>
                       </TableCell>
