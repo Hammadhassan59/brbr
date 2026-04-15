@@ -27,7 +27,7 @@ Introduce a **sales agent** role. Sales agents visit salons in the field, pitch 
 | # | Decision | Rationale |
 |---|----------|-----------|
 | 1 | Leads are created by superadmin and **assigned** to a specific agent. | Centralized lead distribution; agents don't self-prospect. |
-| 2 | Superadmin creates agents in `/admin/users`. Agents log in via email+password to `/agent`. | Reuses existing auth; dedicated surface keeps concerns separate. |
+| 2 | Superadmin creates agents in `/admin/agents` (new dedicated page). Agents log in via email+password to `/agent`. | Reuses existing auth; dedicated surface keeps concerns separate. |
 | 3 | Per-agent **first-sale %** and **renewal %**, flat across all plans. | Two numbers per agent — enough flexibility without per-plan complexity. |
 | 4 | Recurring commission continues **forever** as long as the salon keeps renewing. | Long-term incentive alignment; simplest mental model. |
 | 5 | Single `status` field per lead (no visit history). | Keeps the model simple; matches the user's stated preference. |
