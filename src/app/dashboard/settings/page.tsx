@@ -1,10 +1,10 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { Plus, X, Scissors, Sparkles, Users, MapPin, Pencil, Trash2, Copy, CreditCard, Check, Lock, Mail, KeyRound } from 'lucide-react';
+import { Plus, X, Scissors, Sparkles, Users, MapPin, Pencil, Trash2, Copy, CreditCard, Check, Lock } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { updateSalon, updateBranchWorkingHours, createService, updateService, deleteService, createBranch, updateBranch, deleteBranch } from '@/app/actions/settings';
-import { getAccountEmail, changeAccountEmail, changeAccountPassword } from '@/app/actions/account';
+import { ProfileCard } from '@/components/profile-card';
 import { useAppStore } from '@/store/app-store';
 import { useLanguage } from '@/components/providers/language-provider';
 import { Button } from '@/components/ui/button';
@@ -241,7 +241,7 @@ export default function SettingsPage() {
             {canManage && <TabsTrigger value="tax" className="text-xs px-3.5 py-2 font-medium transition-all duration-150 border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30">Tax & Billing</TabsTrigger>}
             {isOwner && <TabsTrigger value="branches" className="text-xs px-3.5 py-2 font-medium transition-all duration-150 border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30">Branches</TabsTrigger>}
             {isOwner && <TabsTrigger value="subscription" className="text-xs px-3.5 py-2 font-medium transition-all duration-150 border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30">Subscription</TabsTrigger>}
-            <TabsTrigger value="account" className="text-xs px-3.5 py-2 font-medium transition-all duration-150 border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30">Account</TabsTrigger>
+            <TabsTrigger value="account" className="text-xs px-3.5 py-2 font-medium transition-all duration-150 border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30">Profile</TabsTrigger>
             <TabsTrigger value="display" className="text-xs px-3.5 py-2 font-medium transition-all duration-150 border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30">Display</TabsTrigger>
           </TabsList>
         </div>
@@ -416,9 +416,9 @@ export default function SettingsPage() {
           <SubscriptionTab salon={salon} branches={branches} />
         </TabsContent>}
 
-        {/* Account */}
+        {/* Profile (email / password / name / phone) */}
         <TabsContent value="account" className="mt-4">
-          <AccountTab />
+          <ProfileCard />
         </TabsContent>
 
         {/* Display */}
@@ -974,151 +974,3 @@ function SubscriptionTab({ salon, branches }: { salon: Salon | null; branches: B
 }
 
 
-// ───────────────────────────────────────
-// Account Tab sub-component — change email / password
-// ───────────────────────────────────────
-
-function AccountTab() {
-  const [email, setEmail] = useState('');
-  const [loadingEmail, setLoadingEmail] = useState(true);
-
-  // Email form
-  const [newEmail, setNewEmail] = useState('');
-  const [emailPassword, setEmailPassword] = useState('');
-  const [emailSaving, setEmailSaving] = useState(false);
-
-  // Password form
-  const [currentPassword, setCurrentPassword] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [pwSaving, setPwSaving] = useState(false);
-
-  useEffect(() => {
-    getAccountEmail().then((res) => {
-      if (res.data) setEmail(res.data.email);
-      setLoadingEmail(false);
-    });
-  }, []);
-
-  async function submitEmail(e: React.FormEvent) {
-    e.preventDefault();
-    if (!newEmail.trim()) { toast.error('Enter a new email'); return; }
-    if (!emailPassword) { toast.error('Enter your current password'); return; }
-    setEmailSaving(true);
-    try {
-      const { data, error } = await changeAccountEmail({ currentPassword: emailPassword, newEmail: newEmail.trim() });
-      if (error) { toast.error(error); return; }
-      if (data) {
-        setEmail(data.email);
-        setNewEmail('');
-        setEmailPassword('');
-        toast.success('Email updated — use the new email next time you log in');
-      }
-    } finally {
-      setEmailSaving(false);
-    }
-  }
-
-  async function submitPassword(e: React.FormEvent) {
-    e.preventDefault();
-    if (!currentPassword) { toast.error('Enter your current password'); return; }
-    if (newPassword.length < 6) { toast.error('New password must be at least 6 characters'); return; }
-    if (newPassword !== confirmPassword) { toast.error('Passwords do not match'); return; }
-    setPwSaving(true);
-    try {
-      const { error } = await changeAccountPassword({ currentPassword, newPassword });
-      if (error) { toast.error(error); return; }
-      setCurrentPassword('');
-      setNewPassword('');
-      setConfirmPassword('');
-      toast.success('Password updated');
-    } finally {
-      setPwSaving(false);
-    }
-  }
-
-  return (
-    <div className="space-y-4">
-      <div className="bg-card border border-border rounded-lg p-6 space-y-5">
-        <div className="flex items-center gap-2">
-          <Mail className="w-4 h-4 text-gold" />
-          <p className="text-sm font-semibold">Email Address</p>
-        </div>
-        <div>
-          <Label className="text-xs">Current Email</Label>
-          <div className="mt-1 text-sm font-medium">{loadingEmail ? '…' : email || '—'}</div>
-        </div>
-        <form onSubmit={submitEmail} className="space-y-3">
-          <div>
-            <Label className="text-xs">New Email</Label>
-            <Input
-              type="email"
-              inputMode="email"
-              autoComplete="email"
-              value={newEmail}
-              onChange={(e) => setNewEmail(e.target.value)}
-              placeholder="new@example.com"
-              className="mt-1"
-            />
-          </div>
-          <div>
-            <Label className="text-xs">Current Password</Label>
-            <Input
-              type="password"
-              autoComplete="current-password"
-              value={emailPassword}
-              onChange={(e) => setEmailPassword(e.target.value)}
-              className="mt-1"
-            />
-          </div>
-          <Button type="submit" disabled={emailSaving} className="bg-gold hover:bg-gold/90 text-black font-bold h-11">
-            {emailSaving ? 'Updating…' : 'Update Email'}
-          </Button>
-        </form>
-      </div>
-
-      <div className="bg-card border border-border rounded-lg p-6 space-y-5">
-        <div className="flex items-center gap-2">
-          <KeyRound className="w-4 h-4 text-gold" />
-          <p className="text-sm font-semibold">Password</p>
-        </div>
-        <form onSubmit={submitPassword} className="space-y-3">
-          <div>
-            <Label className="text-xs">Current Password</Label>
-            <Input
-              type="password"
-              autoComplete="current-password"
-              value={currentPassword}
-              onChange={(e) => setCurrentPassword(e.target.value)}
-              className="mt-1"
-            />
-          </div>
-          <div>
-            <Label className="text-xs">New Password</Label>
-            <Input
-              type="password"
-              autoComplete="new-password"
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              placeholder="At least 6 characters"
-              className="mt-1"
-            />
-          </div>
-          <div>
-            <Label className="text-xs">Confirm New Password</Label>
-            <Input
-              type="password"
-              autoComplete="new-password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              className="mt-1"
-            />
-          </div>
-          <Button type="submit" disabled={pwSaving} className="bg-gold hover:bg-gold/90 text-black font-bold h-11">
-            {pwSaving ? 'Updating…' : 'Update Password'}
-          </Button>
-        </form>
-      </div>
-    </div>
-  );
-}

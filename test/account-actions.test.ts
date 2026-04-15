@@ -12,16 +12,24 @@ let anonSignOut = vi.fn().mockResolvedValue({ error: null });
 const partnerRow: { auth_user_id: string | null; salon_id: string } = { auth_user_id: 'auth-partner-1', salon_id: 'salon-1' };
 const staffRow: { auth_user_id: string | null; salon_id: string } = { auth_user_id: 'auth-staff-1', salon_id: 'salon-1' };
 
+const agentRow = { name: 'Agent Name', phone: '0300-0000000' };
+
 const fromMock = vi.fn((table: string) => {
   if (table === 'salon_partners') {
     return {
-      select: () => ({ eq: () => ({ maybeSingle: () => Promise.resolve({ data: partnerRow }) }) }),
+      select: () => ({ eq: () => ({ maybeSingle: () => Promise.resolve({ data: { ...partnerRow, name: 'Partner Name' } }) }) }),
       update: () => ({ eq: () => Promise.resolve({ error: null }) }),
     };
   }
   if (table === 'staff') {
     return {
-      select: () => ({ eq: () => ({ maybeSingle: () => Promise.resolve({ data: staffRow }) }) }),
+      select: () => ({ eq: () => ({ maybeSingle: () => Promise.resolve({ data: { ...staffRow, name: 'Staff Name' } }) }) }),
+      update: () => ({ eq: () => Promise.resolve({ error: null }) }),
+    };
+  }
+  if (table === 'sales_agents') {
+    return {
+      select: () => ({ eq: () => ({ maybeSingle: () => Promise.resolve({ data: agentRow }) }) }),
       update: () => ({ eq: () => Promise.resolve({ error: null }) }),
     };
   }
@@ -75,19 +83,20 @@ describe('account actions — getAccountEmail', () => {
     expect(res.data?.email).toBe('owner@example.com');
   });
 
-  it('rejects super_admin role', async () => {
+  it('super_admin uses session.staffId directly as auth user id', async () => {
     session = { ...session, role: 'super_admin' };
     const { getAccountEmail } = await import('../src/app/actions/account');
     const res = await getAccountEmail();
-    expect(res.data).toBeNull();
-    expect(res.error).toMatch(/not available/i);
+    expect(res.error).toBeNull();
+    expect(adminGetUserById).toHaveBeenCalledWith('auth-user-1');
   });
 
-  it('rejects sales_agent role', async () => {
+  it('sales_agent uses session.staffId directly as auth user id', async () => {
     session = { ...session, role: 'sales_agent' };
     const { getAccountEmail } = await import('../src/app/actions/account');
     const res = await getAccountEmail();
-    expect(res.error).toMatch(/not available/i);
+    expect(res.error).toBeNull();
+    expect(adminGetUserById).toHaveBeenCalledWith('auth-user-1');
   });
 });
 
@@ -169,6 +178,81 @@ describe('account actions — changeAccountEmail', () => {
     const { changeAccountEmail } = await import('../src/app/actions/account');
     const res = await changeAccountEmail({ currentPassword: 'oldpass', newEmail: 'taken@example.com' });
     expect(res.error).toMatch(/already registered/i);
+  });
+});
+
+describe('account actions — getAccountProfile', () => {
+  it('owner gets email only — name/phone not editable here', async () => {
+    const { getAccountProfile } = await import('../src/app/actions/account');
+    const res = await getAccountProfile();
+    expect(res.data).toMatchObject({
+      email: 'owner@example.com',
+      role: 'owner',
+      name: null,
+      phone: null,
+      nameEditable: false,
+      phoneEditable: false,
+    });
+  });
+
+  it('super_admin gets email only', async () => {
+    session = { ...session, role: 'super_admin' };
+    const { getAccountProfile } = await import('../src/app/actions/account');
+    const res = await getAccountProfile();
+    expect(res.data?.nameEditable).toBe(false);
+    expect(res.data?.phoneEditable).toBe(false);
+  });
+
+  it('sales_agent gets name + phone editable', async () => {
+    session = { salonId: '', staffId: 'auth-user-1', role: 'sales_agent', branchId: '', name: 'A' };
+    const { getAccountProfile } = await import('../src/app/actions/account');
+    const res = await getAccountProfile();
+    expect(res.data?.nameEditable).toBe(true);
+    expect(res.data?.phoneEditable).toBe(true);
+  });
+});
+
+describe('account actions — updateAccountProfile', () => {
+  it('partner can update name + phone', async () => {
+    session = { salonId: 'salon-1', staffId: 'partner-row-1', role: 'partner', branchId: 'b1', name: 'P' };
+    const { updateAccountProfile } = await import('../src/app/actions/account');
+    const res = await updateAccountProfile({ name: 'New Name', phone: '0300 1234567' });
+    expect(res.error).toBeNull();
+    expect(res.data).toEqual({ name: 'New Name', phone: '0300 1234567' });
+  });
+
+  it('staff can update phone only', async () => {
+    session = { salonId: 'salon-1', staffId: 'staff-row-1', role: 'manager', branchId: 'b1', name: 'S' };
+    const { updateAccountProfile } = await import('../src/app/actions/account');
+    const res = await updateAccountProfile({ phone: '0300 9999999' });
+    expect(res.error).toBeNull();
+  });
+
+  it('rejects empty name when name is provided', async () => {
+    session = { salonId: 'salon-1', staffId: 'partner-row-1', role: 'partner', branchId: 'b1', name: 'P' };
+    const { updateAccountProfile } = await import('../src/app/actions/account');
+    const res = await updateAccountProfile({ name: '   ' });
+    expect(res.error).toMatch(/cannot be empty/i);
+  });
+
+  it('rejects empty phone when phone is provided', async () => {
+    session = { salonId: 'salon-1', staffId: 'partner-row-1', role: 'partner', branchId: 'b1', name: 'P' };
+    const { updateAccountProfile } = await import('../src/app/actions/account');
+    const res = await updateAccountProfile({ phone: '' });
+    expect(res.error).toMatch(/cannot be empty/i);
+  });
+
+  it('rejects when nothing to update', async () => {
+    session = { salonId: 'salon-1', staffId: 'partner-row-1', role: 'partner', branchId: 'b1', name: 'P' };
+    const { updateAccountProfile } = await import('../src/app/actions/account');
+    const res = await updateAccountProfile({});
+    expect(res.error).toMatch(/nothing to update/i);
+  });
+
+  it('owner/super_admin cannot update name/phone here', async () => {
+    const { updateAccountProfile } = await import('../src/app/actions/account');
+    const res = await updateAccountProfile({ name: 'Test' });
+    expect(res.error).toMatch(/not editable/i);
   });
 });
 

@@ -6,7 +6,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import {
   LayoutDashboard, Store, Users, BarChart3, Settings,
   Shield, LogOut, Scissors, Loader2, CreditCard,
-  UserCog, Target, Wallet, Receipt,
+  UserCog, Target, Wallet, Receipt, User,
 } from 'lucide-react';
 import { getPendingPaymentCount } from '@/app/actions/payment-requests';
 import { useAppStore } from '@/store/app-store';
@@ -24,6 +24,7 @@ const NAV_ITEMS = [
   { href: '/admin/users', icon: Users, label: 'Users' },
   { href: '/admin/analytics', icon: BarChart3, label: 'Analytics' },
   { href: '/admin/settings', icon: Settings, label: 'Platform Settings' },
+  { href: '/admin/profile', icon: User, label: 'My Profile' },
 ];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
