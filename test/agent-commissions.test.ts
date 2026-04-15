@@ -105,3 +105,14 @@ describe('listAllCommissions', () => {
     await expect(listAllCommissions()).rejects.toThrow('Unauthorized');
   });
 });
+
+describe('reverseCommissionsForPaymentRequest', () => {
+  beforeEach(() => { resetTables(); vi.clearAllMocks(); });
+
+  it('updates matching rows to reversed', async () => {
+    tables['agent_commissions'] = { updateResult: { error: null } };
+    const { reverseCommissionsForPaymentRequest } = await import('../src/app/actions/agent-commissions');
+    const r = await reverseCommissionsForPaymentRequest('pr-1');
+    expect(r.error).toBeNull();
+  });
+});

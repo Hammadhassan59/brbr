@@ -154,3 +154,20 @@ export async function listAllCommissions(
   if (error) return { data: [], error: error.message };
   return { data: (data || []) as AgentCommissionAudit[], error: null };
 }
+
+/**
+ * Called when a payment is reversed. Marks any commission rows tied to that
+ * payment_request as reversed. For rows already paid, the reversal is
+ * informational — they stay in the paid payout but the row status flips to
+ * 'reversed', producing a visible negative balance in the agent's ledger.
+ */
+export async function reverseCommissionsForPaymentRequest(
+  paymentRequestId: string,
+): Promise<{ error: string | null }> {
+  const supabase = createServerClient();
+  const { error } = await supabase
+    .from('agent_commissions')
+    .update({ status: 'reversed' })
+    .eq('payment_request_id', paymentRequestId);
+  return { error: error?.message ?? null };
+}
