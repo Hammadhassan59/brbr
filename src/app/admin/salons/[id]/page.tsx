@@ -17,6 +17,8 @@ import {
   updateSalon,
   updateSubscription,
   setSalonSoldByAgent,
+  impersonateSalon,
+  deleteSalonAndAllData,
 } from '@/app/actions/admin';
 import { listSalesAgents } from '@/app/actions/sales-agents';
 import type { SalesAgent } from '@/types/sales';
@@ -210,6 +212,11 @@ export default function AdminSalonDetailPage({
 
   async function enterDashboard() {
     if (!salon) return;
+    const { data, error } = await impersonateSalon(salon.id);
+    if (error || !data) {
+      toast.error(error || 'Could not start impersonation');
+      return;
+    }
     setSalon(salon);
     try {
       const branch = await getAdminBranchForSalon(salon.id);
@@ -217,7 +224,27 @@ export default function AdminSalonDetailPage({
     } catch {
       // Branch will be loaded by dashboard
     }
-    router.push('/dashboard');
+    // Hard navigation so the new session cookies are applied on the next request.
+    window.location.href = '/dashboard';
+  }
+
+  async function deleteTenant() {
+    if (!salon) return;
+    const typed = window.prompt(
+      `DANGER — this permanently deletes "${salon.name}" and ALL of its data.\n\nType the salon name exactly to confirm:`,
+    );
+    if (typed === null) return;
+    if (typed.trim() !== salon.name) {
+      toast.error('Salon name did not match — deletion cancelled');
+      return;
+    }
+    const { success, deletedAuthUsers, error } = await deleteSalonAndAllData(salon.id, typed.trim());
+    if (!success) {
+      toast.error(error || 'Delete failed');
+      return;
+    }
+    toast.success(`${salon.name} deleted — ${deletedAuthUsers} login accounts removed`);
+    router.push('/admin/salons');
   }
 
   if (loading) {
@@ -265,9 +292,14 @@ export default function AdminSalonDetailPage({
             </p>
           </div>
         </div>
-        <Button size="sm" className="bg-gold text-black border border-gold" onClick={enterDashboard}>
-          Enter Dashboard
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button size="sm" variant="outline" className="text-destructive border-destructive/40 hover:bg-destructive/10" onClick={deleteTenant}>
+            Delete Tenant
+          </Button>
+          <Button size="sm" className="bg-gold text-black border border-gold" onClick={enterDashboard}>
+            Enter Dashboard
+          </Button>
+        </div>
       </div>
 
       {/* Metrics Row */}

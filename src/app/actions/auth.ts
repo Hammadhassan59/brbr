@@ -20,6 +20,12 @@ export interface SessionPayload {
   branchId: string;
   name: string;
   agentId?: string;
+  // When a super admin impersonates a tenant, this captures the super admin's
+  // original identity so we can exit back to the admin session afterwards.
+  impersonatedBy?: {
+    staffId: string;
+    name: string;
+  };
 }
 
 export async function signSession(payload: SessionPayload) {
@@ -69,8 +75,10 @@ export async function verifySession(): Promise<SessionPayload> {
 export async function verifyWriteAccess(): Promise<SessionPayload> {
   const session = await verifySession();
 
-  // Super admin and setup flows bypass subscription checks
-  if (session.role === 'super_admin' || !session.salonId || session.salonId === 'super-admin') {
+  // Super admin and setup flows bypass subscription checks.
+  // Super admins impersonating a tenant also bypass — otherwise an expired
+  // tenant would be un-fixable through the admin impersonation workflow.
+  if (session.role === 'super_admin' || !session.salonId || session.salonId === 'super-admin' || session.impersonatedBy) {
     return session;
   }
 

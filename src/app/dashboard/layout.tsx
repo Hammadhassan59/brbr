@@ -4,6 +4,7 @@ import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { ErrorBoundary } from '@/components/error-boundary';
+import { ImpersonationBanner } from '@/components/impersonation-banner';
 import { WhatsAppComposeProvider } from '@/components/whatsapp-compose/provider';
 import { WhatsAppComposeSheet } from '@/components/whatsapp-compose/sheet';
 import { PaywallDialog } from '@/components/paywall-dialog';
@@ -120,7 +121,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }
 
   return (
-    <div className="h-screen flex overflow-hidden bg-background">
+    <div className="h-screen flex flex-col overflow-hidden bg-background">
+      <ImpersonationBanner />
+      <div className="flex-1 flex overflow-hidden">
       {/* Mobile sidebar overlay */}
       {sidebarOpen && (
         <div className="fixed inset-0 z-40 lg:hidden animate-in fade-in duration-200" role="button" aria-label="Close sidebar" onClick={() => setSidebarOpen(false)}>
@@ -436,6 +439,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           );
         })}
       </nav>
+      </div>
     </div>
   );
 }

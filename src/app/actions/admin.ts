@@ -1,7 +1,8 @@
 'use server';
 
+import { cookies } from 'next/headers';
 import { createServerClient } from '@/lib/supabase';
-import { verifySession } from './auth';
+import { verifySession, signSession } from './auth';
 import type { SubscriptionPlan, SubscriptionStatus } from '@/types/database';
 
 async function requireSuperAdmin() {
@@ -359,4 +360,181 @@ export async function setSalonSoldByAgent(salonId: string, agentId: string | nul
     .eq('id', salonId);
   if (error) throw error;
   return { success: true };
+}
+
+// ───────────────────────────────────────
+// Impersonation: super admin enters a tenant's dashboard
+// ───────────────────────────────────────
+
+/**
+ * Start impersonating a tenant salon.
+ * Signs a new session with role='owner' + the tenant's salonId, and stashes
+ * the super admin's original identity in `impersonatedBy` so we can exit.
+ * Mirrors the cookie state set by the login flow so the proxy gate routes
+ * the user to /dashboard as an owner.
+ */
+export async function impersonateSalon(salonId: string): Promise<{
+  data: { salon: { id: string; name: string }; branchId: string } | null;
+  error: string | null;
+}> {
+  const session = await requireSuperAdmin();
+  if (session.impersonatedBy) {
+    return { data: null, error: 'Already impersonating — exit first' };
+  }
+  const supabase = createServerClient();
+
+  const { data: salon, error: salonErr } = await supabase
+    .from('salons')
+    .select('id, name, owner_id')
+    .eq('id', salonId)
+    .maybeSingle();
+  if (salonErr) return { data: null, error: salonErr.message };
+  if (!salon) return { data: null, error: 'Salon not found' };
+
+  const { data: branches } = await supabase
+    .from('branches')
+    .select('id, is_main')
+    .eq('salon_id', salonId)
+    .order('is_main', { ascending: false });
+  const mainBranch = branches?.[0];
+  if (!mainBranch) return { data: null, error: 'Salon has no branch — cannot impersonate' };
+
+  // Use the salon's real owner auth user id as staffId so all /dashboard
+  // code paths see a normal owner session. If the owner_id is missing
+  // (legacy salon), fall back to a synthetic id.
+  const ownerAuthId = salon.owner_id || session.staffId;
+
+  await signSession({
+    salonId: salon.id,
+    staffId: ownerAuthId,
+    role: 'owner',
+    branchId: mainBranch.id,
+    name: `Admin viewing ${salon.name}`,
+    impersonatedBy: { staffId: session.staffId, name: session.name || 'Super Admin' },
+  });
+
+  const cookieStore = await cookies();
+  cookieStore.set('icut-session', '1', { path: '/', sameSite: 'strict' });
+  cookieStore.set('icut-role', 'owner', { path: '/', sameSite: 'strict' });
+
+  return { data: { salon: { id: salon.id, name: salon.name }, branchId: mainBranch.id }, error: null };
+}
+
+/**
+ * Exit impersonation — restore the super_admin session.
+ * Requires the current session to carry an `impersonatedBy` claim.
+ */
+export async function exitImpersonation(): Promise<{ success: boolean; error: string | null }> {
+  const session = await verifySession();
+  if (!session.impersonatedBy) {
+    return { success: false, error: 'Not currently impersonating' };
+  }
+  await signSession({
+    salonId: 'super-admin',
+    staffId: session.impersonatedBy.staffId,
+    role: 'super_admin',
+    branchId: '',
+    name: session.impersonatedBy.name,
+  });
+  const cookieStore = await cookies();
+  cookieStore.set('icut-session', '1', { path: '/', sameSite: 'strict' });
+  cookieStore.set('icut-role', 'super_admin', { path: '/', sameSite: 'strict' });
+  return { success: true, error: null };
+}
+
+/** Read-only view of the impersonation state for UI banners. */
+export async function getImpersonationContext(): Promise<{
+  isImpersonating: boolean;
+  salonName: string | null;
+}> {
+  try {
+    const session = await verifySession();
+    if (!session.impersonatedBy) return { isImpersonating: false, salonName: null };
+    const supabase = createServerClient();
+    const { data: salon } = await supabase.from('salons').select('name').eq('id', session.salonId).maybeSingle();
+    return { isImpersonating: true, salonName: salon?.name || null };
+  } catch {
+    return { isImpersonating: false, salonName: null };
+  }
+}
+
+// ───────────────────────────────────────
+// Hard-delete a tenant and every trace of it
+// ───────────────────────────────────────
+
+/**
+ * Permanently deletes a salon and all of its data. Super admin only.
+ * The caller MUST pass the exact salon name as confirmation — this is a
+ * defense-in-depth guard against a UI bug or CSRF triggering accidental
+ * deletion. Also removes the Supabase Auth accounts of the owner, partners,
+ * and staff that belonged to this salon.
+ */
+export async function deleteSalonAndAllData(
+  salonId: string,
+  confirmName: string,
+): Promise<{ success: boolean; deletedAuthUsers: number; error: string | null }> {
+  await requireSuperAdmin();
+  const supabase = createServerClient();
+
+  const { data: salon, error: loadErr } = await supabase
+    .from('salons')
+    .select('id, name, owner_id')
+    .eq('id', salonId)
+    .maybeSingle();
+  if (loadErr) return { success: false, deletedAuthUsers: 0, error: loadErr.message };
+  if (!salon) return { success: false, deletedAuthUsers: 0, error: 'Salon not found' };
+  if (confirmName.trim() !== salon.name) {
+    return { success: false, deletedAuthUsers: 0, error: 'Salon name confirmation does not match' };
+  }
+
+  // Collect auth user ids we need to remove from Supabase Auth *before* the
+  // salon row is gone (otherwise we lose the link to staff / partners).
+  const authIds = new Set<string>();
+  if (salon.owner_id) authIds.add(salon.owner_id);
+
+  const { data: partners } = await supabase
+    .from('salon_partners')
+    .select('auth_user_id')
+    .eq('salon_id', salonId);
+  (partners || []).forEach((p: { auth_user_id: string | null }) => {
+    if (p.auth_user_id) authIds.add(p.auth_user_id);
+  });
+
+  const { data: staff } = await supabase
+    .from('staff')
+    .select('auth_user_id')
+    .eq('salon_id', salonId);
+  (staff || []).forEach((s: { auth_user_id: string | null }) => {
+    if (s.auth_user_id) authIds.add(s.auth_user_id);
+  });
+
+  // Tables without ON DELETE CASCADE on salon_id need explicit deletes first.
+  // (The rest cascade via FK: branches, services, staff, salon_partners,
+  // clients, client_packages, packages, products, suppliers, expenses,
+  // stock_movements, tips, advances, udhaar_payments, cash_drawers, attendance,
+  // promo_codes, purchase_orders, service_staff_pricing, payment_requests,
+  // agent_commissions, product_service_links.)
+  const { error: aptErr } = await supabase.from('appointments').delete().eq('salon_id', salonId);
+  if (aptErr) return { success: false, deletedAuthUsers: 0, error: `appointments: ${aptErr.message}` };
+  const { error: billErr } = await supabase.from('bills').delete().eq('salon_id', salonId);
+  if (billErr) return { success: false, deletedAuthUsers: 0, error: `bills: ${billErr.message}` };
+  const { error: loyaltyErr } = await supabase.from('loyalty_rules').delete().eq('salon_id', salonId);
+  if (loyaltyErr) return { success: false, deletedAuthUsers: 0, error: `loyalty_rules: ${loyaltyErr.message}` };
+
+  const { error: delErr } = await supabase.from('salons').delete().eq('id', salonId);
+  if (delErr) return { success: false, deletedAuthUsers: 0, error: `salons: ${delErr.message}` };
+
+  // Best-effort auth user removal — individual failures are non-fatal (data
+  // is already gone, orphan auth rows can be cleaned up later).
+  let deleted = 0;
+  for (const id of authIds) {
+    try {
+      const { error } = await supabase.auth.admin.deleteUser(id);
+      if (!error) deleted++;
+    } catch {
+      // swallow
+    }
+  }
+
+  return { success: true, deletedAuthUsers: deleted, error: null };
 }
