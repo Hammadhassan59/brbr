@@ -4,6 +4,7 @@ import { createServerClient } from '@/lib/supabase';
 import { verifySession } from './auth';
 import { sendEmail } from '@/lib/email-sender';
 import { paymentApprovedEmail, paymentDeniedEmail } from '@/lib/email-templates';
+import { accrueCommissionForPaymentRequest } from './agent-commissions';
 
 type Plan = 'basic' | 'growth' | 'pro';
 type Method = 'bank' | 'jazzcash';
@@ -232,6 +233,13 @@ export async function approvePaymentRequest(
     })
     .eq('id', id);
   if (reqErr) return { error: reqErr.message };
+
+  // Commission accrual — no-ops if salon has no agent.
+  await accrueCommissionForPaymentRequest({
+    paymentRequestId: id,
+    salonId: request.salon_id,
+    amount: request.amount,
+  });
 
   // Owner notification — best-effort, doesn't block approval.
   try {
