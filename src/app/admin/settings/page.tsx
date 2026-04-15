@@ -329,7 +329,7 @@ export default function AdminSettingsPage() {
       </div>
 
       <Tabs defaultValue="general">
-        <TabsList className="flex flex-wrap gap-1 h-auto">
+        <TabsList className="gap-1 h-auto">
           <TabsTrigger value="general" className={tabTrigger}>General</TabsTrigger>
           <TabsTrigger value="plans" className={tabTrigger}>Subscription Plans</TabsTrigger>
           <TabsTrigger value="payments" className={tabTrigger}>Payments &amp; Trial</TabsTrigger>

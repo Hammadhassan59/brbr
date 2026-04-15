@@ -232,7 +232,7 @@ export default function SettingsPage() {
     <div className="space-y-6">
       <Tabs defaultValue={canManage ? 'profile' : 'display'}>
         <div className="bg-card border border-border rounded-lg p-4">
-          <TabsList className="bg-transparent flex-wrap h-auto gap-1.5 p-0">
+          <TabsList className="bg-transparent h-auto gap-1.5 p-0">
             {canManage && <TabsTrigger value="profile" className="text-xs px-3.5 py-2 font-medium transition-all duration-150 border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30">Salon Profile</TabsTrigger>}
             {canManage && <TabsTrigger value="hours" className="text-xs px-3.5 py-2 font-medium transition-all duration-150 border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30">Working Hours</TabsTrigger>}
             {canManage && <TabsTrigger value="services" className="text-xs px-3.5 py-2 font-medium transition-all duration-150 border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30">Services</TabsTrigger>}

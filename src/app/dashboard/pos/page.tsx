@@ -447,7 +447,7 @@ function POSContent() {
   const pointsEarned = Math.floor(total / 100) * 10;
 
   return (
-    <div className="h-[calc(100vh-3.5rem)] flex flex-col lg:flex-row gap-0 -m-4 lg:-m-6">
+    <div className="h-[calc(100vh-3.5rem)] flex flex-col md:flex-row gap-0 -m-4 md:-m-6">
       {loading && (
         <div className="flex-1 flex items-center justify-center bg-background">
           <div className="bg-card border border-border rounded-lg p-8 text-center">
@@ -525,21 +525,21 @@ function POSContent() {
                   </div>
                 )}
               </div>
-              <Button size="sm" className="h-8 text-xs shrink-0 bg-gold hover:bg-gold/90 text-black border border-gold font-semibold px-4 transition-all duration-150" onClick={() => { setShowNewClient(true); setNewClientName(clientSearch); setClientSearch(''); setClientResults([]); }}>
-                <UserPlus className="w-4 h-4 mr-1.5" /> New Client
+              <Button size="sm" className="h-9 md:h-8 text-xs shrink-0 bg-gold hover:bg-gold/90 text-black border border-gold font-semibold px-3 sm:px-4 transition-all duration-150" onClick={() => { setShowNewClient(true); setNewClientName(clientSearch); setClientSearch(''); setClientResults([]); }}>
+                <UserPlus className="w-4 h-4 sm:mr-1.5" /> <span className="hidden sm:inline">New Client</span>
               </Button>
             </div>
           )}
 
           <select value={selectedStaffId} onChange={(e) => { const v = e.target.value; if (v) { setSelectedStaffId(v); if (!tipStaffId) setTipStaffId(v); } }}
-            className="h-8 text-xs w-[140px] border border-border bg-background rounded-md px-2">
+            className="h-9 md:h-8 text-xs w-full sm:w-[140px] order-last sm:order-none border border-border bg-background rounded-md px-2">
               <option value="">Stylist</option>
               {stylists.map((s) => (
                 <option key={s.id} value={s.id}>{s.name}</option>
               ))}
           </select>
 
-          <span className="bg-background/50 px-3 py-1 text-xs text-muted-foreground font-mono hidden sm:block">{billNumber}</span>
+          <span className="bg-background/50 px-3 py-1 text-xs text-muted-foreground font-mono hidden xl:block">{billNumber}</span>
         </div>
 
         <div className="flex-1 overflow-hidden bg-background">
@@ -571,7 +571,7 @@ function POSContent() {
         </div>
       </div>
 
-      <div className="hidden lg:flex w-[320px] shrink-0 p-4 bg-card flex-col overflow-y-auto border-l border-border" style={{ scrollbarWidth: 'none' }}>
+      <div className="hidden xl:flex w-[320px] shrink-0 p-4 bg-card flex-col overflow-y-auto border-l border-border" style={{ scrollbarWidth: 'none' }}>
         <PaymentPanel
           total={total}
           clientUdhaarBalance={selectedClient?.udhaar_balance || 0}
@@ -600,7 +600,7 @@ function POSContent() {
 
       {/* Mobile payment panel (full-screen overlay) */}
       {showMobilePayment && (
-        <div className="lg:hidden fixed inset-0 z-40 bg-card overflow-y-auto" style={{ scrollbarWidth: 'none' }}>
+        <div className="xl:hidden fixed inset-0 z-40 bg-card overflow-y-auto" style={{ scrollbarWidth: 'none' }}>
           <div className="flex items-center justify-between px-4 py-3 border-b border-border sticky top-0 bg-card z-10">
             <h2 className="text-sm font-semibold">Payment</h2>
             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setShowMobilePayment(false)}>
@@ -640,7 +640,7 @@ function POSContent() {
       {!loading && items.length > 0 && (
         <button
           onClick={() => setShowMobilePayment(true)}
-          className="lg:hidden fixed bottom-14 right-4 z-30 bg-gold text-black font-semibold px-6 py-3 rounded-lg shadow-lg active:scale-95 transition-all"
+          className="xl:hidden fixed bottom-16 md:bottom-6 right-4 md:right-6 z-30 bg-gold text-black font-semibold px-6 py-3 rounded-lg shadow-lg active:scale-95 transition-all"
         >
           Checkout {formatPKR(total)}
         </button>
