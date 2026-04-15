@@ -16,6 +16,7 @@ export async function setupSalon(data: {
   address: string;
   phone: string;
   whatsapp: string;
+  branchName?: string;
   ownerId: string;
   prayerBlockEnabled: boolean;
   workingHours: Record<string, unknown>;
@@ -78,12 +79,16 @@ export async function setupSalon(data: {
 
   if (salonErr) return { data: null, error: salonErr.message };
 
-  // Create main branch
+  // Create main branch — prefer user-provided name, fall back to "{city} Branch"
+  // or "Main Branch" if neither was supplied.
+  const mainBranchName =
+    data.branchName?.trim() || (data.city ? `${data.city} Branch` : 'Main Branch');
+
   const { data: branch, error: branchErr } = await supabase
     .from('branches')
     .insert({
       salon_id: newSalon.id,
-      name: `${data.city || 'Main'} Branch`,
+      name: mainBranchName,
       address: data.address,
       phone: data.phone,
       is_main: true,

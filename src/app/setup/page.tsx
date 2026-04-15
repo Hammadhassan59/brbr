@@ -15,7 +15,18 @@ import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import type { SalonType, StaffRole } from '@/types/database';
 
-const CITIES = ['Lahore', 'Karachi', 'Islamabad', 'Rawalpindi', 'Faisalabad', 'Other'];
+const CITIES = [
+  'Abbottabad', 'Bahawalpur', 'Bahawalnagar', 'Burewala', 'Chakwal', 'Chiniot',
+  'Dera Ghazi Khan', 'Dera Ismail Khan', 'Faisalabad', 'Gilgit', 'Gujranwala',
+  'Gujrat', 'Gwadar', 'Hafizabad', 'Haripur', 'Hyderabad', 'Islamabad', 'Jhang',
+  'Jhelum', 'Kamoke', 'Karachi', 'Kasur', 'Khanewal', 'Khanpur', 'Kohat',
+  'Lahore', 'Larkana', 'Mandi Bahauddin', 'Mansehra', 'Mardan', 'Mingora',
+  'Mirpur (AJK)', 'Mirpur Khas', 'Multan', 'Muzaffargarh', 'Muzaffarabad',
+  'Nawabshah', 'Okara', 'Pakpattan', 'Peshawar', 'Quetta', 'Rahim Yar Khan',
+  'Rawalpindi', 'Sadiqabad', 'Sahiwal', 'Sargodha', 'Sheikhupura', 'Sialkot',
+  'Skardu', 'Sukkur', 'Swabi', 'Tando Adam', 'Tando Allahyar', 'Turbat',
+  'Vehari', 'Wah Cantonment', 'Other',
+];
 const DAYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as const;
 const DAY_LABELS: Record<string, string> = {
   mon: 'Monday', tue: 'Tuesday', wed: 'Wednesday', thu: 'Thursday',
@@ -91,6 +102,7 @@ export default function SetupPage() {
   const [phone, setPhone] = useState('');
   const [whatsapp, setWhatsapp] = useState('');
   const [sameAsPhone, setSameAsPhone] = useState(true);
+  const [branchName, setBranchName] = useState('');
 
   // Step 3 — Ownership
   const [ownershipType, setOwnershipType] = useState<'single' | 'multiple'>('single');
@@ -179,6 +191,7 @@ export default function SetupPage() {
   function handleNext() {
     if (step === 2 && !salonName) { toast.error('Salon name required'); return; }
     if (step === 2 && !phone.trim()) { toast.error('Phone number is required'); return; }
+    if (step === 2 && !branchName.trim()) { toast.error('Branch name is required'); return; }
     if (step === 3 && ownershipType === 'multiple' && validPartners.length === 0) { toast.error('Add at least one partner with name, email, phone, and password'); return; }
     if (step === 4) {
       const invalidDay = DAYS.find(d => !hours[d].off && hours[d].close <= hours[d].open);
@@ -219,6 +232,7 @@ export default function SetupPage() {
         address,
         phone,
         whatsapp: sameAsPhone ? phone : whatsapp,
+        branchName: branchName.trim(),
         ownerId: user?.id ?? '',
         prayerBlockEnabled: prayerBlocks,
         workingHours,
@@ -363,6 +377,20 @@ export default function SetupPage() {
             <div>
               <Label>{t('address')}</Label>
               <Input value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Full address" className="mt-1.5" />
+            </div>
+
+            <div>
+              <Label>Branch Name *</Label>
+              <Input
+                value={branchName}
+                onChange={(e) => setBranchName(e.target.value)}
+                placeholder={city ? `e.g. ${city} Gulberg, ${city} DHA, Main Branch` : 'e.g. Gulberg Branch, DHA Branch, Main Branch'}
+                className="mt-1.5"
+                required
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                You can add more branches later. Give this first branch a unique name so they&apos;re easy to tell apart.
+              </p>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
