@@ -1,6 +1,6 @@
 'use client';
 
-import { use, useState, useEffect } from 'react';
+import { use, useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   ArrowLeft, Loader2, Save, Users, UserCheck, DollarSign, TrendingUp,
@@ -16,7 +16,10 @@ import {
   getAdminBranchForSalon,
   updateSalon,
   updateSubscription,
+  setSalonSoldByAgent,
 } from '@/app/actions/admin';
+import { listSalesAgents } from '@/app/actions/sales-agents';
+import type { SalesAgent } from '@/types/sales';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -106,39 +109,47 @@ export default function AdminSalonDetailPage({
   const [status, setStatus] = useState<SubscriptionStatus>('pending');
   const [expiresAt, setExpiresAt] = useState('');
 
-  useEffect(() => {
-    async function load() {
-      try {
-        const [detail, metricsData] = await Promise.all([
-          getAdminSalonDetail(id),
-          getAdminSalonMetrics(id),
-        ]);
+  // Sales agents
+  const [agents, setAgents] = useState<SalesAgent[]>([]);
 
-        const s = detail.salon as Salon;
-        setSalonData(s);
-        setBranches(detail.branches as Branch[]);
-        setStaff(detail.staff as Staff[]);
-        setClients(detail.clients as Client[]);
-        setMetrics(metricsData as Metrics);
+  const load = useCallback(async () => {
+    try {
+      const [detail, metricsData] = await Promise.all([
+        getAdminSalonDetail(id),
+        getAdminSalonMetrics(id),
+      ]);
 
-        // Populate editable fields
-        setName(s.name);
-        setCity(s.city || '');
-        setPhone(s.phone || '');
-        setAddress(s.address || '');
-        setSalonType(s.type);
-        setAdminNotes(s.admin_notes || '');
-        setPlan(s.subscription_plan);
-        setStatus(s.subscription_status);
-        setExpiresAt(s.subscription_expires_at ? s.subscription_expires_at.split('T')[0] : '');
-      } catch {
-        toast.error('Failed to load salon details');
-      } finally {
-        setLoading(false);
-      }
+      const s = detail.salon as Salon;
+      setSalonData(s);
+      setBranches(detail.branches as Branch[]);
+      setStaff(detail.staff as Staff[]);
+      setClients(detail.clients as Client[]);
+      setMetrics(metricsData as Metrics);
+
+      // Populate editable fields
+      setName(s.name);
+      setCity(s.city || '');
+      setPhone(s.phone || '');
+      setAddress(s.address || '');
+      setSalonType(s.type);
+      setAdminNotes(s.admin_notes || '');
+      setPlan(s.subscription_plan);
+      setStatus(s.subscription_status);
+      setExpiresAt(s.subscription_expires_at ? s.subscription_expires_at.split('T')[0] : '');
+    } catch {
+      toast.error('Failed to load salon details');
+    } finally {
+      setLoading(false);
     }
-    load();
   }, [id]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  useEffect(() => {
+    listSalesAgents().then((r) => setAgents(r.data));
+  }, []);
 
   async function handleSave() {
     setSaving(true);
@@ -426,6 +437,39 @@ export default function AdminSalonDetailPage({
               </span>
             )}
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Sold by agent */}
+      <Card>
+        <CardHeader className="border-b">
+          <CardTitle>Sold by agent</CardTitle>
+        </CardHeader>
+        <CardContent className="pt-4 space-y-2">
+          <p className="text-xs text-muted-foreground">
+            Reassigning transfers future renewal commissions to the new agent. Past commissions stay with the original agent.
+          </p>
+          <select
+            value={salon.sold_by_agent_id || ''}
+            onChange={async (e) => {
+              const v = e.target.value || null;
+              try {
+                await setSalonSoldByAgent(salon.id, v);
+                toast.success('Updated');
+                await load();
+              } catch (err) {
+                toast.error(err instanceof Error ? err.message : 'Failed');
+              }
+            }}
+            className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-1 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+          >
+            <option value="">— None —</option>
+            {agents.map((a) => (
+              <option key={a.id} value={a.id}>
+                {a.name}{!a.active ? ' (inactive)' : ''}
+              </option>
+            ))}
+          </select>
         </CardContent>
       </Card>
 

@@ -4,6 +4,7 @@ import { createServerClient } from '@/lib/supabase';
 import { verifySession } from './auth';
 import { sendEmail } from '@/lib/email-sender';
 import { paymentApprovedEmail, paymentDeniedEmail } from '@/lib/email-templates';
+import { accrueCommissionForPaymentRequest, reverseCommissionsForPaymentRequest } from './agent-commissions';
 
 type Plan = 'basic' | 'growth' | 'pro';
 type Method = 'bank' | 'jazzcash';
@@ -33,6 +34,8 @@ export interface PaymentRequestWithSalon extends PaymentRequest {
     phone: string | null;
     subscription_plan: string | null;
     subscription_status: string | null;
+    sold_by_agent_id: string | null;
+    sold_by_agent: { id: string; name: string } | null;
   } | null;
 }
 
@@ -153,7 +156,7 @@ export async function listPaymentRequests(
 
   let query = supabase
     .from('payment_requests')
-    .select('*, salon:salons(id, name, city, phone, subscription_plan, subscription_status)')
+    .select('*, salon:salons(id, name, city, phone, subscription_plan, subscription_status, sold_by_agent_id, sold_by_agent:sales_agents!salons_sold_by_agent_id_fkey(id, name))')
     .order('created_at', { ascending: false });
 
   if (filter?.status && filter.status !== 'all') {
@@ -232,6 +235,13 @@ export async function approvePaymentRequest(
     })
     .eq('id', id);
   if (reqErr) return { error: reqErr.message };
+
+  // Commission accrual — no-ops if salon has no agent.
+  await accrueCommissionForPaymentRequest({
+    paymentRequestId: id,
+    salonId: request.salon_id,
+    amount: request.amount,
+  });
 
   // Owner notification — best-effort, doesn't block approval.
   try {
@@ -343,4 +353,56 @@ export async function getPendingPaymentCount(): Promise<number> {
     .select('id', { count: 'exact', head: true })
     .eq('status', 'pending');
   return count || 0;
+}
+
+/**
+ * Admin-side: reverse an approved payment. Demotes the salon subscription if
+ * this payment's expiry was the only active period, and flips any linked
+ * commission rows to 'reversed'.
+ */
+export async function reversePaymentRequest(
+  id: string,
+  options?: { reason?: string },
+): Promise<{ error: string | null }> {
+  const session = await requireSuperAdmin();
+  const supabase = createServerClient();
+
+  const { data: request } = await supabase
+    .from('payment_requests')
+    .select('*')
+    .eq('id', id)
+    .single();
+  if (!request) return { error: 'Request not found' };
+  if (request.status !== 'approved') return { error: `Only approved requests can be reversed (status: ${request.status})` };
+
+  const reversalNote = `REVERSED by admin${options?.reason ? `: ${options.reason}` : ''}`;
+  const { error: reqErr } = await supabase
+    .from('payment_requests')
+    .update({
+      status: 'rejected',
+      reviewed_by: session.staffId,
+      reviewed_at: new Date().toISOString(),
+      reviewer_notes: reversalNote,
+    })
+    .eq('id', id);
+  if (reqErr) return { error: reqErr.message };
+
+  await reverseCommissionsForPaymentRequest(id);
+
+  // Best-effort subscription demotion. If this was the only approved payment
+  // for the salon, flip the salon back to pending.
+  const { count } = await supabase
+    .from('payment_requests')
+    .select('id', { count: 'exact', head: true })
+    .eq('salon_id', request.salon_id)
+    .eq('status', 'approved');
+
+  if ((count ?? 0) === 0) {
+    await supabase
+      .from('salons')
+      .update({ subscription_status: 'pending', subscription_plan: 'none' })
+      .eq('id', request.salon_id);
+  }
+
+  return { error: null };
 }

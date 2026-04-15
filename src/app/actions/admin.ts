@@ -349,3 +349,14 @@ export async function getAdminSalonMetrics(salonId: string) {
     recentBills: allBills || [],
   };
 }
+
+export async function setSalonSoldByAgent(salonId: string, agentId: string | null) {
+  await requireSuperAdmin();
+  const supabase = createServerClient();
+  const { error } = await supabase
+    .from('salons')
+    .update({ sold_by_agent_id: agentId })
+    .eq('id', salonId);
+  if (error) throw error;
+  return { success: true };
+}

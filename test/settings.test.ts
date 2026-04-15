@@ -39,6 +39,7 @@ function makeSalon(overrides: Partial<Salon> = {}): Salon {
     subscription_expires_at: null,
     subscription_started_at: '2025-01-01T00:00:00Z',
     admin_notes: null,
+    sold_by_agent_id: null,
     ...overrides,
   }
 }

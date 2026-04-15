@@ -34,6 +34,7 @@ export const DEMO_SALON: Salon = {
   subscription_expires_at: null,
   subscription_started_at: '2025-01-01T00:00:00Z',
   admin_notes: null,
+  sold_by_agent_id: null,
 };
 
 export const DEMO_BRANCH: Branch = {
@@ -154,6 +155,7 @@ export const DEMO_SALON_GENTS: Salon = {
   subscription_expires_at: null,
   subscription_started_at: '2025-02-10T00:00:00Z',
   admin_notes: null,
+  sold_by_agent_id: null,
 };
 
 export const DEMO_BRANCH_GENTS: Branch = {
@@ -407,6 +409,7 @@ export const DEMO_ALL_SALONS: Salon[] = [
     subscription_expires_at: null,
     subscription_started_at: '2025-03-01T00:00:00Z',
     admin_notes: null,
+    sold_by_agent_id: null,
   },
   {
     id: 'cccccccc-cccc-cccc-cccc-cccccccccccc',
@@ -438,6 +441,7 @@ export const DEMO_ALL_SALONS: Salon[] = [
     subscription_expires_at: null,
     subscription_started_at: '2025-03-15T00:00:00Z',
     admin_notes: null,
+    sold_by_agent_id: null,
   },
 ];
 
