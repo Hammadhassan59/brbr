@@ -192,7 +192,7 @@ export async function resolveUserRole(authUserId: string, authEmail: string) {
       .select('*')
       .eq('salon_id', salon.id)
       .order('is_main', { ascending: false });
-    return { type: 'owner' as const, salon, branches: branches || [], staff: null, partner: null };
+    return { type: 'owner' as const, salon, branches: branches || [], staff: null, partner: null, agent: null };
   }
 
   // 2. Check if partner (by auth_user_id or email)
@@ -214,7 +214,7 @@ export async function resolveUserRole(authUserId: string, authEmail: string) {
       .select('*')
       .eq('salon_id', partner.salon_id)
       .order('is_main', { ascending: false });
-    return { type: 'partner' as const, salon: partnerSalon, branches: branches || [], staff: null, partner };
+    return { type: 'partner' as const, salon: partnerSalon, branches: branches || [], staff: null, partner, agent: null };
   }
 
   // 3. Check if staff (by auth_user_id or email)
@@ -240,10 +240,22 @@ export async function resolveUserRole(authUserId: string, authEmail: string) {
     // Update last_login_at
     await supabase.from('staff').update({ last_login_at: new Date().toISOString() }).eq('id', staffMember.id);
 
-    return { type: 'staff' as const, salon: staffSalon, branches: branches || [], staff: staffMember, partner: null };
+    return { type: 'staff' as const, salon: staffSalon, branches: branches || [], staff: staffMember, partner: null, agent: null };
   }
 
-  return { type: 'none' as const, salon: null, branches: [], staff: null, partner: null };
+  // 4. Check if sales agent (active only)
+  const { data: agent } = await supabase
+    .from('sales_agents')
+    .select('*')
+    .eq('user_id', authUserId)
+    .eq('active', true)
+    .maybeSingle();
+
+  if (agent) {
+    return { type: 'sales_agent' as const, salon: null, branches: [], staff: null, partner: null, agent };
+  }
+
+  return { type: 'none' as const, salon: null, branches: [], staff: null, partner: null, agent: null };
 }
 
 /**
