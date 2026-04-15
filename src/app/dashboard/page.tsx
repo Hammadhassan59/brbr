@@ -255,29 +255,28 @@ export default function DashboardPage() {
           } as DailySummary);
         }
       } else {
-        const hourMap: Record<string, { revenue: number; appointments: number }> = {};
-        for (let h = 9; h <= 21; h++) {
-          const label = h === 0 ? '12AM' : h < 12 ? `${h}AM` : h === 12 ? '12PM' : `${h - 12}PM`;
-          hourMap[label] = { revenue: 0, appointments: 0 };
-        }
+        const hourLabel = (h: number) =>
+          h === 0 ? '12AM' : h < 12 ? `${h}AM` : h === 12 ? '12PM' : `${h - 12}PM`;
+
+        const hourBuckets: { label: string; revenue: number; appointments: number }[] =
+          Array.from({ length: 24 }, (_, h) => ({
+            label: hourLabel(h),
+            revenue: 0,
+            appointments: 0,
+          }));
 
         if (billsData) {
           const hourFmt = new Intl.DateTimeFormat('en-US', {
-            timeZone: 'Asia/Karachi', hour: 'numeric', hour12: false,
+            timeZone: 'Asia/Karachi', hour: '2-digit', hour12: false,
           });
           billsData.forEach((bill: { total_amount: number; created_at: string }) => {
-            const hour = Number(hourFmt.format(new Date(bill.created_at)));
-            const label = hour === 0 ? '12AM' : hour < 12 ? `${hour}AM` : hour === 12 ? '12PM' : `${hour - 12}PM`;
-            if (hourMap[label]) {
-              hourMap[label].revenue += bill.total_amount;
-              hourMap[label].appointments += 1;
-            }
+            const hour = Number(hourFmt.format(new Date(bill.created_at))) % 24;
+            hourBuckets[hour].revenue += bill.total_amount;
+            hourBuckets[hour].appointments += 1;
           });
         }
 
-        setChartData(
-          Object.entries(hourMap).map(([label, data]) => ({ label, ...data }))
-        );
+        setChartData(hourBuckets);
       }
 
       const { data: staffData } = await supabase
