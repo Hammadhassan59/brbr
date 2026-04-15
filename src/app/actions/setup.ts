@@ -33,13 +33,37 @@ export async function setupSalon(data: {
     if (!s.phone?.trim()) return { data: null, error: `Phone is required for staff ${s.name}` };
   }
 
-  // Create salon
+  // Resolve target salon id: prefer explicit existingSalonId, else the owner's
+  // existing salon (retry case where the prior setup attempt already created one).
+  let targetSalonId = data.existingSalonId;
+  if (!targetSalonId && data.ownerId) {
+    const { data: ownedSalon } = await supabase
+      .from('salons')
+      .select('id')
+      .eq('owner_id', data.ownerId)
+      .maybeSingle();
+    if (ownedSalon) targetSalonId = ownedSalon.id;
+  }
+
+  // Resolve a unique slug: if another salon already owns this slug, append -2, -3, …
+  let uniqueSlug = data.slug;
+  for (let attempt = 2; attempt <= 50; attempt++) {
+    const { data: slugOwner } = await supabase
+      .from('salons')
+      .select('id')
+      .eq('slug', uniqueSlug)
+      .maybeSingle();
+    if (!slugOwner || slugOwner.id === targetSalonId) break;
+    uniqueSlug = `${data.slug}-${attempt}`;
+  }
+
+  // Create or update salon
   const { data: newSalon, error: salonErr } = await supabase
     .from('salons')
     .upsert({
-      ...(data.existingSalonId ? { id: data.existingSalonId } : {}),
+      ...(targetSalonId ? { id: targetSalonId } : {}),
       name: data.name,
-      slug: data.slug,
+      slug: uniqueSlug,
       type: data.type,
       city: data.city,
       address: data.address,
