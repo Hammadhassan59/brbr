@@ -1,6 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { timingSafeEqual } from 'node:crypto';
 import { createServerClient } from '@/lib/supabase';
 import { getDemoSeed } from '@/lib/demo-agent-seed';
+
+// Constant-time comparison so the secret can't be recovered by measuring
+// how fast the naive `!==` check bails out on the first differing byte.
+function secretsEqual(a: string, b: string): boolean {
+  const ab = Buffer.from(a, 'utf8');
+  const bb = Buffer.from(b, 'utf8');
+  if (ab.length !== bb.length) return false;
+  return timingSafeEqual(ab, bb);
+}
 
 /**
  * Wipes and reseeds every active demo sales-agent's dataset. Triggered by a
@@ -9,8 +19,9 @@ import { getDemoSeed } from '@/lib/demo-agent-seed';
  * produces the same final state.
  */
 export async function GET(req: NextRequest) {
+  const expected = process.env.CRON_SECRET;
   const secret = req.headers.get('x-cron-secret');
-  if (!secret || secret !== process.env.CRON_SECRET) {
+  if (!expected || !secret || !secretsEqual(secret, expected)) {
     return NextResponse.json({ error: 'forbidden' }, { status: 403 });
   }
 

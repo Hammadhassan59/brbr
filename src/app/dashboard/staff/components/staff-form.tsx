@@ -120,7 +120,7 @@ export function StaffForm({ staff, onSaved }: StaffFormProps) {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <Label>{isEditing ? 'New Password (leave blank to keep)' : 'Password *'}</Label>
-            <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} minLength={6} className="mt-1" />
+            <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} minLength={10} className="mt-1" />
           </div>
           <div>
             <Label>Confirm Password</Label>
