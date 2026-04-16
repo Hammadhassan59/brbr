@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { LogIn, Plus, Loader2, Settings, Search, LayoutGrid, List } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAppStore } from '@/store/app-store';
+import { supabase } from '@/lib/supabase';
 import { getAdminSalons, impersonateSalon } from '@/app/actions/admin';
 import { formatPKDate } from '@/lib/utils/dates';
 import { Card, CardContent } from '@/components/ui/card';
@@ -69,6 +70,17 @@ export default function AdminSalonsPage() {
     const { data, error } = await impersonateSalon(salon.id);
     if (error || !data) {
       toast.error(error || 'Could not log in as this salon');
+      return;
+    }
+    // Redeem the owner's magic-link token so the browser's Supabase client
+    // carries the owner's auth.uid(). RLS policies on salon-scoped tables
+    // (via get_user_salon_id()) silently return zero rows without this.
+    const { error: otpErr } = await supabase.auth.verifyOtp({
+      type: 'magiclink',
+      token_hash: data.supabaseAuth.tokenHash,
+    });
+    if (otpErr) {
+      toast.error('Could not establish salon session: ' + otpErr.message);
       return;
     }
     // Match the login flow exactly — set the session/role cookies client-side

@@ -64,6 +64,16 @@ vi.mock('@/lib/supabase', () => ({
     auth: {
       admin: {
         deleteUser: (id: string) => adminDeleteUser(id),
+        getUserById: (id: string) =>
+          Promise.resolve({
+            data: { user: { id, email: `user-${id}@example.com` } },
+            error: null,
+          }),
+        generateLink: () =>
+          Promise.resolve({
+            data: { properties: { hashed_token: 'tok-abc' } },
+            error: null,
+          }),
       },
     },
   }),
@@ -117,6 +127,19 @@ describe('impersonateSalon', () => {
     const roleCall = cookieSet.mock.calls.find((c) => c[0] === 'icut-role');
     expect(roleCall?.[1]).toBe('owner');
   });
+
+  it('returns a magic-link hashed_token so the browser can mint an owner Supabase Auth session', async () => {
+    // Regression: without this, client-side RLS on /dashboard evaluates auth.uid()
+    // as the super admin, get_user_salon_id() returns NULL, and every query
+    // returns zero rows. Confirm the server hands back the redemption token.
+    const { impersonateSalon } = await import('../src/app/actions/admin');
+    const res = await impersonateSalon('salon-1');
+    expect(res.error).toBeNull();
+    expect(res.data?.supabaseAuth).toEqual({
+      tokenHash: 'tok-abc',
+      email: 'user-owner-auth-1@example.com',
+    });
+  });
 });
 
 describe('exitImpersonation', () => {
@@ -140,6 +163,23 @@ describe('exitImpersonation', () => {
     expect(payload.role).toBe('super_admin');
     expect(payload.staffId).toBe('admin-1');
     expect(payload.impersonatedBy).toBeUndefined();
+  });
+
+  it('mints a fresh Supabase Auth token for the super admin on exit', async () => {
+    // Regression: after exit, the browser's Supabase client must flip off the
+    // owner's auth.uid(). Returning a hashed_token lets the client redeem it
+    // via verifyOtp instead of forcing a /login round trip.
+    session = {
+      salonId: 'salon-1', staffId: 'owner-auth-1', role: 'owner', branchId: 'branch-main',
+      name: 'Admin viewing Test Salon',
+      impersonatedBy: { staffId: 'admin-1', name: 'Super Admin' },
+    };
+    const { exitImpersonation } = await import('../src/app/actions/admin');
+    const res = await exitImpersonation();
+    expect(res.supabaseAuth).toEqual({
+      tokenHash: 'tok-abc',
+      email: 'user-admin-1@example.com',
+    });
   });
 });
 

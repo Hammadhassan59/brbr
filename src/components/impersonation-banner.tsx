@@ -5,6 +5,7 @@ import { Eye } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Button } from '@/components/ui/button';
 import { useAppStore } from '@/store/app-store';
+import { supabase } from '@/lib/supabase';
 import { exitImpersonation, getImpersonationContext } from '@/app/actions/admin';
 
 export function ImpersonationBanner() {
@@ -22,11 +23,28 @@ export function ImpersonationBanner() {
 
   async function exit() {
     setExiting(true);
-    const { success, error } = await exitImpersonation();
+    const { success, error, supabaseAuth } = await exitImpersonation();
     if (!success) {
       toast.error(error || 'Could not exit impersonation');
       setExiting(false);
       return;
+    }
+    // Flip the browser's Supabase Auth session off the owner. If the server
+    // gave us a fresh token for the super admin, redeem it; otherwise sign out
+    // and let them re-auth at /login.
+    let redirectTo = '/admin';
+    if (supabaseAuth) {
+      const { error: otpErr } = await supabase.auth.verifyOtp({
+        type: 'magiclink',
+        token_hash: supabaseAuth.tokenHash,
+      });
+      if (otpErr) {
+        await supabase.auth.signOut().catch(() => {});
+        redirectTo = '/login';
+      }
+    } else {
+      await supabase.auth.signOut().catch(() => {});
+      redirectTo = '/login';
     }
     // Flip the client-side store back to super_admin so /admin doesn't get
     // stuck in the "not a super admin" branch after navigation.
@@ -42,7 +60,7 @@ export function ImpersonationBanner() {
     // Match the login flow and reset role cookies client-side with 24h max-age.
     document.cookie = `icut-session=1; path=/; max-age=${60 * 60 * 24}; SameSite=Strict`;
     document.cookie = `icut-role=super_admin; path=/; max-age=${60 * 60 * 24}; SameSite=Strict`;
-    window.location.href = '/admin';
+    window.location.href = redirectTo;
   }
 
   return (

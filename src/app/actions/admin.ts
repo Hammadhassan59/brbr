@@ -378,6 +378,7 @@ export async function impersonateSalon(salonId: string): Promise<{
     salon: Record<string, unknown>;
     branches: Array<Record<string, unknown>>;
     mainBranch: Record<string, unknown>;
+    supabaseAuth: { tokenHash: string; email: string };
   } | null;
   error: string | null;
 }> {
@@ -403,14 +404,33 @@ export async function impersonateSalon(salonId: string): Promise<{
   const mainBranch = branches?.[0];
   if (!mainBranch) return { data: null, error: 'Salon has no branch — cannot impersonate' };
 
-  // Use the salon's real owner auth user id as staffId so all /dashboard
-  // code paths see a normal owner session. If the owner_id is missing
-  // (legacy salon), fall back to a synthetic id.
-  const ownerAuthId = salon.owner_id || session.staffId;
+  if (!salon.owner_id) {
+    return { data: null, error: 'Salon has no owner auth user — cannot impersonate' };
+  }
+
+  // Mint a real Supabase Auth session for the owner. Client-side queries on
+  // /dashboard go through RLS; without an authenticated session that resolves
+  // to this salon's owner, get_user_salon_id() returns NULL and every query
+  // returns zero rows. The magic-link hashed_token is redeemed on the client
+  // via supabase.auth.verifyOtp, which sets the browser session.
+  const { data: ownerUser, error: ownerErr } = await supabase.auth.admin.getUserById(salon.owner_id);
+  if (ownerErr || !ownerUser?.user?.email) {
+    return { data: null, error: 'Could not resolve owner auth user' };
+  }
+  const ownerEmail = ownerUser.user.email;
+
+  const { data: linkData, error: linkErr } = await supabase.auth.admin.generateLink({
+    type: 'magiclink',
+    email: ownerEmail,
+  });
+  const tokenHash = linkData?.properties?.hashed_token;
+  if (linkErr || !tokenHash) {
+    return { data: null, error: linkErr?.message || 'Could not mint owner session' };
+  }
 
   await signSession({
     salonId: salon.id,
-    staffId: ownerAuthId,
+    staffId: salon.owner_id,
     role: 'owner',
     branchId: mainBranch.id,
     name: `Admin viewing ${salon.name}`,
@@ -421,17 +441,29 @@ export async function impersonateSalon(salonId: string): Promise<{
   cookieStore.set('icut-session', '1', { path: '/', sameSite: 'strict' });
   cookieStore.set('icut-role', 'owner', { path: '/', sameSite: 'strict' });
 
-  return { data: { salon, branches: branches || [], mainBranch }, error: null };
+  return {
+    data: {
+      salon,
+      branches: branches || [],
+      mainBranch,
+      supabaseAuth: { tokenHash, email: ownerEmail },
+    },
+    error: null,
+  };
 }
 
 /**
  * Exit impersonation — restore the super_admin session.
  * Requires the current session to carry an `impersonatedBy` claim.
  */
-export async function exitImpersonation(): Promise<{ success: boolean; error: string | null }> {
+export async function exitImpersonation(): Promise<{
+  success: boolean;
+  error: string | null;
+  supabaseAuth: { tokenHash: string; email: string } | null;
+}> {
   const session = await verifySession();
   if (!session.impersonatedBy) {
-    return { success: false, error: 'Not currently impersonating' };
+    return { success: false, error: 'Not currently impersonating', supabaseAuth: null };
   }
   await signSession({
     salonId: 'super-admin',
@@ -443,7 +475,30 @@ export async function exitImpersonation(): Promise<{ success: boolean; error: st
   const cookieStore = await cookies();
   cookieStore.set('icut-session', '1', { path: '/', sameSite: 'strict' });
   cookieStore.set('icut-role', 'super_admin', { path: '/', sameSite: 'strict' });
-  return { success: true, error: null };
+
+  // Mint a fresh Supabase Auth session for the super admin so the browser's
+  // Supabase client flips back from the impersonated owner. Without this the
+  // super admin would keep the owner's auth.uid() after exiting, which breaks
+  // any client-side supabase call. Best-effort — if token generation fails we
+  // still return success and let the client sign out of Supabase Auth instead.
+  let supabaseAuth: { tokenHash: string; email: string } | null = null;
+  try {
+    const supabase = createServerClient();
+    const { data: adminUser } = await supabase.auth.admin.getUserById(session.impersonatedBy.staffId);
+    const adminEmail = adminUser?.user?.email;
+    if (adminEmail) {
+      const { data: linkData } = await supabase.auth.admin.generateLink({
+        type: 'magiclink',
+        email: adminEmail,
+      });
+      const tokenHash = linkData?.properties?.hashed_token;
+      if (tokenHash) supabaseAuth = { tokenHash, email: adminEmail };
+    }
+  } catch {
+    // Fall through — client will sign out of Supabase Auth as a safety net.
+  }
+
+  return { success: true, error: null, supabaseAuth };
 }
 
 /** Read-only view of the impersonation state for UI banners. */
