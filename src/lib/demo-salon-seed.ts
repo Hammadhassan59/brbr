@@ -171,6 +171,16 @@ export function getDemoSalonSeed(): DemoSalonSeed {
     const staffId = STYLIST_STAFF[p.staffIdx];
     const clientId = DEMO_CLIENT_IDS[p.clientIdx % DEMO_CLIENT_IDS.length];
 
+    // Compute end_time from service duration so the appointments_no_overlap
+    // GIST EXCLUDE constraint doesn't treat every NULL-ended row as a
+    // full-day block that collides with every other appointment for the
+    // same stylist.
+    const [hh, mm] = p.time.split(':').map(Number);
+    const endMinutes = hh * 60 + mm + (svc.duration || 30);
+    const endH = Math.min(23, Math.floor(endMinutes / 60));
+    const endM = endMinutes % 60;
+    const endTime = `${String(endH).padStart(2, '0')}:${String(endM).padStart(2, '0')}`;
+
     appointments.push({
       id: aptId,
       branch_id: DEMO_BRANCH_ID,
@@ -180,7 +190,7 @@ export function getDemoSalonSeed(): DemoSalonSeed {
       status: p.status,
       appointment_date: aptDate,
       start_time: p.time,
-      end_time: null,
+      end_time: endTime,
       token_number: idx + 1,
       is_walkin: p.isWalkin,
       notes: null,
