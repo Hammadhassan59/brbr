@@ -378,7 +378,7 @@ export default function LoginPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                minLength={6}
+                minLength={authMode === 'signup' ? 10 : 6}
                 className="mt-1.5 border-border bg-white"
               />
             </div>

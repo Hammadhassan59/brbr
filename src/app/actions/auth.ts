@@ -1,7 +1,10 @@
 'use server';
 
 import { SignJWT, jwtVerify } from 'jose';
-import { cookies } from 'next/headers';
+import { cookies, headers } from 'next/headers';
+import { checkRateLimit } from '@/lib/with-rate-limit';
+import { BUCKETS } from '@/lib/rate-limit-buckets';
+import { getClientIp } from '@/lib/rate-limit';
 
 // Lazy secret binding: during `next build` page-data collection, SESSION_SECRET
 // may be absent (it's a runtime-only var, not a build arg). Throwing at module
@@ -286,8 +289,31 @@ export async function destroySession() {
 /**
  * After Supabase Auth login, resolve the user's role by checking DB tables.
  * Returns the user type, their record, salon, and branches.
+ *
+ * Rate-limited: login happens client-side via supabase.auth.signInWithPassword
+ * (outside our server action surface), but every successful client login is
+ * followed by this server call. Gating here throttles automated credential
+ * stuffing that makes it past Supabase's own rate limit. Keyed on IP + email
+ * so one attacker can't mask their rate by rotating emails from a single IP.
  */
 export async function resolveUserRole(authUserId: string, authEmail: string) {
+  try {
+    const h = await headers();
+    const ip = getClientIp(new Request('http://x', { headers: h }));
+    const rl = await checkRateLimit(
+      'login',
+      `${ip}:${authEmail.toLowerCase()}`,
+      BUCKETS.LOGIN_ATTEMPTS.max,
+      BUCKETS.LOGIN_ATTEMPTS.windowMs,
+    );
+    if (!rl.ok) {
+      throw new Error(rl.error ?? 'Too many login attempts, please try again later.');
+    }
+  } catch (err) {
+    // Headers may be unavailable in non-request contexts; only re-throw the
+    // explicit rate-limit error so tests without headers() can still resolve.
+    if (err instanceof Error && err.message.startsWith('Too many')) throw err;
+  }
   const { createServerClient } = await import('@/lib/supabase');
   const supabase = createServerClient();
 

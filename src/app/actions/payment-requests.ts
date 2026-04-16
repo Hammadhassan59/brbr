@@ -5,6 +5,9 @@ import { verifySession } from './auth';
 import { sendEmail } from '@/lib/email-sender';
 import { paymentApprovedEmail, paymentDeniedEmail } from '@/lib/email-templates';
 import { accrueCommissionForPaymentRequest, reverseCommissionsForPaymentRequest } from './agent-commissions';
+import { checkRateLimit } from '@/lib/with-rate-limit';
+import { BUCKETS } from '@/lib/rate-limit-buckets';
+import { safeError } from '@/lib/action-error';
 
 type Plan = 'basic' | 'growth' | 'pro';
 type Method = 'bank' | 'jazzcash';
@@ -85,6 +88,17 @@ export async function submitPaymentRequest(
     return { data: null, error: 'No salon associated with this session' };
   }
 
+  // Rate-limit: legitimate payments are infrequent, each submission uploads a
+  // screenshot and sits in admin review. 5/hour/salon-user is generous for
+  // real use and kills spam.
+  const rl = await checkRateLimit(
+    'payment-submit',
+    `${session.salonId}:${session.staffId}`,
+    BUCKETS.PAYMENT_SUBMIT.max,
+    BUCKETS.PAYMENT_SUBMIT.windowMs,
+  );
+  if (!rl.ok) return { data: null, error: rl.error ?? 'Too many payment submissions, please try again later.' };
+
   const plan = String(formData.get('plan') || '') as Plan;
   const reference = String(formData.get('reference') || '').trim() || null;
   const method = (String(formData.get('method') || '') as Method) || null;
@@ -114,7 +128,7 @@ export async function submitPaymentRequest(
       contentType: screenshot.type || 'image/jpeg',
       upsert: false,
     });
-  if (uploadErr) return { data: null, error: `Upload failed: ${uploadErr.message}` };
+  if (uploadErr) return { data: null, error: `Upload failed: ${safeError(uploadErr)}` };
 
   const { data: urlData } = supabase.storage
     .from('payment-screenshots')
@@ -140,7 +154,7 @@ export async function submitPaymentRequest(
   if (error) {
     // Try to clean up the orphaned screenshot
     await supabase.storage.from('payment-screenshots').remove([path]).catch(() => {});
-    return { data: null, error: error.message };
+    return { data: null, error: safeError(error) };
   }
   return { data: data as PaymentRequest, error: null };
 }
@@ -218,7 +232,7 @@ export async function listPaymentRequests(
   }
 
   const { data, error } = await query.limit(200);
-  if (error) return { data: [], error: error.message };
+  if (error) return { data: [], error: safeError(error) };
   return { data: (data || []) as PaymentRequestWithSalon[], error: null };
 }
 
@@ -241,7 +255,7 @@ export async function getPaymentRequestCounts(): Promise<{
 
   const firstError = pending.error || approved.error || rejected.error;
   if (firstError) {
-    return { data: { pending: 0, approved: 0, rejected: 0 }, error: firstError.message };
+    return { data: { pending: 0, approved: 0, rejected: 0 }, error: safeError(firstError) };
   }
 
   return {
@@ -307,7 +321,7 @@ export async function approvePaymentRequest(
         : new Date().toISOString(),
     })
     .eq('id', request.salon_id);
-  if (salonErr) return { error: salonErr.message };
+  if (salonErr) return { error: safeError(salonErr) };
 
   const { error: reqErr } = await supabase
     .from('payment_requests')
@@ -320,7 +334,7 @@ export async function approvePaymentRequest(
       duration_days: days,
     })
     .eq('id', id);
-  if (reqErr) return { error: reqErr.message };
+  if (reqErr) return { error: safeError(reqErr) };
 
   // Commission accrual — no-ops if salon has no agent.
   await accrueCommissionForPaymentRequest({
@@ -393,7 +407,7 @@ export async function rejectPaymentRequest(
       reviewer_notes: options?.reason ?? null,
     })
     .eq('id', id);
-  if (error) return { error: error.message };
+  if (error) return { error: safeError(error) };
 
   // Owner notification — best-effort.
   try {
@@ -471,7 +485,7 @@ export async function reversePaymentRequest(
       reviewer_notes: reversalNote,
     })
     .eq('id', id);
-  if (reqErr) return { error: reqErr.message };
+  if (reqErr) return { error: safeError(reqErr) };
 
   await reverseCommissionsForPaymentRequest(id);
 

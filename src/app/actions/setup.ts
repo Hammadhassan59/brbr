@@ -1,10 +1,30 @@
 'use server';
 
+import { headers } from 'next/headers';
 import { createServerClient } from '@/lib/supabase';
 import { sendEmail } from '@/lib/email-sender';
 import { welcomeEmail } from '@/lib/email-templates';
+import { checkRateLimit } from '@/lib/with-rate-limit';
+import { BUCKETS } from '@/lib/rate-limit-buckets';
+import { getClientIp } from '@/lib/rate-limit';
+import { safeError } from '@/lib/action-error';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/**
+ * Shared helper: read the client IP from the request headers. Wrapped in
+ * try/catch because `headers()` is only available in a request scope — during
+ * unit tests it may throw, and in that case we want to skip rate limiting
+ * rather than crash.
+ */
+async function getIpOrUnknown(): Promise<string> {
+  try {
+    const h = await headers();
+    return getClientIp(new Request('http://x', { headers: h }));
+  } catch {
+    return 'unknown';
+  }
+}
 
 /**
  * Check whether an email is already registered with Supabase Auth.
@@ -18,6 +38,17 @@ export async function checkEmailAvailable(
   if (!normalized || !EMAIL_RE.test(normalized)) {
     return { available: false, reason: 'invalid' };
   }
+
+  // Rate-limit: legitimate users retype emails a handful of times during
+  // signup, scrapers want thousands of lookups. 30/hour/IP separates the two.
+  const ip = await getIpOrUnknown();
+  const rl = await checkRateLimit(
+    'email-availability',
+    ip,
+    BUCKETS.EMAIL_AVAILABILITY.max,
+    BUCKETS.EMAIL_AVAILABILITY.windowMs,
+  );
+  if (!rl.ok) return { available: true, reason: 'error' };
 
   const supabase = createServerClient();
 
@@ -74,13 +105,26 @@ export async function lookupAgentByCode(
 ): Promise<{ data: { name: string } | null; error: string | null }> {
   const trimmed = code?.trim().toUpperCase();
   if (!trimmed) return { data: null, error: 'Code is required' };
+
+  // Brute-force surface: the code space is small (1000) and the endpoint
+  // reveals agent names. Throttle per-IP with the GENERIC_READ shape so real
+  // users typing their code don't trip but scrapers get stalled.
+  const ip = await getIpOrUnknown();
+  const rl = await checkRateLimit(
+    'agent-lookup',
+    ip,
+    BUCKETS.GENERIC_READ.max,
+    BUCKETS.GENERIC_READ.windowMs,
+  );
+  if (!rl.ok) return { data: null, error: rl.error ?? 'Too many lookups, please slow down.' };
+
   const supabase = createServerClient();
   const { data, error } = await supabase
     .from('sales_agents')
     .select('name, active')
     .eq('code', trimmed)
     .maybeSingle();
-  if (error) return { data: null, error: error.message };
+  if (error) return { data: null, error: safeError(error) };
   if (!data || !data.active) return { data: null, error: null };
   return { data: { name: data.name }, error: null };
 }
@@ -103,6 +147,19 @@ export async function setupSalon(data: {
   partners: Array<{ name: string; email: string; phone: string; password: string }>;
   staff: Array<{ name: string; email: string; phone: string; role: string; password: string; baseSalary?: number; commissionType?: string; commissionRate?: number }>;
 }) {
+  // Defense-in-depth: setupSalon already requires a Supabase auth session
+  // (ownerId), but an attacker who has a valid auth cookie could still script
+  // repeated setup calls. A SIGNUP-shape per-IP cap matches the spirit of the
+  // bucket (new-account farming).
+  const ip = await getIpOrUnknown();
+  const rl = await checkRateLimit(
+    'setup-salon',
+    ip,
+    BUCKETS.SIGNUP.max,
+    BUCKETS.SIGNUP.windowMs,
+  );
+  if (!rl.ok) return { data: null, error: rl.error ?? 'Too many setup attempts, please try again later.' };
+
   const supabase = createServerClient();
 
   if (!data.phone?.trim()) return { data: null, error: 'Salon phone is required' };
@@ -172,7 +229,7 @@ export async function setupSalon(data: {
     .select()
     .single();
 
-  if (salonErr) return { data: null, error: salonErr.message };
+  if (salonErr) return { data: null, error: safeError(salonErr) };
 
   // Create main branch — prefer user-provided name, fall back to "{city} Branch"
   // or "Main Branch" if neither was supplied.
@@ -192,7 +249,7 @@ export async function setupSalon(data: {
     .select()
     .single();
 
-  if (branchErr) return { data: null, error: branchErr.message };
+  if (branchErr) return { data: null, error: safeError(branchErr) };
 
   // Create services
   if (data.services.length > 0) {
@@ -206,7 +263,7 @@ export async function setupSalon(data: {
         sort_order: i,
       }))
     );
-    if (svcErr) return { data: null, error: svcErr.message };
+    if (svcErr) return { data: null, error: safeError(svcErr) };
   }
 
   // Create partners — each gets a Supabase Auth account
@@ -217,7 +274,7 @@ export async function setupSalon(data: {
       email_confirm: true,
     });
 
-    if (authErr) return { data: null, error: `Failed to create account for ${p.name}: ${authErr.message}` };
+    if (authErr) return { data: null, error: `Failed to create account for ${p.name}: ${safeError(authErr)}` };
 
     const { error: partnerErr } = await supabase.from('salon_partners').insert({
       salon_id: newSalon.id,
@@ -227,7 +284,7 @@ export async function setupSalon(data: {
       auth_user_id: authUser.user.id,
       pin_code: null,
     });
-    if (partnerErr) return { data: null, error: partnerErr.message };
+    if (partnerErr) return { data: null, error: safeError(partnerErr) };
   }
 
   // Create staff — each gets a Supabase Auth account
@@ -238,7 +295,7 @@ export async function setupSalon(data: {
       email_confirm: true,
     });
 
-    if (authErr) return { data: null, error: `Failed to create account for ${s.name}: ${authErr.message}` };
+    if (authErr) return { data: null, error: `Failed to create account for ${s.name}: ${safeError(authErr)}` };
 
     const { error: staffErr } = await supabase.from('staff').insert({
       salon_id: newSalon.id,
@@ -253,7 +310,7 @@ export async function setupSalon(data: {
       commission_type: s.commissionType && s.commissionType !== 'none' ? s.commissionType : null,
       commission_rate: s.commissionRate ?? 0,
     });
-    if (staffErr) return { data: null, error: staffErr.message };
+    if (staffErr) return { data: null, error: safeError(staffErr) };
   }
 
   // Send welcome email — best-effort, failures don't block setup.

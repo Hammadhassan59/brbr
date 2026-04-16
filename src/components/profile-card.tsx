@@ -97,7 +97,7 @@ export function ProfileCard() {
   async function submitPassword(e: React.FormEvent) {
     e.preventDefault();
     if (!currentPassword) { toast.error('Enter your current password'); return; }
-    if (newPassword.length < 6) { toast.error('New password must be at least 6 characters'); return; }
+    if (newPassword.length < 10) { toast.error('New password must be at least 10 characters'); return; }
     if (newPassword !== confirmPassword) { toast.error('Passwords do not match'); return; }
     setPwSaving(true);
     try {

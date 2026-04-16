@@ -580,7 +580,7 @@ export default function SetupPage() {
                     <div className="grid grid-cols-2 gap-3">
                       <div>
                         <Label>Password *</Label>
-                        <Input type="password" value={partner.password} onChange={(e) => updatePartner(i, 'password', e.target.value)} minLength={6} placeholder="Min 6 characters" className="mt-1" />
+                        <Input type="password" value={partner.password} onChange={(e) => updatePartner(i, 'password', e.target.value)} minLength={10} placeholder="Min 10 characters" className="mt-1" />
                       </div>
                       <div>
                         <Label>Confirm Password *</Label>
@@ -760,8 +760,8 @@ export default function SetupPage() {
                       type="password"
                       value={staff.password}
                       onChange={(e) => updateStaff(i, 'password', e.target.value)}
-                      minLength={6}
-                      placeholder="Min 6 characters"
+                      minLength={10}
+                      placeholder="Min 10 characters"
                       className="mt-1"
                     />
                   </div>
