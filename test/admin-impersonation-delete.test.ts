@@ -4,15 +4,40 @@ type Session = { salonId: string; staffId: string; role: string; branchId: strin
 let session: Session = { salonId: 'super-admin', staffId: 'admin-1', role: 'super_admin', branchId: '', name: 'Super Admin' };
 
 const salonRow = { id: 'salon-1', name: 'Test Salon', owner_id: 'owner-auth-1' };
-const branches = [{ id: 'branch-main', is_main: true }, { id: 'branch-2', is_main: false }];
-const partners = [{ auth_user_id: 'partner-auth-1' }, { auth_user_id: null }];
-const staff = [{ auth_user_id: 'staff-auth-1' }, { auth_user_id: 'staff-auth-2' }];
+// branches list is hardcoded inside the fromMock branches branch — kept here
+// as documentation of the shape the action expects from .order() on branches.
+// const branches = [{ id: 'branch-main', is_main: true }, { id: 'branch-2', is_main: false }];
+// Each row carries every field the action might select on a single from('table').
+// The deleteSalonAndAllData action queries staff twice (once for auth_user_id,
+// once for id) — keeping both fields per row makes the mock work for both.
+const partners = [
+  { id: 'partner-1', auth_user_id: 'partner-auth-1' },
+  { id: 'partner-2', auth_user_id: null },
+];
+const staff = [
+  { id: 'staff-1', auth_user_id: 'staff-auth-1' },
+  { id: 'staff-2', auth_user_id: 'staff-auth-2' },
+];
 
 let deleteCalls: string[] = [];
 let salonDeleteShouldFail = false;
 const adminDeleteUser = vi.fn().mockResolvedValue({ error: null });
 const signSessionMock = vi.fn().mockResolvedValue({ success: true });
 const cookieSet = vi.fn();
+
+// Helper that returns a thenable for chains like .select('id').eq('salon_id', x)
+// where the await unwraps to { data, error }. Also supports .order().
+function awaitable<T>(data: T) {
+  const result = { data, error: null as { message: string } | null };
+  const obj: Record<string, unknown> = {
+    order: () => Promise.resolve(result),
+    maybeSingle: () => Promise.resolve(result),
+    single: () => Promise.resolve(result),
+    then: <R>(onResolve: (v: typeof result) => R, onReject?: (e: unknown) => R): Promise<R> =>
+      Promise.resolve(result).then(onResolve, onReject),
+  };
+  return obj;
+}
 
 const fromMock = vi.fn((table: string) => {
   if (table === 'salons') {
@@ -31,18 +56,28 @@ const fromMock = vi.fn((table: string) => {
   if (table === 'branches') {
     return {
       select: () => ({
-        eq: () => ({ order: () => Promise.resolve({ data: branches, error: null }) }),
+        eq: () => awaitable([{ id: 'branch-main' }, { id: 'branch-2' }]),
       }),
     };
   }
   if (table === 'salon_partners') {
     return {
-      select: () => ({ eq: () => Promise.resolve({ data: partners, error: null }) }),
+      select: () => ({ eq: () => awaitable(partners) }),
     };
   }
   if (table === 'staff') {
+    // Same row returned for both .select('auth_user_id') and .select('id')
+    // calls — each row carries both fields.
     return {
-      select: () => ({ eq: () => Promise.resolve({ data: staff, error: null }) }),
+      select: () => ({ eq: () => awaitable(staff) }),
+    };
+  }
+  if (table === 'clients' || table === 'products' || table === 'packages') {
+    // Always return at least one row so every blocker delete actually fires
+    // and shows up in deleteCalls — otherwise the empty-array short-circuit
+    // hides whether the action would have called those purges in real life.
+    return {
+      select: () => ({ eq: () => awaitable([{ id: `${table}-1` }]) }),
     };
   }
   if (table === 'appointments' || table === 'bills' || table === 'loyalty_rules') {
@@ -55,7 +90,18 @@ const fromMock = vi.fn((table: string) => {
       }),
     };
   }
-  return { select: () => ({}) };
+  // New blocker tables: cash_drawers, attendance, expenses, purchase_orders,
+  // stock_movements, udhaar_payments, advances, client_packages.
+  // Each gets a delete().in() chain — no-op (return null error) since the
+  // parent ID arrays will often be empty in the mocked fixture.
+  return {
+    delete: () => ({
+      in: () => {
+        deleteCalls.push(table);
+        return Promise.resolve({ error: null });
+      },
+    }),
+  };
 });
 
 vi.mock('@/lib/supabase', () => ({
@@ -202,7 +248,20 @@ describe('deleteSalonAndAllData', () => {
     const { deleteSalonAndAllData } = await import('../src/app/actions/admin');
     const res = await deleteSalonAndAllData('salon-1', 'Test Salon');
     expect(res.success).toBe(true);
-    expect(deleteCalls).toEqual(['appointments', 'bills', 'loyalty_rules', 'salons']);
+    // Blocker tables that prevent the salons cascade go first, then the
+    // three NO ACTION tables on salons (appointments/bills/loyalty_rules),
+    // then the salon row itself. Order matters — Postgres rejects the parent
+    // delete if any FK still points at a salon-scoped child.
+    // Blocker tables that prevent the salons cascade go first (in
+    // dependency-safe order), then the second stock_movements pass for
+    // product_id, then the three NO ACTION tables on salons
+    // (appointments/bills/loyalty_rules), then the salon row itself.
+    expect(deleteCalls).toEqual([
+      'cash_drawers', 'attendance', 'expenses', 'purchase_orders',
+      'stock_movements', 'udhaar_payments', 'advances', 'client_packages',
+      'stock_movements',
+      'appointments', 'bills', 'loyalty_rules', 'salons',
+    ]);
     // owner + partner-auth-1 + staff-auth-1 + staff-auth-2 (4 unique)
     expect(adminDeleteUser).toHaveBeenCalledTimes(4);
     expect(res.deletedAuthUsers).toBe(4);

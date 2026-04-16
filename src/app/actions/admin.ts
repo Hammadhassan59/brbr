@@ -567,12 +567,62 @@ export async function deleteSalonAndAllData(
     if (s.auth_user_id) authIds.add(s.auth_user_id);
   });
 
-  // Tables without ON DELETE CASCADE on salon_id need explicit deletes first.
-  // (The rest cascade via FK: branches, services, staff, salon_partners,
-  // clients, client_packages, packages, products, suppliers, expenses,
-  // stock_movements, tips, advances, udhaar_payments, cash_drawers, attendance,
-  // promo_codes, purchase_orders, service_staff_pricing, payment_requests,
-  // agent_commissions, product_service_links.)
+  // Most child FKs are ON DELETE NO ACTION (NOT cascade), so we have to
+  // delete every blocker by hand before the salon delete will succeed.
+  // Order matters: delete leaves first, then their parents, then the salon.
+  //
+  // Cascade chain that DOES auto-fire from `salons`:
+  //   branches, services, staff, salon_partners, clients, packages,
+  //   products, suppliers, promo_codes, payment_requests, agent_commissions,
+  //   backbar_actuals, loyalty_rules (some), appointments + bills cascade
+  //   their items.
+  // But every CASCADE from salons → branches/staff/etc is BLOCKED if any
+  // NO ACTION FK points at those rows. Hence the explicit deletes below.
+
+  // Pull parent IDs once so we can scope IN clauses without round trips.
+  const [{ data: branchRows }, { data: staffRows }, { data: clientRows }, { data: productRows }, { data: packageRows }] = await Promise.all([
+    supabase.from('branches').select('id').eq('salon_id', salonId),
+    supabase.from('staff').select('id').eq('salon_id', salonId),
+    supabase.from('clients').select('id').eq('salon_id', salonId),
+    supabase.from('products').select('id').eq('salon_id', salonId),
+    supabase.from('packages').select('id').eq('salon_id', salonId),
+  ]);
+  const branchIds = (branchRows || []).map((r: { id: string }) => r.id);
+  const staffIds = (staffRows || []).map((r: { id: string }) => r.id);
+  const clientIds = (clientRows || []).map((r: { id: string }) => r.id);
+  const productIds = (productRows || []).map((r: { id: string }) => r.id);
+  const packageIds = (packageRows || []).map((r: { id: string }) => r.id);
+
+  async function purge(table: string, column: string, ids: string[]) {
+    if (ids.length === 0) return null;
+    const { error } = await supabase.from(table).delete().in(column, ids);
+    return error;
+  }
+
+  // Step 1: drain leaves that block branches/staff/clients/products/packages.
+  // Each call is awaited individually so we surface the first failing table
+  // by name for a useful error.
+  const blockerSequence: Array<[string, string, string[]]> = [
+    ['cash_drawers',     'branch_id',  branchIds],
+    ['attendance',       'branch_id',  branchIds],
+    ['expenses',         'branch_id',  branchIds],
+    ['purchase_orders',  'branch_id',  branchIds],
+    ['stock_movements',  'branch_id',  branchIds],
+    ['udhaar_payments',  'client_id',  clientIds],
+    ['advances',         'staff_id',   staffIds],
+    ['client_packages',  'package_id', packageIds],
+  ];
+  for (const [table, column, ids] of blockerSequence) {
+    const err = await purge(table, column, ids);
+    if (err) return { success: false, deletedAuthUsers: 0, error: `${table}: ${err.message}` };
+  }
+  // stock_movements may also point at products via product_id (a separate
+  // NO ACTION FK); catch those too in case any survived the branch_id pass
+  // (e.g. a movement logged against a product but with branch_id null).
+  const stockProductErr = await purge('stock_movements', 'product_id', productIds);
+  if (stockProductErr) return { success: false, deletedAuthUsers: 0, error: `stock_movements/product: ${stockProductErr.message}` };
+
+  // Step 2: salons FK is NO ACTION on these three.
   const { error: aptErr } = await supabase.from('appointments').delete().eq('salon_id', salonId);
   if (aptErr) return { success: false, deletedAuthUsers: 0, error: `appointments: ${aptErr.message}` };
   const { error: billErr } = await supabase.from('bills').delete().eq('salon_id', salonId);
@@ -580,6 +630,7 @@ export async function deleteSalonAndAllData(
   const { error: loyaltyErr } = await supabase.from('loyalty_rules').delete().eq('salon_id', salonId);
   if (loyaltyErr) return { success: false, deletedAuthUsers: 0, error: `loyalty_rules: ${loyaltyErr.message}` };
 
+  // Step 3: salons cascade handles the rest (branches, staff, services, etc.)
   const { error: delErr } = await supabase.from('salons').delete().eq('id', salonId);
   if (delErr) return { success: false, deletedAuthUsers: 0, error: `salons: ${delErr.message}` };
 
