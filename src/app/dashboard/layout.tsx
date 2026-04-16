@@ -90,8 +90,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
          
         setBranchesStore((boot.branches as unknown) as typeof branches);
       }
-      if (boot.mainBranch && !currentBranch) {
-         
+      // Reconcile currentBranch: if Zustand has a branch that no longer exists
+       // (e.g. the owner just deleted it), swap to the main branch. Otherwise
+       // every dashboard query stays scoped to a stale id and shows zero data.
+      const liveBranchIds = new Set((boot.branches || []).map((b) => (b as { id: string }).id));
+      const currentIsStale = !!currentBranch && !liveBranchIds.has(currentBranch.id);
+      if (boot.mainBranch && (!currentBranch || currentIsStale)) {
+
         setCurrentBranchStore(boot.mainBranch as unknown as typeof currentBranch);
       }
       // If we're impersonating, ensure the role flags reflect an owner session.

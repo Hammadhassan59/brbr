@@ -126,6 +126,14 @@ export default function BranchesPage() {
         remaining[0] = { ...remaining[0], is_main: true };
       }
       setBranches(remaining);
+      // If the deleted branch was the one we were viewing, swap to the
+      // destination (where the records just moved to) or fall back to the
+      // first remaining branch. Without this every dashboard query keeps
+      // filtering by the now-dead branch id and shows zero data.
+      if (currentBranch && currentBranch.id === deleteTarget.id) {
+        const next = remaining.find((b) => b.id === reassignTo) || remaining[0];
+        if (next) setCurrentBranch(next);
+      }
       if (editingId === deleteTarget.id) resetForm();
       toast.success(`"${deleteTarget.name}" deleted${needsReassign ? ' (records moved)' : ''}`);
       setDeleteTarget(null);
