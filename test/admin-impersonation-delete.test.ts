@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-type Session = { salonId: string; staffId: string; role: string; branchId: string; name: string; impersonatedBy?: { staffId: string; name: string } };
+type Session = { salonId: string; staffId: string; role: string; branchId: string; name: string; impersonatedBy?: { staffId: string; name: string; adminAuthUserId?: string } };
 let session: Session = { salonId: 'super-admin', staffId: 'admin-1', role: 'super_admin', branchId: '', name: 'Super Admin' };
 
 const salonRow = { id: 'salon-1', name: 'Test Salon', owner_id: 'owner-auth-1' };
@@ -134,6 +134,9 @@ vi.mock('@/lib/supabase', () => ({
 vi.mock('@/app/actions/auth', () => ({
   verifySession: () => Promise.resolve(session),
   signSession: (p: Session) => signSessionMock(p),
+  // exitImpersonation re-verifies the admin's role by auth user id. Default
+  // to super_admin so the happy path works; individual tests override as needed.
+  resolveAdminRoleByAuthId: () => Promise.resolve('super_admin'),
 }));
 
 vi.mock('next/headers', () => ({
@@ -170,14 +173,22 @@ describe('impersonateSalon', () => {
     expect(payload.role).toBe('owner');
     expect(payload.salonId).toBe('salon-1');
     expect(payload.branchId).toBe('branch-main');
-    expect(payload.impersonatedBy).toEqual({ staffId: 'admin-1', name: 'Super Admin' });
+    // impersonatedBy now carries adminAuthUserId so exitImpersonation can
+    // re-verify the admin against admin_users rather than trusting the claim.
+    expect(payload.impersonatedBy).toEqual({
+      staffId: 'admin-1',
+      name: 'Super Admin',
+      adminAuthUserId: 'admin-1',
+    });
   });
 
-  it('sets icut-role=owner cookie for the proxy', async () => {
+  it('does not set forgeable icut-role / icut-session cookies (proxy now trusts only the JWT)', async () => {
     const { impersonateSalon } = await import('../src/app/actions/admin');
     await impersonateSalon('salon-1');
     const roleCall = cookieSet.mock.calls.find((c) => c[0] === 'icut-role');
-    expect(roleCall?.[1]).toBe('owner');
+    const sessionCall = cookieSet.mock.calls.find((c) => c[0] === 'icut-session');
+    expect(roleCall).toBeUndefined();
+    expect(sessionCall).toBeUndefined();
   });
 
   it('returns a magic-link hashed_token so the browser can mint an owner Supabase Auth session', async () => {
@@ -206,7 +217,7 @@ describe('exitImpersonation', () => {
     session = {
       salonId: 'salon-1', staffId: 'owner-auth-1', role: 'owner', branchId: 'branch-main',
       name: 'Admin viewing Test Salon',
-      impersonatedBy: { staffId: 'admin-1', name: 'Super Admin' },
+      impersonatedBy: { staffId: 'admin-1', name: 'Super Admin', adminAuthUserId: 'admin-1' },
     };
     const { exitImpersonation } = await import('../src/app/actions/admin');
     const res = await exitImpersonation();
@@ -217,6 +228,27 @@ describe('exitImpersonation', () => {
     expect(payload.impersonatedBy).toBeUndefined();
   });
 
+  it('refuses to restore admin session if the admin has been demoted mid-impersonation', async () => {
+    // Regression: the JWT's impersonatedBy is signed, so it can't be forged
+    // client-side — but if a second super admin revokes the first via
+    // admin_users.active=false while they're mid-impersonation, we must not
+    // hand them back super_admin. Re-check admin_users on exit.
+    session = {
+      salonId: 'salon-1', staffId: 'owner-auth-1', role: 'owner', branchId: 'branch-main',
+      name: 'Admin viewing Test Salon',
+      impersonatedBy: { staffId: 'admin-1', name: 'Super Admin', adminAuthUserId: 'admin-1' },
+    };
+    // Override the role-lookup mock to say "this admin is no longer super_admin".
+    const authMod = await import('@/app/actions/auth');
+    vi.spyOn(authMod, 'resolveAdminRoleByAuthId').mockResolvedValueOnce(null);
+    const { exitImpersonation } = await import('../src/app/actions/admin');
+    const res = await exitImpersonation();
+    expect(res.success).toBe(false);
+    expect(res.error).toMatch(/no longer authorized/i);
+    // And crucially, we did NOT re-sign a super_admin session.
+    expect(signSessionMock).not.toHaveBeenCalled();
+  });
+
   it('mints a fresh Supabase Auth token for the super admin on exit', async () => {
     // Regression: after exit, the browser's Supabase client must flip off the
     // owner's auth.uid(). Returning a hashed_token lets the client redeem it
@@ -224,7 +256,7 @@ describe('exitImpersonation', () => {
     session = {
       salonId: 'salon-1', staffId: 'owner-auth-1', role: 'owner', branchId: 'branch-main',
       name: 'Admin viewing Test Salon',
-      impersonatedBy: { staffId: 'admin-1', name: 'Super Admin' },
+      impersonatedBy: { staffId: 'admin-1', name: 'Super Admin', adminAuthUserId: 'admin-1' },
     };
     const { exitImpersonation } = await import('../src/app/actions/admin');
     const res = await exitImpersonation();

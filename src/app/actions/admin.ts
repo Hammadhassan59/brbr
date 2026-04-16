@@ -1,8 +1,7 @@
 'use server';
 
-import { cookies } from 'next/headers';
 import { createServerClient } from '@/lib/supabase';
-import { verifySession, signSession } from './auth';
+import { verifySession, signSession, resolveAdminRoleByAuthId } from './auth';
 import type { SubscriptionPlan, SubscriptionStatus } from '@/types/database';
 
 async function requireSuperAdmin() {
@@ -428,18 +427,28 @@ export async function impersonateSalon(salonId: string): Promise<{
     return { data: null, error: linkErr?.message || 'Could not mint owner session' };
   }
 
+  // TODO: once the admin_impersonation_sessions table ships (separate SQL
+  // agent), write a row here keyed by this admin auth user id and stash the
+  // row id on the JWT instead of trusting the nested impersonatedBy blob on
+  // its own. For now we stash the admin's auth user id so exitImpersonation()
+  // can re-verify against admin_users before restoring super_admin.
   await signSession({
     salonId: salon.id,
     staffId: salon.owner_id,
     role: 'owner',
     branchId: mainBranch.id,
     name: `Admin viewing ${salon.name}`,
-    impersonatedBy: { staffId: session.staffId, name: session.name || 'Super Admin' },
+    impersonatedBy: {
+      staffId: session.staffId,
+      name: session.name || 'Super Admin',
+      adminAuthUserId: session.staffId,
+    },
   });
 
-  const cookieStore = await cookies();
-  cookieStore.set('icut-session', '1', { path: '/', sameSite: 'strict' });
-  cookieStore.set('icut-role', 'owner', { path: '/', sameSite: 'strict' });
+  // Previously this action also set cleartext icut-session/icut-role cookies
+  // for the proxy gate to read. The proxy now verifies the HttpOnly icut-token
+  // JWT instead, so those cookies are gone — the fresh signSession above is
+  // the single source of truth for the impersonated role.
 
   return {
     data: {
@@ -465,16 +474,30 @@ export async function exitImpersonation(): Promise<{
   if (!session.impersonatedBy) {
     return { success: false, error: 'Not currently impersonating', supabaseAuth: null };
   }
+
+  // Defense-in-depth: the JWT's impersonatedBy blob is signed by us and can't
+  // be forged, but if a super admin were demoted mid-impersonation (e.g. a
+  // second super admin revoked them via admin_users.active=false) we must
+  // NOT restore their admin session. Re-check admin_users by auth user id
+  // before re-issuing.
+  //
+  // TODO: once admin_impersonation_sessions exists, also verify the row id
+  // stashed on the token and mark the session row as closed.
+  const adminAuthUserId = session.impersonatedBy.adminAuthUserId || session.impersonatedBy.staffId;
+  const adminRole = await resolveAdminRoleByAuthId(adminAuthUserId);
+  if (adminRole !== 'super_admin') {
+    return { success: false, error: 'Original admin is no longer authorized', supabaseAuth: null };
+  }
+
   await signSession({
     salonId: 'super-admin',
-    staffId: session.impersonatedBy.staffId,
+    staffId: adminAuthUserId,
     role: 'super_admin',
     branchId: '',
     name: session.impersonatedBy.name,
   });
-  const cookieStore = await cookies();
-  cookieStore.set('icut-session', '1', { path: '/', sameSite: 'strict' });
-  cookieStore.set('icut-role', 'super_admin', { path: '/', sameSite: 'strict' });
+  // Previously also mirrored icut-session + icut-role here. Proxy now reads
+  // role from the verified JWT, so those cleartext cookies are gone.
 
   // Mint a fresh Supabase Auth session for the super admin so the browser's
   // Supabase client flips back from the impersonated owner. Without this the
@@ -484,7 +507,7 @@ export async function exitImpersonation(): Promise<{
   let supabaseAuth: { tokenHash: string; email: string } | null = null;
   try {
     const supabase = createServerClient();
-    const { data: adminUser } = await supabase.auth.admin.getUserById(session.impersonatedBy.staffId);
+    const { data: adminUser } = await supabase.auth.admin.getUserById(adminAuthUserId);
     const adminEmail = adminUser?.user?.email;
     if (adminEmail) {
       const { data: linkData } = await supabase.auth.admin.generateLink({

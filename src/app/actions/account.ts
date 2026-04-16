@@ -214,27 +214,56 @@ export async function changeAccountEmail(
     return { data: null, error: 'New email is the same as current email' };
   }
 
-  // Verify current password before changing email.
+  // Verify current password before changing email. We reuse the anon client's
+  // signInWithPassword so we never trust a claim coming from the client — and
+  // we grab the user's access token from that sign-in so we can do the email
+  // change as the user, not as service-role.
   const anon = anonClient();
-  const { error: signInErr } = await anon.auth.signInWithPassword({
+  const { data: signInData, error: signInErr } = await anon.auth.signInWithPassword({
     email: currentEmail,
     password: currentPassword,
   });
-  if (signInErr) return { data: null, error: 'Current password is incorrect' };
-  await anon.auth.signOut();
+  if (signInErr || !signInData.session) {
+    await anon.auth.signOut().catch(() => {});
+    return { data: null, error: 'Current password is incorrect' };
+  }
 
-  const { error: updErr } = await supabase.auth.admin.updateUserById(resolved.authUserId, {
-    email: newEmail,
-    email_confirm: true,
-  });
+  // Email change flow (Supabase "double-confirm" when Secure email change is on):
+  //   1. user.auth.updateUser({ email }) — triggered via the user's own
+  //      access token so Supabase sends the verification email and keeps the
+  //      OLD email in place until both old and new addresses confirm.
+  //   2. We do NOT call supabase.auth.admin.updateUserById({ email_confirm: true }),
+  //      which would bypass verification and hand the account to anyone who
+  //      submits a new email (no link click required). The old code did this.
+  //
+  // The user's email on the auth row only flips to `newEmail` AFTER they
+  // click the confirmation link(s). Until then, getAccountEmail() still
+  // returns their current email — that's expected behaviour.
+  //
+  // We use the user's access token by passing it as the Authorization header
+  // on a fresh supabase client. This is the "client-authenticated" path the
+  // task description mentions; no service-role bypass.
+  const userAccessToken = signInData.session.access_token;
+  const { createClient: createAuthedClient } = await import('@supabase/supabase-js');
+  const authed = createAuthedClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      auth: { persistSession: false, autoRefreshToken: false },
+      global: { headers: { Authorization: `Bearer ${userAccessToken}` } },
+    },
+  );
+  const { error: updErr } = await authed.auth.updateUser({ email: newEmail });
+  await anon.auth.signOut().catch(() => {});
   if (updErr) return { data: null, error: updErr.message };
 
-  // Mirror email on staff / salon_partners rows so lookups by email still work.
-  if (resolved.role === 'partner') {
-    await supabase.from('salon_partners').update({ email: newEmail }).eq('id', resolved.session.staffId);
-  } else if (resolved.role === 'staff') {
-    await supabase.from('staff').update({ email: newEmail }).eq('id', resolved.session.staffId);
-  }
+  // Intentionally NOT mirroring email to staff / salon_partners rows here.
+  // The auth.users row won't change until the user confirms, so writing the
+  // tentative newEmail to staff.email or salon_partners.email would put the
+  // lookup tables out of sync with reality and create a window where the user
+  // appears under both old and new emails. When they confirm, re-login via
+  // resolveUserRole will link by auth_user_id regardless. If we ever need to
+  // mirror, do it from a Supabase email-change webhook, not from this action.
 
   return { data: { email: newEmail }, error: null };
 }

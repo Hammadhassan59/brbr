@@ -6,8 +6,16 @@ let session: Session = { salonId: 'salon-1', staffId: 'auth-user-1', role: 'owne
 
 let adminGetUserById = vi.fn().mockResolvedValue({ data: { user: { id: 'auth-user-1', email: 'owner@example.com' } }, error: null });
 let adminUpdateUserById = vi.fn().mockResolvedValue({ data: { user: { id: 'auth-user-1' } }, error: null });
-let anonSignIn = vi.fn().mockResolvedValue({ data: { user: { id: 'auth-user-1' } }, error: null });
+// signInWithPassword now also returns a session.access_token — the email-change
+// flow uses that token to call supabase.auth.updateUser as the user, so the
+// verification email path is honoured instead of the service-role bypass.
+let anonSignIn = vi.fn().mockResolvedValue({
+  data: { user: { id: 'auth-user-1' }, session: { access_token: 'user-access-token' } },
+  error: null,
+});
 let anonSignOut = vi.fn().mockResolvedValue({ error: null });
+// Separate mock for the user-authed client that performs auth.updateUser({ email }).
+let userAuthedUpdateUser = vi.fn().mockResolvedValue({ data: { user: { id: 'auth-user-1' } }, error: null });
 
 const partnerRow: { auth_user_id: string | null; salon_id: string } = { auth_user_id: 'auth-partner-1', salon_id: 'salon-1' };
 const staffRow: { auth_user_id: string | null; salon_id: string } = { auth_user_id: 'auth-staff-1', salon_id: 'salon-1' };
@@ -48,13 +56,27 @@ vi.mock('@/lib/supabase', () => ({
   }),
 }));
 
+// Two distinct createClient shapes: the anonymous client (used for the
+// password-verification sign-in) and the user-authed client (used for the
+// email-change call, which now runs as the user, not service-role, so
+// Supabase sends the verification email).
 vi.mock('@supabase/supabase-js', () => ({
-  createClient: () => ({
-    auth: {
-      signInWithPassword: (creds: { email: string; password: string }) => anonSignIn(creds),
-      signOut: () => anonSignOut(),
-    },
-  }),
+  createClient: (_url: string, _key: string, opts?: { global?: { headers?: Record<string, string> } }) => {
+    const isUserAuthed = !!opts?.global?.headers?.Authorization;
+    if (isUserAuthed) {
+      return {
+        auth: {
+          updateUser: (body: Record<string, unknown>) => userAuthedUpdateUser(body),
+        },
+      };
+    }
+    return {
+      auth: {
+        signInWithPassword: (creds: { email: string; password: string }) => anonSignIn(creds),
+        signOut: () => anonSignOut(),
+      },
+    };
+  },
 }));
 
 vi.mock('@/app/actions/auth', () => ({
@@ -71,8 +93,12 @@ beforeEach(() => {
 
   adminGetUserById = vi.fn().mockResolvedValue({ data: { user: { id: 'auth-user-1', email: 'owner@example.com' } }, error: null });
   adminUpdateUserById = vi.fn().mockResolvedValue({ data: { user: { id: 'auth-user-1' } }, error: null });
-  anonSignIn = vi.fn().mockResolvedValue({ data: { user: { id: 'auth-user-1' } }, error: null });
+  anonSignIn = vi.fn().mockResolvedValue({
+    data: { user: { id: 'auth-user-1' }, session: { access_token: 'user-access-token' } },
+    error: null,
+  });
   anonSignOut = vi.fn().mockResolvedValue({ error: null });
+  userAuthedUpdateUser = vi.fn().mockResolvedValue({ data: { user: { id: 'auth-user-1' } }, error: null });
 });
 
 describe('account actions — getAccountEmail', () => {
@@ -137,18 +163,24 @@ describe('account actions — changeAccountPassword', () => {
 });
 
 describe('account actions — changeAccountEmail', () => {
-  it('updates email when current password is correct', async () => {
+  it('invokes the user-authed updateUser (verification email flow), never the admin bypass', async () => {
     const { changeAccountEmail } = await import('../src/app/actions/account');
     const res = await changeAccountEmail({ currentPassword: 'oldpass', newEmail: 'new@example.com' });
     expect(res.error).toBeNull();
     expect(res.data?.email).toBe('new@example.com');
-    expect(adminUpdateUserById).toHaveBeenCalledWith('auth-user-1', { email: 'new@example.com', email_confirm: true });
+    // The new flow goes through auth.updateUser({ email }) as the user, so
+    // Supabase sends a confirmation link. The OLD service-role path
+    // (admin.updateUserById with email_confirm:true) must NOT be called — it
+    // bypasses verification and was the hijack vector we closed.
+    expect(userAuthedUpdateUser).toHaveBeenCalledWith({ email: 'new@example.com' });
+    expect(adminUpdateUserById).not.toHaveBeenCalled();
   });
 
   it('normalizes email to lowercase', async () => {
     const { changeAccountEmail } = await import('../src/app/actions/account');
     const res = await changeAccountEmail({ currentPassword: 'oldpass', newEmail: '  New@Example.COM  ' });
     expect(res.data?.email).toBe('new@example.com');
+    expect(userAuthedUpdateUser).toHaveBeenCalledWith({ email: 'new@example.com' });
   });
 
   it('rejects invalid email format', async () => {
@@ -162,7 +194,7 @@ describe('account actions — changeAccountEmail', () => {
     const { changeAccountEmail } = await import('../src/app/actions/account');
     const res = await changeAccountEmail({ currentPassword: 'oldpass', newEmail: 'OWNER@example.com' });
     expect(res.error).toMatch(/same as current/i);
-    expect(adminUpdateUserById).not.toHaveBeenCalled();
+    expect(userAuthedUpdateUser).not.toHaveBeenCalled();
   });
 
   it('rejects when current password is wrong', async () => {
@@ -170,11 +202,11 @@ describe('account actions — changeAccountEmail', () => {
     const { changeAccountEmail } = await import('../src/app/actions/account');
     const res = await changeAccountEmail({ currentPassword: 'wrong', newEmail: 'new@example.com' });
     expect(res.error).toMatch(/incorrect/i);
-    expect(adminUpdateUserById).not.toHaveBeenCalled();
+    expect(userAuthedUpdateUser).not.toHaveBeenCalled();
   });
 
-  it('surfaces admin API errors (e.g. email already taken)', async () => {
-    adminUpdateUserById = vi.fn().mockResolvedValue({ data: null, error: { message: 'Email already registered' } });
+  it('surfaces updateUser errors (e.g. email already taken)', async () => {
+    userAuthedUpdateUser = vi.fn().mockResolvedValue({ data: null, error: { message: 'Email already registered' } });
     const { changeAccountEmail } = await import('../src/app/actions/account');
     const res = await changeAccountEmail({ currentPassword: 'oldpass', newEmail: 'taken@example.com' });
     expect(res.error).toMatch(/already registered/i);
