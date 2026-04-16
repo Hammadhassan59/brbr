@@ -40,13 +40,25 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
-  // Redirect already-authenticated users to dashboard
+  // Redirect already-authenticated users to their dashboard. Trust the iCut
+  // session cookie (set by signSession) as the source of truth — Zustand
+  // persists in localStorage and can outlive the actual session (e.g. after
+  // a password reset by a different identity in the same browser, the iCut
+  // cookie is gone but Zustand still says "you're a super admin"). If the
+  // cookie is missing, we wipe the stale store and stay on the login form.
   useEffect(() => {
-    const { salon, currentStaff, currentPartner, isSuperAdmin, isSalesAgent } = useAppStore.getState();
-    if (salon || currentStaff || currentPartner || isSuperAdmin || isSalesAgent) {
+    if (typeof document === 'undefined') return;
+    const hasIcutSession = document.cookie.split('; ').includes('icut-session=1');
+    const store = useAppStore.getState();
+    const persistedRoles = store.salon || store.currentStaff || store.currentPartner || store.isSuperAdmin || store.isSalesAgent;
+    if (!hasIcutSession) {
+      if (persistedRoles) store.reset();
+      return;
+    }
+    if (persistedRoles) {
       router.replace(
-        isSuperAdmin ? '/admin' :
-        isSalesAgent ? '/agent' :
+        store.isSuperAdmin ? '/admin' :
+        store.isSalesAgent ? '/agent' :
         '/dashboard',
       );
     }

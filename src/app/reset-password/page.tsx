@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import { Scissors } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { supabase } from '@/lib/supabase';
+import { destroySession } from '@/app/actions/auth';
+import { useAppStore } from '@/store/app-store';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -49,9 +51,22 @@ export default function ResetPasswordPage() {
     try {
       const { error } = await supabase.auth.updateUser({ password });
       if (error) throw error;
+      // Full session reset: the user who triggered the reset link may have been
+      // a totally different identity in this browser (e.g. a super admin who
+      // just created the agent). Without clearing every session surface, the
+      // /login auto-redirect will trust stale Zustand and send them back to
+      // the wrong dashboard. We tear down: Supabase Auth, the iCut JWT cookie,
+      // the proxy gate cookies, and the persisted Zustand store.
       await supabase.auth.signOut();
+      await destroySession().catch(() => {});
+      document.cookie = 'icut-session=; path=/; max-age=0';
+      document.cookie = 'icut-role=; path=/; max-age=0';
+      document.cookie = 'icut-sub=; path=/; max-age=0';
+      useAppStore.getState().reset();
       toast.success('Password updated — please log in with your new password');
-      router.replace('/login');
+      // Hard navigation so the next /login render starts from a fully clean
+      // localStorage + cookie state, not a React state we just mutated.
+      window.location.href = '/login';
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to update password');
     } finally {
