@@ -605,13 +605,31 @@ export async function resolveAdminRoleByAuthId(authUserId: string): Promise<stri
   if (!authUserId) return null;
   const { createServerClient } = await import('@/lib/supabase');
   const supabase = createServerClient();
+
+  // Primary path: admin_users table (invited admins + sub-roles).
   const { data } = await supabase
     .from('admin_users')
     .select('role, active')
     .eq('user_id', authUserId)
     .maybeSingle();
-  if (!data || !data.active) return null;
-  return data.role as string;
+  if (data?.active) return data.role as string;
+
+  // Bootstrap fallback: SUPERADMIN_EMAILS env var. Matches the dual-source
+  // logic in isSuperAdminEmail() so the founding super admin — who may not
+  // have a row in admin_users — can still be re-verified on impersonation exit.
+  const allowed = process.env.SUPERADMIN_EMAILS || '';
+  if (!allowed) return null;
+  try {
+    const { data: userRes } = await supabase.auth.admin.getUserById(authUserId);
+    const email = userRes?.user?.email?.toLowerCase();
+    if (!email) return null;
+    const envList = allowed.split(',').map((e) => e.trim().toLowerCase()).filter(Boolean);
+    if (envList.includes(email)) return 'super_admin';
+  } catch {
+    // getUserById failed — treat as not-authorized. Never throw; callers
+    // check for null/role mismatch.
+  }
+  return null;
 }
 
 /**
