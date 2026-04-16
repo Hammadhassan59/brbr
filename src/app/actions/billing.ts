@@ -12,7 +12,12 @@ export interface BillingPaymentRow {
   amount: number;
   method: 'bank' | 'jazzcash' | null;
   reference: string | null;
+  // Legacy URL column — set on pre-migration-030 rows; null on new rows.
+  // Use screenshot_path (via getPaymentScreenshotUrl server action) for
+  // new rows instead.
   screenshot_url: string | null;
+  // Storage path; non-null on rows created after migration 029.
+  screenshot_path: string | null;
   status: 'pending' | 'approved' | 'rejected';
   duration_days: number;
   created_at: string;
@@ -65,7 +70,7 @@ export async function getBillingData(): Promise<{ data: BillingData | null; erro
       .maybeSingle(),
     supabase
       .from('payment_requests')
-      .select('id, plan, amount, method, reference, screenshot_url, status, duration_days, created_at, reviewed_at, reviewer_notes')
+      .select('id, plan, amount, method, reference, screenshot_url, screenshot_path, status, duration_days, created_at, reviewed_at, reviewer_notes')
       .eq('salon_id', session.salonId)
       .order('created_at', { ascending: false }),
     supabase.from('platform_settings').select('value').eq('key', 'plans').maybeSingle(),

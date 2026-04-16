@@ -26,7 +26,12 @@ export interface Lead {
   city: string | null;
   address: string | null;
   notes: string | null;
+  // Legacy: pre-migration-030 rows stored a full public URL here. New
+  // rows leave this null and use photo_path instead.
   photo_url: string | null;
+  // Storage object path in the private lead-photos bucket. Render via
+  // getLeadPhotoUrl() which mints a short-lived signed URL.
+  photo_path: string | null;
   status: LeadStatus;
   assigned_agent_id: string;
   created_by: string;

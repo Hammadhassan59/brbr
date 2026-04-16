@@ -1,0 +1,39 @@
+-- ═══════════════════════════════════════════════════════════════════
+-- OPTIONAL BACKFILL TEMPLATE — NOT RUN AUTOMATICALLY
+-- ═══════════════════════════════════════════════════════════════════
+--
+-- This file intentionally has the `.NOTE.sql` extension so the Supabase
+-- migration runner will NOT pick it up. Inspect, adapt, then run by hand
+-- (or copy into a real NNN_ migration) once you've verified the URL
+-- format matches for ALL existing rows in your environment.
+--
+-- Purpose: populate screenshot_path / photo_path for rows created
+-- before migration 029 landed, so the legacy-fallback branch in
+-- getPaymentScreenshotUrl() / getLeadPhotoUrl() can be removed.
+--
+-- The URL shape we expect (from getPublicUrl()) is:
+--   https://<project>.supabase.co/storage/v1/object/public/payment-screenshots/<salonId>/<uuid>.<ext>
+--
+-- The substring after `/payment-screenshots/` IS the storage path.
+-- Double-check one row before running across the table:
+--   SELECT id, screenshot_url, regexp_replace(screenshot_url, '.*/payment-screenshots/', '')
+--   FROM payment_requests
+--   WHERE screenshot_url IS NOT NULL AND screenshot_url <> ''
+--   LIMIT 5;
+--
+-- Then:
+--
+-- UPDATE payment_requests
+-- SET screenshot_path = regexp_replace(screenshot_url, '.*/payment-screenshots/', '')
+-- WHERE screenshot_url LIKE '%/payment-screenshots/%'
+--   AND (screenshot_path IS NULL OR screenshot_path = '');
+--
+-- UPDATE leads
+-- SET photo_path = regexp_replace(photo_url, '.*/lead-photos/', '')
+-- WHERE photo_url LIKE '%/lead-photos/%'
+--   AND (photo_path IS NULL OR photo_path = '');
+--
+-- After backfill completes and you've verified counts match expected,
+-- the `// TODO: drop after backfill` fallback branches in
+-- src/app/actions/storage.ts may be removed.
+-- ═══════════════════════════════════════════════════════════════════

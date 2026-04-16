@@ -22,7 +22,13 @@ export interface PaymentRequest {
   method: Method | null;
   status: Status;
   duration_days: number;
+  // Legacy: old rows have screenshot_url set (full public URL from pre-
+  // migration-030 era). New rows leave it empty and use screenshot_path
+  // instead — see migration 029_storage_paths.sql.
   screenshot_url: string | null;
+  // Storage object path in the private payment-screenshots bucket. Render
+  // via getPaymentScreenshotUrl() which mints a short-lived signed URL.
+  screenshot_path: string | null;
   reviewed_by: string | null;
   reviewed_at: string | null;
   reviewer_notes: string | null;
@@ -72,8 +78,10 @@ async function lookupPlanPrice(plan: Plan): Promise<number> {
 /**
  * Owner-side: create a pending payment request for the current salon.
  * Accepts a FormData payload with the screenshot file plus form fields.
- * Uploads the screenshot to the payment-screenshots bucket then inserts the
- * request row referencing the public URL.
+ * Uploads the screenshot to the (private) payment-screenshots bucket and
+ * records the STORAGE PATH — not a URL. Signed URLs are minted at render
+ * time by getPaymentScreenshotUrl() so they never expire before an admin
+ * actually opens the payment.
  */
 export async function submitPaymentRequest(
   formData: FormData
@@ -117,16 +125,8 @@ export async function submitPaymentRequest(
   const supabase = createServerClient();
 
   // Upload screenshot first. Path is salon_id/uuid.ext so it's namespaced and
-  // not enumerable. Bucket is PRIVATE (see migration 029) so we mint a
-  // time-limited signed URL rather than a permanent public one.
-  //
-  // TODO(storage): the `screenshot_url` column currently stores the short-lived
-  // signed URL. That means a screenshot becomes un-viewable ~15 min after the
-  // payment request is created, and both the /admin/payments and /dashboard/billing
-  // pages will render a broken image for older rows. Full fix: store the path
-  // in a new column (or repurpose screenshot_url to hold the path) and generate
-  // a fresh signed URL on each server-rendered read. Those read-sites are owned
-  // by another agent — flagged for follow-up.
+  // not enumerable. Bucket is PRIVATE (migration 030); the object is only
+  // fetched via a short-lived signed URL minted at render time.
   const ext = screenshot.name.split('.').pop()?.toLowerCase().replace(/[^a-z0-9]/g, '') || 'jpg';
   const uuid = crypto.randomUUID();
   const path = `${session.salonId}/${uuid}.${ext}`;
@@ -139,17 +139,11 @@ export async function submitPaymentRequest(
     });
   if (uploadErr) return { data: null, error: `Upload failed: ${safeError(uploadErr)}` };
 
-  const { data: urlData, error: signErr } = await supabase.storage
-    .from('payment-screenshots')
-    .createSignedUrl(path, 900); // 15-minute TTL
-  if (signErr || !urlData) {
-    await supabase.storage.from('payment-screenshots').remove([path]).catch(() => {});
-    return { data: null, error: `Could not sign URL: ${signErr?.message ?? 'unknown'}` };
-  }
-  const screenshot_url = urlData.signedUrl;
-
   const amount = await lookupPlanPrice(plan);
 
+  // Store the storage path in screenshot_path (new column, migration 029).
+  // We leave screenshot_url empty for new rows — read sites prefer
+  // screenshot_path and only fall back to screenshot_url for legacy rows.
   const { data, error } = await supabase
     .from('payment_requests')
     .insert({
@@ -158,7 +152,8 @@ export async function submitPaymentRequest(
       amount,
       reference,
       method,
-      screenshot_url,
+      screenshot_path: path,
+      screenshot_url: null,
       status: 'pending',
     })
     .select()
