@@ -267,7 +267,16 @@ export default function AdminPaymentsPage() {
                       className="shrink-0 w-full sm:w-20 h-32 sm:h-20 rounded border border-border overflow-hidden bg-secondary/30 hover:ring-2 hover:ring-gold transition-all relative group flex items-center justify-center"
                       title="Click to view screenshot"
                     >
-                      <ImageIcon className="w-6 h-6 text-muted-foreground group-hover:text-gold transition-colors" />
+                      {r.screenshot_signed_url ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={r.screenshot_signed_url}
+                          alt="Payment screenshot"
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <ImageIcon className="w-6 h-6 text-muted-foreground group-hover:text-gold transition-colors" />
+                      )}
                       <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
                         <ExternalLink className="w-4 h-4 text-foreground opacity-0 group-hover:opacity-100" />
                       </div>

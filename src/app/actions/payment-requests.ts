@@ -8,6 +8,7 @@ import { accrueCommissionForPaymentRequest, reverseCommissionsForPaymentRequest 
 import { checkRateLimit } from '@/lib/with-rate-limit';
 import { BUCKETS } from '@/lib/rate-limit-buckets';
 import { safeError } from '@/lib/action-error';
+import { getSignedStorageUrl } from '@/lib/storage-url';
 
 type Plan = 'basic' | 'growth' | 'pro';
 type Method = 'bank' | 'jazzcash';
@@ -46,6 +47,11 @@ export interface PaymentRequestWithSalon extends PaymentRequest {
     sold_by_agent_id: string | null;
     sold_by_agent: { id: string; name: string } | null;
   } | null;
+  // Short-lived signed URL minted at list time so the admin list can render
+  // inline thumbnails. Null when the row has neither screenshot_path nor
+  // legacy screenshot_url, or when signed-URL minting failed. Expires ~15min
+  // after mint; the full-size lightbox mints a fresh URL on click.
+  screenshot_signed_url: string | null;
 }
 
 /**
@@ -233,7 +239,24 @@ export async function listPaymentRequests(
 
   const { data, error } = await query.limit(200);
   if (error) return { data: [], error: safeError(error) };
-  return { data: (data || []) as PaymentRequestWithSalon[], error: null };
+
+  // Mint signed URLs server-side so the admin list can render thumbnails
+  // without a round-trip per row. Bucket is private (migration 030), so
+  // getPublicUrl is no longer an option. Legacy rows (pre-migration-030)
+  // still have screenshot_url set — pass that through as-is until backfill.
+  const rows = (data || []) as PaymentRequestWithSalon[];
+  const withUrls = await Promise.all(
+    rows.map(async (r) => {
+      let screenshot_signed_url: string | null = null;
+      if (r.screenshot_path) {
+        screenshot_signed_url = await getSignedStorageUrl('payment-screenshots', r.screenshot_path);
+      } else if (r.screenshot_url) {
+        screenshot_signed_url = r.screenshot_url;
+      }
+      return { ...r, screenshot_signed_url };
+    }),
+  );
+  return { data: withUrls, error: null };
 }
 
 /**
