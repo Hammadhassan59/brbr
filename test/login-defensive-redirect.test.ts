@@ -25,7 +25,7 @@ function decide(hasIcutSession: boolean, store: StoreSnapshot): { action: 'reset
   if (!persistedRoles) return { action: 'show-form' };
   return {
     action: 'redirect',
-    target: store.isSuperAdmin ? '/admin' : store.isSalesAgent ? '/agent' : '/dashboard',
+    target: store.isSuperAdmin ? '/admin' : store.isSalesAgent ? '/agent/leads' : '/dashboard',
   };
 }
 
@@ -51,8 +51,8 @@ describe('defensive login auto-redirect', () => {
     expect(decide(true, superAdminStore)).toEqual({ action: 'redirect', target: '/admin' });
   });
 
-  it('valid cookie + agent store → redirect to /agent', () => {
-    expect(decide(true, agentStore)).toEqual({ action: 'redirect', target: '/agent' });
+  it('valid cookie + agent store → redirect to /agent/leads (their default surface)', () => {
+    expect(decide(true, agentStore)).toEqual({ action: 'redirect', target: '/agent/leads' });
   });
 
   it('valid cookie + owner store → redirect to /dashboard', () => {

@@ -58,7 +58,7 @@ export default function LoginPage() {
     if (persistedRoles) {
       router.replace(
         store.isSuperAdmin ? '/admin' :
-        store.isSalesAgent ? '/agent' :
+        store.isSalesAgent ? '/agent/leads' :
         '/dashboard',
       );
     }
@@ -100,7 +100,7 @@ export default function LoginPage() {
           name: result.agent.name,
           agentId: result.agent.id,
         });
-        router.push('/agent');
+        router.push('/agent/leads');
         return;
       }
 

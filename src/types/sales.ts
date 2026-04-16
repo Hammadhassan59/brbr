@@ -22,10 +22,13 @@ export interface Lead {
   owner_name: string | null;
   phone: string | null;
   city: string | null;
+  address: string | null;
   notes: string | null;
+  photo_url: string | null;
   status: LeadStatus;
   assigned_agent_id: string;
   created_by: string;
+  created_by_agent: string | null;
   converted_salon_id: string | null;
   created_at: string;
   updated_at: string;

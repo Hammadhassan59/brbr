@@ -25,7 +25,7 @@ export function proxy(request: NextRequest) {
   // Admin routes require super_admin
   if (pathname.startsWith('/admin')) {
     if (role !== 'super_admin') {
-      const target = role === 'sales_agent' ? '/agent' : '/dashboard';
+      const target = role === 'sales_agent' ? '/agent/leads' : '/dashboard';
       return NextResponse.redirect(new URL(target, request.url));
     }
   }
@@ -38,9 +38,9 @@ export function proxy(request: NextRequest) {
     }
   }
 
-  // Salon routes redirect sales agents to /agent (they have no salon)
+  // Salon routes redirect sales agents to /agent/leads (their primary surface)
   if (pathname.startsWith('/dashboard') && role === 'sales_agent') {
-    return NextResponse.redirect(new URL('/agent', request.url));
+    return NextResponse.redirect(new URL('/agent/leads', request.url));
   }
 
   // Hard paywall: owners/partners with non-active subscriptions can only see
@@ -56,7 +56,7 @@ export function proxy(request: NextRequest) {
   // bounced to the dashboard (e.g. after admin approval, on the next nav).
   if (pathname.startsWith('/paywall')) {
     if (role !== 'owner' && role !== 'partner') {
-      const target = role === 'super_admin' ? '/admin' : role === 'sales_agent' ? '/agent' : '/dashboard';
+      const target = role === 'super_admin' ? '/admin' : role === 'sales_agent' ? '/agent/leads' : '/dashboard';
       return NextResponse.redirect(new URL(target, request.url));
     }
     if (sub === 'active') {
