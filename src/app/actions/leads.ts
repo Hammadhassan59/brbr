@@ -1,7 +1,8 @@
 'use server';
 
 import { createServerClient } from '@/lib/supabase';
-import { verifySession } from './auth';
+import { verifySession, requireAdminRole } from './auth';
+import { rowsToCSV } from '@/lib/csv-export';
 import type { Lead, LeadStatus } from '@/types/sales';
 
 async function requireSuperAdmin() {
@@ -14,6 +15,23 @@ async function requireSalesAgent() {
   const s = await verifySession();
   if (!s || s.role !== 'sales_agent' || !s.agentId) throw new Error('Unauthorized');
   return s;
+}
+
+/**
+ * Throws if the agent_id refers to a demo identity. Demo agents must NOT
+ * create real salons or real payment_requests — those would survive the
+ * 10-minute reset cron and pollute the production tenant set.
+ */
+async function rejectIfDemo(agentId: string): Promise<void> {
+  const supabase = createServerClient();
+  const { data } = await supabase
+    .from('sales_agents')
+    .select('is_demo')
+    .eq('id', agentId)
+    .maybeSingle();
+  if (data?.is_demo) {
+    throw new Error('DEMO_BLOCKED');
+  }
 }
 
 export interface CreateLeadInput {
@@ -193,6 +211,11 @@ export async function recordCollection(input: {
   notes?: string | null;
 }): Promise<{ data: { paymentRequestId: string } | null; error: string | null }> {
   const session = await requireSalesAgent();
+  try {
+    await rejectIfDemo(session.agentId!);
+  } catch {
+    return { data: null, error: "Demo accounts can't record real collections." };
+  }
   if (!input.salonId) return { data: null, error: 'Salon required' };
   if (!['basic', 'growth', 'pro'].includes(input.plan)) return { data: null, error: 'Invalid plan' };
   if (!Number.isFinite(input.amount) || input.amount <= 0) return { data: null, error: 'Invalid amount' };
@@ -304,6 +327,67 @@ export async function updateLeadStatus(leadId: string, status: LeadStatus): Prom
   return { error: error?.message ?? null };
 }
 
+/** Super-admin only: hard-delete a lead. Used by /admin/leads trash button. */
+export async function deleteLead(leadId: string): Promise<{ error: string | null }> {
+  await requireAdminRole(['super_admin']);
+  const supabase = createServerClient();
+  const { error } = await supabase.from('leads').delete().eq('id', leadId);
+  return { error: error?.message ?? null };
+}
+
+/**
+ * Super-admin only: export every lead as CSV. Returned as a string so the
+ * client can wrap in a Blob and trigger a download. No file streaming needed
+ * for the volumes we expect (low thousands).
+ */
+export async function exportLeadsCSV(): Promise<{ data: string | null; error: string | null }> {
+  await requireAdminRole(['super_admin']);
+  const supabase = createServerClient();
+  const { data, error } = await supabase
+    .from('leads')
+    .select(`
+      created_at, salon_name, owner_name, phone, city, address, status,
+      photo_url, notes,
+      agent:sales_agents!leads_assigned_agent_id_fkey(name, code)
+    `)
+    .order('created_at', { ascending: false });
+  if (error) return { data: null, error: error.message };
+
+  const rows = (data || []).map((r) => {
+    const lead = r as unknown as {
+      created_at: string;
+      salon_name: string;
+      owner_name: string | null;
+      phone: string | null;
+      city: string | null;
+      address: string | null;
+      status: string;
+      photo_url: string | null;
+      notes: string | null;
+      agent: { name: string; code: string } | null;
+    };
+    return [
+      new Date(lead.created_at).toISOString().slice(0, 10),
+      lead.salon_name,
+      lead.owner_name ?? '',
+      lead.phone ?? '',
+      lead.city ?? '',
+      lead.address ?? '',
+      lead.status,
+      lead.agent?.name ?? '',
+      lead.agent?.code ?? '',
+      lead.photo_url ?? '',
+      lead.notes ?? '',
+    ];
+  });
+
+  const csv = rowsToCSV(
+    ['Date', 'Salon Name', 'Owner', 'Phone', 'City', 'Address', 'Status', 'Agent Name', 'Agent Code', 'Photo URL', 'Notes'],
+    rows,
+  );
+  return { data: csv, error: null };
+}
+
 export interface ConvertInput {
   leadId: string;
   ownerEmail: string;
@@ -317,6 +401,11 @@ export async function convertLeadToSalon(
   input: ConvertInput,
 ): Promise<{ data: { salonId: string; paymentRequestId: string } | null; error: string | null }> {
   const session = await requireSalesAgent();
+  try {
+    await rejectIfDemo(session.agentId!);
+  } catch {
+    return { data: null, error: "Demo accounts can't onboard real salons. Switch to your real agent login." };
+  }
   if (!input.ownerEmail?.trim()) return { data: null, error: 'Owner email required' };
   if (!['basic','growth','pro'].includes(input.plan)) return { data: null, error: 'Invalid plan' };
   if (!Number.isFinite(input.amount) || input.amount <= 0) return { data: null, error: 'Invalid amount' };

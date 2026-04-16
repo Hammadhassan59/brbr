@@ -98,11 +98,19 @@ export default function AgentsPage() {
   );
 }
 
+function genDemoPassword(): string {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+  let p = '';
+  for (let i = 0; i < 12; i++) p += chars[Math.floor(Math.random() * chars.length)];
+  return p + '!9';
+}
+
 function NewAgentDialog({ open, onClose, onCreated }: { open: boolean; onClose: () => void; onCreated: () => void }) {
   const [form, setForm] = useState({
-    email: '', name: '', phone: '', city: '', firstSalePct: '20', renewalPct: '5',
+    email: '', name: '', phone: '', city: '', firstSalePct: '20', renewalPct: '5', demoPassword: '',
   });
   const [submitting, setSubmitting] = useState(false);
+  const [createdInfo, setCreatedInfo] = useState<{ code: string; demoEmail: string; demoPassword: string } | null>(null);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -112,70 +120,130 @@ function NewAgentDialog({ open, onClose, onCreated }: { open: boolean; onClose: 
       toast.error('Phone is required');
       return;
     }
-    const { error } = await createSalesAgent({
+    if (form.demoPassword.length < 8) {
+      setSubmitting(false);
+      toast.error('Demo password must be at least 8 characters');
+      return;
+    }
+    const { data, error } = await createSalesAgent({
       email: form.email.trim().toLowerCase(),
       name: form.name.trim(),
       phone: form.phone.trim(),
       city: form.city.trim() || null,
       firstSalePct: Number(form.firstSalePct),
       renewalPct: Number(form.renewalPct),
+      demoPassword: form.demoPassword,
     });
     setSubmitting(false);
-    if (error) { toast.error(error); return; }
-    toast.success('Agent created — password-reset email sent');
-    setForm({ email: '', name: '', phone: '', city: '', firstSalePct: '20', renewalPct: '5' });
-    onClose();
+    if (error || !data) { toast.error(error || 'Create failed'); return; }
+    toast.success('Agent created — share the demo creds with them');
+    setCreatedInfo({ code: data.code, demoEmail: data.demoEmail, demoPassword: form.demoPassword });
     onCreated();
   }
 
+  function close() {
+    setForm({ email: '', name: '', phone: '', city: '', firstSalePct: '20', renewalPct: '5', demoPassword: '' });
+    setCreatedInfo(null);
+    onClose();
+  }
+
   return (
-    <Dialog open={open} onOpenChange={onClose}>
+    <Dialog open={open} onOpenChange={close}>
       <DialogContent>
-        <DialogHeader><DialogTitle>New sales agent</DialogTitle></DialogHeader>
-        <form onSubmit={submit} className="space-y-4">
-          <div>
-            <Label htmlFor="email">Email</Label>
-            <Input id="email" type="email" inputMode="email" autoComplete="email" required value={form.email}
-              onChange={e => setForm({ ...form, email: e.target.value })} />
-          </div>
-          <div>
-            <Label htmlFor="name">Name</Label>
-            <Input id="name" required value={form.name}
-              onChange={e => setForm({ ...form, name: e.target.value })} />
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <Label htmlFor="phone">Phone *</Label>
-              <Input id="phone" type="tel" inputMode="tel" autoComplete="tel" required value={form.phone}
-                onChange={e => setForm({ ...form, phone: e.target.value })} />
+        <DialogHeader><DialogTitle>{createdInfo ? 'Agent created — share these creds' : 'New sales agent'}</DialogTitle></DialogHeader>
+        {createdInfo ? (
+          <div className="space-y-4">
+            <div className="rounded-lg border border-gold/30 bg-gold/5 p-4 space-y-3">
+              <div>
+                <p className="text-xs uppercase tracking-wider text-muted-foreground">Agent code</p>
+                <p className="font-mono text-xl font-bold mt-1">{createdInfo.code}</p>
+              </div>
+              <div>
+                <p className="text-xs uppercase tracking-wider text-muted-foreground">Demo email</p>
+                <p className="font-mono text-sm break-all mt-1">{createdInfo.demoEmail}</p>
+              </div>
+              <div>
+                <p className="text-xs uppercase tracking-wider text-muted-foreground">Demo password</p>
+                <p className="font-mono text-sm break-all mt-1">{createdInfo.demoPassword}</p>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Share these with the agent. They use the demo creds to show prospects what the platform looks like — data resets every 10 minutes.
+              </p>
             </div>
-            <div>
-              <Label htmlFor="city">City</Label>
-              <Input id="city" value={form.city}
-                onChange={e => setForm({ ...form, city: e.target.value })} />
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <Label htmlFor="fsp">First-sale %</Label>
-              <Input id="fsp" type="number" step="0.01" min="0" max="100" required
-                value={form.firstSalePct}
-                onChange={e => setForm({ ...form, firstSalePct: e.target.value })} />
-            </div>
-            <div>
-              <Label htmlFor="rp">Renewal %</Label>
-              <Input id="rp" type="number" step="0.01" min="0" max="100" required
-                value={form.renewalPct}
-                onChange={e => setForm({ ...form, renewalPct: e.target.value })} />
-            </div>
-          </div>
-          <div className="flex justify-end gap-2">
-            <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
-            <Button type="submit" disabled={submitting}>
-              {submitting ? 'Creating…' : 'Create agent'}
+            <Button
+              variant="outline"
+              onClick={() => navigator.clipboard.writeText(`Email: ${createdInfo.demoEmail}\nPassword: ${createdInfo.demoPassword}`).then(() => toast.success('Copied'))}
+              className="w-full"
+            >
+              Copy demo creds
             </Button>
+            <Button onClick={close} className="w-full">Done</Button>
           </div>
-        </form>
+        ) : (
+          <form onSubmit={submit} className="space-y-4">
+            <div>
+              <Label htmlFor="email">Email</Label>
+              <Input id="email" type="email" inputMode="email" autoComplete="email" required value={form.email}
+                onChange={e => setForm({ ...form, email: e.target.value })} />
+            </div>
+            <div>
+              <Label htmlFor="name">Name</Label>
+              <Input id="name" required value={form.name}
+                onChange={e => setForm({ ...form, name: e.target.value })} />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label htmlFor="phone">Phone *</Label>
+                <Input id="phone" type="tel" inputMode="tel" autoComplete="tel" required value={form.phone}
+                  onChange={e => setForm({ ...form, phone: e.target.value })} />
+              </div>
+              <div>
+                <Label htmlFor="city">City</Label>
+                <Input id="city" value={form.city}
+                  onChange={e => setForm({ ...form, city: e.target.value })} />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label htmlFor="fsp">First-sale %</Label>
+                <Input id="fsp" type="number" step="0.01" min="0" max="100" required
+                  value={form.firstSalePct}
+                  onChange={e => setForm({ ...form, firstSalePct: e.target.value })} />
+              </div>
+              <div>
+                <Label htmlFor="rp">Renewal %</Label>
+                <Input id="rp" type="number" step="0.01" min="0" max="100" required
+                  value={form.renewalPct}
+                  onChange={e => setForm({ ...form, renewalPct: e.target.value })} />
+              </div>
+            </div>
+            <div>
+              <Label htmlFor="demo">Demo password * <span className="text-muted-foreground font-normal">(8+ chars)</span></Label>
+              <div className="flex gap-2 mt-1">
+                <Input
+                  id="demo"
+                  type="text"
+                  required
+                  value={form.demoPassword}
+                  onChange={e => setForm({ ...form, demoPassword: e.target.value })}
+                  className="font-mono"
+                />
+                <Button type="button" variant="outline" onClick={() => setForm({ ...form, demoPassword: genDemoPassword() })}>
+                  Auto
+                </Button>
+              </div>
+              <p className="text-[11px] text-muted-foreground mt-1">
+                Used by this agent to log in to a demo dataset for showing prospects. Independent from their real password.
+              </p>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button type="button" variant="outline" onClick={close}>Cancel</Button>
+              <Button type="submit" disabled={submitting}>
+                {submitting ? 'Creating…' : 'Create agent'}
+              </Button>
+            </div>
+          </form>
+        )}
       </DialogContent>
     </Dialog>
   );

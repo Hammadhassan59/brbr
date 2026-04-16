@@ -1,9 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Plus, Target } from 'lucide-react';
+import { Plus, Target, Download, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { listLeads, createLead, reassignLead, type LeadWithAgent } from '@/app/actions/leads';
+import { listLeads, createLead, reassignLead, deleteLead, exportLeadsCSV, type LeadWithAgent } from '@/app/actions/leads';
 import { listSalesAgents } from '@/app/actions/sales-agents';
 import type { SalesAgent, LeadStatus } from '@/types/sales';
 import { Button } from '@/components/ui/button';
@@ -12,7 +12,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
-const STATUSES: (LeadStatus | 'all')[] = ['all','new','contacted','visited','interested','not_interested','converted','lost'];
+const STATUSES: (LeadStatus | 'all')[] = ['all','new','contacted','visited','followup','interested','not_interested','onboarded','converted','lost'];
 
 export default function AdminLeadsPage() {
   const [leads, setLeads] = useState<LeadWithAgent[]>([]);
@@ -30,16 +30,44 @@ export default function AdminLeadsPage() {
     setLeads(l.data);
     setAgents(a.data);
   }
+
+  async function exportCSV() {
+    const { data, error } = await exportLeadsCSV();
+    if (error || !data) { toast.error(error || 'Export failed'); return; }
+    const blob = new Blob([data], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `leads-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast.success(`Exported ${leads.length} leads`);
+  }
+
+  async function removeLead(lead: LeadWithAgent) {
+    if (!confirm(`Delete lead for "${lead.salon_name}"? This cannot be undone.`)) return;
+    const { error } = await deleteLead(lead.id);
+    if (error) { toast.error(error); return; }
+    toast.success('Lead deleted');
+    load();
+  }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { load(); }, [agentFilter, statusFilter]);
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-3 flex-wrap">
         <h2 className="font-heading text-2xl font-semibold">Leads</h2>
-        <Button onClick={() => setOpen(true)}>
-          <Plus className="w-4 h-4 mr-1" /> New lead
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={exportCSV}>
+            <Download className="w-4 h-4 mr-1.5" /> Export CSV
+          </Button>
+          <Button onClick={() => setOpen(true)}>
+            <Plus className="w-4 h-4 mr-1" /> New lead
+          </Button>
+        </div>
       </div>
 
       <div className="flex flex-wrap gap-3">
@@ -75,7 +103,7 @@ export default function AdminLeadsPage() {
             </thead>
             <tbody>
               {leads.map(l => (
-                <LeadRow key={l.id} lead={l} agents={agents} onReassigned={load} />
+                <LeadRow key={l.id} lead={l} agents={agents} onReassigned={load} onDelete={() => removeLead(l)} />
               ))}
             </tbody>
           </table>
@@ -87,7 +115,7 @@ export default function AdminLeadsPage() {
   );
 }
 
-function LeadRow({ lead, agents, onReassigned }: { lead: LeadWithAgent; agents: SalesAgent[]; onReassigned: () => void }) {
+function LeadRow({ lead, agents, onReassigned, onDelete }: { lead: LeadWithAgent; agents: SalesAgent[]; onReassigned: () => void; onDelete: () => void }) {
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState(lead.assigned_agent_id);
 
@@ -117,16 +145,26 @@ function LeadRow({ lead, agents, onReassigned }: { lead: LeadWithAgent; agents: 
         )}
       </td>
       <td className="px-4 py-3">
-        {editing ? (
-          <>
-            <button onClick={save} className="text-gold hover:underline text-sm mr-2">Save</button>
-            <button onClick={() => setEditing(false)} className="text-muted-foreground text-sm">Cancel</button>
-          </>
-        ) : (
-          <button onClick={() => setEditing(true)} className="text-gold hover:underline text-sm">
-            Reassign
+        <div className="flex items-center gap-2">
+          {editing ? (
+            <>
+              <button onClick={save} className="text-gold hover:underline text-sm">Save</button>
+              <button onClick={() => setEditing(false)} className="text-muted-foreground text-sm">Cancel</button>
+            </>
+          ) : (
+            <button onClick={() => setEditing(true)} className="text-gold hover:underline text-sm">
+              Reassign
+            </button>
+          )}
+          <button
+            onClick={onDelete}
+            className="text-muted-foreground hover:text-red-600 transition-colors p-1"
+            title="Delete lead"
+            aria-label="Delete lead"
+          >
+            <Trash2 className="w-4 h-4" />
           </button>
-        )}
+        </div>
       </td>
     </tr>
   );

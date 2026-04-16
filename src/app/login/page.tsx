@@ -11,7 +11,8 @@ import { Button } from '@/components/ui/button';
 import { DataNotice } from '@/components/data-notice';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { signSession, resolveUserRole, isSuperAdminEmail } from '@/app/actions/auth';
+import { signSession, resolveUserRole, isSuperAdminEmail, resolveAdminRole } from '@/app/actions/auth';
+import { isAdminRole } from '@/lib/admin-roles';
 import {
   DEMO_SALON, DEMO_BRANCH, DEMO_STAFF_OWNER, DEMO_STAFF_STYLIST, DEMO_STAFF_RECEPTIONIST,
   DEMO_SALON_GENTS, DEMO_BRANCH_GENTS, DEMO_BRANCH_GENTS_2,
@@ -71,13 +72,38 @@ export default function LoginPage() {
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
 
-      const [result, superAdmin] = await Promise.all([
+      const [result, superAdmin, adminRole] = await Promise.all([
         resolveUserRole(data.user.id, data.user.email || email),
         isSuperAdminEmail(data.user.email || email),
+        resolveAdminRole(data.user.email || email),
       ]);
 
       const { setIsSuperAdmin } = useAppStore.getState();
       if (superAdmin) setIsSuperAdmin(true);
+
+      // Sub-admin (technical_support / customer_support / leads_team): they
+      // sit outside the owner/staff/agent/super_admin tree. Land them on
+      // /admin which renders only what their role can access.
+      if (adminRole && isAdminRole(adminRole) && adminRole !== 'super_admin') {
+        const store = useAppStore.getState();
+        store.setIsSuperAdmin(true); // re-use the super_admin Zustand bit so admin layout shows
+        store.setIsSalesAgent(false);
+        store.setIsOwner(false);
+        store.setIsPartner(false);
+        store.setSalon(null);
+        store.setCurrentStaff(null);
+        store.setCurrentPartner(null);
+        setSessionCookie(adminRole);
+        await signSession({
+          salonId: 'super-admin',
+          staffId: data.user.id,
+          role: adminRole,
+          branchId: '',
+          name: data.user.email || email,
+        });
+        router.push('/admin');
+        return;
+      }
 
       if (result.type === 'sales_agent' && result.agent) {
         const { setIsSalesAgent, setAgentId, setIsSuperAdmin } = useAppStore.getState();
@@ -99,6 +125,7 @@ export default function LoginPage() {
           branchId: '',
           name: result.agent.name,
           agentId: result.agent.id,
+          isDemo: !!result.agent.is_demo,
         });
         router.push('/agent/leads');
         return;

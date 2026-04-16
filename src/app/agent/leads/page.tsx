@@ -12,7 +12,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import type { Lead, LeadStatus } from '@/types/sales';
 
-const STATUSES: (LeadStatus | 'all')[] = ['all','new','contacted','visited','interested','not_interested','converted','lost'];
+const STATUSES: (LeadStatus | 'all')[] = ['all','new','contacted','visited','followup','interested','not_interested','onboarded','converted','lost'];
 
 export default function AgentLeadsPage() {
   const [leads, setLeads] = useState<Lead[]>([]);

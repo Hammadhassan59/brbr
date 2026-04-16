@@ -12,6 +12,7 @@ import { getPendingPaymentCount } from '@/app/actions/payment-requests';
 import { useAppStore } from '@/store/app-store';
 import { destroySession } from '@/app/actions/auth';
 import { ErrorBoundary } from '@/components/error-boundary';
+import { canAccess, ADMIN_ROLE_LABELS, type AdminRole, ADMIN_ROLES } from '@/lib/admin-roles';
 
 const NAV_ITEMS = [
   { href: '/admin', icon: LayoutDashboard, label: 'Overview' },
@@ -22,15 +23,24 @@ const NAV_ITEMS = [
   { href: '/admin/commissions', icon: Wallet, label: 'Commissions' },
   { href: '/admin/payouts', icon: Receipt, label: 'Payouts' },
   { href: '/admin/users', icon: Users, label: 'Users' },
+  { href: '/admin/team', icon: Shield, label: 'Admin Team' },
   { href: '/admin/analytics', icon: BarChart3, label: 'Analytics' },
   { href: '/admin/settings', icon: Settings, label: 'Platform Settings' },
   { href: '/admin/profile', icon: User, label: 'My Profile' },
 ];
 
+function readRoleFromCookie(): AdminRole | null {
+  if (typeof document === 'undefined') return null;
+  const m = document.cookie.match(/(?:^|;\s*)icut-role=([^;]+)/);
+  const role = m?.[1];
+  if (!role) return null;
+  return (ADMIN_ROLES as readonly string[]).includes(role) ? (role as AdminRole) : null;
+}
+
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { salon, currentStaff, isSuperAdmin, reset } = useAppStore();
+  const { salon, currentStaff, reset } = useAppStore();
   const [isHydrated, setIsHydrated] = useState(false);
   const [authChecked, setAuthChecked] = useState(false);
   const [pendingPayments, setPendingPayments] = useState(0);
@@ -42,26 +52,29 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { setIsHydrated(true); }, []);
 
+  // Read the role from the icut-role cookie (set by signSession on login).
+  // Sub-admins (technical_support, customer_support, leads_team) need to pass
+  // this gate too, not just super_admin.
+  const adminRole = readRoleFromCookie();
+
   useEffect(() => {
     if (!isHydrated) return;
-    if (!isSuperAdmin) {
-      // If the server set a super_admin role cookie, trust it and wait
-      // for the store to catch up instead of bouncing to /login.
-      if (typeof document !== 'undefined' && document.cookie.includes('icut-role=super_admin')) {
-        return;
-      }
+    if (!adminRole) {
+      // No admin role cookie at all → bounce to login.
       router.push('/login');
       return;
     }
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setAuthChecked(true);
-  }, [isHydrated, isSuperAdmin, router]);
+  }, [isHydrated, adminRole, router]);
 
-  // Refresh pending count when route changes (cheap query, head: true)
+  // Refresh pending count when route changes (cheap query, head: true).
+  // Only roles that can see /admin/payments should bother fetching it.
   useEffect(() => {
-    if (!isSuperAdmin) return;
+    if (!adminRole) return;
+    if (!canAccess(adminRole, '/admin/payments')) return;
     getPendingPaymentCount().then(setPendingPayments).catch(() => {});
-  }, [isSuperAdmin, pathname]);
+  }, [adminRole, pathname]);
 
   // Close the drawer whenever the route changes (mobile UX)
   useEffect(() => {
@@ -119,9 +132,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </button>
         </div>
 
-        {/* Nav */}
+        {/* Nav — filtered by role so each sub-admin sees only what they can access */}
         <nav className="flex-1 overflow-y-auto py-3 px-3 space-y-0.5">
-          {NAV_ITEMS.map((item) => {
+          {NAV_ITEMS.filter((item) => canAccess(adminRole ?? undefined, item.href)).map((item) => {
             const isActive = item.href === '/admin'
               ? pathname === '/admin'
               : pathname.startsWith(item.href);
@@ -165,8 +178,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               SA
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium truncate">{currentStaff?.name || 'Super Admin'}</p>
-              <p className="text-xs text-sidebar-foreground/40">Platform Admin</p>
+              <p className="text-sm font-medium truncate">{currentStaff?.name || (adminRole ? ADMIN_ROLE_LABELS[adminRole] : 'Admin')}</p>
+              <p className="text-xs text-sidebar-foreground/40">{adminRole ? ADMIN_ROLE_LABELS[adminRole] : 'Platform Admin'}</p>
             </div>
             <button onClick={handleLogout} className="text-sidebar-foreground/40 hover:text-sidebar-foreground">
               <LogOut className="w-4 h-4" />

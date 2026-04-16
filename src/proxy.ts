@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { ADMIN_ROUTE_ACCESS, ADMIN_ROLES, matchAdminRoute } from '@/lib/admin-roles';
 
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -22,11 +23,19 @@ export function proxy(request: NextRequest) {
     }
   }
 
-  // Admin routes require super_admin
+  // Admin routes require an admin role; per-route allow-list determines which
+  // sub-role can see what. ADMIN_ROUTE_ACCESS is the single source of truth.
   if (pathname.startsWith('/admin')) {
-    if (role !== 'super_admin') {
+    const isAdmin = role && (ADMIN_ROLES as readonly string[]).includes(role);
+    if (!isAdmin) {
       const target = role === 'sales_agent' ? '/agent/leads' : '/dashboard';
       return NextResponse.redirect(new URL(target, request.url));
+    }
+    const matched = matchAdminRoute(pathname);
+    const allowed = ADMIN_ROUTE_ACCESS[matched];
+    if (allowed && !allowed.includes(role as typeof ADMIN_ROLES[number])) {
+      // Bounce to /admin overview where the layout filters nav by role.
+      return NextResponse.redirect(new URL('/admin', request.url));
     }
   }
 

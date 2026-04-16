@@ -12,7 +12,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
-const EDITABLE_STATUSES: LeadStatus[] = ['new','contacted','visited','interested','not_interested','lost'];
+const EDITABLE_STATUSES: LeadStatus[] = ['new','contacted','visited','followup','interested','not_interested','onboarded','lost'];
 
 export default function AgentLeadDetailPage() {
   const params = useParams<{ id: string }>();
@@ -34,6 +34,7 @@ export default function AgentLeadDetailPage() {
       status: data.status,
     });
   }
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { load(); }, [params.id]);
 
   if (!lead) return <p className="text-muted-foreground">Loading…</p>;

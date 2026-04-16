@@ -8,13 +8,15 @@ export interface SalesAgent {
   first_sale_pct: number;
   renewal_pct: number;
   code: string;
+  is_demo: boolean;
+  parent_agent_id: string | null;
   created_at: string;
   deactivated_at: string | null;
 }
 
 export type LeadStatus =
-  | 'new' | 'contacted' | 'visited' | 'interested'
-  | 'not_interested' | 'converted' | 'lost';
+  | 'new' | 'contacted' | 'visited' | 'followup' | 'interested'
+  | 'not_interested' | 'onboarded' | 'converted' | 'lost';
 
 export interface Lead {
   id: string;

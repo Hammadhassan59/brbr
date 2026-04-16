@@ -47,6 +47,9 @@ export interface SessionPayload {
   branchId: string;
   name: string;
   agentId?: string;
+  // True when this session belongs to a demo sales-agent identity. Used to
+  // show the "demo mode" banner and to gate destructive actions.
+  isDemo?: boolean;
   // When a super admin impersonates a tenant, this captures the super admin's
   // original identity so we can exit back to the admin session afterwards.
   impersonatedBy?: {
@@ -208,6 +211,20 @@ export async function getDashboardBootstrap(): Promise<{
 }
 
 /**
+ * Lightweight read for the agent layout to know whether to show the demo
+ * banner. Returns null if not signed in as an agent.
+ */
+export async function getAgentSessionInfo(): Promise<{ isDemo: boolean } | null> {
+  try {
+    const session = await verifySession();
+    if (session.role !== 'sales_agent') return null;
+    return { isDemo: !!session.isDemo };
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Used by the /paywall page poll. Reads salon.subscription_status, refreshes
  * the proxy cookie, and reports the current status so the client can decide
  * whether to redirect to /dashboard.
@@ -338,7 +355,8 @@ export async function resolveUserRole(authUserId: string, authEmail: string) {
     return { type: 'staff' as const, salon: staffSalon, branches: branches || [], staff: staffMember, partner: null, agent: null };
   }
 
-  // 4. Check if sales agent (active only)
+  // 4. Check if sales agent (active only). Demo identities live in the same
+  //    table with is_demo=true; we let them log in too — they see seeded data.
   const { data: agent } = await supabase
     .from('sales_agents')
     .select('*')
@@ -355,9 +373,51 @@ export async function resolveUserRole(authUserId: string, authEmail: string) {
 
 /**
  * Check if the given email is a platform super admin.
+ *
+ * Two paths:
+ *  1. admin_users table: an active row with role='super_admin' (the normal path
+ *     once the team page has been used to invite admins).
+ *  2. SUPERADMIN_EMAILS env var: bootstrap fallback so the very first super
+ *     admin can always log in even if the table is empty or wiped.
  */
 export async function isSuperAdminEmail(email: string): Promise<boolean> {
+  const role = await resolveAdminRole(email);
+  if (role === 'super_admin') return true;
   const allowed = process.env.SUPERADMIN_EMAILS || '';
   if (!allowed) return false;
   return allowed.split(',').map(e => e.trim().toLowerCase()).includes(email.toLowerCase());
+}
+
+/**
+ * Look up a user's admin role from the admin_users table. Returns the role
+ * string if the user is an active admin, or null if they're not in the table
+ * (or are deactivated). This is the source of truth for sub-roles
+ * (technical_support, customer_support, leads_team) and the primary path for
+ * super_admin too — env var is only the bootstrap fallback (see isSuperAdminEmail).
+ */
+export async function resolveAdminRole(email: string): Promise<string | null> {
+  const normalized = email?.trim().toLowerCase();
+  if (!normalized) return null;
+  const { createServerClient } = await import('@/lib/supabase');
+  const supabase = createServerClient();
+  const { data } = await supabase
+    .from('admin_users')
+    .select('role, active')
+    .eq('email', normalized)
+    .maybeSingle();
+  if (!data || !data.active) return null;
+  return data.role as string;
+}
+
+/**
+ * Server-side guard for admin actions. Pass the list of roles that may run
+ * the action; throws Unauthorized otherwise. Generalizes the requireSuperAdmin
+ * pattern that's currently duplicated across 8 action files.
+ */
+export async function requireAdminRole(allowed: string[]): Promise<SessionPayload> {
+  const session = await verifySession();
+  if (!session || !allowed.includes(session.role)) {
+    throw new Error('Unauthorized');
+  }
+  return session;
 }
