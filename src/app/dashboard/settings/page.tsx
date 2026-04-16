@@ -5,6 +5,7 @@ import { Plus, X, Scissors, Sparkles, Users, MapPin, Pencil, Trash2, Copy, Credi
 import { supabase } from '@/lib/supabase';
 import { updateSalon, updateBranchWorkingHours, createService, updateService, deleteService, createBranch, updateBranch, deleteBranch } from '@/app/actions/settings';
 import { getPublicPlatformConfig } from '@/app/actions/admin-settings';
+import { PaymentSubmitModal } from '@/components/payment-submit-modal';
 import { ProfileCard } from '@/components/profile-card';
 import { useAppStore } from '@/store/app-store';
 import { useLanguage } from '@/components/providers/language-provider';
@@ -782,11 +783,15 @@ const PLANS_FALLBACK = [
   { key: 'pro', name: 'Pro', price: 9000, branches: 3, staff: 0, features: ['Up to 3 branches', 'Unlimited staff', 'Priority support'] },
 ];
 
-const BANK_DETAILS = {
-  bankName: 'Meezan Bank',
-  accountTitle: 'iCut Technologies',
-  accountNumber: '02340105566723',
-  jazzcash: '03001234567',
+// Bank details + supportWhatsApp are loaded live from platform_settings on
+// mount (see SubscriptionTab below). The constant here is purely a fallback
+// shape used before the fetch resolves.
+const BANK_DEFAULTS = {
+  bankName: '',
+  accountTitle: '',
+  accountNumber: '',
+  jazzcash: '',
+  supportWhatsapp: '',
 };
 
 function copyText(text: string, label: string) {
@@ -796,13 +801,13 @@ function copyText(text: string, label: string) {
 function SubscriptionTab({ salon, branches }: { salon: Salon | null; branches: Branch[] }) {
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
   const [plans, setPlans] = useState(PLANS_FALLBACK);
+  const [bank, setBank] = useState(BANK_DEFAULTS);
+  const [modalOpen, setModalOpen] = useState(false);
   const isActive = salon?.subscription_status === 'active';
   const currentPlan = salon?.subscription_plan || 'none';
 
-  // Fetch live plan prices + names from platform_settings on mount.
-  // Same source the homepage, /paywall, and /dashboard/billing use, so all
-  // four surfaces stay in sync the moment super admin edits prices in
-  // /admin/settings.
+  // Fetch live plan prices + bank/JC + supportWhatsApp from platform_settings
+  // on mount. Same source the homepage, /paywall, and /dashboard/billing use.
   useEffect(() => {
     let cancelled = false;
     getPublicPlatformConfig()
@@ -812,10 +817,19 @@ function SubscriptionTab({ salon, branches }: { salon: Salon | null; branches: B
           const live = cfg.plans[p.key as 'basic' | 'growth' | 'pro'];
           return live ? { ...p, name: live.displayName || p.name, price: live.price || p.price } : p;
         }));
+        setBank({
+          bankName: cfg.payment.bankName,
+          accountTitle: cfg.payment.accountTitle,
+          accountNumber: cfg.payment.bankAccount,
+          jazzcash: cfg.payment.jazzcashAccount,
+          supportWhatsapp: cfg.supportWhatsApp,
+        });
       })
-      .catch(() => { /* fall back to hardcoded values */ });
+      .catch(() => { /* fall back to defaults */ });
     return () => { cancelled = true; };
   }, []);
+
+  const selectedPlanObj = plans.find((p) => p.key === selectedPlan);
 
   return (
     <div className="bg-card border border-border rounded-lg p-4 sm:p-6 space-y-6">
@@ -929,57 +943,59 @@ function SubscriptionTab({ salon, branches }: { salon: Salon | null; branches: B
           </div>
 
           <div className="space-y-3 text-sm">
-            <div className="flex items-center justify-between gap-3 p-3 bg-secondary/30 rounded-lg">
-              <div className="min-w-0 flex-1">
-                <p className="text-xs text-muted-foreground">Bank</p>
-                <p className="font-medium break-words">{BANK_DETAILS.bankName}</p>
+            {bank.bankName && (
+              <div className="flex items-center justify-between gap-3 p-3 bg-secondary/30 rounded-lg">
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs text-muted-foreground">Bank</p>
+                  <p className="font-medium break-words">{bank.bankName}</p>
+                </div>
               </div>
-            </div>
-            <div className="flex items-center justify-between gap-3 p-3 bg-secondary/30 rounded-lg">
-              <div className="min-w-0 flex-1">
-                <p className="text-xs text-muted-foreground">Account Title</p>
-                <p className="font-medium break-words">{BANK_DETAILS.accountTitle}</p>
+            )}
+            {bank.accountTitle && (
+              <div className="flex items-center justify-between gap-3 p-3 bg-secondary/30 rounded-lg">
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs text-muted-foreground">Account Title</p>
+                  <p className="font-medium break-words">{bank.accountTitle}</p>
+                </div>
               </div>
-            </div>
-            <div className="flex items-center justify-between gap-3 p-3 bg-secondary/30 rounded-lg">
-              <div className="min-w-0 flex-1">
-                <p className="text-xs text-muted-foreground">Account Number</p>
-                <p className="font-medium font-mono break-all">{BANK_DETAILS.accountNumber}</p>
+            )}
+            {bank.accountNumber && (
+              <div className="flex items-center justify-between gap-3 p-3 bg-secondary/30 rounded-lg">
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs text-muted-foreground">Account Number</p>
+                  <p className="font-medium font-mono break-all">{bank.accountNumber}</p>
+                </div>
+                <button aria-label="Copy account number" onClick={() => copyText(bank.accountNumber, 'Account number')} className="p-2 -mr-1 shrink-0 hover:bg-secondary rounded">
+                  <Copy className="w-4 h-4 text-muted-foreground" />
+                </button>
               </div>
-              <button aria-label="Copy account number" onClick={() => copyText(BANK_DETAILS.accountNumber, 'Account number')} className="p-2 -mr-1 shrink-0 hover:bg-secondary rounded">
-                <Copy className="w-4 h-4 text-muted-foreground" />
-              </button>
-            </div>
-            <div className="flex items-center justify-between gap-3 p-3 bg-secondary/30 rounded-lg">
-              <div className="min-w-0 flex-1">
-                <p className="text-xs text-muted-foreground">JazzCash</p>
-                <p className="font-medium font-mono break-all">{BANK_DETAILS.jazzcash}</p>
+            )}
+            {bank.jazzcash && (
+              <div className="flex items-center justify-between gap-3 p-3 bg-secondary/30 rounded-lg">
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs text-muted-foreground">JazzCash</p>
+                  <p className="font-medium font-mono break-all">{bank.jazzcash}</p>
+                </div>
+                <button aria-label="Copy JazzCash number" onClick={() => copyText(bank.jazzcash, 'JazzCash number')} className="p-2 -mr-1 shrink-0 hover:bg-secondary rounded">
+                  <Copy className="w-4 h-4 text-muted-foreground" />
+                </button>
               </div>
-              <button aria-label="Copy JazzCash number" onClick={() => copyText(BANK_DETAILS.jazzcash, 'JazzCash number')} className="p-2 -mr-1 shrink-0 hover:bg-secondary rounded">
-                <Copy className="w-4 h-4 text-muted-foreground" />
-              </button>
-            </div>
+            )}
           </div>
 
           <div className="bg-secondary/30 border border-border rounded-lg p-4 space-y-1 text-xs text-muted-foreground">
             <p className="font-semibold text-foreground text-sm">How to activate:</p>
             <p>1. Transfer the amount to the bank account or JazzCash number above</p>
-            <p>2. Send the payment screenshot on WhatsApp</p>
-            <p>3. Your account will be activated within minutes</p>
+            <p>2. Click &ldquo;Submit payment&rdquo; below and upload your screenshot</p>
+            <p>3. Super admin reviews and activates your subscription</p>
           </div>
 
-          <a
-            href={`https://wa.me/923001234567?text=${encodeURIComponent(
-              `Hi, I want to subscribe to the ${selectedPlan?.toUpperCase()} plan for my salon "${salon?.name || ''}". I'm sending the payment screenshot.`
-            )}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="block"
+          <Button
+            onClick={() => setModalOpen(true)}
+            className="w-full bg-gold text-black hover:bg-gold/90 font-semibold h-11"
           >
-            <Button className="w-full bg-gold text-black hover:bg-gold/90 font-semibold h-11">
-              Send Screenshot on WhatsApp
-            </Button>
-          </a>
+            Submit payment
+          </Button>
         </div>
       )}
 
@@ -990,10 +1006,33 @@ function SubscriptionTab({ salon, branches }: { salon: Salon | null; branches: B
             <p className="text-sm font-medium">Account suspended</p>
             <p className="text-xs text-muted-foreground">Contact us on WhatsApp to reactivate</p>
           </div>
-          <a href="https://wa.me/923001234567?text=Hi%2C%20my%20iCut%20account%20has%20been%20suspended.%20Please%20help." target="_blank" rel="noopener noreferrer" className="text-xs font-semibold bg-gold text-black px-4 py-2 rounded-md hover:bg-gold/90 transition-all shrink-0 text-center">
-            Contact Support
-          </a>
+          {bank.supportWhatsapp && (
+            <a
+              href={`https://wa.me/${bank.supportWhatsapp}?text=${encodeURIComponent(`Hi, my iCut account "${salon?.name ?? ''}" has been suspended. Please help.`)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs font-semibold bg-gold text-black px-4 py-2 rounded-md hover:bg-gold/90 transition-all shrink-0 text-center"
+            >
+              Contact Support
+            </a>
+          )}
         </div>
+      )}
+
+      {selectedPlanObj && (
+        <PaymentSubmitModal
+          open={modalOpen}
+          onClose={() => setModalOpen(false)}
+          plan={{
+            key: selectedPlanObj.key as 'basic' | 'growth' | 'pro',
+            name: selectedPlanObj.name,
+            price: selectedPlanObj.price,
+            branches: selectedPlanObj.branches,
+            staff: selectedPlanObj.staff,
+            features: selectedPlanObj.features,
+          }}
+          onSubmitted={() => { /* page reloads on next render via existing flow */ }}
+        />
       )}
     </div>
   );

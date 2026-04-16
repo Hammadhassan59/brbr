@@ -5,6 +5,15 @@ const nextConfig: NextConfig = {
   experimental: {
     viewTransition: true,
   },
+  // pdfkit ships .afm font files (Helvetica, Times, etc.) that it loads at
+  // runtime via fs.readFileSync. Next.js's standalone output trace can't see
+  // those reads, so the files don't get copied into /ROOT/node_modules/pdfkit
+  // and the data-export route crashes with ENOENT. Force-include them here.
+  outputFileTracingIncludes: {
+    '/api/dashboard/data-export.pdf': [
+      './node_modules/pdfkit/js/data/**/*',
+    ],
+  },
   async headers() {
     return [
       {

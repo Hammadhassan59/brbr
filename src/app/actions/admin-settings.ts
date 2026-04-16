@@ -130,7 +130,7 @@ function coerceFeatures(raw: unknown): Array<{ text: string; ok: boolean }> {
  */
 export async function getPublicPlatformConfig(): Promise<{
   plans: Record<string, PublicPlan>;
-  payment: { jazzcashAccount: string; bankAccount: string };
+  payment: { jazzcashAccount: string; bankAccount: string; bankName: string; accountTitle: string };
   supportWhatsApp: string;
 }> {
   const supabase = createServerClient();
@@ -172,6 +172,8 @@ export async function getPublicPlatformConfig(): Promise<{
     payment: {
       jazzcashAccount: String(pay.jazzcashAccount ?? ''),
       bankAccount: String(pay.bankAccount ?? ''),
+      bankName: String(pay.bankName ?? ''),
+      accountTitle: String(pay.accountTitle ?? ''),
     },
     supportWhatsApp: String(gen.supportWhatsApp ?? ''),
   };

@@ -10,6 +10,7 @@ import { getPaywallContext } from '@/app/actions/payment-requests';
 import { useAppStore } from '@/store/app-store';
 import { BANK_DETAILS, DEFAULT_PLANS, type PlanOption } from '@/lib/bank-details';
 import { PaymentSubmitModal } from '@/components/payment-submit-modal';
+import { getPublicPlatformConfig } from '@/app/actions/admin-settings';
 
 interface Context {
   salon: { id: string; name: string; subscription_status: string; subscription_plan: string | null };
@@ -42,6 +43,14 @@ function copy(value: string, label: string) {
   navigator.clipboard.writeText(value).then(() => toast.success(`${label} copied`));
 }
 
+interface BankConfig {
+  bankName: string;
+  accountTitle: string;
+  accountNumber: string;
+  jazzcash: string;
+  supportWhatsapp: string;
+}
+
 export default function PaywallPage() {
   const router = useRouter();
   const [ctx, setCtx] = useState<Context | null>(null);
@@ -49,6 +58,28 @@ export default function PaywallPage() {
   const [selectedPlan, setSelectedPlan] = useState<PlanOption | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [bank, setBank] = useState<BankConfig>(BANK_DETAILS);
+
+  // Live bank/JC details from platform_settings (super admin manages them in
+  // /admin/settings). Falls back to the constant in bank-details.ts if the
+  // settings query fails — e.g. during initial render before the request
+  // resolves.
+  useEffect(() => {
+    let cancelled = false;
+    getPublicPlatformConfig()
+      .then((cfg) => {
+        if (cancelled) return;
+        setBank({
+          bankName: cfg.payment.bankName || BANK_DETAILS.bankName,
+          accountTitle: cfg.payment.accountTitle || BANK_DETAILS.accountTitle,
+          accountNumber: cfg.payment.bankAccount || BANK_DETAILS.accountNumber,
+          jazzcash: cfg.payment.jazzcashAccount || BANK_DETAILS.jazzcash,
+          supportWhatsapp: cfg.supportWhatsApp || BANK_DETAILS.supportWhatsapp,
+        });
+      })
+      .catch(() => { /* keep fallback */ });
+    return () => { cancelled = true; };
+  }, []);
 
   const load = useCallback(async () => {
     const { data, error } = await getPaywallContext();
@@ -171,7 +202,7 @@ export default function PaywallPage() {
           <div className="bg-card border border-border rounded-lg p-5 text-center space-y-3">
             <p className="text-sm">Reach out on WhatsApp to reactivate your account.</p>
             <a
-              href={`https://wa.me/${BANK_DETAILS.supportWhatsapp}?text=${encodeURIComponent(`Hi, my iCut account "${ctx.salon.name}" has been suspended. Please help.`)}`}
+              href={`https://wa.me/${bank.supportWhatsapp}?text=${encodeURIComponent(`Hi, my iCut account "${ctx.salon.name}" has been suspended. Please help.`)}`}
               target="_blank"
               rel="noopener noreferrer"
             >
@@ -245,10 +276,10 @@ export default function PaywallPage() {
 
                 <div className="space-y-2 text-sm">
                   {([
-                    ['Bank', BANK_DETAILS.bankName, false],
-                    ['Account Title', BANK_DETAILS.accountTitle, false],
-                    ['Account Number', BANK_DETAILS.accountNumber, true],
-                    ['JazzCash', BANK_DETAILS.jazzcash, true],
+                    ['Bank', bank.bankName, false],
+                    ['Account Title', bank.accountTitle, false],
+                    ['Account Number', bank.accountNumber, true],
+                    ['JazzCash', bank.jazzcash, true],
                   ] as const).map(([label, value, copyable]) => (
                     <div key={label} className="flex items-center justify-between gap-3 p-3 bg-secondary/30 rounded-lg">
                       <div className="min-w-0 flex-1">

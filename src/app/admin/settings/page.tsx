@@ -41,6 +41,8 @@ interface PlatformSettings {
   requirePaymentOnSignup: boolean;
   jazzcashAccount: string;
   bankAccount: string;
+  bankName: string;
+  accountTitle: string;
 }
 
 const DEFAULT_SETTINGS: PlatformSettings = {
@@ -99,6 +101,8 @@ const DEFAULT_SETTINGS: PlatformSettings = {
   requirePaymentOnSignup: true,
   jazzcashAccount: '',
   bankAccount: '',
+  bankName: '',
+  accountTitle: '',
 };
 
 export default function AdminSettingsPage() {
@@ -178,6 +182,8 @@ export default function AdminSettingsPage() {
           requirePaymentOnSignup: Boolean(tr.requirePayment ?? DEFAULT_SETTINGS.requirePaymentOnSignup),
           jazzcashAccount: String(py.jazzcashAccount ?? DEFAULT_SETTINGS.jazzcashAccount),
           bankAccount: String(py.bankAccount ?? DEFAULT_SETTINGS.bankAccount),
+          bankName: String(py.bankName ?? DEFAULT_SETTINGS.bankName),
+          accountTitle: String(py.accountTitle ?? DEFAULT_SETTINGS.accountTitle),
         });
       })
       .catch(() => {
@@ -311,6 +317,8 @@ export default function AdminSettingsPage() {
         savePlatformSetting('payment', {
           jazzcashAccount: settings.jazzcashAccount,
           bankAccount: settings.bankAccount,
+          bankName: settings.bankName,
+          accountTitle: settings.accountTitle,
         }),
       ]);
       toast.success('Platform settings saved to database');
@@ -416,8 +424,17 @@ export default function AdminSettingsPage() {
             <Card>
               <CardHeader className="pb-2"><CardTitle className="text-sm">Payment Collection</CardTitle></CardHeader>
               <CardContent className="space-y-3">
-                <div><Label className="text-xs">JazzCash Account (for subscription payments)</Label><Input value={settings.jazzcashAccount} onChange={(e) => update('jazzcashAccount', e.target.value)} className="mt-1" /></div>
-                <div><Label className="text-xs">Bank Account (HBL)</Label><Input value={settings.bankAccount} onChange={(e) => update('bankAccount', e.target.value)} className="mt-1" /></div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div><Label className="text-xs">Bank name</Label><Input value={settings.bankName} onChange={(e) => update('bankName', e.target.value)} className="mt-1" placeholder="e.g. Meezan Bank" /></div>
+                  <div><Label className="text-xs">Account title</Label><Input value={settings.accountTitle} onChange={(e) => update('accountTitle', e.target.value)} className="mt-1" placeholder="iCut Technologies" /></div>
+                </div>
+                <div><Label className="text-xs">Bank account number</Label><Input value={settings.bankAccount} onChange={(e) => update('bankAccount', e.target.value)} className="mt-1" placeholder="02340105566723" /></div>
+                <div><Label className="text-xs">JazzCash number</Label><Input value={settings.jazzcashAccount} onChange={(e) => update('jazzcashAccount', e.target.value)} className="mt-1" placeholder="03001234567" /></div>
+                <p className="text-[11px] text-muted-foreground">
+                  These show up on the public paywall, the tenant&apos;s billing page, and the
+                  in-app payment-submit modal. Tenants upload screenshots in-app for super-admin
+                  approval — no WhatsApp involved.
+                </p>
               </CardContent>
             </Card>
 
