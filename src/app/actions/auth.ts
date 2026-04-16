@@ -1,8 +1,11 @@
 'use server';
 
 import { SignJWT, jwtVerify } from 'jose';
-import { cookies } from 'next/headers';
+import { cookies, headers } from 'next/headers';
 import { randomUUID } from 'crypto';
+import { checkRateLimit } from '@/lib/with-rate-limit';
+import { BUCKETS } from '@/lib/rate-limit-buckets';
+import { getClientIp } from '@/lib/rate-limit';
 
 // JWT issuer/audience — the proxy must verify these exactly. Anything signed
 // with different iss/aud values is treated as invalid.
@@ -406,8 +409,31 @@ export async function destroySession() {
  * The email-match path is gated on email_confirmed_at so an attacker can't
  * simply register an unconfirmed auth.users row with a victim's email and
  * hijack their staff/partner record.
+ *
+ * Rate-limited: login happens client-side via supabase.auth.signInWithPassword
+ * (outside our server action surface), but every successful client login is
+ * followed by this server call. Gating here throttles automated credential
+ * stuffing that makes it past Supabase's own rate limit. Keyed on IP + email
+ * so one attacker can't mask their rate by rotating emails from a single IP.
  */
 export async function resolveUserRole(authUserId: string, authEmail: string) {
+  try {
+    const h = await headers();
+    const ip = getClientIp(new Request('http://x', { headers: h }));
+    const rl = await checkRateLimit(
+      'login',
+      `${ip}:${authEmail.toLowerCase()}`,
+      BUCKETS.LOGIN_ATTEMPTS.max,
+      BUCKETS.LOGIN_ATTEMPTS.windowMs,
+    );
+    if (!rl.ok) {
+      throw new Error(rl.error ?? 'Too many login attempts, please try again later.');
+    }
+  } catch (err) {
+    // Headers may be unavailable in non-request contexts; only re-throw the
+    // explicit rate-limit error so tests without headers() can still resolve.
+    if (err instanceof Error && err.message.startsWith('Too many')) throw err;
+  }
   const { createServerClient } = await import('@/lib/supabase');
   const supabase = createServerClient();
 

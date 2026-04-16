@@ -83,7 +83,13 @@ vi.mock('@/app/actions/auth', () => ({
   verifySession: vi.fn(() => Promise.resolve(session)),
 }));
 
-beforeEach(() => {
+// headers() returns an object with .get for x-forwarded-for / x-real-ip lookups.
+vi.mock('next/headers', () => ({
+  headers: async () => new Headers({ 'x-forwarded-for': '127.0.0.1' }),
+  cookies: async () => ({ get: () => undefined, set: () => undefined, delete: () => undefined }),
+}));
+
+beforeEach(async () => {
   vi.clearAllMocks();
   session = { salonId: 'salon-1', staffId: 'auth-user-1', role: 'owner', branchId: 'branch-1', name: 'Owner' };
   partnerRow.auth_user_id = 'auth-partner-1';
@@ -99,6 +105,13 @@ beforeEach(() => {
   });
   anonSignOut = vi.fn().mockResolvedValue({ error: null });
   userAuthedUpdateUser = vi.fn().mockResolvedValue({ data: { user: { id: 'auth-user-1' } }, error: null });
+
+  // Clear rate-limit state between tests so tests don't bleed into each other.
+  const { resetRateLimit } = await import('../src/lib/rate-limit');
+  resetRateLimit('login:127.0.0.1:auth-user-1');
+  resetRateLimit('change-email:auth-user-1');
+  resetRateLimit('change-email:auth-partner-1');
+  resetRateLimit('change-email:auth-staff-1');
 });
 
 describe('account actions — getAccountEmail', () => {
@@ -129,35 +142,35 @@ describe('account actions — getAccountEmail', () => {
 describe('account actions — changeAccountPassword', () => {
   it('updates password when current is correct', async () => {
     const { changeAccountPassword } = await import('../src/app/actions/account');
-    const res = await changeAccountPassword({ currentPassword: 'oldpass', newPassword: 'newpass1' });
+    const res = await changeAccountPassword({ currentPassword: 'oldpass', newPassword: 'newpass123!' });
     expect(res.error).toBeNull();
-    expect(adminUpdateUserById).toHaveBeenCalledWith('auth-user-1', { password: 'newpass1' });
+    expect(adminUpdateUserById).toHaveBeenCalledWith('auth-user-1', { password: 'newpass123!' });
   });
 
   it('rejects when current password is wrong', async () => {
     anonSignIn = vi.fn().mockResolvedValue({ data: null, error: { message: 'Invalid credentials' } });
     const { changeAccountPassword } = await import('../src/app/actions/account');
-    const res = await changeAccountPassword({ currentPassword: 'wrong', newPassword: 'newpass1' });
+    const res = await changeAccountPassword({ currentPassword: 'wrong', newPassword: 'newpass123!' });
     expect(res.error).toMatch(/incorrect/i);
     expect(adminUpdateUserById).not.toHaveBeenCalled();
   });
 
-  it('rejects passwords shorter than 6 chars', async () => {
+  it('rejects passwords shorter than 10 chars', async () => {
     const { changeAccountPassword } = await import('../src/app/actions/account');
     const res = await changeAccountPassword({ currentPassword: 'oldpass', newPassword: '123' });
-    expect(res.error).toMatch(/6 characters/);
+    expect(res.error).toMatch(/10 characters/);
     expect(anonSignIn).not.toHaveBeenCalled();
   });
 
   it('rejects when new password matches current', async () => {
     const { changeAccountPassword } = await import('../src/app/actions/account');
-    const res = await changeAccountPassword({ currentPassword: 'samepass', newPassword: 'samepass' });
+    const res = await changeAccountPassword({ currentPassword: 'samepass123!', newPassword: 'samepass123!' });
     expect(res.error).toMatch(/differ/i);
   });
 
   it('rejects when current password missing', async () => {
     const { changeAccountPassword } = await import('../src/app/actions/account');
-    const res = await changeAccountPassword({ currentPassword: '', newPassword: 'newpass1' });
+    const res = await changeAccountPassword({ currentPassword: '', newPassword: 'newpass123!' });
     expect(res.error).toMatch(/current password/i);
   });
 });

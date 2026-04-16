@@ -2,6 +2,8 @@
 
 import { createServerClient } from '@/lib/supabase';
 import { verifySession } from './auth';
+import { checkRateLimit } from '@/lib/with-rate-limit';
+import { BUCKETS } from '@/lib/rate-limit-buckets';
 
 async function requireSuperAdmin() {
   const session = await verifySession();
@@ -25,7 +27,18 @@ export async function toggleStaffActive(staffId: string, isActive: boolean) {
 }
 
 export async function resetUserPassword(email: string, newPassword: string) {
-  await requireSuperAdmin();
+  const session = await requireSuperAdmin();
+
+  // Rate-limit: a compromised super-admin session would be a devastating
+  // blast radius — throttle password resets per admin+target-email so a
+  // single session can only reset 5 accounts per 5 minutes.
+  const rl = await checkRateLimit(
+    'admin-reset-password',
+    `${session.staffId}:${email.toLowerCase()}`,
+    BUCKETS.LOGIN_ATTEMPTS.max,
+    BUCKETS.LOGIN_ATTEMPTS.windowMs,
+  );
+  if (!rl.ok) throw new Error(rl.error ?? 'Too many password resets, please slow down.');
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -44,8 +57,7 @@ export async function resetUserPassword(email: string, newPassword: string) {
   );
 
   if (!listRes.ok) {
-    const body = await listRes.text();
-    throw new Error(`Failed to look up user: ${body}`);
+    throw new Error('Failed to look up user');
   }
 
   const listData = await listRes.json();
@@ -65,8 +77,7 @@ export async function resetUserPassword(email: string, newPassword: string) {
   });
 
   if (!updateRes.ok) {
-    const body = await updateRes.text();
-    throw new Error(`Failed to reset password: ${body}`);
+    throw new Error('Failed to reset password');
   }
 
   return { success: true };

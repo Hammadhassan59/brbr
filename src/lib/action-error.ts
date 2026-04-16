@@ -29,6 +29,17 @@
 export function safeError(err: unknown): string {
   if (process.env.NODE_ENV !== 'production') {
     if (err instanceof Error) return err.message;
+    // Supabase / Postgres surface errors as plain objects with a `message`
+    // field, not real Error instances. Pull the message out in non-prod so
+    // tests and local dev see the actual diagnostic.
+    if (
+      err !== null &&
+      typeof err === 'object' &&
+      'message' in err &&
+      typeof (err as { message: unknown }).message === 'string'
+    ) {
+      return (err as { message: string }).message;
+    }
     return String(err);
   }
   // Production: log for operators, return a generic message to the user.

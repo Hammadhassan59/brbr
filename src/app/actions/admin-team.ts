@@ -4,6 +4,9 @@ import { createServerClient } from '@/lib/supabase';
 import { sendEmail } from '@/lib/email-sender';
 import { requireAdminRole } from './auth';
 import { ADMIN_ROLES, type AdminRole } from '@/lib/admin-roles';
+import { checkRateLimit } from '@/lib/with-rate-limit';
+import { BUCKETS } from '@/lib/rate-limit-buckets';
+import { safeError } from '@/lib/action-error';
 
 export interface AdminUserRow {
   id: string;
@@ -29,6 +32,18 @@ export async function inviteAdmin(input: {
 }): Promise<{ data: AdminUserRow | null; error: string | null }> {
   const session = await requireAdminRole(['super_admin']);
 
+  // Rate-limit: inviting 5 admins/day per inviter is already unusual. This
+  // catches a compromised super-admin session before it mass-invites backdoor
+  // accounts (which would each need their own email to accept, but rotating
+  // emails is cheaper than people realize).
+  const rl = await checkRateLimit(
+    'invite-admin',
+    session.staffId,
+    BUCKETS.INVITE_ADMIN.max,
+    BUCKETS.INVITE_ADMIN.windowMs,
+  );
+  if (!rl.ok) return { data: null, error: rl.error ?? 'Too many invites, please try again later.' };
+
   const email = input.email.trim().toLowerCase();
   if (!EMAIL_RE.test(email)) return { data: null, error: 'Invalid email' };
   if (!(ADMIN_ROLES as readonly string[]).includes(input.role)) {
@@ -53,7 +68,7 @@ export async function inviteAdmin(input: {
     email_confirm: true,
   });
   if (authErr || !authData.user) {
-    return { data: null, error: authErr?.message ?? 'Failed to create auth user' };
+    return { data: null, error: authErr ? safeError(authErr) : 'Failed to create auth user' };
   }
 
   // 2. Insert admin_users row.
@@ -71,7 +86,7 @@ export async function inviteAdmin(input: {
 
   if (error) {
     await supabase.auth.admin.deleteUser(authData.user.id).catch(() => {});
-    return { data: null, error: error.message };
+    return { data: null, error: safeError(error) };
   }
 
   // 3. Send password-reset link so the new admin can set their own password.
@@ -106,7 +121,7 @@ export async function listAdminUsers(): Promise<{ data: AdminUserRow[]; error: s
     .from('admin_users')
     .select('*')
     .order('created_at', { ascending: false });
-  if (error) return { data: [], error: error.message };
+  if (error) return { data: [], error: safeError(error) };
   return { data: (data || []) as AdminUserRow[], error: null };
 }
 
@@ -136,7 +151,7 @@ export async function setAdminActive(
       deactivated_at: active ? null : new Date().toISOString(),
     })
     .eq('id', adminUserId);
-  return { error: error?.message ?? null };
+  return { error: error ? safeError(error) : null };
 }
 
 export async function updateAdminRole(
@@ -160,5 +175,5 @@ export async function updateAdminRole(
   }
 
   const { error } = await supabase.from('admin_users').update({ role }).eq('id', adminUserId);
-  return { error: error?.message ?? null };
+  return { error: error ? safeError(error) : null };
 }

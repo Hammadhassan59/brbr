@@ -23,12 +23,18 @@ vi.mock('@/lib/supabase', () => ({
   createServerClient: () => ({ from: fromMock }),
 }));
 
-beforeEach(() => {
+vi.mock('next/headers', () => ({
+  headers: async () => new Headers({ 'x-forwarded-for': '127.0.0.1' }),
+}));
+
+beforeEach(async () => {
   vi.clearAllMocks();
   agents = [
     { id: 'agent-1', code: 'SA042', name: 'Ahmed Khan', active: true },
     { id: 'agent-2', code: 'SA999', name: 'Inactive Asma', active: false },
   ];
+  const { resetRateLimit } = await import('../src/lib/rate-limit');
+  resetRateLimit('agent-lookup:127.0.0.1');
 });
 
 describe('lookupAgentByCode', () => {
