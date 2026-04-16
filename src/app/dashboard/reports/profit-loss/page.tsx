@@ -113,18 +113,22 @@ export default function ProfitLossPage() {
     : staff.filter(s => s.branch_id === (branchScope === 'current' ? currentBranch?.id : branchScope));
   const totalSalaries = relevantStaff.reduce((s, st) => s + st.base_salary, 0);
 
-  // Commissions (estimate from bills, matching dashboard logic)
+  // Commissions — service items only. Product line items (retail sales)
+  // do NOT earn commission; matches get_staff_monthly_commission after
+  // migrations 033/034.
   let totalCommissions = 0;
   bills.forEach(b => {
     if (!b.staff_id) return;
     const st = staff.find(s => s.id === b.staff_id);
     if (!st) return;
+    const serviceItems = billItems.filter(bi => bi.bill_id === b.id && bi.item_type === 'service');
+    if (serviceItems.length === 0) return;
     if (st.commission_type === 'percentage') {
-      totalCommissions += b.total_amount * st.commission_rate / 100;
+      const serviceRevenue = serviceItems.reduce((sum, bi) => sum + Number(bi.total_price || 0), 0);
+      totalCommissions += serviceRevenue * st.commission_rate / 100;
     } else if (st.commission_type === 'flat') {
-      // Flat commission is per-service, not per-bill
-      const servicesDone = billItems.filter(bi => bi.bill_id === b.id).length;
-      totalCommissions += servicesDone * st.commission_rate;
+      // Flat commission is per-service line item, not per-bill.
+      totalCommissions += serviceItems.length * st.commission_rate;
     }
   });
 
