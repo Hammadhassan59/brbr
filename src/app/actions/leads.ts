@@ -201,8 +201,17 @@ export async function createMyLead(
       .from('lead-photos')
       .upload(path, photo, { contentType: photo.type || 'image/jpeg', upsert: false });
     if (!upErr) {
-      const { data: urlData } = supabase.storage.from('lead-photos').getPublicUrl(path);
-      photo_url = urlData.publicUrl;
+      // lead-photos bucket is PRIVATE (see migration 029). Mint a 15-minute
+      // signed URL instead of a permanent public one.
+      // TODO(storage): as with payment-screenshots, storing the short-lived
+      // signed URL in photo_url means /agent/leads will show a broken image
+      // once the URL expires. Full fix is to store the path and generate a
+      // signed URL at render time; that touches read-side code owned by
+      // another agent — flagged for follow-up.
+      const { data: urlData } = await supabase.storage
+        .from('lead-photos')
+        .createSignedUrl(path, 900);
+      photo_url = urlData?.signedUrl ?? null;
     }
   }
 

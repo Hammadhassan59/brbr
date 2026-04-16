@@ -783,10 +783,13 @@ Expected: 403 or empty result (RLS blocks the write).
 
 - [ ] **Step 5: Deploy to server**
 
+> IP addresses redacted — see ops runbook in password manager. `icut-vps` is
+> a `~/.ssh/config` alias that resolves to the current VPS host/user/key.
+
 ```bash
 rsync -azP --delete --exclude node_modules --exclude .git --exclude '.next/cache' --exclude .env.local \
-  -e "ssh -i ~/.ssh/brbr-hetzner" \
-  /Users/user1/brbr/ root@138.199.175.90:/opt/brbr-app/
+  -e "ssh" \
+  /Users/user1/brbr/ icut-vps:"$VPS_APP_PATH"/
 
-ssh -i ~/.ssh/brbr-hetzner root@138.199.175.90 "cd /opt/brbr-app && npm install && npx next build && systemctl restart brbr-app"
+ssh icut-vps "cd \"$VPS_APP_PATH\" && npm install && npx next build && systemctl restart brbr-app"
 ```

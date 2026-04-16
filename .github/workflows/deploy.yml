@@ -1,36 +1,79 @@
 name: Deploy
 
+# Deploys are human-triggered only — per the deploy-gate rule. A successful
+# Tests workflow no longer automatically pushes to production; an operator
+# must explicitly dispatch this workflow.
+#
+# REQUIRED in GitHub Settings → Environments → production (create if missing):
+#   - Required reviewers: at least the owner
+#   - Deployment branches: `main` only
+#   - Secrets: DEPLOY_SSH_KEY, DEPLOY_HOST, DEPLOY_USER, DEPLOY_PATH, DEPLOY_HOST_KEY
 on:
-  workflow_run:
-    workflows: ["Tests"]
-    types: [completed]
-    branches: [main]
   workflow_dispatch:
+
+# Least-privilege at the workflow level. The deploy job SSHes out — it does
+# not need to write to the repo or packages.
+permissions:
+  contents: read
 
 jobs:
   deploy:
-    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
+    environment: production
     timeout-minutes: 15
     concurrency:
       group: deploy-prod
       cancel-in-progress: false
 
     steps:
+      # Pinned to immutable SHAs. Match test.yml.
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
       - name: Install SSH key
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_HOST_KEY: ${{ secrets.DEPLOY_HOST_KEY }}
         run: |
+          set -euo pipefail
           mkdir -p ~/.ssh
-          printf '%s\n' "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 700 ~/.ssh
+          # Destroy the private key when the job exits, regardless of outcome.
+          # `shred -u` overwrites then unlinks so the key cannot be recovered
+          # from the ephemeral runner disk.
+          trap 'shred -u ~/.ssh/id_ed25519 2>/dev/null || rm -f ~/.ssh/id_ed25519' EXIT
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
-          ssh-keyscan -H "${{ secrets.DEPLOY_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null
+          # Pin the host key instead of trusting ssh-keyscan on every run
+          # (which is vulnerable to an MITM at key-discovery time).
+          # DEPLOY_HOST_KEY must contain a line like:
+          #   <host> ssh-ed25519 AAAA...
+          # Generate on the VPS with:
+          #   ssh-keyscan -t ed25519 -H <host>  (then audit before storing)
+          if [ -z "${DEPLOY_HOST_KEY:-}" ]; then
+            echo "DEPLOY_HOST_KEY secret is not set — refusing to fall back to TOFU ssh-keyscan." >&2
+            exit 1
+          fi
+          printf '%s\n' "$DEPLOY_HOST_KEY" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
 
       - name: Deploy to production
         env:
           HOST: ${{ secrets.DEPLOY_HOST }}
           DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
           REMOTE_PATH: ${{ secrets.DEPLOY_PATH }}
-          TARGET_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+          TARGET_SHA: ${{ github.sha }}
         run: |
+          # TODO(security): once commits are consistently GPG-signed, flip the
+          # `if: false` below to gate deploys on a valid signature. Doing this
+          # now would fail every deploy because signed commits are not
+          # enforced yet.
+          if false; then
+            git fetch origin
+            git verify-commit "$TARGET_SHA"
+          fi
+
           ssh -o BatchMode=yes -o StrictHostKeyChecking=yes "$DEPLOY_USER@$HOST" bash -s <<EOF
           set -euo pipefail
           cd "$REMOTE_PATH"
@@ -44,15 +87,15 @@ jobs:
           set -a
           . .env.local
           set +a
-          docker compose up -d --build app
+          DOCKER_BUILDKIT=1 docker compose up -d --build app
           echo "=== after ==="
           git log -1 --oneline
           docker compose ps app
           echo "=== health ==="
           for i in 1 2 3 4 5 6 7 8 9 10; do
-            code=\$(curl -sS -o /dev/null -w '%{http_code}' http://localhost:3000 || echo 000)
+            code=\$(curl -sS -o /dev/null -w '%{http_code}' http://127.0.0.1:3000/api/health || echo 000)
             echo "attempt \$i: \$code"
-            if [ "\$code" = "200" ] || [ "\$code" = "307" ]; then exit 0; fi
+            if [ "\$code" = "200" ]; then exit 0; fi
             sleep 3
           done
           echo "app did not become healthy" >&2
