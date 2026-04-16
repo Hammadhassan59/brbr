@@ -2,7 +2,8 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
-import { ChevronRight, AlertTriangle } from 'lucide-react';
+import { ChevronRight, ChevronDown, Loader2, Pencil, Save, X, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { supabase } from '@/lib/supabase';
 import { useAppStore } from '@/store/app-store';
 import { formatPKR } from '@/lib/utils/currency';
@@ -13,7 +14,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import type { StockMovement, Product, ProductServiceLink, BillItem } from '@/types/database';
+import { Textarea } from '@/components/ui/textarea';
+import { getBackbarConsumptionReport, recordBackbarActual, type BackbarReportRow } from '@/app/actions/inventory';
+import type { StockMovement, Product, Staff } from '@/types/database';
 
 const MOVE_LABELS: Record<string, { label: string; color: string }> = {
   purchase: { label: 'Stock In', color: 'text-green-600' },
@@ -25,122 +28,64 @@ const MOVE_LABELS: Record<string, { label: string; color: string }> = {
 };
 
 export default function InventoryReportPage() {
-  const { salon, currentBranch } = useAppStore();
+  const { salon } = useAppStore();
   const [loading, setLoading] = useState(true);
+  const [reportLoading, setReportLoading] = useState(true);
+
   const [dateFrom, setDateFrom] = useState(() => { const d = new Date(); d.setDate(d.getDate() - 30); return d.toISOString().slice(0, 10); });
   const [dateTo, setDateTo] = useState(new Date().toISOString().slice(0, 10));
+  const [staffFilter, setStaffFilter] = useState('');
+
   const [movements, setMovements] = useState<(StockMovement & { product?: Product })[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [movementLimit, setMovementLimit] = useState(50);
-  const [discrepancies, setDiscrepancies] = useState<Array<{
-    productName: string; contentUnit: string; packagingUnit: string; contentPerUnit: number;
-    expectedUsage: number; actualUsage: number; variance: number; variancePercent: number;
-    expectedUnits: number; actualUnits: number;
-    servicesCount: number; flag: 'ok' | 'warning' | 'alert';
-  }>>([]);
+  const [staffOptions, setStaffOptions] = useState<Staff[]>([]);
+  const [reportRows, setReportRows] = useState<BackbarReportRow[]>([]);
 
   const fetchData = useCallback(async () => {
     if (!salon) return;
     setLoading(true);
-    // Tenant-scope every cross-table query: stock_movements, product_service_links
-    // and bill_items have no salon_id column, so inner-join a salon-scoped parent
-    // (products or bills) and filter. Otherwise these reads would surface other
-    // tenants' data when the service-role client bypasses RLS.
-    const [movRes, prodRes, linksRes, billItemsRes] = await Promise.all([
-      supabase.from('stock_movements').select('*, product:products!inner(*, salon_id)').eq('product.salon_id', salon.id).gte('created_at', `${dateFrom}T00:00:00`).lte('created_at', `${dateTo}T23:59:59`).order('created_at', { ascending: false }).limit(200),
+    const [movRes, prodRes, staffRes] = await Promise.all([
+      supabase
+        .from('stock_movements')
+        .select('*, product:products!inner(*, salon_id)')
+        .eq('product.salon_id', salon.id)
+        .gte('created_at', `${dateFrom}T00:00:00`)
+        .lte('created_at', `${dateTo}T23:59:59`)
+        .order('created_at', { ascending: false })
+        .limit(200),
       supabase.from('products').select('*').eq('salon_id', salon.id).eq('is_active', true),
-      supabase.from('product_service_links').select('*, product:products!inner(salon_id)').eq('product.salon_id', salon.id),
-      supabase.from('bill_items').select('*, bill:bills!inner(created_at, salon_id)').eq('bill.salon_id', salon.id).eq('item_type', 'service').gte('bill.created_at', `${dateFrom}T00:00:00`).lte('bill.created_at', `${dateTo}T23:59:59`),
+      supabase.from('staff').select('*').eq('salon_id', salon.id).eq('is_active', true).order('name'),
     ]);
     if (movRes.data) setMovements(movRes.data as (StockMovement & { product?: Product })[]);
     if (prodRes.data) setProducts(prodRes.data as Product[]);
-
-    // Compute discrepancies
-    if (linksRes.data && billItemsRes.data && movRes.data && prodRes.data) {
-      const links = linksRes.data as ProductServiceLink[];
-      const billItems = billItemsRes.data as BillItem[];
-      const allProducts = prodRes.data as Product[];
-      const allMoves = movRes.data as (StockMovement & { product?: Product })[];
-
-      // For each product that has service links, compute expected vs actual
-      const productIds = [...new Set(links.map(l => l.product_id))];
-      const disc: typeof discrepancies = [];
-
-      for (const productId of productIds) {
-        const product = allProducts.find(p => p.id === productId);
-        if (!product) continue;
-
-        const productLinks = links.filter(l => l.product_id === productId);
-        const serviceIds = productLinks.map(l => l.service_id);
-
-        // Count how many times each linked service was performed (from bill items)
-        let totalExpected = 0;
-        let totalServicesCount = 0;
-        for (const link of productLinks) {
-          const count = billItems.filter(bi => bi.service_id === link.service_id).length;
-          totalExpected += count * link.quantity_per_use;
-          totalServicesCount += count;
-        }
-
-        // Actual backbar usage in whole units (boxes/tubes consumed)
-        const actualUnitsUsed = Math.abs(
-          allMoves
-            .filter(m => m.product_id === productId && m.movement_type === 'backbar_use')
-            .reduce((s, m) => s + m.quantity, 0)
-        );
-
-        // Convert actual units to content amount
-        const contentPerUnit = product.content_per_unit || 1;
-        const actualContent = actualUnitsUsed * contentPerUnit;
-
-        // Expected is already in content units (ml, g, strips)
-        const variance = actualContent - totalExpected;
-        const variancePct = totalExpected > 0 ? (variance / totalExpected) * 100 : 0;
-
-        // Expected in packaging units for display
-        const expectedUnits = contentPerUnit > 0 ? totalExpected / contentPerUnit : totalExpected;
-
-        let flag: 'ok' | 'warning' | 'alert' = 'ok';
-        if (Math.abs(variancePct) > 30) flag = 'alert';
-        else if (Math.abs(variancePct) > 15) flag = 'warning';
-
-        disc.push({
-          productName: product.name,
-          contentUnit: product.content_unit || product.unit,
-          packagingUnit: product.unit,
-          contentPerUnit,
-          expectedUsage: Math.round(totalExpected * 10) / 10,
-          actualUsage: Math.round(actualContent * 10) / 10,
-          expectedUnits: Math.round(expectedUnits * 10) / 10,
-          actualUnits: actualUnitsUsed,
-          variance: Math.round(variance * 10) / 10,
-          variancePercent: Math.round(variancePct),
-          servicesCount: totalServicesCount,
-          flag,
-        });
-      }
-
-      setDiscrepancies(disc.sort((a, b) => Math.abs(b.variancePercent) - Math.abs(a.variancePercent)));
-    }
-
+    if (staffRes.data) setStaffOptions(staffRes.data as Staff[]);
     setLoading(false);
   }, [salon, dateFrom, dateTo]);
 
+  const fetchReport = useCallback(async () => {
+    if (!salon) return;
+    setReportLoading(true);
+    const { data, error } = await getBackbarConsumptionReport({
+      from: dateFrom,
+      to: dateTo,
+      staffId: staffFilter || undefined,
+    });
+    if (error) {
+      toast.error(`Could not load backbar report: ${error}`);
+      setReportRows([]);
+    } else {
+      setReportRows(data?.rows ?? []);
+    }
+    setReportLoading(false);
+  }, [salon, dateFrom, dateTo, staffFilter]);
+
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { fetchData(); }, [fetchData]);
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => { fetchReport(); }, [fetchReport]);
 
-  // Backbar consumption
-  const backbarMoves = movements.filter((m) => m.movement_type === 'backbar_use');
-  const backbarByProduct: Record<string, { name: string; qty: number; cost: number }> = {};
-  backbarMoves.forEach((m) => {
-    const name = m.product?.name || 'Unknown';
-    if (!backbarByProduct[name]) backbarByProduct[name] = { name, qty: 0, cost: 0 };
-    backbarByProduct[name].qty += Math.abs(m.quantity);
-    backbarByProduct[name].cost += Math.abs(m.quantity) * (m.product?.purchase_price || 0);
-  });
-  const backbarData = Object.values(backbarByProduct).sort((a, b) => b.cost - a.cost);
-
-  // Retail sales
+  // Retail sales (kept for the bottom right card; backbar moves to its own section)
   const retailMoves = movements.filter((m) => m.movement_type === 'sale');
   const retailByProduct: Record<string, { name: string; qty: number; revenue: number; profit: number }> = {};
   retailMoves.forEach((m) => {
@@ -152,7 +97,6 @@ export default function InventoryReportPage() {
   });
   const retailData = Object.values(retailByProduct).sort((a, b) => b.revenue - a.revenue);
 
-  // Stock valuation
   const totalStockValue = products.reduce((s, p) => s + p.current_stock * (p.inventory_type === 'retail' ? p.retail_price : p.purchase_price), 0);
 
   return (
@@ -165,112 +109,81 @@ export default function InventoryReportPage() {
 
       <div className="bg-card border border-border rounded-lg p-4 flex flex-wrap items-center gap-3">
         <h2 className="font-heading text-xl font-bold">Inventory Report</h2>
-        <div className="flex items-center gap-2 ml-auto">
-          <Label className="text-xs">From</Label><Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="w-36 h-8" />
-          <Label className="text-xs">To</Label><Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="w-36 h-8" />
+        <div className="flex items-center gap-2 ml-auto flex-wrap">
+          <Label className="text-xs">From</Label>
+          <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="w-36 h-8" />
+          <Label className="text-xs">To</Label>
+          <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="w-36 h-8" />
+          <Label className="text-xs">Stylist</Label>
+          <select
+            value={staffFilter}
+            onChange={(e) => setStaffFilter(e.target.value)}
+            className="border border-border rounded-md h-8 text-sm px-2 bg-card"
+          >
+            <option value="">All stylists</option>
+            {staffOptions.map((s) => (
+              <option key={s.id} value={s.id}>{s.name}</option>
+            ))}
+          </select>
         </div>
       </div>
 
-      <Card className="border-border"><CardContent className="p-4 text-center">
-        <p className="text-xs text-muted-foreground uppercase tracking-wider">Current Stock Valuation</p>
-        <p className="text-3xl font-heading font-bold">{formatPKR(totalStockValue)}</p>
-      </CardContent></Card>
+      <Card className="border-border">
+        <CardContent className="p-4 text-center">
+          <p className="text-xs text-muted-foreground uppercase tracking-wider">Current Stock Valuation</p>
+          <p className="text-3xl font-heading font-bold">{formatPKR(totalStockValue)}</p>
+        </CardContent>
+      </Card>
 
-      {/* Usage Discrepancy Report */}
-      {discrepancies.length > 0 && (
-        <Card className="border-border border-orange-500/25">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm flex items-center gap-2">
-              <AlertTriangle className="w-4 h-4 text-orange-500" />
-              Expected vs Actual Usage
-            </CardTitle>
-            <p className="text-xs text-muted-foreground">Compares expected product consumption (based on services done) with actual stock usage logged. Large variances may indicate waste, theft, or missed logging.</p>
-          </CardHeader>
-          <CardContent className="px-0">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="pl-4">Product</TableHead>
-                  <TableHead className="text-center">Services</TableHead>
-                  <TableHead className="text-center">Expected</TableHead>
-                  <TableHead className="text-center">Actual Used</TableHead>
-                  <TableHead className="text-center">Variance</TableHead>
-                  <TableHead className="text-center pr-4">Status</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {discrepancies.map((d) => (
-                  <TableRow key={d.productName} className={d.flag === 'alert' ? 'bg-red-500/5' : d.flag === 'warning' ? 'bg-yellow-500/5' : ''}>
-                    <TableCell className="pl-4">
-                      <p className="text-sm font-medium">{d.productName}</p>
-                      {d.contentPerUnit > 1 && <p className="text-[10px] text-muted-foreground">{d.contentPerUnit} {d.contentUnit}/{d.packagingUnit}</p>}
-                    </TableCell>
-                    <TableCell className="text-center text-sm">{d.servicesCount}</TableCell>
-                    <TableCell className="text-center">
-                      <p className="text-sm">{d.expectedUsage} {d.contentUnit}</p>
-                      {d.contentPerUnit > 1 && <p className="text-[10px] text-muted-foreground">{d.expectedUnits} {d.packagingUnit}</p>}
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <p className="text-sm">{d.actualUsage} {d.contentUnit}</p>
-                      {d.contentPerUnit > 1 && <p className="text-[10px] text-muted-foreground">{d.actualUnits} {d.packagingUnit}</p>}
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <span className={`text-sm font-medium ${d.variance > 0 ? 'text-red-600' : d.variance < 0 ? 'text-blue-600' : ''}`}>
-                        {d.variance > 0 ? '+' : ''}{d.variance} {d.contentUnit}
-                      </span>
-                      <p className={`text-[10px] ${Math.abs(d.variancePercent) > 15 ? 'font-medium' : 'text-muted-foreground'}`}>
-                        {d.variancePercent > 0 ? '+' : ''}{d.variancePercent}%
-                      </p>
-                    </TableCell>
-                    <TableCell className="text-center pr-4">
-                      {d.flag === 'alert' ? (
-                        <Badge variant="destructive" className="text-[10px]">Investigate</Badge>
-                      ) : d.flag === 'warning' ? (
-                        <Badge variant="outline" className="text-[10px] text-yellow-600 border-yellow-500/25 bg-yellow-500/10">Check</Badge>
-                      ) : (
-                        <Badge variant="outline" className="text-[10px] text-green-600 border-green-500/25 bg-green-500/10">OK</Badge>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-            <div className="px-4 py-2 text-[10px] text-muted-foreground border-t">
-              <span className="inline-block w-2 h-2 rounded-full bg-red-400 mr-1" /> Investigate: &gt;30% variance
-              <span className="inline-block w-2 h-2 rounded-full bg-yellow-400 mr-1 ml-3" /> Check: 15-30% variance
-              <span className="inline-block w-2 h-2 rounded-full bg-green-400 mr-1 ml-3" /> OK: &lt;15% variance
+      {/* Backbar consumption — services × link qty, with per-stylist breakdown
+          and owner-editable stocktake. Replaces the old "actual from stock
+          movements" column which was unreliable. */}
+      <Card className="border-border">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm">Backbar Consumption</CardTitle>
+          <p className="text-xs text-muted-foreground">
+            Expected product usage based on services performed in this window. Click a row to see which stylists
+            consumed how much. Hit &quot;Audit&quot; on a row to enter your physical stocktake count and see the variance.
+          </p>
+        </CardHeader>
+        <CardContent className="px-0">
+          {reportLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
             </div>
-          </CardContent>
-        </Card>
-      )}
+          ) : reportRows.length === 0 ? (
+            <p className="text-center text-muted-foreground text-sm py-8">
+              No backbar consumption in this window. Either no service-product links are configured, or no
+              services were rendered between {dateFrom} and {dateTo}.
+            </p>
+          ) : (
+            <div className="divide-y border-y">
+              {reportRows.map((row) => (
+                <BackbarRow
+                  key={row.product_id}
+                  row={row}
+                  periodFrom={dateFrom}
+                  periodTo={dateTo}
+                  onSaved={fetchReport}
+                />
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <Card className="border-border">
-          <CardHeader className="pb-2"><CardTitle className="text-sm">Backbar Consumption</CardTitle></CardHeader>
-          <CardContent className="px-0">
-            {loading ? <div className="h-20 bg-muted rounded-lg animate-pulse mx-4" /> : backbarData.length === 0 ? <p className="text-center text-muted-foreground text-sm py-6">No backbar usage</p> : (
-              <Table><TableHeader><TableRow><TableHead className="pl-4">Product</TableHead><TableHead className="text-center">Used</TableHead><TableHead className="text-right pr-4">Cost</TableHead></TableRow></TableHeader>
-                <TableBody>{backbarData.map((d) => (
-                  <TableRow key={d.name}><TableCell className="pl-4 text-sm">{d.name}</TableCell><TableCell className="text-center text-sm">{d.qty}</TableCell><TableCell className="text-right pr-4 text-sm">{formatPKR(d.cost)}</TableCell></TableRow>
-                ))}</TableBody>
-              </Table>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card className="border-border">
-          <CardHeader className="pb-2"><CardTitle className="text-sm">Retail Sales</CardTitle></CardHeader>
-          <CardContent className="px-0">
-            {loading ? <div className="h-20 bg-muted rounded-lg animate-pulse mx-4" /> : retailData.length === 0 ? <p className="text-center text-muted-foreground text-sm py-6">No retail sales</p> : (
-              <Table><TableHeader><TableRow><TableHead className="pl-4">Product</TableHead><TableHead className="text-center">Sold</TableHead><TableHead className="text-right">Revenue</TableHead><TableHead className="text-right pr-4">Profit</TableHead></TableRow></TableHeader>
-                <TableBody>{retailData.map((d) => (
-                  <TableRow key={d.name}><TableCell className="pl-4 text-sm">{d.name}</TableCell><TableCell className="text-center text-sm">{d.qty}</TableCell><TableCell className="text-right text-sm">{formatPKR(d.revenue)}</TableCell><TableCell className="text-right pr-4 text-sm text-green-600">{formatPKR(d.profit)}</TableCell></TableRow>
-                ))}</TableBody>
-              </Table>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+      <Card className="border-border">
+        <CardHeader className="pb-2"><CardTitle className="text-sm">Retail Sales</CardTitle></CardHeader>
+        <CardContent className="px-0">
+          {loading ? <div className="h-20 bg-muted rounded-lg animate-pulse mx-4" /> : retailData.length === 0 ? <p className="text-center text-muted-foreground text-sm py-6">No retail sales</p> : (
+            <Table><TableHeader><TableRow><TableHead className="pl-4">Product</TableHead><TableHead className="text-center">Sold</TableHead><TableHead className="text-right">Revenue</TableHead><TableHead className="text-right pr-4">Profit</TableHead></TableRow></TableHeader>
+              <TableBody>{retailData.map((d) => (
+                <TableRow key={d.name}><TableCell className="pl-4 text-sm">{d.name}</TableCell><TableCell className="text-center text-sm">{d.qty}</TableCell><TableCell className="text-right text-sm">{formatPKR(d.revenue)}</TableCell><TableCell className="text-right pr-4 text-sm text-green-600">{formatPKR(d.profit)}</TableCell></TableRow>
+              ))}</TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
 
       <Card className="border-border">
         <CardHeader className="pb-2">
@@ -318,4 +231,193 @@ export default function InventoryReportPage() {
       </Card>
     </div>
   );
+}
+
+function BackbarRow({
+  row,
+  periodFrom,
+  periodTo,
+  onSaved,
+}: {
+  row: BackbarReportRow;
+  periodFrom: string;
+  periodTo: string;
+  onSaved: () => void;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const [auditing, setAuditing] = useState(false);
+  const [actualInput, setActualInput] = useState(row.actual_qty != null ? String(row.actual_qty) : '');
+  const [notesInput, setNotesInput] = useState(row.actual_notes ?? '');
+  const [saving, setSaving] = useState(false);
+
+  const unit = row.content_unit || 'units';
+  const hasActual = row.actual_qty != null;
+  const variancePct = row.variance_pct;
+
+  async function save() {
+    const n = Number(actualInput);
+    if (!Number.isFinite(n) || n < 0) {
+      toast.error('Enter a valid non-negative number');
+      return;
+    }
+    setSaving(true);
+    const { error } = await recordBackbarActual({
+      product_id: row.product_id,
+      period_start: periodFrom,
+      period_end: periodTo,
+      actual_qty: n,
+      notes: notesInput.trim() || null,
+    });
+    setSaving(false);
+    if (error) { toast.error(error); return; }
+    toast.success('Stocktake saved');
+    setAuditing(false);
+    onSaved();
+  }
+
+  return (
+    <div className="px-4 py-3">
+      <div className="flex items-start gap-3 flex-wrap">
+        <button
+          onClick={() => setExpanded((v) => !v)}
+          className="flex items-center gap-1 text-left flex-1 min-w-0 hover:text-foreground"
+          aria-expanded={expanded}
+        >
+          {expanded ? <ChevronDown className="w-4 h-4 shrink-0" /> : <ChevronRight className="w-4 h-4 shrink-0" />}
+          <div className="min-w-0">
+            <p className="text-sm font-medium truncate">
+              {row.product_name}
+              {row.brand && <span className="text-muted-foreground font-normal ml-1">· {row.brand}</span>}
+            </p>
+            <p className="text-[11px] text-muted-foreground">
+              {row.services_count} service{row.services_count === 1 ? '' : 's'} · {row.by_stylist.length} stylist{row.by_stylist.length === 1 ? '' : 's'}
+            </p>
+          </div>
+        </button>
+
+        <div className="text-right">
+          <p className="text-xs text-muted-foreground">Expected</p>
+          <p className="text-sm font-semibold">
+            {round(row.expected_qty)} {unit}
+          </p>
+          <p className="text-[10px] text-muted-foreground">{formatPKR(row.expected_cost)}</p>
+        </div>
+
+        {hasActual && (
+          <div className="text-right">
+            <p className="text-xs text-muted-foreground">Actual</p>
+            <p className="text-sm font-semibold">
+              {round(row.actual_qty!)} {unit}
+            </p>
+            <p className="text-[10px] text-muted-foreground">stocktake</p>
+          </div>
+        )}
+
+        {hasActual && variancePct != null && (
+          <div className="text-right">
+            <p className="text-xs text-muted-foreground">Variance</p>
+            <p className={`text-sm font-semibold ${
+              Math.abs(variancePct) > 30 ? 'text-red-600' :
+              Math.abs(variancePct) > 15 ? 'text-amber-600' : 'text-green-600'
+            }`}>
+              {row.variance_qty! >= 0 ? '+' : ''}{round(row.variance_qty!)} {unit}
+            </p>
+            <p className={`text-[10px] ${Math.abs(variancePct) > 15 ? 'font-medium' : 'text-muted-foreground'}`}>
+              {variancePct >= 0 ? '+' : ''}{round(variancePct)}%
+            </p>
+          </div>
+        )}
+
+        <Button
+          size="sm"
+          variant={auditing ? 'secondary' : 'outline'}
+          onClick={() => setAuditing((v) => !v)}
+          className="h-8 text-xs"
+        >
+          {auditing ? <><X className="w-3 h-3 mr-1" /> Cancel</> : <><Pencil className="w-3 h-3 mr-1" /> {hasActual ? 'Edit actual' : 'Audit'}</>}
+        </Button>
+      </div>
+
+      {auditing && (
+        <div className="mt-3 ml-5 p-3 rounded-lg border border-gold/30 bg-gold/5 space-y-2">
+          <p className="text-xs text-muted-foreground">
+            Enter the qty you actually consumed between {periodFrom} and {periodTo} (in {unit}).
+            We&apos;ll compare it to the expected {round(row.expected_qty)} {unit} and show the variance.
+          </p>
+          <div className="flex items-end gap-2 flex-wrap">
+            <div className="flex-1 min-w-[8rem]">
+              <Label className="text-xs">Actual ({unit})</Label>
+              <Input
+                type="number"
+                inputMode="decimal"
+                step="0.01"
+                value={actualInput}
+                onChange={(e) => setActualInput(e.target.value)}
+                className="h-9 mt-1"
+              />
+            </div>
+            <div className="flex-[2] min-w-[10rem]">
+              <Label className="text-xs">Notes (optional)</Label>
+              <Textarea
+                value={notesInput}
+                onChange={(e) => setNotesInput(e.target.value)}
+                rows={1}
+                className="mt-1 text-sm"
+                placeholder="e.g. counted on Apr 1 stocktake"
+              />
+            </div>
+            <Button onClick={save} disabled={saving} className="h-9 bg-gold text-black hover:bg-gold/90">
+              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Save className="w-4 h-4 mr-1" /> Save</>}
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {expanded && row.by_stylist.length > 0 && (
+        <div className="mt-3 ml-5 rounded-lg border border-border bg-muted/30 overflow-hidden">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="pl-3">Stylist</TableHead>
+                <TableHead className="text-center">Services</TableHead>
+                <TableHead className="text-right pr-3">Expected</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {row.by_stylist.map((s) => (
+                <TableRow key={s.staff_id}>
+                  <TableCell className="pl-3 text-sm">{s.staff_name}</TableCell>
+                  <TableCell className="text-center text-sm">{s.services_count}</TableCell>
+                  <TableCell className="text-right pr-3 text-sm font-medium">
+                    {round(s.expected_qty)} {unit}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      )}
+
+      {expanded && row.by_stylist.length === 0 && (
+        <p className="mt-3 ml-5 text-xs text-muted-foreground">No bills had a stylist attribution in this window.</p>
+      )}
+
+      {hasActual && variancePct != null && Math.abs(variancePct) > 30 && (
+        <div className="mt-2 ml-5 flex items-center gap-1.5 text-xs text-red-600">
+          <AlertTriangle className="w-3.5 h-3.5" />
+          Variance over 30% — worth investigating
+        </div>
+      )}
+      {hasActual && variancePct != null && Math.abs(variancePct) <= 15 && (
+        <div className="mt-2 ml-5 flex items-center gap-1.5 text-xs text-green-600">
+          <CheckCircle2 className="w-3.5 h-3.5" />
+          Within 15% — looks healthy
+        </div>
+      )}
+    </div>
+  );
+}
+
+function round(n: number): number {
+  return Math.round(n * 10) / 10;
 }

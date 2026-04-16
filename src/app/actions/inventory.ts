@@ -323,3 +323,266 @@ export async function recordSupplierPayment(supplierId: string, amount: number, 
   if (error) return { error: error.message };
   return { error: null };
 }
+
+// ───────────────────────────────────────
+// Backbar consumption report
+// ───────────────────────────────────────
+
+export interface BackbarStylistRow {
+  staff_id: string;
+  staff_name: string;
+  services_count: number;
+  expected_qty: number;
+}
+
+export interface BackbarReportRow {
+  product_id: string;
+  product_name: string;
+  brand: string | null;
+  content_unit: string | null;
+  content_per_unit: number;
+  cost_per_content_unit: number;
+  services_count: number;
+  expected_qty: number;
+  expected_cost: number;
+  actual_qty: number | null;
+  actual_id: string | null;
+  actual_notes: string | null;
+  variance_qty: number | null;
+  variance_pct: number | null;
+  by_stylist: BackbarStylistRow[];
+}
+
+/**
+ * Owner-facing backbar consumption report.
+ *
+ * What it answers: for each product that's linked to services, in the chosen
+ * window: how much SHOULD have been consumed (expected, computed from
+ * bill_items × product_service_links.quantity_per_use), how much was
+ * ACTUALLY consumed (only if the owner has entered a stocktake for the same
+ * window via recordBackbarActual), and the variance. Each product also
+ * carries a per-stylist breakdown (attributed via bills.staff_id) so the
+ * owner can spot heavy users.
+ *
+ * Stylist attribution caveat: a multi-stylist bill is attributed entirely to
+ * the staff_id on the bill row — usually the receptionist or whoever rang it
+ * up. Common case is single-stylist; v1 accepts the inaccuracy.
+ */
+export async function getBackbarConsumptionReport(input: {
+  from: string; // YYYY-MM-DD
+  to: string;   // YYYY-MM-DD
+  staffId?: string;
+}): Promise<{ data: { rows: BackbarReportRow[] } | null; error: string | null }> {
+  const writeCheck = await checkWriteAccess();
+  if (writeCheck.error !== null) return { data: null, error: writeCheck.error };
+  const session = writeCheck.session;
+  const supabase = createServerClient();
+
+  // Bills in window for this salon. Time bounds use Asia/Karachi day so the
+  // report matches what the dashboard shows for the same dates.
+  let billsQ = supabase
+    .from('bills')
+    .select('id, staff_id, created_at')
+    .eq('salon_id', session.salonId)
+    .eq('status', 'paid')
+    .gte('created_at', `${input.from}T00:00:00+05:00`)
+    .lte('created_at', `${input.to}T23:59:59+05:00`);
+  if (input.staffId) billsQ = billsQ.eq('staff_id', input.staffId);
+
+  const { data: bills, error: billsErr } = await billsQ;
+  if (billsErr) return { data: null, error: billsErr.message };
+
+  if (!bills || bills.length === 0) {
+    return { data: { rows: [] }, error: null };
+  }
+
+  const billIds = bills.map((b: { id: string }) => b.id);
+  const billStaff = new Map<string, string>(
+    bills.map((b: { id: string; staff_id: string | null }) => [b.id, b.staff_id ?? '']),
+  );
+
+  // Service line items on those bills.
+  const { data: items, error: itemsErr } = await supabase
+    .from('bill_items')
+    .select('bill_id, service_id')
+    .in('bill_id', billIds)
+    .not('service_id', 'is', null);
+  if (itemsErr) return { data: null, error: itemsErr.message };
+
+  if (!items || items.length === 0) {
+    return { data: { rows: [] }, error: null };
+  }
+
+  // Product links for the services we saw.
+  const serviceIds = Array.from(new Set(items.map((i: { service_id: string }) => i.service_id)));
+  const { data: links, error: linksErr } = await supabase
+    .from('product_service_links')
+    .select('product_id, service_id, quantity_per_use, products(name, brand, content_per_unit, content_unit, purchase_price)')
+    .in('service_id', serviceIds);
+  if (linksErr) return { data: null, error: linksErr.message };
+
+  type LinkRow = {
+    product_id: string;
+    service_id: string;
+    quantity_per_use: number;
+    products: { name: string; brand: string | null; content_per_unit: number; content_unit: string | null; purchase_price: number } | null;
+  };
+  // PostgREST types embeds as arrays even when the FK is single-row; cast
+  // through unknown and treat the embed as a single object. The DB schema
+  // guarantees one product per link (FK on product_id).
+  const linksByService = new Map<string, LinkRow[]>();
+  for (const l of (links || []) as unknown as LinkRow[]) {
+    const arr = linksByService.get(l.service_id) ?? [];
+    arr.push(l);
+    linksByService.set(l.service_id, arr);
+  }
+
+  // Aggregate: per product → totals + per-stylist sub-totals.
+  type Aggregate = {
+    product_id: string;
+    product_name: string;
+    brand: string | null;
+    content_unit: string | null;
+    content_per_unit: number;
+    purchase_price: number;
+    services_count: number;
+    expected_qty: number;
+    by_stylist: Map<string, { services_count: number; expected_qty: number }>;
+  };
+  const byProduct = new Map<string, Aggregate>();
+
+  for (const item of items as { bill_id: string; service_id: string }[]) {
+    const links = linksByService.get(item.service_id);
+    if (!links) continue;
+    const staffId = billStaff.get(item.bill_id) || '';
+    for (const link of links) {
+      if (!link.products) continue;
+      const agg = byProduct.get(link.product_id) ?? {
+        product_id: link.product_id,
+        product_name: link.products.name,
+        brand: link.products.brand,
+        content_unit: link.products.content_unit,
+        content_per_unit: Number(link.products.content_per_unit) || 1,
+        purchase_price: Number(link.products.purchase_price) || 0,
+        services_count: 0,
+        expected_qty: 0,
+        by_stylist: new Map(),
+      };
+      agg.services_count += 1;
+      agg.expected_qty += Number(link.quantity_per_use) || 0;
+      if (staffId) {
+        const sub = agg.by_stylist.get(staffId) ?? { services_count: 0, expected_qty: 0 };
+        sub.services_count += 1;
+        sub.expected_qty += Number(link.quantity_per_use) || 0;
+        agg.by_stylist.set(staffId, sub);
+      }
+      byProduct.set(link.product_id, agg);
+    }
+  }
+
+  // Resolve staff names.
+  const staffIds = Array.from(new Set(Array.from(byProduct.values()).flatMap((a) => Array.from(a.by_stylist.keys()))));
+  const staffNames = new Map<string, string>();
+  if (staffIds.length > 0) {
+    const { data: staffRows } = await supabase
+      .from('staff')
+      .select('id, name')
+      .in('id', staffIds);
+    for (const s of (staffRows || []) as { id: string; name: string }[]) {
+      staffNames.set(s.id, s.name);
+    }
+  }
+
+  // Owner-entered actuals for this exact period.
+  const productIds = Array.from(byProduct.keys());
+  const actualByProduct = new Map<string, { id: string; actual_qty: number; notes: string | null }>();
+  if (productIds.length > 0) {
+    const { data: actuals } = await supabase
+      .from('backbar_actuals')
+      .select('id, product_id, actual_qty, notes')
+      .eq('salon_id', session.salonId)
+      .eq('period_start', input.from)
+      .eq('period_end', input.to)
+      .in('product_id', productIds);
+    for (const a of (actuals || []) as { id: string; product_id: string; actual_qty: number; notes: string | null }[]) {
+      actualByProduct.set(a.product_id, { id: a.id, actual_qty: Number(a.actual_qty), notes: a.notes });
+    }
+  }
+
+  const rows: BackbarReportRow[] = Array.from(byProduct.values())
+    .map((agg) => {
+      const actual = actualByProduct.get(agg.product_id);
+      const actual_qty = actual ? actual.actual_qty : null;
+      const variance_qty = actual_qty !== null ? agg.expected_qty - actual_qty : null;
+      const variance_pct =
+        actual_qty !== null && agg.expected_qty > 0
+          ? (variance_qty! / agg.expected_qty) * 100
+          : null;
+      const cost_per_content_unit = agg.content_per_unit > 0 ? agg.purchase_price / agg.content_per_unit : 0;
+      return {
+        product_id: agg.product_id,
+        product_name: agg.product_name,
+        brand: agg.brand,
+        content_unit: agg.content_unit,
+        content_per_unit: agg.content_per_unit,
+        cost_per_content_unit,
+        services_count: agg.services_count,
+        expected_qty: agg.expected_qty,
+        expected_cost: agg.expected_qty * cost_per_content_unit,
+        actual_qty,
+        actual_id: actual?.id ?? null,
+        actual_notes: actual?.notes ?? null,
+        variance_qty,
+        variance_pct,
+        by_stylist: Array.from(agg.by_stylist.entries())
+          .map(([staff_id, v]) => ({
+            staff_id,
+            staff_name: staffNames.get(staff_id) ?? 'Unknown',
+            services_count: v.services_count,
+            expected_qty: v.expected_qty,
+          }))
+          .sort((a, b) => b.expected_qty - a.expected_qty),
+      };
+    })
+    .sort((a, b) => b.expected_qty - a.expected_qty);
+
+  return { data: { rows }, error: null };
+}
+
+/**
+ * Owner records or updates a stocktake count for a (product, period). Upserts
+ * on the unique (salon_id, product_id, period_start, period_end) constraint
+ * so re-saving the same window simply updates the existing row.
+ */
+export async function recordBackbarActual(input: {
+  product_id: string;
+  period_start: string; // YYYY-MM-DD
+  period_end: string;   // YYYY-MM-DD
+  actual_qty: number;
+  notes?: string | null;
+}): Promise<{ error: string | null }> {
+  const writeCheck = await checkWriteAccess();
+  if (writeCheck.error !== null) return { error: writeCheck.error };
+  const session = writeCheck.session;
+  if (!Number.isFinite(input.actual_qty) || input.actual_qty < 0) {
+    return { error: 'Actual qty must be a non-negative number' };
+  }
+  if (input.period_end < input.period_start) {
+    return { error: 'Period end must be on or after period start' };
+  }
+  const supabase = createServerClient();
+  const { error } = await supabase
+    .from('backbar_actuals')
+    .upsert({
+      salon_id: session.salonId,
+      product_id: input.product_id,
+      period_start: input.period_start,
+      period_end: input.period_end,
+      actual_qty: input.actual_qty,
+      notes: input.notes ?? null,
+      recorded_by: session.staffId,
+      recorded_at: new Date().toISOString(),
+    }, { onConflict: 'salon_id,product_id,period_start,period_end' });
+  if (error) return { error: error.message };
+  return { error: null };
+}
