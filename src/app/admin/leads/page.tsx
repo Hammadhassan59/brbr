@@ -26,9 +26,11 @@ export default function AdminLeadsPage() {
       listLeads({ agentId: agentFilter || undefined, status: statusFilter }),
       listSalesAgents(),
     ]);
+    if (l.error) toast.error(`Could not load leads: ${l.error}`);
     setLeads(l.data);
     setAgents(a.data);
   }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { load(); }, [agentFilter, statusFilter]);
 
   return (

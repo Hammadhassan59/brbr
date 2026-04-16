@@ -49,9 +49,13 @@ export async function listLeads(
 ): Promise<{ data: LeadWithAgent[]; error: string | null }> {
   await requireSuperAdmin();
   const supabase = createServerClient();
+  // Disambiguate the FK: leads has TWO references to sales_agents now
+  // (assigned_agent_id and created_by_agent, added in migration 025).
+  // Without the !leads_assigned_agent_id_fkey hint, PostgREST throws
+  // "more than one relationship was found" and listLeads returns empty.
   let q = supabase
     .from('leads')
-    .select('*, agent:sales_agents(id, name)')
+    .select('*, agent:sales_agents!leads_assigned_agent_id_fkey(id, name)')
     .order('created_at', { ascending: false });
   if (filter?.agentId) q = q.eq('assigned_agent_id', filter.agentId);
   if (filter?.status && filter.status !== 'all') q = q.eq('status', filter.status);
