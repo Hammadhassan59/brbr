@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { Plus, X, Scissors, Sparkles, Users, MapPin, Pencil, Trash2, Copy, CreditCard, Check, Lock } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { updateSalon, updateBranchWorkingHours, createService, updateService, deleteService, createBranch, updateBranch, deleteBranch } from '@/app/actions/settings';
+import { getPublicPlatformConfig } from '@/app/actions/admin-settings';
 import { ProfileCard } from '@/components/profile-card';
 import { useAppStore } from '@/store/app-store';
 import { useLanguage } from '@/components/providers/language-provider';
@@ -771,7 +772,11 @@ function BranchManager({
 // Subscription Tab sub-component
 // ───────────────────────────────────────
 
-const PLANS = [
+// Fallback used only if platform_settings is unreachable. The live values
+// come from getPublicPlatformConfig() so admin price/feature edits in
+// /admin/settings show up here instantly — same source as the homepage,
+// /paywall, and /dashboard/billing.
+const PLANS_FALLBACK = [
   { key: 'basic', name: 'Basic', price: 2500, branches: 1, staff: 3, features: ['1 branch', 'Up to 3 staff', 'All features'] },
   { key: 'growth', name: 'Growth', price: 5000, branches: 1, staff: 0, features: ['1 branch', 'Unlimited staff', 'All features'] },
   { key: 'pro', name: 'Pro', price: 9000, branches: 3, staff: 0, features: ['Up to 3 branches', 'Unlimited staff', 'Priority support'] },
@@ -790,8 +795,27 @@ function copyText(text: string, label: string) {
 
 function SubscriptionTab({ salon, branches }: { salon: Salon | null; branches: Branch[] }) {
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
+  const [plans, setPlans] = useState(PLANS_FALLBACK);
   const isActive = salon?.subscription_status === 'active';
   const currentPlan = salon?.subscription_plan || 'none';
+
+  // Fetch live plan prices + names from platform_settings on mount.
+  // Same source the homepage, /paywall, and /dashboard/billing use, so all
+  // four surfaces stay in sync the moment super admin edits prices in
+  // /admin/settings.
+  useEffect(() => {
+    let cancelled = false;
+    getPublicPlatformConfig()
+      .then((cfg) => {
+        if (cancelled) return;
+        setPlans(PLANS_FALLBACK.map((p) => {
+          const live = cfg.plans[p.key as 'basic' | 'growth' | 'pro'];
+          return live ? { ...p, name: live.displayName || p.name, price: live.price || p.price } : p;
+        }));
+      })
+      .catch(() => { /* fall back to hardcoded values */ });
+    return () => { cancelled = true; };
+  }, []);
 
   return (
     <div className="bg-card border border-border rounded-lg p-4 sm:p-6 space-y-6">
@@ -846,7 +870,7 @@ function SubscriptionTab({ salon, branches }: { salon: Salon | null; branches: B
         <div className="border border-border rounded-lg p-4 sm:p-5 space-y-3">
           <p className="text-sm font-semibold">{isActive ? 'Plans' : 'Choose a Plan'}</p>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            {PLANS.map((plan) => {
+            {plans.map((plan) => {
               const isCurrent = currentPlan === plan.key && isActive;
               const isSelected = selectedPlan === plan.key;
               return (
@@ -900,7 +924,7 @@ function SubscriptionTab({ salon, branches }: { salon: Salon | null; branches: B
 
           <div className="bg-gold/5 border border-gold/20 rounded-lg p-3">
             <p className="text-sm font-semibold">
-              Amount: Rs {PLANS.find((p) => p.key === selectedPlan)?.price.toLocaleString()}/month
+              Amount: Rs {plans.find((p) => p.key === selectedPlan)?.price.toLocaleString()}/month
             </p>
           </div>
 
