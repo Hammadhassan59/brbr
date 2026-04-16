@@ -3,6 +3,7 @@
 import { createServerClient } from '@/lib/supabase';
 import { verifySession, requireAdminRole } from './auth';
 import { rowsToCSV } from '@/lib/csv-export';
+import { getSignedStorageUrl } from '@/lib/storage-url';
 import type { Lead, LeadStatus } from '@/types/sales';
 
 async function requireSuperAdmin() {
@@ -45,6 +46,20 @@ export interface CreateLeadInput {
 
 export interface LeadWithAgent extends Lead {
   agent: { id: string; name: string } | null;
+}
+
+/**
+ * A Lead shape that includes a freshly-minted 15-minute signed URL for
+ * the photo (when the row has one). Returned by listMyLeads() so the
+ * agent's own list view can render thumbnails inline without the client
+ * having to call a server action per row.
+ *
+ * photo_signed_url is null when:
+ *   - the lead has no photo at all, OR
+ *   - getSignedStorageUrl() failed (e.g. object was deleted).
+ */
+export interface LeadWithPhotoUrl extends Lead {
+  photo_signed_url: string | null;
 }
 
 export async function createLead(input: CreateLeadInput): Promise<{ data: Lead | null; error: string | null }> {
@@ -121,10 +136,22 @@ export async function getLeadCounts(filter?: {
   return { data: counts, error: null };
 }
 
-/** Agent-side: list my assigned leads. */
+/**
+ * Agent-side: list my assigned leads.
+ *
+ * Augments each row with a 15-minute signed URL for its photo (when the
+ * row has a photo_path). The agent's list view renders thumbnails from
+ * this URL — cheaper than one server-action round-trip per visible card,
+ * and fine from a leakage standpoint because the agent owns these leads.
+ *
+ * Legacy fallback: if a row has photo_url but no photo_path (created
+ * before migration 029), we pass photo_url through so the thumbnail
+ * keeps working until backfill.
+ * TODO: drop after backfill.
+ */
 export async function listMyLeads(
   filter?: { status?: LeadStatus | 'all' },
-): Promise<{ data: Lead[]; error: string | null }> {
+): Promise<{ data: LeadWithPhotoUrl[]; error: string | null }> {
   const session = await requireSalesAgent();
   const supabase = createServerClient();
   let q = supabase
@@ -135,7 +162,21 @@ export async function listMyLeads(
   if (filter?.status && filter.status !== 'all') q = q.eq('status', filter.status);
   const { data, error } = await q;
   if (error) return { data: [], error: error.message };
-  return { data: (data || []) as Lead[], error: null };
+
+  const rows = (data || []) as Lead[];
+  const withUrls = await Promise.all(
+    rows.map(async (lead) => {
+      let photo_signed_url: string | null = null;
+      if (lead.photo_path) {
+        photo_signed_url = await getSignedStorageUrl('lead-photos', lead.photo_path);
+      } else if (lead.photo_url) {
+        // Legacy row — pass through until backfill.
+        photo_signed_url = lead.photo_url;
+      }
+      return { ...lead, photo_signed_url };
+    }),
+  );
+  return { data: withUrls, error: null };
 }
 
 export async function getMyLead(leadId: string): Promise<{ data: Lead | null; error: string | null }> {
@@ -192,7 +233,10 @@ export async function createMyLead(
 
   // Upload the optional photo first; if it fails we still create the lead so
   // the agent doesn't lose their typed data over a flaky network.
-  let photo_url: string | null = null;
+  //
+  // Bucket is PRIVATE (migration 030). We persist the STORAGE PATH, not a
+  // URL — signed URLs are minted at render time by getLeadPhotoUrl().
+  let photo_path: string | null = null;
   if (photo instanceof File && photo.size > 0) {
     if (photo.size > 5 * 1024 * 1024) return { data: null, error: 'Photo too large (5MB max)' };
     const ext = photo.name.split('.').pop()?.toLowerCase().replace(/[^a-z0-9]/g, '') || 'jpg';
@@ -201,8 +245,7 @@ export async function createMyLead(
       .from('lead-photos')
       .upload(path, photo, { contentType: photo.type || 'image/jpeg', upsert: false });
     if (!upErr) {
-      const { data: urlData } = supabase.storage.from('lead-photos').getPublicUrl(path);
-      photo_url = urlData.publicUrl;
+      photo_path = path;
     }
   }
 
@@ -215,7 +258,11 @@ export async function createMyLead(
       city,
       address,
       notes,
-      photo_url,
+      // photo_path is the new source of truth (migration 029). photo_url
+      // stays null for new rows; read sites fall back to it only for legacy
+      // pre-migration-030 rows.
+      photo_path,
+      photo_url: null,
       assigned_agent_id: session.agentId!,
       created_by: session.staffId,
       created_by_agent: session.agentId!,
@@ -379,7 +426,7 @@ export async function exportLeadsCSV(): Promise<{ data: string | null; error: st
     .from('leads')
     .select(`
       created_at, salon_name, owner_name, phone, city, address, status,
-      photo_url, notes,
+      photo_url, photo_path, notes,
       agent:sales_agents!leads_assigned_agent_id_fkey(name, code)
     `)
     .order('created_at', { ascending: false });
@@ -395,9 +442,16 @@ export async function exportLeadsCSV(): Promise<{ data: string | null; error: st
       address: string | null;
       status: string;
       photo_url: string | null;
+      photo_path: string | null;
       notes: string | null;
       agent: { name: string; code: string } | null;
     };
+    // Photo column: new rows have photo_path (storage path only — admin can
+    // build a signed URL from it); legacy rows have photo_url. We emit
+    // whichever is present so the CSV is never empty for an existing photo.
+    const photoRef = lead.photo_path
+      ? `path:${lead.photo_path}`
+      : (lead.photo_url ?? '');
     return [
       new Date(lead.created_at).toISOString().slice(0, 10),
       lead.salon_name,
@@ -408,13 +462,13 @@ export async function exportLeadsCSV(): Promise<{ data: string | null; error: st
       lead.status,
       lead.agent?.name ?? '',
       lead.agent?.code ?? '',
-      lead.photo_url ?? '',
+      photoRef,
       lead.notes ?? '',
     ];
   });
 
   const csv = rowsToCSV(
-    ['Date', 'Salon Name', 'Owner', 'Phone', 'City', 'Address', 'Status', 'Agent Name', 'Agent Code', 'Photo URL', 'Notes'],
+    ['Date', 'Salon Name', 'Owner', 'Phone', 'City', 'Address', 'Status', 'Agent Name', 'Agent Code', 'Photo', 'Notes'],
     rows,
   );
   return { data: csv, error: null };

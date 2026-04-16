@@ -14,7 +14,7 @@ const salonRow = {
   subscription_expires_at: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(),
 };
 
-let requests: Array<{ id: string; plan: string; amount: number; method: string | null; reference: string | null; screenshot_url: string | null; status: string; duration_days: number; created_at: string; reviewed_at: string | null; reviewer_notes: string | null }> = [];
+let requests: Array<{ id: string; plan: string; amount: number; method: string | null; reference: string | null; screenshot_url: string | null; screenshot_path: string | null; status: string; duration_days: number; created_at: string; reviewed_at: string | null; reviewer_notes: string | null }> = [];
 let platformPlans: Record<string, { price?: number }> | null = null;
 
 const fromMock = vi.fn((table: string) => {
@@ -56,10 +56,10 @@ beforeEach(() => {
   vi.clearAllMocks();
   platformPlans = null;
   requests = [
-    { id: 'p1', plan: 'growth', amount: 5000, method: 'bank',     reference: 'TXN1', screenshot_url: 'https://s/p1.jpg', status: 'approved', duration_days: 30, created_at: '2026-04-15T10:00:00Z', reviewed_at: '2026-04-15T11:00:00Z', reviewer_notes: null },
-    { id: 'p2', plan: 'growth', amount: 5000, method: 'jazzcash', reference: null,    screenshot_url: null,                status: 'approved', duration_days: 30, created_at: '2026-03-15T10:00:00Z', reviewed_at: '2026-03-15T12:00:00Z', reviewer_notes: null },
-    { id: 'p3', plan: 'basic',  amount: 2500, method: 'bank',     reference: null,    screenshot_url: null,                status: 'pending',  duration_days: 30, created_at: '2026-04-16T08:00:00Z', reviewed_at: null,                  reviewer_notes: null },
-    { id: 'p4', plan: 'basic',  amount: 2500, method: 'bank',     reference: null,    screenshot_url: null,                status: 'rejected', duration_days: 30, created_at: '2026-02-01T10:00:00Z', reviewed_at: '2026-02-01T11:00:00Z', reviewer_notes: 'wrong amt' },
+    { id: 'p1', plan: 'growth', amount: 5000, method: 'bank',     reference: 'TXN1', screenshot_url: 'https://s/p1.jpg', screenshot_path: null,                       status: 'approved', duration_days: 30, created_at: '2026-04-15T10:00:00Z', reviewed_at: '2026-04-15T11:00:00Z', reviewer_notes: null },
+    { id: 'p2', plan: 'growth', amount: 5000, method: 'jazzcash', reference: null,    screenshot_url: null,                screenshot_path: 'salon-1/uuid-p2.jpg',    status: 'approved', duration_days: 30, created_at: '2026-03-15T10:00:00Z', reviewed_at: '2026-03-15T12:00:00Z', reviewer_notes: null },
+    { id: 'p3', plan: 'basic',  amount: 2500, method: 'bank',     reference: null,    screenshot_url: null,                screenshot_path: null,                       status: 'pending',  duration_days: 30, created_at: '2026-04-16T08:00:00Z', reviewed_at: null,                  reviewer_notes: null },
+    { id: 'p4', plan: 'basic',  amount: 2500, method: 'bank',     reference: null,    screenshot_url: null,                screenshot_path: null,                       status: 'rejected', duration_days: 30, created_at: '2026-02-01T10:00:00Z', reviewed_at: '2026-02-01T11:00:00Z', reviewer_notes: 'wrong amt' },
   ];
 });
 

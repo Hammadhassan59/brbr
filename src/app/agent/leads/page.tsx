@@ -4,13 +4,13 @@ import { useEffect, useState, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import { Users, Plus, Camera, ImageIcon, X, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { listMyLeads, createMyLead, getLeadCounts } from '@/app/actions/leads';
+import { listMyLeads, createMyLead, getLeadCounts, type LeadWithPhotoUrl } from '@/app/actions/leads';
 import { compressImage } from '@/lib/image-compress';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import type { Lead, LeadStatus } from '@/types/sales';
+import type { LeadStatus } from '@/types/sales';
 
 const STATUSES: (LeadStatus | 'all')[] = ['all','new','contacted','visited','followup','interested','not_interested','onboarded','converted','lost'];
 
@@ -28,7 +28,7 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 export default function AgentLeadsPage() {
-  const [leads, setLeads] = useState<Lead[]>([]);
+  const [leads, setLeads] = useState<LeadWithPhotoUrl[]>([]);
   const [status, setStatus] = useState<LeadStatus | 'all'>('all');
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
@@ -110,10 +110,10 @@ export default function AgentLeadsPage() {
           {leads.map(l => (
             <Link key={l.id} href={`/agent/leads/${l.id}`}
               className="border rounded-lg p-4 bg-white hover:border-gold transition-colors flex gap-3">
-              {l.photo_url && (
+              {l.photo_signed_url && (
                 <div className="w-16 h-16 rounded-lg overflow-hidden bg-muted shrink-0">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={l.photo_url} alt={l.salon_name} className="w-full h-full object-cover" />
+                  <img src={l.photo_signed_url} alt={l.salon_name} className="w-full h-full object-cover" />
                 </div>
               )}
               <div className="flex-1 min-w-0">
