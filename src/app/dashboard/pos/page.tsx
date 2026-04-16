@@ -598,16 +598,28 @@ function POSContent() {
         />
       </div>
 
-      {/* Mobile payment panel (full-screen overlay) */}
+      {/* Mobile payment panel (full-screen overlay).
+          Layout: fixed full-screen flex column. Header is fixed-height; body
+          is flex-1 with overflow-y-auto so a long bill (many split methods,
+          cash quick-buttons + tip + reference all stacked) can scroll all
+          the way to the Checkout button at the bottom of PaymentPanel.
+          Generous safe-area padding prevents iOS Safari bottom toolbar from
+          clipping the Checkout button. */}
       {showMobilePayment && (
-        <div className="xl:hidden fixed inset-0 z-50 bg-card overflow-y-auto overscroll-contain" style={{ scrollbarWidth: 'none' }}>
-          <div className="flex items-center justify-between px-4 py-3 border-b border-border sticky top-0 bg-card z-10">
+        <div className="xl:hidden fixed inset-0 z-50 bg-card flex flex-col">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-card shrink-0">
             <h2 className="text-sm font-semibold">Payment</h2>
             <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => setShowMobilePayment(false)}>
               <X className="w-4 h-4" />
             </Button>
           </div>
-          <div className="p-4 pb-[calc(env(safe-area-inset-bottom)+1rem)]">
+          <div
+            className="flex-1 overflow-y-auto overscroll-contain p-4"
+            style={{
+              paddingBottom: 'calc(env(safe-area-inset-bottom) + 5rem)',
+              scrollbarWidth: 'none',
+            }}
+          >
             <PaymentPanel
               total={total}
               clientUdhaarBalance={selectedClient?.udhaar_balance || 0}
