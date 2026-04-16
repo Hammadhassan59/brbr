@@ -78,8 +78,11 @@ UPDATE salons SET subscription_status = 'trial' WHERE setup_complete = false AND
 
 - [ ] **Step 2: Run the migration on the production Supabase**
 
+> IP addresses redacted — see ops runbook in password manager. `icut-vps` is
+> a `~/.ssh/config` alias that resolves to the current VPS host/user/key.
+
 ```bash
-ssh -i ~/.ssh/brbr-hetzner root@91.99.117.168 "docker exec -i supabase-db psql -U postgres -d postgres" < supabase/migrations/011_subscriptions_and_settings.sql
+ssh icut-vps "docker exec -i supabase-db psql -U postgres -d postgres" < supabase/migrations/011_subscriptions_and_settings.sql
 ```
 
 Expected: No errors. Tables altered, settings seeded.
@@ -1117,9 +1120,12 @@ Expected: All existing tests pass, new admin-actions tests pass.
 
 - [ ] **Step 2: Deploy**
 
+> IP addresses redacted — see ops runbook in password manager. `icut-vps` is
+> a `~/.ssh/config` alias that resolves to the current VPS host/user/key.
+
 ```bash
 git push origin main
-ssh -i ~/.ssh/brbr-hetzner root@91.99.117.168 "cd /opt/brbr && git pull origin main && docker compose up -d --build app"
+ssh icut-vps "cd \"$VPS_APP_PATH\" && git pull origin main && docker compose up -d --build app"
 ```
 
 - [ ] **Step 3: Verify in production**

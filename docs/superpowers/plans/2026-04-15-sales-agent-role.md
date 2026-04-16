@@ -4080,7 +4080,10 @@ git commit -m "test(payouts): document duplicate-open gating (DB-enforced)"
 
 ## Deployment checklist (before production deploy)
 
-- [ ] Apply migration 021 on production: `ssh brbr-hetzner; cd /opt/brbr; psql -U supabase_admin -d postgres -f supabase/migrations/021_sales_agents.sql`
+> IP addresses redacted — see ops runbook in password manager. `icut-vps` is
+> a `~/.ssh/config` alias that resolves to the current VPS host/user/key.
+
+- [ ] Apply migration 021 on production: `ssh icut-vps; cd "$VPS_APP_PATH"; psql -U supabase_admin -d postgres -f supabase/migrations/021_sales_agents.sql`
 - [ ] Verify no existing salons have `sold_by_agent_id` populated unintentionally: `SELECT COUNT(*) FROM salons WHERE sold_by_agent_id IS NOT NULL;` should be 0.
 - [ ] Docker compose build + up on the server (standard ops flow from memory).
 - [ ] Smoke test after deploy: superadmin login → `/admin/agents` loads → create a real test agent → agent receives reset email → agent can log in.

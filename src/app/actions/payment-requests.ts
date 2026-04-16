@@ -103,7 +103,16 @@ export async function submitPaymentRequest(
   const supabase = createServerClient();
 
   // Upload screenshot first. Path is salon_id/uuid.ext so it's namespaced and
-  // not enumerable. Bucket is public-read but paths are random.
+  // not enumerable. Bucket is PRIVATE (see migration 029) so we mint a
+  // time-limited signed URL rather than a permanent public one.
+  //
+  // TODO(storage): the `screenshot_url` column currently stores the short-lived
+  // signed URL. That means a screenshot becomes un-viewable ~15 min after the
+  // payment request is created, and both the /admin/payments and /dashboard/billing
+  // pages will render a broken image for older rows. Full fix: store the path
+  // in a new column (or repurpose screenshot_url to hold the path) and generate
+  // a fresh signed URL on each server-rendered read. Those read-sites are owned
+  // by another agent — flagged for follow-up.
   const ext = screenshot.name.split('.').pop()?.toLowerCase().replace(/[^a-z0-9]/g, '') || 'jpg';
   const uuid = crypto.randomUUID();
   const path = `${session.salonId}/${uuid}.${ext}`;
@@ -116,10 +125,14 @@ export async function submitPaymentRequest(
     });
   if (uploadErr) return { data: null, error: `Upload failed: ${uploadErr.message}` };
 
-  const { data: urlData } = supabase.storage
+  const { data: urlData, error: signErr } = await supabase.storage
     .from('payment-screenshots')
-    .getPublicUrl(path);
-  const screenshot_url = urlData.publicUrl;
+    .createSignedUrl(path, 900); // 15-minute TTL
+  if (signErr || !urlData) {
+    await supabase.storage.from('payment-screenshots').remove([path]).catch(() => {});
+    return { data: null, error: `Could not sign URL: ${signErr?.message ?? 'unknown'}` };
+  }
+  const screenshot_url = urlData.signedUrl;
 
   const amount = await lookupPlanPrice(plan);
 

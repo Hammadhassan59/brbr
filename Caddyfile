@@ -1,4 +1,15 @@
 icut.pk, www.icut.pk {
+	# Global security headers on every response. CSP is intentionally NOT set
+	# here — Next owns CSP so that future nonce-based policies stay coherent
+	# with the rendered HTML.
+	header {
+		Strict-Transport-Security "max-age=63072000; includeSubDomains; preload"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		Permissions-Policy "geolocation=(), microphone=(), camera=()"
+		-Server
+	}
+
 	# Static public pages — cache at Cloudflare edge (1 hour)
 	@public_pages {
 		path / /login /about /contact /privacy /terms /refund /setup
