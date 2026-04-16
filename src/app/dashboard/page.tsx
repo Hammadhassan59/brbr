@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
+import { getDailySummaryAction } from '@/app/actions/dashboard';
 import { useAppStore } from '@/store/app-store';
 import { getTodayPKT } from '@/lib/utils/dates';
 import { KPICards } from './components/kpi-cards';
@@ -128,9 +129,8 @@ export default function DashboardPage() {
       const endDateFinal = computedEndDate;
       const multiDay = startDate !== endDateFinal;
 
-      const { data: summaryData } = await supabase
-        .rpc('get_daily_summary', { p_branch_id: currentBranch.id, p_date: startDate });
-      if (summaryData) setSummary(summaryData as DailySummary);
+      const { data: summaryData } = await getDailySummaryAction(currentBranch.id, startDate);
+      if (summaryData) setSummary(summaryData);
 
       const aptQuery = supabase
         .from('appointments')

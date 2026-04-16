@@ -825,18 +825,26 @@ export async function getUdhaarPayments(clientId: string) {
 
 // ═══════════════════════════════════════
 // RPC Functions
+//
+// These wrappers are kept for backward compatibility with any legacy caller,
+// but the anon Supabase client no longer has EXECUTE on these RPCs after
+// migration 029_secure_rpcs.sql. All real call sites now go through the
+// server actions in src/app/actions/dashboard.ts, which call the hardened
+// RPCs via the service-role client with a verified session.salonId.
+//
+// If you reach for these from client code, stop — use the server actions.
 // ═══════════════════════════════════════
 
-export async function getDailySummary(branchId: string, date: string) {
+export async function getDailySummary(branchId: string, date: string, salonId: string) {
   const { data, error } = await supabase
-    .rpc('get_daily_summary', { p_branch_id: branchId, p_date: date });
+    .rpc('get_daily_summary', { p_branch_id: branchId, p_date: date, p_salon_id: salonId });
   if (error) throw error;
   return data as DailySummary;
 }
 
-export async function getStaffMonthlyCommission(staffId: string, month: number, year: number) {
+export async function getStaffMonthlyCommission(staffId: string, month: number, year: number, salonId: string) {
   const { data, error } = await supabase
-    .rpc('get_staff_monthly_commission', { p_staff_id: staffId, p_month: month, p_year: year });
+    .rpc('get_staff_monthly_commission', { p_staff_id: staffId, p_month: month, p_year: year, p_salon_id: salonId });
   if (error) throw error;
   return data as StaffMonthlyCommission;
 }
@@ -848,9 +856,9 @@ export async function getUdhaarReport(salonId: string) {
   return data as UdhaarReportItem[];
 }
 
-export async function getClientStats(clientId: string) {
+export async function getClientStats(clientId: string, salonId: string) {
   const { data, error } = await supabase
-    .rpc('get_client_stats', { p_client_id: clientId });
+    .rpc('get_client_stats', { p_client_id: clientId, p_salon_id: salonId });
   if (error) throw error;
   return data as ClientStats;
 }

@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { ChevronRight } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import { getStaffMonthlyCommissionAction } from '@/app/actions/dashboard';
 import { useAppStore } from '@/store/app-store';
 import { formatPKR } from '@/lib/utils/currency';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -36,7 +37,7 @@ export default function StaffReportPage() {
     const endDate = `${year}-${String(month).padStart(2, '0')}-${new Date(year, month, 0).getDate()}`;
 
     const [commRes, attRes] = await Promise.all([
-      supabase.rpc('get_staff_monthly_commission', { p_staff_id: selectedStaffId, p_month: month, p_year: year }),
+      getStaffMonthlyCommissionAction(selectedStaffId, month, year),
       supabase.from('attendance').select('status').eq('staff_id', selectedStaffId).gte('date', startDate).lte('date', endDate),
     ]);
     if (commRes.data) setCommData(commRes.data as typeof commData);
