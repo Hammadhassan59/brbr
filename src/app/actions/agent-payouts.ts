@@ -1,14 +1,9 @@
 'use server';
 
 import { createServerClient } from '@/lib/supabase';
-import { verifySession } from './auth';
+import { verifySession, requireAdminRole } from './auth';
 import type { AgentPayout } from '@/types/sales';
 
-async function requireSuperAdmin() {
-  const s = await verifySession();
-  if (!s || s.role !== 'super_admin') throw new Error('Unauthorized');
-  return s;
-}
 async function requireSalesAgent() {
   const s = await verifySession();
   if (!s || s.role !== 'sales_agent' || !s.agentId) throw new Error('Unauthorized');
@@ -83,7 +78,7 @@ export interface PayoutWithAgent extends AgentPayout {
 export async function listAllPayouts(
   filter?: { status?: AgentPayout['status'] | 'all' },
 ): Promise<{ data: PayoutWithAgent[]; error: string | null }> {
-  await requireSuperAdmin();
+  await requireAdminRole(['super_admin']);
   const supabase = createServerClient();
   let q = supabase
     .from('agent_payouts')
@@ -103,7 +98,7 @@ export interface MarkPaidInput {
 }
 
 export async function markPayoutPaid(payoutId: string, input: MarkPaidInput): Promise<{ error: string | null }> {
-  const session = await requireSuperAdmin();
+  const session = await requireAdminRole(['super_admin']);
   const supabase = createServerClient();
 
   const now = new Date().toISOString();
@@ -130,7 +125,7 @@ export async function markPayoutPaid(payoutId: string, input: MarkPaidInput): Pr
 }
 
 export async function rejectPayout(payoutId: string, reason: string | null): Promise<{ error: string | null }> {
-  await requireSuperAdmin();
+  await requireAdminRole(['super_admin']);
   const supabase = createServerClient();
 
   const { error: poErr } = await supabase

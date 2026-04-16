@@ -53,6 +53,10 @@ vi.mock('@/lib/supabase', () => ({
 
 vi.mock('@/app/actions/auth', () => ({
   verifySession: () => Promise.resolve(session),
+  requireAdminRole: async (allowed: string[]) => {
+    if (!session || !allowed.includes(session.role)) throw new Error('Unauthorized');
+    return session;
+  },
 }));
 
 beforeEach(() => {

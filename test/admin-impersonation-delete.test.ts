@@ -137,6 +137,10 @@ vi.mock('@/app/actions/auth', () => ({
   // exitImpersonation re-verifies the admin's role by auth user id. Default
   // to super_admin so the happy path works; individual tests override as needed.
   resolveAdminRoleByAuthId: () => Promise.resolve('super_admin'),
+  requireAdminRole: async (allowed: string[]) => {
+    if (!session || !allowed.includes(session.role)) throw new Error('Unauthorized');
+    return session;
+  },
 }));
 
 vi.mock('next/headers', () => ({

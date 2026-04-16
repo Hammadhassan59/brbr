@@ -1,18 +1,10 @@
 'use server';
 
 import { createServerClient } from '@/lib/supabase';
-import { verifySession } from './auth';
-
-async function requireSuperAdmin() {
-  const session = await verifySession();
-  if (!session || session.role !== 'super_admin') {
-    throw new Error('Unauthorized');
-  }
-  return session;
-}
+import { requireAdminRole } from './auth';
 
 export async function getPlatformSettings(): Promise<Record<string, Record<string, unknown>>> {
-  await requireSuperAdmin();
+  await requireAdminRole(['super_admin', 'technical_support']);
   const supabase = createServerClient();
 
   const { data, error } = await supabase
@@ -207,7 +199,7 @@ export async function savePlatformSetting(
   key: string,
   value: Record<string, unknown>,
 ): Promise<{ success: true }> {
-  await requireSuperAdmin();
+  await requireAdminRole(['super_admin', 'technical_support']);
   const supabase = createServerClient();
 
   const { error } = await supabase

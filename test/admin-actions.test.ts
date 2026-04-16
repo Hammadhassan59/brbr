@@ -34,6 +34,11 @@ const mockVerifySession = vi.fn().mockResolvedValue({
 
 vi.mock('@/app/actions/auth', () => ({
   verifySession: mockVerifySession,
+  requireAdminRole: async (allowed: string[]) => {
+    const s = await mockVerifySession()
+    if (!s || !allowed.includes(s.role)) throw new Error('Unauthorized')
+    return s
+  },
 }))
 
 describe('admin actions', () => {

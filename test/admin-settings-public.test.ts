@@ -18,6 +18,7 @@ vi.mock('@/lib/supabase', () => ({
 // verifySession as super_admin for safety even though we don't exercise it here.
 vi.mock('@/app/actions/auth', () => ({
   verifySession: vi.fn().mockResolvedValue({ salonId: 's', staffId: 'u', role: 'super_admin' }),
+  requireAdminRole: async (_allowed: string[]) => ({ salonId: 's', staffId: 'u', role: 'super_admin' }),
 }))
 
 import { getPublicPlatformConfig } from '@/app/actions/admin-settings'

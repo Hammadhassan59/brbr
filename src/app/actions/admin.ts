@@ -1,20 +1,12 @@
 'use server';
 
 import { createServerClient } from '@/lib/supabase';
-import { verifySession, signSession, resolveAdminRoleByAuthId } from './auth';
+import { verifySession, signSession, resolveAdminRoleByAuthId, requireAdminRole } from './auth';
 import { safeError } from '@/lib/action-error';
 import type { SubscriptionPlan, SubscriptionStatus } from '@/types/database';
 
-async function requireSuperAdmin() {
-  const session = await verifySession();
-  if (!session || session.role !== 'super_admin') {
-    throw new Error('Unauthorized');
-  }
-  return session;
-}
-
 export async function getAdminDashboardData() {
-  await requireSuperAdmin();
+  await requireAdminRole(['super_admin', 'technical_support', 'customer_support', 'leads_team']);
   const supabase = createServerClient();
 
   const [
@@ -78,7 +70,7 @@ export async function getAdminDashboardData() {
 }
 
 export async function getAdminUsers() {
-  await requireSuperAdmin();
+  await requireAdminRole(['super_admin', 'customer_support', 'technical_support']);
   const supabase = createServerClient();
 
   const [
@@ -129,7 +121,7 @@ export async function getAdminUsers() {
 }
 
 export async function getAdminSalons() {
-  await requireSuperAdmin();
+  await requireAdminRole(['super_admin', 'customer_support', 'technical_support']);
   const supabase = createServerClient();
 
   const { data, error } = await supabase
@@ -142,7 +134,7 @@ export async function getAdminSalons() {
 }
 
 export async function getAdminAnalytics() {
-  await requireSuperAdmin();
+  await requireAdminRole(['super_admin', 'technical_support']);
   const supabase = createServerClient();
 
   const { data: salonsData } = await supabase
@@ -218,7 +210,7 @@ export async function getAdminAnalytics() {
 }
 
 export async function getAdminBranchForSalon(salonId: string) {
-  await requireSuperAdmin();
+  await requireAdminRole(['super_admin', 'customer_support', 'technical_support']);
   const supabase = createServerClient();
 
   const { data } = await supabase
@@ -232,7 +224,7 @@ export async function getAdminBranchForSalon(salonId: string) {
 }
 
 export async function getAdminSalonDetail(salonId: string) {
-  await requireSuperAdmin();
+  await requireAdminRole(['super_admin', 'customer_support', 'technical_support']);
   const supabase = createServerClient();
 
   const [
@@ -261,7 +253,7 @@ export async function updateSalon(
     admin_notes?: string;
   },
 ) {
-  await requireSuperAdmin();
+  await requireAdminRole(['super_admin']);
   const supabase = createServerClient();
 
   const { error } = await supabase
@@ -281,7 +273,7 @@ export async function updateSubscription(
     subscription_expires_at?: string | null;
   },
 ) {
-  await requireSuperAdmin();
+  await requireAdminRole(['super_admin']);
   const supabase = createServerClient();
 
   const { error } = await supabase
@@ -294,7 +286,7 @@ export async function updateSubscription(
 }
 
 export async function getAdminSalonMetrics(salonId: string) {
-  await requireSuperAdmin();
+  await requireAdminRole(['super_admin', 'customer_support', 'technical_support']);
   const supabase = createServerClient();
 
   const monthStart = new Date();
@@ -352,7 +344,7 @@ export async function getAdminSalonMetrics(salonId: string) {
 }
 
 export async function setSalonSoldByAgent(salonId: string, agentId: string | null) {
-  await requireSuperAdmin();
+  await requireAdminRole(['super_admin']);
   const supabase = createServerClient();
   const { error } = await supabase
     .from('salons')
@@ -382,7 +374,7 @@ export async function impersonateSalon(salonId: string): Promise<{
   } | null;
   error: string | null;
 }> {
-  const session = await requireSuperAdmin();
+  const session = await requireAdminRole(['super_admin']);
   if (session.impersonatedBy) {
     return { data: null, error: 'Already impersonating — exit first' };
   }
@@ -556,7 +548,7 @@ export async function deleteSalonAndAllData(
   salonId: string,
   confirmName: string,
 ): Promise<{ success: boolean; deletedAuthUsers: number; error: string | null }> {
-  await requireSuperAdmin();
+  await requireAdminRole(['super_admin']);
   const supabase = createServerClient();
 
   const { data: salon, error: loadErr } = await supabase

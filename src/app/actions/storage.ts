@@ -36,14 +36,18 @@ export async function getPaymentScreenshotUrl(
 
   if (!row) return null;
 
-  // Role gating: super admin sees everything. Owners/staff see their own
-  // salon's payments. Anyone else (sales agent, another salon, no salon) is
-  // denied — the screenshot may contain bank/card info.
-  const isSuperAdmin = session.role === 'super_admin';
+  // Role gating: super admin + billing-ops sub-roles see everything (they need
+  // the screenshot to approve/reject). Owners/staff see their own salon's
+  // payments. Anyone else (sales agent, another salon, no salon) is denied —
+  // the screenshot may contain bank/card info.
+  const isAdminWithPaymentAccess =
+    session.role === 'super_admin' ||
+    session.role === 'customer_support' ||
+    session.role === 'technical_support';
   const isOwnSalon = !!session.salonId
     && session.salonId !== 'super-admin'
     && session.salonId === row.salon_id;
-  if (!isSuperAdmin && !isOwnSalon) return null;
+  if (!isAdminWithPaymentAccess && !isOwnSalon) return null;
 
   const path = (row as { screenshot_path?: string | null }).screenshot_path;
   if (path) {
@@ -83,12 +87,13 @@ export async function getLeadPhotoUrl(leadId: string): Promise<string | null> {
 
   if (!row) return null;
 
-  const isSuperAdmin = session.role === 'super_admin';
+  const isAdminWithLeadAccess =
+    session.role === 'super_admin' || session.role === 'leads_team';
   const isAssignedAgent =
     session.role === 'sales_agent' &&
     !!session.agentId &&
     session.agentId === row.assigned_agent_id;
-  if (!isSuperAdmin && !isAssignedAgent) return null;
+  if (!isAdminWithLeadAccess && !isAssignedAgent) return null;
 
   const path = (row as { photo_path?: string | null }).photo_path;
   if (path) {

@@ -6,12 +6,6 @@ import { rowsToCSV } from '@/lib/csv-export';
 import { getSignedStorageUrl } from '@/lib/storage-url';
 import type { Lead, LeadStatus } from '@/types/sales';
 
-async function requireSuperAdmin() {
-  const s = await verifySession();
-  if (!s || s.role !== 'super_admin') throw new Error('Unauthorized');
-  return s;
-}
-
 async function requireSalesAgent() {
   const s = await verifySession();
   if (!s || s.role !== 'sales_agent' || !s.agentId) throw new Error('Unauthorized');
@@ -63,7 +57,7 @@ export interface LeadWithPhotoUrl extends Lead {
 }
 
 export async function createLead(input: CreateLeadInput): Promise<{ data: Lead | null; error: string | null }> {
-  const session = await requireSuperAdmin();
+  const session = await requireAdminRole(['super_admin', 'leads_team']);
   if (!input.salon_name?.trim()) return { data: null, error: 'Salon name required' };
   if (!input.assigned_agent_id) return { data: null, error: 'Agent required' };
 
@@ -80,7 +74,7 @@ export async function createLead(input: CreateLeadInput): Promise<{ data: Lead |
 export async function listLeads(
   filter?: { agentId?: string; status?: LeadStatus | 'all' },
 ): Promise<{ data: LeadWithAgent[]; error: string | null }> {
-  await requireSuperAdmin();
+  await requireAdminRole(['super_admin', 'leads_team']);
   const supabase = createServerClient();
   // Disambiguate the FK: leads has TWO references to sales_agents now
   // (assigned_agent_id and created_by_agent, added in migration 025).
@@ -98,7 +92,7 @@ export async function listLeads(
 }
 
 export async function reassignLead(leadId: string, agentId: string): Promise<{ error: string | null }> {
-  await requireSuperAdmin();
+  await requireAdminRole(['super_admin', 'leads_team']);
   const supabase = createServerClient();
   const { error } = await supabase.from('leads').update({ assigned_agent_id: agentId }).eq('id', leadId);
   return { error: error?.message ?? null };
@@ -111,11 +105,11 @@ export async function reassignLead(leadId: string, agentId: string): Promise<{ e
 export async function getLeadCounts(filter?: {
   agentId?: string;
 }): Promise<{ data: Record<string, number>; error: string | null }> {
-  // Both super admin and the agent themselves can hit this; reject everyone
-  // else.
+  // Both super admin / leads_team and the agent themselves can hit this;
+  // reject everyone else.
   const session = await verifySession();
   if (!session) throw new Error('Unauthorized');
-  const isAdmin = session.role === 'super_admin';
+  const isAdmin = session.role === 'super_admin' || session.role === 'leads_team';
   const isAgent = session.role === 'sales_agent' && !!session.agentId;
   if (!isAdmin && !isAgent) throw new Error('Unauthorized');
 
@@ -400,27 +394,27 @@ export async function getAgentBalance(): Promise<{
 
 /** Superadmin-side: update status on any lead. */
 export async function updateLeadStatus(leadId: string, status: LeadStatus): Promise<{ error: string | null }> {
-  await requireSuperAdmin();
+  await requireAdminRole(['super_admin', 'leads_team']);
   const supabase = createServerClient();
   const { error } = await supabase.from('leads').update({ status }).eq('id', leadId);
   return { error: error?.message ?? null };
 }
 
-/** Super-admin only: hard-delete a lead. Used by /admin/leads trash button. */
+/** Hard-delete a lead. Used by /admin/leads trash button. */
 export async function deleteLead(leadId: string): Promise<{ error: string | null }> {
-  await requireAdminRole(['super_admin']);
+  await requireAdminRole(['super_admin', 'leads_team']);
   const supabase = createServerClient();
   const { error } = await supabase.from('leads').delete().eq('id', leadId);
   return { error: error?.message ?? null };
 }
 
 /**
- * Super-admin only: export every lead as CSV. Returned as a string so the
- * client can wrap in a Blob and trigger a download. No file streaming needed
- * for the volumes we expect (low thousands).
+ * Export every lead as CSV. Returned as a string so the client can wrap in a
+ * Blob and trigger a download. No file streaming needed for the volumes we
+ * expect (low thousands).
  */
 export async function exportLeadsCSV(): Promise<{ data: string | null; error: string | null }> {
-  await requireAdminRole(['super_admin']);
+  await requireAdminRole(['super_admin', 'leads_team']);
   const supabase = createServerClient();
   const { data, error } = await supabase
     .from('leads')

@@ -1,14 +1,9 @@
 'use server';
 
 import { createServerClient } from '@/lib/supabase';
-import { verifySession } from './auth';
+import { verifySession, requireAdminRole } from './auth';
 import type { AgentCommission } from '@/types/sales';
 
-async function requireSuperAdmin() {
-  const s = await verifySession();
-  if (!s || s.role !== 'super_admin') throw new Error('Unauthorized');
-  return s;
-}
 async function requireSalesAgent() {
   const s = await verifySession();
   if (!s || s.role !== 'sales_agent' || !s.agentId) throw new Error('Unauthorized');
@@ -142,7 +137,7 @@ export interface AgentCommissionAudit extends AgentCommission {
 export async function listAllCommissions(
   filter?: { agentId?: string; status?: AgentCommission['status'] | 'all' },
 ): Promise<{ data: AgentCommissionAudit[]; error: string | null }> {
-  await requireSuperAdmin();
+  await requireAdminRole(['super_admin']);
   const supabase = createServerClient();
   let q = supabase
     .from('agent_commissions')
@@ -244,7 +239,7 @@ export async function getAgentReport(input: {
   from: string; // YYYY-MM-DD
   to: string;   // YYYY-MM-DD
 }): Promise<{ data: AgentReport | null; error: string | null }> {
-  await requireSuperAdmin();
+  await requireAdminRole(['super_admin']);
   const supabase = createServerClient();
 
   const fromIso = `${input.from}T00:00:00+05:00`;
@@ -433,7 +428,7 @@ export async function getAgentsLeaderboard(input: {
   } | null;
   error: string | null;
 }> {
-  await requireSuperAdmin();
+  await requireAdminRole(['super_admin']);
   const supabase = createServerClient();
   const fromIso = `${input.from}T00:00:00+05:00`;
   const toIso = `${input.to}T23:59:59+05:00`;

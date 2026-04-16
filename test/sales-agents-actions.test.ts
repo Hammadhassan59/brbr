@@ -3,6 +3,11 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 const mockVerifySession = vi.fn();
 vi.mock('@/app/actions/auth', () => ({
   verifySession: mockVerifySession,
+  requireAdminRole: async (allowed: string[]) => {
+    const s = await mockVerifySession();
+    if (!s || !allowed.includes(s.role)) throw new Error('Unauthorized');
+    return s;
+  },
 }));
 
 const adminCreateUser = vi.fn();

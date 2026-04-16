@@ -1,7 +1,7 @@
 'use server';
 
 import { createServerClient } from '@/lib/supabase';
-import { verifySession } from './auth';
+import { verifySession, requireAdminRole } from './auth';
 import { sendEmail } from '@/lib/email-sender';
 import { paymentApprovedEmail, paymentDeniedEmail } from '@/lib/email-templates';
 import { accrueCommissionForPaymentRequest, reverseCommissionsForPaymentRequest } from './agent-commissions';
@@ -46,14 +46,6 @@ export interface PaymentRequestWithSalon extends PaymentRequest {
     sold_by_agent_id: string | null;
     sold_by_agent: { id: string; name: string } | null;
   } | null;
-}
-
-async function requireSuperAdmin() {
-  const session = await verifySession();
-  if (!session || session.role !== 'super_admin') {
-    throw new Error('Unauthorized');
-  }
-  return session;
 }
 
 /**
@@ -227,7 +219,7 @@ export async function getPaywallContext(): Promise<{
 export async function listPaymentRequests(
   filter?: { status?: Status | 'all' }
 ): Promise<{ data: PaymentRequestWithSalon[]; error: string | null }> {
-  await requireSuperAdmin();
+  await requireAdminRole(['super_admin', 'customer_support', 'technical_support']);
   const supabase = createServerClient();
 
   let query = supabase
@@ -252,7 +244,7 @@ export async function getPaymentRequestCounts(): Promise<{
   data: { pending: number; approved: number; rejected: number };
   error: string | null;
 }> {
-  await requireSuperAdmin();
+  await requireAdminRole(['super_admin', 'customer_support', 'technical_support']);
   const supabase = createServerClient();
 
   const [pending, approved, rejected] = await Promise.all([
@@ -285,7 +277,7 @@ export async function approvePaymentRequest(
   id: string,
   options?: { plan?: Plan; durationDays?: number; notes?: string }
 ): Promise<{ error: string | null }> {
-  const session = await requireSuperAdmin();
+  const session = await requireAdminRole(['super_admin', 'customer_support']);
   const supabase = createServerClient();
 
   const { data: request, error: fetchErr } = await supabase
@@ -393,7 +385,7 @@ export async function rejectPaymentRequest(
   id: string,
   options?: { reason?: string }
 ): Promise<{ error: string | null }> {
-  const session = await requireSuperAdmin();
+  const session = await requireAdminRole(['super_admin', 'customer_support']);
   const supabase = createServerClient();
 
   const { data: request, error: fetchErr } = await supabase
@@ -454,7 +446,7 @@ export async function rejectPaymentRequest(
  * Admin-side: pending count for the nav badge.
  */
 export async function getPendingPaymentCount(): Promise<number> {
-  await requireSuperAdmin();
+  await requireAdminRole(['super_admin', 'customer_support', 'technical_support']);
   const supabase = createServerClient();
   const { count } = await supabase
     .from('payment_requests')
@@ -472,7 +464,7 @@ export async function reversePaymentRequest(
   id: string,
   options?: { reason?: string },
 ): Promise<{ error: string | null }> {
-  const session = await requireSuperAdmin();
+  const session = await requireAdminRole(['super_admin', 'customer_support']);
   const supabase = createServerClient();
 
   const { data: request } = await supabase

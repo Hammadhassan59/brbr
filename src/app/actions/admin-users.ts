@@ -1,20 +1,12 @@
 'use server';
 
 import { createServerClient } from '@/lib/supabase';
-import { verifySession } from './auth';
+import { requireAdminRole } from './auth';
 import { checkRateLimit } from '@/lib/with-rate-limit';
 import { BUCKETS } from '@/lib/rate-limit-buckets';
 
-async function requireSuperAdmin() {
-  const session = await verifySession();
-  if (!session || session.role !== 'super_admin') {
-    throw new Error('Unauthorized');
-  }
-  return session;
-}
-
 export async function toggleStaffActive(staffId: string, isActive: boolean) {
-  await requireSuperAdmin();
+  await requireAdminRole(['super_admin', 'technical_support']);
   const supabase = createServerClient();
 
   const { error } = await supabase
@@ -27,7 +19,7 @@ export async function toggleStaffActive(staffId: string, isActive: boolean) {
 }
 
 export async function resetUserPassword(email: string, newPassword: string) {
-  const session = await requireSuperAdmin();
+  const session = await requireAdminRole(['super_admin', 'technical_support']);
 
   // Rate-limit: a compromised super-admin session would be a devastating
   // blast radius — throttle password resets per admin+target-email so a

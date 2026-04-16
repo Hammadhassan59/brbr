@@ -1,17 +1,9 @@
 'use server';
 
 import { createServerClient } from '@/lib/supabase';
-import { verifySession } from './auth';
+import { verifySession, requireAdminRole } from './auth';
 import { sendEmail } from '@/lib/email-sender';
 import type { SalesAgent } from '@/types/sales';
-
-async function requireSuperAdmin() {
-  const session = await verifySession();
-  if (!session || session.role !== 'super_admin') {
-    throw new Error('Unauthorized');
-  }
-  return session;
-}
 
 export interface CreateAgentInput {
   email: string;
@@ -31,7 +23,7 @@ function validatePct(n: number): string | null {
 export async function createSalesAgent(
   input: CreateAgentInput,
 ): Promise<{ data: (SalesAgent & { demoEmail: string }) | null; error: string | null }> {
-  await requireSuperAdmin();
+  await requireAdminRole(['super_admin']);
 
   const pctErr = validatePct(input.firstSalePct) ?? validatePct(input.renewalPct);
   if (pctErr) return { data: null, error: pctErr };
@@ -141,7 +133,7 @@ export async function createSalesAgent(
  * the admin API.
  */
 export async function setDemoPassword(parentAgentId: string, newPassword: string): Promise<{ error: string | null }> {
-  await requireSuperAdmin();
+  await requireAdminRole(['super_admin']);
   if (!newPassword || newPassword.length < 8) {
     return { error: 'Demo password must be at least 8 characters' };
   }
@@ -165,7 +157,7 @@ export async function getDemoCredentials(parentAgentId: string): Promise<{
   data: { email: string } | null;
   error: string | null;
 }> {
-  await requireSuperAdmin();
+  await requireAdminRole(['super_admin']);
   const supabase = createServerClient();
   const { data: demo } = await supabase
     .from('sales_agents')
@@ -180,7 +172,7 @@ export async function getDemoCredentials(parentAgentId: string): Promise<{
 }
 
 export async function listSalesAgents(): Promise<{ data: SalesAgent[]; error: string | null }> {
-  await requireSuperAdmin();
+  await requireAdminRole(['super_admin', 'leads_team']);
   const supabase = createServerClient();
   // Demo identities live in the same table — hide them from the agents list
   // so super admin sees one row per real agent. Demo creds for each are
@@ -195,7 +187,7 @@ export async function listSalesAgents(): Promise<{ data: SalesAgent[]; error: st
 }
 
 export async function getSalesAgent(id: string): Promise<{ data: SalesAgent | null; error: string | null }> {
-  await requireSuperAdmin();
+  await requireAdminRole(['super_admin']);
   const supabase = createServerClient();
   const { data, error } = await supabase
     .from('sales_agents')
@@ -210,7 +202,7 @@ export async function updateAgentRates(
   id: string,
   rates: { firstSalePct: number; renewalPct: number },
 ): Promise<{ error: string | null }> {
-  await requireSuperAdmin();
+  await requireAdminRole(['super_admin']);
   const pctErr = validatePct(rates.firstSalePct) ?? validatePct(rates.renewalPct);
   if (pctErr) return { error: pctErr };
   const supabase = createServerClient();
@@ -225,7 +217,7 @@ export async function setAgentActive(
   id: string,
   active: boolean,
 ): Promise<{ error: string | null }> {
-  await requireSuperAdmin();
+  await requireAdminRole(['super_admin']);
   const supabase = createServerClient();
   const ts = active ? null : new Date().toISOString();
 
@@ -252,7 +244,7 @@ export async function updateAgentProfile(
   id: string,
   fields: { name?: string; phone?: string; city?: string | null },
 ): Promise<{ error: string | null }> {
-  await requireSuperAdmin();
+  await requireAdminRole(['super_admin']);
   if (fields.phone !== undefined && !fields.phone.trim()) {
     return { error: 'Phone cannot be empty' };
   }
