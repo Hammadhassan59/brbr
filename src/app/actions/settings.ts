@@ -187,15 +187,32 @@ export async function deleteBranch(branchId: string) {
   if (session.role !== 'owner') return { error: 'Only the owner can delete branches' };
   const supabase = createServerClient();
 
-  // Prevent deleting the main branch
-  const { data: branch } = await supabase
+  // Pull every branch for the salon so we can validate + decide whether the
+  // delete needs to promote a new main.
+  const { data: branches } = await supabase
     .from('branches')
-    .select('is_main')
-    .eq('id', branchId)
-    .eq('salon_id', session.salonId)
-    .single();
+    .select('id, is_main')
+    .eq('salon_id', session.salonId);
 
-  if (branch?.is_main) return { error: 'Cannot delete the main branch' };
+  const target = (branches || []).find((b: { id: string }) => b.id === branchId);
+  if (!target) return { error: 'Branch not found' };
+
+  if ((branches || []).length <= 1) {
+    return { error: 'Cannot delete the only branch — every salon needs at least one' };
+  }
+
+  // If we're deleting the current main, promote any other branch to main
+  // FIRST so there's never a window where the salon has zero main branches.
+  if (target.is_main) {
+    const successor = (branches || []).find((b: { id: string; is_main: boolean }) => b.id !== branchId);
+    if (successor) {
+      const { error: promoteErr } = await supabase
+        .from('branches')
+        .update({ is_main: true })
+        .eq('id', successor.id);
+      if (promoteErr) return { error: `Failed to promote successor branch: ${promoteErr.message}` };
+    }
+  }
 
   const { error } = await supabase
     .from('branches')

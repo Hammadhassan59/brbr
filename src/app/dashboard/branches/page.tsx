@@ -92,13 +92,23 @@ export default function BranchesPage() {
   }
 
   async function removeBranch(branch: Branch) {
-    if (branch.is_main) { toast.error('Cannot delete the main branch'); return; }
-    if (!confirm(`Delete "${branch.name}"? This cannot be undone.`)) return;
+    if (branches.length <= 1) {
+      toast.error('Cannot delete the only branch — every salon needs at least one');
+      return;
+    }
+    const msg = branch.is_main
+      ? `Delete "${branch.name}"? It's currently your main branch — another branch will be promoted to main automatically. This cannot be undone.`
+      : `Delete "${branch.name}"? This cannot be undone.`;
+    if (!confirm(msg)) return;
     try {
       const { error } = await deleteBranch(branch.id);
       if (showActionError(error)) return;
-      const updated = branches.filter((b) => b.id !== branch.id);
-      setBranches(updated);
+      // If we deleted main, promote the first remaining locally so UI matches the server.
+      const remaining = branches.filter((b) => b.id !== branch.id);
+      if (branch.is_main && remaining.length > 0) {
+        remaining[0] = { ...remaining[0], is_main: true };
+      }
+      setBranches(remaining);
       if (editingId === branch.id) resetForm();
       toast.success(`"${branch.name}" deleted`);
     } catch (err: unknown) {
@@ -170,11 +180,17 @@ export default function BranchesPage() {
                     <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => startEdit(branch)}>
                       <Pencil className="w-3.5 h-3.5" />
                     </Button>
-                    {!branch.is_main && (
-                      <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500 hover:text-red-600" onClick={() => removeBranch(branch)}>
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </Button>
-                    )}
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-red-500 hover:text-red-600 disabled:text-muted-foreground disabled:cursor-not-allowed"
+                      onClick={() => removeBranch(branch)}
+                      disabled={branches.length <= 1}
+                      title={branches.length <= 1 ? 'Cannot delete the only branch' : (branch.is_main ? 'Delete branch (will promote another to main)' : 'Delete branch')}
+                      aria-label={`Delete ${branch.name}`}
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </Button>
                   </div>
                 </div>
 
