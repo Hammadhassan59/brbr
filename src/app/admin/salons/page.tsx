@@ -89,12 +89,9 @@ export default function AdminSalonsPage() {
       toast.error('Could not establish salon session: ' + otpErr.message);
       return;
     }
-    // Match the login flow exactly — set the session/role cookies client-side
-    // with 24h max-age. Setting via server action races with window.location.href
-    // and sometimes the browser fires GET /dashboard before processing the
-    // response's Set-Cookie headers, leaving the proxy with stale super_admin role.
-    document.cookie = `icut-session=1; path=/; max-age=${60 * 60 * 24}; SameSite=Strict`;
-    document.cookie = `icut-role=owner; path=/; max-age=${60 * 60 * 24}; SameSite=Strict`;
+    // impersonateSalon() already signed a new icut-token JWT server-side
+    // with role=owner. The proxy verifies that on the next navigation; we
+    // no longer mirror forgeable icut-session / icut-role cookies here.
     // Mirror a normal owner login into Zustand so every {isOwner && ...} gate opens.
     setSalon(data.salon as unknown as Salon);
     setBranches((data.branches as unknown) as Branch[]);

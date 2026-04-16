@@ -57,9 +57,9 @@ export function ImpersonationBanner() {
     s.setIsOwner(false);
     s.setIsPartner(false);
     s.setIsSuperAdmin(true);
-    // Match the login flow and reset role cookies client-side with 24h max-age.
-    document.cookie = `icut-session=1; path=/; max-age=${60 * 60 * 24}; SameSite=Strict`;
-    document.cookie = `icut-role=super_admin; path=/; max-age=${60 * 60 * 24}; SameSite=Strict`;
+    // The proxy derives role from the HttpOnly icut-token JWT, which
+    // exitImpersonation() already reissued server-side with role=super_admin.
+    // No client-side cookie writes — those were forgeable by any XSS.
     window.location.href = redirectTo;
   }
 

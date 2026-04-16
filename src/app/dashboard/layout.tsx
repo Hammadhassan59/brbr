@@ -313,8 +313,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </Link>
           <button
             onClick={() => {
-              document.cookie = 'icut-session=; path=/; max-age=0';
-              document.cookie = 'icut-role=; path=/; max-age=0';
+              // destroySession clears icut-token (HttpOnly JWT) + legacy gate cookies.
               useAppStore.getState().reset();
               destroySession().catch(() => {});
               window.location.href = '/login';
@@ -415,8 +414,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={() => {
-                    document.cookie = 'icut-session=; path=/; max-age=0';
-                    document.cookie = 'icut-role=; path=/; max-age=0';
+                    // destroySession clears icut-token JWT + legacy gate cookies.
                     useAppStore.getState().reset();
                     destroySession().catch(() => {});
                     window.location.href = '/login';

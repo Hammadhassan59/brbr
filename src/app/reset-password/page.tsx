@@ -55,13 +55,11 @@ export default function ResetPasswordPage() {
       // a totally different identity in this browser (e.g. a super admin who
       // just created the agent). Without clearing every session surface, the
       // /login auto-redirect will trust stale Zustand and send them back to
-      // the wrong dashboard. We tear down: Supabase Auth, the iCut JWT cookie,
-      // the proxy gate cookies, and the persisted Zustand store.
+      // the wrong dashboard. destroySession() clears the HttpOnly icut-token
+      // JWT AND any leftover legacy icut-session / icut-role / icut-sub
+      // cookies — no client-side document.cookie clears needed.
       await supabase.auth.signOut();
       await destroySession().catch(() => {});
-      document.cookie = 'icut-session=; path=/; max-age=0';
-      document.cookie = 'icut-role=; path=/; max-age=0';
-      document.cookie = 'icut-sub=; path=/; max-age=0';
       useAppStore.getState().reset();
       toast.success('Password updated — please log in with your new password');
       // Hard navigation so the next /login render starts from a fully clean
