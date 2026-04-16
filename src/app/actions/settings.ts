@@ -180,7 +180,53 @@ export async function updateBranch(branchId: string, data: { name?: string; addr
   return { data: result, error: null };
 }
 
-export async function deleteBranch(branchId: string) {
+/**
+ * Counts of child rows tied to a branch. Used by the delete-branch modal so
+ * the owner can see exactly what will be moved before they confirm.
+ */
+export async function getBranchUsage(branchId: string): Promise<{
+  data: { bills: number; appointments: number; staff: number; attendance: number; expenses: number; cashDrawers: number; purchaseOrders: number; stockMovements: number; total: number } | null;
+  error: string | null;
+}> {
+  const writeCheck = await checkWriteAccess();
+  if (writeCheck.error !== null) return { data: null, error: writeCheck.error };
+  const session = writeCheck.session;
+  const supabase = createServerClient();
+
+  // Make sure the branch belongs to this salon.
+  const { data: branch } = await supabase
+    .from('branches')
+    .select('id')
+    .eq('id', branchId)
+    .eq('salon_id', session.salonId)
+    .maybeSingle();
+  if (!branch) return { data: null, error: 'Branch not found' };
+
+  const tables = [
+    'bills', 'appointments', 'staff', 'attendance', 'expenses',
+    'cash_drawers', 'purchase_orders', 'stock_movements',
+  ] as const;
+  const counts = await Promise.all(
+    tables.map((t) =>
+      supabase.from(t).select('id', { count: 'exact', head: true }).eq('branch_id', branchId),
+    ),
+  );
+  const get = (i: number) => counts[i].count ?? 0;
+  const data = {
+    bills: get(0),
+    appointments: get(1),
+    staff: get(2),
+    attendance: get(3),
+    expenses: get(4),
+    cashDrawers: get(5),
+    purchaseOrders: get(6),
+    stockMovements: get(7),
+    total: counts.reduce((s, r) => s + (r.count ?? 0), 0),
+  };
+  return { data, error: null };
+}
+
+export async function deleteBranch(branchId: string, reassignToBranchId?: string) {
   const writeCheck = await checkWriteAccess();
   if (writeCheck.error !== null) return { error: writeCheck.error };
   const session = writeCheck.session;
@@ -199,6 +245,46 @@ export async function deleteBranch(branchId: string) {
 
   if ((branches || []).length <= 1) {
     return { error: 'Cannot delete the only branch — every salon needs at least one' };
+  }
+
+  // Validate the reassignment destination if provided.
+  if (reassignToBranchId) {
+    if (reassignToBranchId === branchId) {
+      return { error: 'Reassign target must be a different branch' };
+    }
+    const dest = (branches || []).find((b: { id: string }) => b.id === reassignToBranchId);
+    if (!dest) return { error: 'Reassign target branch not found' };
+  }
+
+  // Check what's tied to this branch. If anything is and we don't have a
+  // reassign target, refuse — otherwise the FK delete would just fail with
+  // a cryptic Postgres error.
+  const usage = await getBranchUsage(branchId);
+  if (usage.data && usage.data.total > 0 && !reassignToBranchId) {
+    return {
+      error: `This branch has ${usage.data.total} linked records (bills, staff, etc). Pick another branch to move them to before deleting.`,
+    };
+  }
+
+  // Reassign all child rows to the target branch BEFORE the parent delete.
+  // cash_drawers has a UNIQUE (branch_id, date) constraint, so we can't blindly
+  // re-point — drop the source-branch drawers (per-day operational records;
+  // the bills they tracked move with the bills table).
+  if (reassignToBranchId && usage.data && usage.data.total > 0) {
+    const { error: dropDrawersErr } = await supabase
+      .from('cash_drawers')
+      .delete()
+      .eq('branch_id', branchId);
+    if (dropDrawersErr) return { error: `cash_drawers: ${dropDrawersErr.message}` };
+
+    const movableTables = ['bills', 'appointments', 'staff', 'attendance', 'expenses', 'purchase_orders', 'stock_movements'] as const;
+    for (const t of movableTables) {
+      const { error: moveErr } = await supabase
+        .from(t)
+        .update({ branch_id: reassignToBranchId })
+        .eq('branch_id', branchId);
+      if (moveErr) return { error: `${t}: ${moveErr.message}` };
+    }
   }
 
   // If we're deleting the current main, promote any other branch to main
