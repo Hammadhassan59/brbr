@@ -2,6 +2,12 @@
 
 import { checkWriteAccess } from './auth';
 import { createServerClient } from '@/lib/supabase';
+import {
+  assertBillOwned,
+  assertBranchOwned,
+  assertStaffOwned,
+  tenantErrorMessage,
+} from '@/lib/tenant-guard';
 
 /**
  * Generate bill number server-side at insert time to avoid race conditions.
@@ -103,9 +109,17 @@ export async function createBillItems(billId: string, items: Array<{
   unitPrice: number;
   totalPrice: number;
 }>) {
-  const { error: writeError } = await checkWriteAccess();
-  if (writeError) return { error: writeError };
+  const writeCheck = await checkWriteAccess();
+  if (writeCheck.error !== null) return { error: writeCheck.error };
+  const session = writeCheck.session;
   const supabase = createServerClient();
+
+  // bill_items has no salon_id — verify the parent bill is ours first.
+  try {
+    await assertBillOwned(billId, session.salonId);
+  } catch (e) {
+    return { error: tenantErrorMessage(e) };
+  }
 
   const { error } = await supabase
     .from('bill_items')
@@ -125,9 +139,28 @@ export async function createBillItems(billId: string, items: Array<{
 }
 
 export async function recordTip(staffId: string, billId: string, amount: number) {
-  const { error: writeError } = await checkWriteAccess();
-  if (writeError) return { error: writeError };
+  const writeCheck = await checkWriteAccess();
+  if (writeCheck.error !== null) return { error: writeCheck.error };
+  const session = writeCheck.session;
   const supabase = createServerClient();
+
+  // Both records must belong to this salon — tips has no salon_id column.
+  let staff: { id: string; salon_id: string; branch_id: string | null };
+  let bill: { branch_id: string | null; salon_id: string };
+  try {
+    staff = await assertStaffOwned(staffId, session.salonId);
+    bill = await assertBillOwned(billId, session.salonId);
+  } catch (e) {
+    return { error: tenantErrorMessage(e) };
+  }
+
+  // Staff member's home branch should match the bill's branch. If the staff
+  // is unassigned to a branch, fall back to same-salon check (already done
+  // above). A stylist from another branch receiving a tip on this branch's
+  // bill is suspicious, so reject.
+  if (staff.branch_id && bill.branch_id && staff.branch_id !== bill.branch_id) {
+    return { error: 'Staff member is not assigned to the branch this bill belongs to' };
+  }
 
   const { error } = await supabase
     .from('tips')
@@ -138,9 +171,17 @@ export async function recordTip(staffId: string, billId: string, amount: number)
 }
 
 export async function updateCashDrawer(branchId: string, cashAmount: number) {
-  const { error: writeError } = await checkWriteAccess();
-  if (writeError) return { error: writeError };
+  const writeCheck = await checkWriteAccess();
+  if (writeCheck.error !== null) return { error: writeCheck.error };
+  const session = writeCheck.session;
   const supabase = createServerClient();
+
+  // cash_drawers has no salon_id — branch ownership is the only guard.
+  try {
+    await assertBranchOwned(branchId, session.salonId);
+  } catch (e) {
+    return { error: tenantErrorMessage(e) };
+  }
 
   const today = new Date().toISOString().slice(0, 10);
   const { data: drawer } = await supabase
@@ -154,7 +195,8 @@ export async function updateCashDrawer(branchId: string, cashAmount: number) {
     const { error } = await supabase
       .from('cash_drawers')
       .update({ total_cash_sales: (drawer.total_cash_sales || 0) + cashAmount })
-      .eq('id', drawer.id);
+      .eq('id', drawer.id)
+      .eq('branch_id', branchId);
     if (error) return { error: error.message };
   }
 
@@ -162,35 +204,48 @@ export async function updateCashDrawer(branchId: string, cashAmount: number) {
 }
 
 export async function updatePromoCodeUsage(code: string) {
-  const { error: writeError } = await checkWriteAccess();
-  if (writeError) return { error: writeError };
+  const writeCheck = await checkWriteAccess();
+  if (writeCheck.error !== null) return { error: writeCheck.error };
+  const session = writeCheck.session;
   const supabase = createServerClient();
 
+  // Scope by salon_id — multiple salons may have the same promo code string.
   const { data: promo } = await supabase
     .from('promo_codes')
-    .select('used_count')
+    .select('id, used_count')
     .eq('code', code)
-    .single();
+    .eq('salon_id', session.salonId)
+    .maybeSingle();
 
   if (promo) {
     await supabase
       .from('promo_codes')
       .update({ used_count: (promo.used_count || 0) + 1 })
-      .eq('code', code);
+      .eq('id', promo.id)
+      .eq('salon_id', session.salonId);
   }
 
   return { error: null };
 }
 
 export async function rollbackBill(billId: string) {
-  const { error: writeError } = await checkWriteAccess();
-  if (writeError) return { error: writeError };
+  const writeCheck = await checkWriteAccess();
+  if (writeCheck.error !== null) return { error: writeCheck.error };
+  const session = writeCheck.session;
   const supabase = createServerClient();
+
+  // Verify the bill is ours BEFORE deleting children — otherwise a caller
+  // could wipe another salon's bill_items/tips by guessing an ID.
+  try {
+    await assertBillOwned(billId, session.salonId);
+  } catch (e) {
+    return { error: tenantErrorMessage(e) };
+  }
 
   try {
     await supabase.from('bill_items').delete().eq('bill_id', billId);
     await supabase.from('tips').delete().eq('bill_id', billId);
-    await supabase.from('bills').delete().eq('id', billId);
+    await supabase.from('bills').delete().eq('id', billId).eq('salon_id', session.salonId);
   } catch {
     // cleanup failed — manual review needed
   }

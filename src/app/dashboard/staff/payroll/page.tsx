@@ -140,7 +140,7 @@ export default function PayrollPage() {
       toast.success(`${row.staff.name} marked as paid`);
     } else {
       // Unmark — delete the expense record
-      const { error } = await deleteSalaryExpenses(salaryDesc, startDate, endDate);
+      const { error } = await deleteSalaryExpenses(salaryDesc, startDate, endDate, currentBranch?.id || '');
       if (showActionError(error)) return;
       if (error) { toast.error('Failed to undo payment'); return; }
       toast.success(`${row.staff.name} unmarked as paid`);

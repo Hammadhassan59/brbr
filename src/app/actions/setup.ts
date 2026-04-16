@@ -1,10 +1,42 @@
 'use server';
 
 import { createServerClient } from '@/lib/supabase';
+import { createServerClient as createSupabaseSSRClient } from '@supabase/auth-helpers-nextjs';
+import { cookies } from 'next/headers';
 import { sendEmail } from '@/lib/email-sender';
 import { welcomeEmail } from '@/lib/email-templates';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/**
+ * Resolve the Supabase Auth user for the current request from cookies.
+ * Returns null when there's no valid session. Used by setupSalon() — setup
+ * is a pre-session flow (no iCut JWT yet) so we authenticate against the
+ * Supabase Auth cookie the signup page wrote after createUser.
+ */
+async function getAuthUserFromCookies(): Promise<{ id: string; email?: string } | null> {
+  try {
+    const cookieStore = await cookies();
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    if (!url || !anonKey) return null;
+    const ssr = createSupabaseSSRClient(url, anonKey, {
+      cookies: {
+        getAll: () => cookieStore.getAll(),
+        setAll: () => {
+          // Server Actions during setup should never rewrite auth cookies —
+          // login already issued them. Silently no-op so we don't throw
+          // trying to mutate cookies outside a proper response context.
+        },
+      },
+    });
+    const { data, error } = await ssr.auth.getUser();
+    if (error || !data?.user) return null;
+    return { id: data.user.id, email: data.user.email };
+  } catch {
+    return null;
+  }
+}
 
 /**
  * Check whether an email is already registered with Supabase Auth.
@@ -60,8 +92,10 @@ export async function checkEmailAvailable(
   }
 }
 
-// Setup does NOT call verifySession — there is no session yet during first-time setup.
-// The owner is authenticated via Supabase Auth (owner_id comes from getUser()).
+// Setup does NOT call verifySession — there is no iCut JWT yet during
+// first-time setup. Instead we authenticate against the Supabase Auth cookie
+// the signup page wrote (getAuthUserFromCookies above). Owner identity must
+// come from that verified auth user — NEVER trust a client-supplied ownerId.
 
 /**
  * Public lookup so the setup wizard can validate a sales agent code before
@@ -103,6 +137,16 @@ export async function setupSalon(data: {
   partners: Array<{ name: string; email: string; phone: string; password: string }>;
   staff: Array<{ name: string; email: string; phone: string; role: string; password: string; baseSalary?: number; commissionType?: string; commissionRate?: number }>;
 }) {
+  // Authenticate via Supabase Auth cookie. We REJECT any client-supplied
+  // ownerId that doesn't match — otherwise a motivated caller could take
+  // over someone else's salon by passing their user id.
+  const authUser = await getAuthUserFromCookies();
+  if (!authUser) return { data: null, error: 'Not authenticated' };
+  if (data.ownerId && data.ownerId !== authUser.id) {
+    return { data: null, error: 'Not allowed' };
+  }
+  const ownerId = authUser.id;
+
   const supabase = createServerClient();
 
   if (!data.phone?.trim()) return { data: null, error: 'Salon phone is required' };
@@ -114,13 +158,24 @@ export async function setupSalon(data: {
   }
 
   // Resolve target salon id: prefer explicit existingSalonId, else the owner's
-  // existing salon (retry case where the prior setup attempt already created one).
+  // existing salon (retry case where the prior setup attempt already created
+  // one). For existingSalonId, verify the caller owns it — otherwise they
+  // could overwrite another salon's profile.
   let targetSalonId = data.existingSalonId;
-  if (!targetSalonId && data.ownerId) {
+  if (targetSalonId) {
+    const { data: existing } = await supabase
+      .from('salons')
+      .select('id, owner_id')
+      .eq('id', targetSalonId)
+      .maybeSingle();
+    if (!existing) return { data: null, error: 'Salon not found' };
+    if (existing.owner_id !== ownerId) return { data: null, error: 'Not allowed' };
+  }
+  if (!targetSalonId) {
     const { data: ownedSalon } = await supabase
       .from('salons')
       .select('id')
-      .eq('owner_id', data.ownerId)
+      .eq('owner_id', ownerId)
       .maybeSingle();
     if (ownedSalon) targetSalonId = ownedSalon.id;
   }
@@ -164,7 +219,7 @@ export async function setupSalon(data: {
       address: data.address,
       phone: data.phone,
       whatsapp: data.whatsapp,
-      owner_id: data.ownerId,
+      owner_id: ownerId,
       setup_complete: true,
       prayer_block_enabled: data.prayerBlockEnabled,
       ...(soldByAgentId ? { sold_by_agent_id: soldByAgentId } : {}),
@@ -258,7 +313,7 @@ export async function setupSalon(data: {
 
   // Send welcome email — best-effort, failures don't block setup.
   try {
-    const { data: authData } = await supabase.auth.admin.getUserById(data.ownerId);
+    const { data: authData } = await supabase.auth.admin.getUserById(ownerId);
     const ownerEmail = authData?.user?.email;
     if (ownerEmail) {
       const dashboardUrl = process.env.NEXT_PUBLIC_APP_URL
