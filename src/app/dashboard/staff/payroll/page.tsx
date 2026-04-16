@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Download, MessageCircle, ChevronRight } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { createExpense, createExpenses, deleteSalaryExpenses } from '@/app/actions/expenses';
+import { getStaffMonthlyCommissionAction } from '@/app/actions/dashboard';
 import { useAppStore } from '@/store/app-store';
 import { formatPKR } from '@/lib/utils/currency';
 import { useWhatsAppCompose } from '@/components/whatsapp-compose/provider';
@@ -62,9 +63,7 @@ export default function PayrollPage() {
       const results = await Promise.all(
         staffList.map(async (s) => {
           const [commRes, attRes] = await Promise.all([
-            supabase.rpc('get_staff_monthly_commission', {
-              p_staff_id: s.id, p_month: month, p_year: year,
-            }),
+            getStaffMonthlyCommissionAction(s.id, month, year),
             supabase
               .from('attendance')
               .select('status')
@@ -140,7 +139,7 @@ export default function PayrollPage() {
       toast.success(`${row.staff.name} marked as paid`);
     } else {
       // Unmark — delete the expense record
-      const { error } = await deleteSalaryExpenses(salaryDesc, startDate, endDate);
+      const { error } = await deleteSalaryExpenses(salaryDesc, startDate, endDate, currentBranch?.id || '');
       if (showActionError(error)) return;
       if (error) { toast.error('Failed to undo payment'); return; }
       toast.success(`${row.staff.name} unmarked as paid`);

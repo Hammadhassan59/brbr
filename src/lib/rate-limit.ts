@@ -2,10 +2,31 @@
 // Works per Node instance. For multi-instance serverless deploys, replace with
 // a shared store (Redis, Upstash, a Postgres attempts table) — the interface
 // here is drop-in compatible.
+//
+// TODO(multi-instance): Today iCut runs as a single-VPS Next.js container
+// (Hetzner), so an in-process Map is sufficient. The moment we scale to
+// multiple app instances (Fly, serverless, horizontal scale on Hetzner behind
+// Caddy), every instance keeps its own counters — an attacker who hits N
+// instances gets N × the limit. At that point swap `buckets` for a shared
+// Redis/Postgres store keyed by the same `key` string. See rate-limit-buckets.ts
+// for the named buckets used across the app.
 
 type Bucket = { timestamps: number[] };
 
-const buckets = new Map<string, Bucket>();
+// Survive Next.js dev hot-reloads: the module is re-evaluated on every edit
+// under `next dev`, which would otherwise reset the Map and silently defeat
+// the limiter during development. globalThis keeps one canonical Map across
+// reloads. In production, this is a no-op since the module evaluates once.
+const globalForRateLimit = globalThis as unknown as {
+  __icutRateLimitBuckets?: Map<string, Bucket>;
+  __icutRateLimitSweep?: ReturnType<typeof setInterval>;
+};
+
+const buckets: Map<string, Bucket> =
+  globalForRateLimit.__icutRateLimitBuckets ?? new Map<string, Bucket>();
+if (!globalForRateLimit.__icutRateLimitBuckets) {
+  globalForRateLimit.__icutRateLimitBuckets = buckets;
+}
 
 export interface RateLimitResult {
   allowed: boolean;
@@ -50,7 +71,8 @@ export function resetRateLimit(key: string): void {
 
 // Periodic sweep to keep the Map from growing forever. Runs every 5 minutes.
 // `unref()` so it doesn't keep the Node process alive during tests.
-if (typeof setInterval !== 'undefined') {
+// Single timer across hot-reloads (stored on globalThis).
+if (typeof setInterval !== 'undefined' && !globalForRateLimit.__icutRateLimitSweep) {
   const timer = setInterval(() => {
     const now = Date.now();
     for (const [key, bucket] of buckets.entries()) {
@@ -64,6 +86,7 @@ if (typeof setInterval !== 'undefined') {
   if (typeof timer === 'object' && timer && 'unref' in timer) {
     (timer as { unref: () => void }).unref();
   }
+  globalForRateLimit.__icutRateLimitSweep = timer;
 }
 
 export function getClientIp(req: Request): string {

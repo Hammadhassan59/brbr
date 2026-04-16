@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button';
 import { DataNotice } from '@/components/data-notice';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { signSession, resolveUserRole, isSuperAdminEmail, resolveAdminRole } from '@/app/actions/auth';
+import { signSession, resolveUserRole, isSuperAdminEmail, resolveAdminRole, getSessionInfo } from '@/app/actions/auth';
 import { isAdminRole } from '@/lib/admin-roles';
 import {
   DEMO_SALON, DEMO_BRANCH, DEMO_STAFF_OWNER, DEMO_STAFF_STYLIST, DEMO_STAFF_RECEPTIONIST,
@@ -24,10 +24,10 @@ import type { Salon, Branch, Staff, SalonPartner } from '@/types/database';
 
 const IS_DEV = process.env.NODE_ENV === 'development';
 
-function setSessionCookie(role: string) {
-  document.cookie = `icut-session=1; path=/; max-age=${60 * 60 * 24}; SameSite=Strict`;
-  document.cookie = `icut-role=${role}; path=/; max-age=${60 * 60 * 24}; SameSite=Strict`;
-}
+// The proxy now verifies the HttpOnly icut-token JWT for session + role +
+// subscription state. We no longer write icut-session / icut-role client-side
+// — they were non-HttpOnly and any XSS could forge "icut-role=super_admin".
+// signSession (server action) is the only session writer.
 
 type AuthMode = 'login' | 'signup';
 
@@ -41,28 +41,31 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
-  // Redirect already-authenticated users to their dashboard. Trust the iCut
-  // session cookie (set by signSession) as the source of truth — Zustand
-  // persists in localStorage and can outlive the actual session (e.g. after
-  // a password reset by a different identity in the same browser, the iCut
-  // cookie is gone but Zustand still says "you're a super admin"). If the
-  // cookie is missing, we wipe the stale store and stay on the login form.
+  // Redirect already-authenticated users to their dashboard. The iCut JWT is
+  // HttpOnly so the client can't read it directly; we ask the server via
+  // getSessionInfo() instead. Zustand persists in localStorage and can outlive
+  // the actual session (e.g. after a password reset by a different identity
+  // in the same browser, the JWT is gone but Zustand still says "you're a
+  // super admin"). If the server says "no session", wipe the stale store and
+  // stay on the login form.
   useEffect(() => {
-    if (typeof document === 'undefined') return;
-    const hasIcutSession = document.cookie.split('; ').includes('icut-session=1');
-    const store = useAppStore.getState();
-    const persistedRoles = store.salon || store.currentStaff || store.currentPartner || store.isSuperAdmin || store.isSalesAgent;
-    if (!hasIcutSession) {
-      if (persistedRoles) store.reset();
-      return;
-    }
-    if (persistedRoles) {
+    let cancelled = false;
+    (async () => {
+      const info = await getSessionInfo();
+      if (cancelled) return;
+      const store = useAppStore.getState();
+      const persistedRoles = store.salon || store.currentStaff || store.currentPartner || store.isSuperAdmin || store.isSalesAgent;
+      if (!info) {
+        if (persistedRoles) store.reset();
+        return;
+      }
       router.replace(
-        store.isSuperAdmin ? '/admin' :
-        store.isSalesAgent ? '/agent/leads' :
+        info.role === 'super_admin' || info.role === 'technical_support' || info.role === 'customer_support' || info.role === 'leads_team' ? '/admin' :
+        info.role === 'sales_agent' ? '/agent/leads' :
         '/dashboard',
       );
-    }
+    })();
+    return () => { cancelled = true; };
   }, [router]);
 
   async function handleLogin(e: React.FormEvent) {
@@ -93,7 +96,6 @@ export default function LoginPage() {
         store.setSalon(null);
         store.setCurrentStaff(null);
         store.setCurrentPartner(null);
-        setSessionCookie(adminRole);
         await signSession({
           salonId: 'super-admin',
           staffId: data.user.id,
@@ -117,7 +119,6 @@ export default function LoginPage() {
         setCurrentBranch(null);
         setIsSalesAgent(true);
         setAgentId(result.agent.id);
-        setSessionCookie('sales_agent');
         await signSession({
           salonId: '',
           staffId: data.user.id,
@@ -133,7 +134,6 @@ export default function LoginPage() {
 
       if (result.type === 'none') {
         if (superAdmin) {
-          setSessionCookie('super_admin');
           await signSession({ salonId: 'super-admin', staffId: data.user.id, role: 'super_admin', branchId: '', name: 'Super Admin' });
           router.push('/admin');
           return;
@@ -155,7 +155,6 @@ export default function LoginPage() {
           setIsOwner(true);
           setIsPartner(false);
           useAppStore.getState().setIsSuperAdmin(false);
-          setSessionCookie('owner');
           await signSession({
             salonId: result.salon.id,
             staffId: data.user.id,
@@ -169,7 +168,6 @@ export default function LoginPage() {
           setIsOwner(false);
           setCurrentStaff(null);
           useAppStore.getState().setIsSuperAdmin(false);
-          setSessionCookie('partner');
           await signSession({
             salonId: result.salon.id,
             staffId: result.partner!.id,
@@ -183,7 +181,6 @@ export default function LoginPage() {
           setIsOwner(false);
           setIsPartner(false);
           useAppStore.getState().setIsSuperAdmin(false);
-          setSessionCookie('staff');
           await signSession({
             salonId: result.salon.id,
             staffId: result.staff!.id,
@@ -211,10 +208,11 @@ export default function LoginPage() {
       if (error) throw error;
       if (!data.user) throw new Error('Signup failed. Please try again.');
 
-      // Auto-confirmed: session exists, set cookies and go to setup
+      // Auto-confirmed: JWT signSession runs server-side and sets the HttpOnly
+      // icut-token cookie. Hard navigation follows so the proxy sees the
+      // Set-Cookie on the next /setup request.
       if (data.session) {
         setIsOwner(true);
-        setSessionCookie('owner');
         await signSession({
           salonId: '',
           staffId: data.user.id,
@@ -223,8 +221,6 @@ export default function LoginPage() {
           name: data.user.email || email,
         });
         toast.success('Account created!');
-        // Hard navigation so server-set cookies are attached to the next request
-        // and the middleware (proxy.ts) sees icut-session on the /setup load.
         window.location.href = '/setup';
         return;
       }
@@ -251,7 +247,6 @@ export default function LoginPage() {
     setCurrentBranch(null);
     setCurrentPartner(null);
     setIsPartner(false);
-    setSessionCookie('super_admin');
     await signSession({ salonId: 'super-admin', staffId: DEMO_STAFF_SUPERADMIN.id, role: 'super_admin', branchId: '', name: 'Super Admin' });
     toast.success('Super Admin mode activated');
     router.push('/admin');
@@ -269,7 +264,6 @@ export default function LoginPage() {
     setCurrentStaff(staffData);
     setCurrentPartner(null);
     setIsPartner(false);
-    setSessionCookie(isDemoOwner ? 'owner' : 'staff');
     await signSession({ salonId: salonData.id, staffId: staffData.id, role: staffData.role, branchId: branchData.id, name: staffData.name });
     toast.success(`Logged in as ${staffData.name} (${staffData.role.replace('_', ' ')}) — ${salonData.name}`);
     router.push('/dashboard');
@@ -287,7 +281,6 @@ export default function LoginPage() {
     setCurrentStaff(null);
     setCurrentPartner(partnerData);
     setIsPartner(true);
-    setSessionCookie('partner');
     await signSession({ salonId: salonData.id, staffId: partnerData.id, role: 'partner', branchId: mainBranch?.id || '', name: partnerData.name });
     toast.success(`Logged in as ${partnerData.name} (Owner) — ${salonData.name}`);
     router.push('/dashboard');
@@ -378,7 +371,7 @@ export default function LoginPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                minLength={6}
+                minLength={authMode === 'signup' ? 10 : 6}
                 className="mt-1.5 border-border bg-white"
               />
             </div>

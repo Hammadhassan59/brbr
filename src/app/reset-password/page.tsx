@@ -39,8 +39,8 @@ export default function ResetPasswordPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (password.length < 6) {
-      toast.error('Password must be at least 6 characters');
+    if (password.length < 10) {
+      toast.error('Password must be at least 10 characters');
       return;
     }
     if (password !== confirm) {
@@ -55,13 +55,11 @@ export default function ResetPasswordPage() {
       // a totally different identity in this browser (e.g. a super admin who
       // just created the agent). Without clearing every session surface, the
       // /login auto-redirect will trust stale Zustand and send them back to
-      // the wrong dashboard. We tear down: Supabase Auth, the iCut JWT cookie,
-      // the proxy gate cookies, and the persisted Zustand store.
+      // the wrong dashboard. destroySession() clears the HttpOnly icut-token
+      // JWT AND any leftover legacy icut-session / icut-role / icut-sub
+      // cookies — no client-side document.cookie clears needed.
       await supabase.auth.signOut();
       await destroySession().catch(() => {});
-      document.cookie = 'icut-session=; path=/; max-age=0';
-      document.cookie = 'icut-role=; path=/; max-age=0';
-      document.cookie = 'icut-sub=; path=/; max-age=0';
       useAppStore.getState().reset();
       toast.success('Password updated — please log in with your new password');
       // Hard navigation so the next /login render starts from a fully clean
@@ -104,10 +102,10 @@ export default function ResetPasswordPage() {
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                minLength={6}
+                minLength={10}
                 required
                 className="mt-1.5"
-                placeholder="Min 6 characters"
+                placeholder="Min 10 characters"
               />
             </div>
             <div>
@@ -117,7 +115,7 @@ export default function ResetPasswordPage() {
                 type="password"
                 value={confirm}
                 onChange={(e) => setConfirm(e.target.value)}
-                minLength={6}
+                minLength={10}
                 required
                 className="mt-1.5"
               />
@@ -127,7 +125,7 @@ export default function ResetPasswordPage() {
             </div>
             <Button
               type="submit"
-              disabled={saving || password.length < 6 || password !== confirm}
+              disabled={saving || password.length < 10 || password !== confirm}
               className="w-full bg-gold hover:bg-gold/90 text-black font-bold"
             >
               {saving ? 'Updating…' : 'Update password'}

@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { updateClientNotes, recordUdhaarPayment } from '@/app/actions/clients';
+import { getClientStatsAction } from '@/app/actions/dashboard';
 import { formatPKR } from '@/lib/utils/currency';
 import { formatPKDate, formatDateTime } from '@/lib/utils/dates';
 import { useWhatsAppCompose } from '@/components/whatsapp-compose/provider';
@@ -86,7 +87,7 @@ export default function ClientProfilePage() {
           .from('client_packages')
           .select('*, package:packages(*)')
           .eq('client_id', clientId),
-        supabase.rpc('get_client_stats', { p_client_id: clientId }),
+        getClientStatsAction(clientId),
       ]);
 
       if (clientRes.data) setClient(clientRes.data as Client);

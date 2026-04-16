@@ -2,16 +2,34 @@
 
 import { checkWriteAccess, getPlanLimits } from './auth';
 import { createServerClient } from '@/lib/supabase';
+import { salonUpdateSchema } from '@/lib/schemas';
 
-export async function updateSalon(data: Record<string, unknown>) {
+const SALON_WRITABLE_BY: ReadonlyArray<string> = ['owner', 'partner'];
+
+export async function updateSalon(data: unknown) {
   const writeCheck = await checkWriteAccess();
   if (writeCheck.error !== null) return { data: null, error: writeCheck.error };
   const session = writeCheck.session;
   const supabase = createServerClient();
 
+  // Only owners and partners can touch salon-wide settings. Staff/manager
+  // roles get read-only access via the settings UI.
+  if (!SALON_WRITABLE_BY.includes(session.role)) {
+    return { data: null, error: 'Only owners or partners can update salon settings' };
+  }
+
+  // Strict whitelist — drops any extra keys. Critical: id, owner_id,
+  // subscription_*, setup_complete, created_at, slug, sold_by_agent_id,
+  // admin_notes are all rejected silently so a compromised client can't
+  // hand themselves a free subscription or steal the salon.
+  const parsed = salonUpdateSchema.safeParse(data);
+  if (!parsed.success) {
+    return { data: null, error: parsed.error.issues[0]?.message || 'Invalid input' };
+  }
+
   const { data: result, error } = await supabase
     .from('salons')
-    .update(data)
+    .update(parsed.data)
     .eq('id', session.salonId)
     .select()
     .single();

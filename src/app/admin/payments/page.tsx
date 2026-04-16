@@ -14,6 +14,7 @@ import {
   reversePaymentRequest,
   type PaymentRequestWithSalon,
 } from '@/app/actions/payment-requests';
+import { getPaymentScreenshotUrl } from '@/app/actions/storage';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -68,8 +69,26 @@ export default function AdminPaymentsPage() {
   const [rejectReason, setRejectReason] = useState('');
   const [rejecting, setRejecting] = useState(false);
 
-  // Screenshot lightbox
+  // Screenshot lightbox. Signed URLs live ~15 minutes and the bucket is
+  // private, so we mint one on demand via a server action when the admin
+  // clicks a thumbnail — never on page load.
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+
+  const openScreenshot = useCallback(async (paymentId: string) => {
+    setPreviewLoading(true);
+    setPreviewUrl(null);
+    try {
+      const url = await getPaymentScreenshotUrl(paymentId);
+      if (!url) {
+        toast.error('Screenshot not available');
+        return;
+      }
+      setPreviewUrl(url);
+    } finally {
+      setPreviewLoading(false);
+    }
+  }, []);
 
   const fetchRequests = useCallback(async () => {
     setLoading(true);
@@ -236,22 +255,21 @@ export default function AdminPaymentsPage() {
             <Card key={r.id} className="border-border">
               <CardContent className="p-3 sm:p-4">
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-start gap-3 sm:gap-4">
-                  {/* Screenshot thumbnail */}
-                  {r.screenshot_url ? (
+                  {/* Screenshot thumbnail — bucket is private, so we don't
+                      render the object inline. A placeholder tile opens the
+                      server action that mints a signed URL only when the
+                      admin actually wants to look. Rows with NEITHER a path
+                      NOR a legacy URL show a dim "no proof" tile. */}
+                  {r.screenshot_path || r.screenshot_url ? (
                     <button
                       type="button"
-                      onClick={() => setPreviewUrl(r.screenshot_url)}
-                      className="shrink-0 w-full sm:w-20 h-32 sm:h-20 rounded border border-border overflow-hidden bg-secondary/30 hover:ring-2 hover:ring-gold transition-all relative group"
-                      title="Click to view full screenshot"
+                      onClick={() => openScreenshot(r.id)}
+                      className="shrink-0 w-full sm:w-20 h-32 sm:h-20 rounded border border-border overflow-hidden bg-secondary/30 hover:ring-2 hover:ring-gold transition-all relative group flex items-center justify-center"
+                      title="Click to view screenshot"
                     >
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={r.screenshot_url}
-                        alt="Payment proof"
-                        className="w-full h-full object-cover"
-                      />
-                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center">
-                        <ExternalLink className="w-4 h-4 text-white opacity-0 group-hover:opacity-100" />
+                      <ImageIcon className="w-6 h-6 text-muted-foreground group-hover:text-gold transition-colors" />
+                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
+                        <ExternalLink className="w-4 h-4 text-foreground opacity-0 group-hover:opacity-100" />
                       </div>
                     </button>
                   ) : (
@@ -448,13 +466,22 @@ export default function AdminPaymentsPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Screenshot lightbox */}
-      <Dialog open={!!previewUrl} onOpenChange={(o) => !o && setPreviewUrl(null)}>
+      {/* Screenshot lightbox — opens as soon as the admin clicks a tile
+          (previewLoading=true), then swaps to the image once the signed URL
+          resolves. */}
+      <Dialog
+        open={previewLoading || !!previewUrl}
+        onOpenChange={(o) => { if (!o) { setPreviewUrl(null); setPreviewLoading(false); } }}
+      >
         <DialogContent className="max-w-3xl">
           <DialogHeader>
             <DialogTitle>Payment Screenshot</DialogTitle>
           </DialogHeader>
-          {previewUrl && (
+          {previewLoading && !previewUrl ? (
+            <div className="flex items-center justify-center py-16">
+              <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : previewUrl ? (
             <div className="flex flex-col gap-2">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
@@ -471,7 +498,7 @@ export default function AdminPaymentsPage() {
                 Open in new tab
               </a>
             </div>
-          )}
+          ) : null}
         </DialogContent>
       </Dialog>
 

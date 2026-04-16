@@ -2,6 +2,13 @@
 
 import { checkWriteAccess } from './auth';
 import { createServerClient } from '@/lib/supabase';
+import { productUpdateSchema, supplierUpdateSchema } from '@/lib/schemas';
+import {
+  assertBranchOwned,
+  assertProductOwned,
+  assertSupplierOwned,
+  tenantErrorMessage,
+} from '@/lib/tenant-guard';
 
 export async function createProduct(data: {
   name: string;
@@ -44,17 +51,29 @@ export async function createProduct(data: {
   return { data: result, error: null };
 }
 
-export async function updateProduct(id: string, data: Record<string, unknown>) {
+export async function updateProduct(id: string, data: unknown) {
   const writeCheck = await checkWriteAccess();
   if (writeCheck.error !== null) return { error: writeCheck.error };
   const session = writeCheck.session;
   const supabase = createServerClient();
-  data.salon_id = session.salonId;
+
+  const parsed = productUpdateSchema.safeParse(data);
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message || 'Invalid input' };
+  }
+
+  // Pre-check ownership so a mismatched id doesn't silently no-op.
+  try {
+    await assertProductOwned(id, session.salonId);
+  } catch (e) {
+    return { error: tenantErrorMessage(e) };
+  }
 
   const { error } = await supabase
     .from('products')
-    .update(data)
-    .eq('id', id);
+    .update(parsed.data)
+    .eq('id', id)
+    .eq('salon_id', session.salonId);
 
   if (error) return { error: error.message };
   return { error: null };
@@ -64,9 +83,37 @@ export async function syncProductServiceLinks(productId: string, links: Array<{
   serviceId: string;
   qtyPerUse: number;
 }>) {
-  const { error: writeError } = await checkWriteAccess();
-  if (writeError) return { error: writeError };
+  const writeCheck = await checkWriteAccess();
+  if (writeCheck.error !== null) return { error: writeCheck.error };
+  const session = writeCheck.session;
   const supabase = createServerClient();
+
+  // product_service_links has no salon_id — product ownership is the guard.
+  try {
+    await assertProductOwned(productId, session.salonId);
+  } catch (e) {
+    return { error: tenantErrorMessage(e) };
+  }
+
+  // Every service_id passed must also belong to this salon, otherwise a
+  // caller could link another tenant's services to their own product (or
+  // vice versa via a spoofed productId, already blocked above).
+  if (links.length > 0) {
+    const serviceIds = Array.from(new Set(links.map((l) => l.serviceId)));
+    const { data: svcRows, error: svcErr } = await supabase
+      .from('services')
+      .select('id, salon_id')
+      .in('id', serviceIds);
+    if (svcErr) return { error: svcErr.message };
+    const mine = new Set(
+      (svcRows || [])
+        .filter((s: { salon_id: string }) => s.salon_id === session.salonId)
+        .map((s: { id: string }) => s.id),
+    );
+    if (mine.size !== serviceIds.length) {
+      return { error: 'Not allowed' };
+    }
+  }
 
   await supabase.from('product_service_links').delete().eq('product_id', productId);
 
@@ -85,15 +132,25 @@ export async function syncProductServiceLinks(productId: string, links: Array<{
 }
 
 export async function adjustStock(productId: string, branchId: string, quantity: number, notes?: string | null) {
-  const { error: writeError } = await checkWriteAccess();
-  if (writeError) return { error: writeError };
+  const writeCheck = await checkWriteAccess();
+  if (writeCheck.error !== null) return { error: writeCheck.error };
+  const session = writeCheck.session;
   const supabase = createServerClient();
 
-  // Get current stock
+  // Both the product and the branch must belong to this salon.
+  try {
+    await assertProductOwned(productId, session.salonId);
+    await assertBranchOwned(branchId, session.salonId);
+  } catch (e) {
+    return { error: tenantErrorMessage(e) };
+  }
+
+  // Get current stock (already verified ours above)
   const { data: product } = await supabase
     .from('products')
     .select('current_stock')
     .eq('id', productId)
+    .eq('salon_id', session.salonId)
     .single();
 
   if (!product) return { error: 'Product not found' };
@@ -103,7 +160,8 @@ export async function adjustStock(productId: string, branchId: string, quantity:
   const { error: updateErr } = await supabase
     .from('products')
     .update({ current_stock: newStock })
-    .eq('id', productId);
+    .eq('id', productId)
+    .eq('salon_id', session.salonId);
 
   if (updateErr) return { error: updateErr.message };
 
@@ -231,9 +289,19 @@ export async function createPurchaseOrder(data: {
   totalAmount: number;
   notes?: string | null;
 }) {
-  const { error: writeError } = await checkWriteAccess();
-  if (writeError) return { error: writeError };
+  const writeCheck = await checkWriteAccess();
+  if (writeCheck.error !== null) return { error: writeCheck.error };
+  const session = writeCheck.session;
   const supabase = createServerClient();
+
+  // Supplier + branch must both belong to this salon. purchase_orders has
+  // no salon_id column, so these two checks are the only isolation.
+  try {
+    await assertSupplierOwned(data.supplierId, session.salonId);
+    await assertBranchOwned(data.branchId, session.salonId);
+  } catch (e) {
+    return { error: tenantErrorMessage(e) };
+  }
 
   const { error } = await supabase
     .from('purchase_orders')
@@ -250,9 +318,30 @@ export async function createPurchaseOrder(data: {
 }
 
 export async function updateOrderStatus(orderId: string, status: string) {
-  const { error: writeError } = await checkWriteAccess();
-  if (writeError) return { error: writeError };
+  const writeCheck = await checkWriteAccess();
+  if (writeCheck.error !== null) return { error: writeCheck.error };
+  const session = writeCheck.session;
   const supabase = createServerClient();
+
+  // purchase_orders has no salon_id — verify via the supplier FK.
+  const { data: po } = await supabase
+    .from('purchase_orders')
+    .select('id, supplier_id, branch_id')
+    .eq('id', orderId)
+    .maybeSingle();
+  if (!po) return { error: 'Not found' };
+
+  try {
+    if (po.supplier_id) {
+      await assertSupplierOwned(po.supplier_id, session.salonId);
+    } else if (po.branch_id) {
+      await assertBranchOwned(po.branch_id, session.salonId);
+    } else {
+      return { error: 'Not allowed' };
+    }
+  } catch (e) {
+    return { error: tenantErrorMessage(e) };
+  }
 
   const { error } = await supabase
     .from('purchase_orders')
@@ -286,39 +375,54 @@ export async function createSupplier(data: {
   return { error: null };
 }
 
-export async function updateSupplier(id: string, data: {
-  name: string;
-  phone?: string | null;
-  notes?: string | null;
-}) {
+export async function updateSupplier(id: string, data: unknown) {
   const writeCheck = await checkWriteAccess();
   if (writeCheck.error !== null) return { error: writeCheck.error };
   const session = writeCheck.session;
   const supabase = createServerClient();
 
+  const parsed = supplierUpdateSchema.safeParse(data);
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message || 'Invalid input' };
+  }
+
+  // Pre-check ownership so a mismatched id doesn't silently no-op.
+  try {
+    await assertSupplierOwned(id, session.salonId);
+  } catch (e) {
+    return { error: tenantErrorMessage(e) };
+  }
+
+  const update: Record<string, unknown> = { ...parsed.data };
+  if (typeof update.name === 'string') update.name = update.name.trim();
+
   const { error } = await supabase
     .from('suppliers')
-    .update({
-      salon_id: session.salonId,
-      name: data.name.trim(),
-      phone: data.phone || null,
-      notes: data.notes || null,
-    })
-    .eq('id', id);
+    .update(update)
+    .eq('id', id)
+    .eq('salon_id', session.salonId);
 
   if (error) return { error: error.message };
   return { error: null };
 }
 
 export async function recordSupplierPayment(supplierId: string, amount: number, currentBalance: number) {
-  const { error: writeError } = await checkWriteAccess();
-  if (writeError) return { error: writeError };
+  const writeCheck = await checkWriteAccess();
+  if (writeCheck.error !== null) return { error: writeCheck.error };
+  const session = writeCheck.session;
   const supabase = createServerClient();
+
+  try {
+    await assertSupplierOwned(supplierId, session.salonId);
+  } catch (e) {
+    return { error: tenantErrorMessage(e) };
+  }
 
   const { error } = await supabase
     .from('suppliers')
     .update({ udhaar_balance: currentBalance - amount })
-    .eq('id', supplierId);
+    .eq('id', supplierId)
+    .eq('salon_id', session.salonId);
 
   if (error) return { error: error.message };
   return { error: null };

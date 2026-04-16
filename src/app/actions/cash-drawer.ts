@@ -2,6 +2,7 @@
 
 import { checkWriteAccess } from './auth';
 import { createServerClient } from '@/lib/supabase';
+import { assertBranchOwned, tenantErrorMessage } from '@/lib/tenant-guard';
 
 export async function openCashDrawer(data: {
   branchId: string;
@@ -9,9 +10,17 @@ export async function openCashDrawer(data: {
   openingBalance: number;
   openedBy?: string | null;
 }) {
-  const { error: writeError } = await checkWriteAccess();
-  if (writeError) return { error: writeError };
+  const writeCheck = await checkWriteAccess();
+  if (writeCheck.error !== null) return { error: writeCheck.error };
+  const session = writeCheck.session;
   const supabase = createServerClient();
+
+  // cash_drawers has no salon_id — branch ownership is the only guard.
+  try {
+    await assertBranchOwned(data.branchId, session.salonId);
+  } catch (e) {
+    return { error: tenantErrorMessage(e) };
+  }
 
   const { error } = await supabase
     .from('cash_drawers')
@@ -32,9 +41,27 @@ export async function closeCashDrawer(drawerId: string, data: {
   closedBy?: string | null;
   totalExpenses: number;
 }) {
-  const { error: writeError } = await checkWriteAccess();
-  if (writeError) return { error: writeError };
+  const writeCheck = await checkWriteAccess();
+  if (writeCheck.error !== null) return { error: writeCheck.error };
+  const session = writeCheck.session;
   const supabase = createServerClient();
+
+  // Look up the drawer and verify its branch belongs to this salon before
+  // allowing the close. Otherwise a leaked drawer ID from another tenant
+  // would let the caller mutate it.
+  const { data: drawer } = await supabase
+    .from('cash_drawers')
+    .select('id, branch_id')
+    .eq('id', drawerId)
+    .maybeSingle();
+  if (!drawer) return { error: 'Not found' };
+
+  try {
+    if (!drawer.branch_id) return { error: 'Not allowed' };
+    await assertBranchOwned(drawer.branch_id, session.salonId);
+  } catch (e) {
+    return { error: tenantErrorMessage(e) };
+  }
 
   const { error } = await supabase
     .from('cash_drawers')
@@ -44,7 +71,8 @@ export async function closeCashDrawer(drawerId: string, data: {
       status: 'closed',
       total_expenses: data.totalExpenses,
     })
-    .eq('id', drawerId);
+    .eq('id', drawerId)
+    .eq('branch_id', drawer.branch_id);
 
   if (error) return { error: error.message };
   return { error: null };

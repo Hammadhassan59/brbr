@@ -1,43 +1,69 @@
 'use server';
 
 import { SignJWT, jwtVerify } from 'jose';
-import { cookies } from 'next/headers';
+import { cookies, headers } from 'next/headers';
+import { randomUUID } from 'crypto';
+import { checkRateLimit } from '@/lib/with-rate-limit';
+import { BUCKETS } from '@/lib/rate-limit-buckets';
+import { getClientIp } from '@/lib/rate-limit';
+
+// JWT issuer/audience — the proxy must verify these exactly. Anything signed
+// with different iss/aud values is treated as invalid.
+const JWT_ISS = 'icut.pk';
+const JWT_AUD = 'icut-app';
+const JWT_KID = 'v1';
 
 // Lazy secret binding: during `next build` page-data collection, SESSION_SECRET
 // may be absent (it's a runtime-only var, not a build arg). Throwing at module
 // load blocks the build. Resolve on first use instead.
+//
+// Hardening: require >=32 chars. A short/guessable secret makes the JWT
+// forgeable, which is the same failure mode the proxy rewrite is trying to
+// close. Fail loudly rather than run with a weak key.
 function getSecret(): Uint8Array {
   const secret = process.env.SESSION_SECRET;
   if (!secret) throw new Error('Missing SESSION_SECRET environment variable');
+  if (secret.length < 32) {
+    throw new Error('SESSION_SECRET must be at least 32 characters');
+  }
   return new TextEncoder().encode(secret);
 }
 const COOKIE_NAME = 'icut-token';
-const SUB_COOKIE = 'icut-sub';
+
+// Legacy cookie names the proxy used to read. They're still cleared on logout
+// to scrub any state lingering from the pre-JWT gate. New writes happen only
+// through the HttpOnly icut-token JWT.
+const LEGACY_SESSION_COOKIE = 'icut-session';
+const LEGACY_ROLE_COOKIE = 'icut-role';
+const LEGACY_SUB_COOKIE = 'icut-sub';
 
 /**
- * Mirror salons.subscription_status into a cookie the proxy can read without
- * a DB roundtrip. Values: active | pending | expired | suspended | none.
- * Sessions without a salon (super_admin, sales_agent, owners mid-setup) get
- * 'active' so the paywall gate doesn't bounce them. The DB column remains the
- * source of truth — verifyWriteAccess() still checks it on every mutation.
+ * Look up salons.subscription_status and subscription_expires_at, and fold
+ * them into a boolean suitable for embedding in the JWT's `sub_active` claim.
+ *
+ * "Active" means status='active' AND (expires_at is null OR expires_at > now()).
+ * Super admin, sales agents, and salons mid-setup bypass — they don't have a
+ * subscription to check and must be able to use the app.
  */
-async function writeSubCookie(value: 'active' | 'pending' | 'expired' | 'suspended' | 'none') {
-  const cookieStore = await cookies();
-  cookieStore.set(SUB_COOKIE, value, {
-    path: '/',
-    sameSite: 'strict',
-    maxAge: 60 * 60 * 24,
-  });
-}
+async function lookupSubActive(salonId: string | undefined, role: string): Promise<boolean> {
+  if (role === 'super_admin') return true;
+  if (!salonId || salonId === 'super-admin') return true;
+  if (role === 'sales_agent') return true;
 
-async function lookupSubStatus(salonId: string | undefined): Promise<'active' | 'pending' | 'expired' | 'suspended' | 'none'> {
-  if (!salonId || salonId === 'super-admin') return 'active';
   const { createServerClient } = await import('@/lib/supabase');
   const supabase = createServerClient();
-  const { data } = await supabase.from('salons').select('subscription_status').eq('id', salonId).maybeSingle();
-  const status = data?.subscription_status;
-  if (status === 'active' || status === 'pending' || status === 'expired' || status === 'suspended') return status;
-  return 'none';
+  const { data } = await supabase
+    .from('salons')
+    .select('subscription_status, subscription_expires_at')
+    .eq('id', salonId)
+    .maybeSingle();
+  if (!data) return false;
+  if (data.subscription_status !== 'active') return false;
+  if (data.subscription_expires_at) {
+    const exp = new Date(data.subscription_expires_at).getTime();
+    if (!Number.isNaN(exp) && exp <= Date.now()) return false;
+  }
+  return true;
 }
 
 export interface SessionPayload {
@@ -50,22 +76,49 @@ export interface SessionPayload {
   // True when this session belongs to a demo sales-agent identity. Used to
   // show the "demo mode" banner and to gate destructive actions.
   isDemo?: boolean;
+  // Subscription gate bit. Computed at sign time from
+  // salons.subscription_status + subscription_expires_at so the proxy can
+  // decide /paywall vs /dashboard without a DB roundtrip. The DB remains the
+  // source of truth — verifyWriteAccess() re-checks on every mutation.
+  sub_active?: boolean;
   // When a super admin impersonates a tenant, this captures the super admin's
   // original identity so we can exit back to the admin session afterwards.
+  // staffId here is the super admin's *auth user id* (row in admin_users.user_id).
   impersonatedBy?: {
     staffId: string;
     name: string;
+    // Once the admin_impersonation_sessions table ships, this will carry the
+    // row id we use to verify the admin role on exit. Until then the proxy
+    // falls back to re-checking admin_users by auth user id.
+    adminAuthUserId?: string;
   };
+  // Revocation hook. Not yet checked anywhere; populated so we can switch on
+  // a jti-blocklist table without breaking existing tokens.
+  jti?: string;
 }
 
 export async function signSession(payload: SessionPayload) {
-  const token = await new SignJWT(payload as unknown as Record<string, unknown>)
-    .setProtectedHeader({ alg: 'HS256' })
+  const subActive = payload.sub_active ?? await lookupSubActive(payload.salonId, payload.role);
+  const claims: Record<string, unknown> = {
+    ...payload,
+    sub_active: subActive,
+    jti: payload.jti ?? randomUUID(),
+  };
+
+  const token = await new SignJWT(claims)
+    // kid lets us rotate the signing secret without invalidating every
+    // in-flight token — future tokens carry kid=v2, proxy can verify both.
+    .setProtectedHeader({ alg: 'HS256', kid: JWT_KID })
+    .setIssuer(JWT_ISS)
+    .setAudience(JWT_AUD)
     .setIssuedAt()
     .setExpirationTime('24h')
     .sign(getSecret());
 
   const cookieStore = await cookies();
+  // 24h cookie. Next step is sliding refresh: on each verifySession, if the
+  // token is over 12h old, reissue a fresh one. Kept out of this PR to keep
+  // the blast radius small.
   cookieStore.set(COOKIE_NAME, token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
@@ -73,11 +126,6 @@ export async function signSession(payload: SessionPayload) {
     maxAge: 60 * 60 * 24,
     path: '/',
   });
-
-  // Refresh the proxy-readable subscription cookie alongside the JWT so login,
-  // role swaps, and impersonation all keep the gate in sync.
-  const sub = await lookupSubStatus(payload.salonId);
-  await writeSubCookie(sub);
 
   return { success: true };
 }
@@ -91,7 +139,10 @@ export async function verifySession(): Promise<SessionPayload> {
   }
 
   try {
-    const { payload } = await jwtVerify(token, getSecret());
+    const { payload } = await jwtVerify(token, getSecret(), {
+      issuer: JWT_ISS,
+      audience: JWT_AUD,
+    });
     return payload as unknown as SessionPayload;
   } catch {
     throw new Error('Invalid or expired session');
@@ -195,11 +246,11 @@ export async function getDashboardBootstrap(): Promise<{
   const list = branches || [];
   const mainBranch = list.find((b: { is_main?: boolean }) => b.is_main) || list[0] || null;
 
-  // Refresh the proxy gate cookie on every dashboard load so it stays accurate
-  // after a super-admin approval or a status change made elsewhere.
-  const status = (salon as { subscription_status?: string }).subscription_status;
-  const known = status === 'active' || status === 'pending' || status === 'expired' || status === 'suspended';
-  await writeSubCookie(known ? (status as 'active' | 'pending' | 'expired' | 'suspended') : 'none');
+  // Re-mint the JWT so sub_active reflects the latest DB state. Without this,
+  // an owner whose admin just approved their plan would still carry
+  // sub_active=false in their token and bounce back to /paywall until their
+  // next login. Reissuing here keeps the gate accurate on every dashboard load.
+  await signSession({ ...session, sub_active: undefined });
 
   return {
     salon,
@@ -225,14 +276,65 @@ export async function getAgentSessionInfo(): Promise<{ isDemo: boolean } | null>
 }
 
 /**
- * Used by the /paywall page poll. Reads salon.subscription_status, refreshes
- * the proxy cookie, and reports the current status so the client can decide
- * whether to redirect to /dashboard.
+ * Small helper for client UI that used to read role/salonId/subActive from
+ * non-HttpOnly cookies. Returns null if the session cookie is missing or
+ * fails verification — caller should treat that as "logged out".
+ */
+export async function getSessionInfo(): Promise<{
+  role: string;
+  salonId: string;
+  staffId: string;
+  branchId: string;
+  name: string;
+  subActive: boolean;
+  isImpersonating: boolean;
+  agentId?: string;
+  isDemo?: boolean;
+} | null> {
+  try {
+    const session = await verifySession();
+    return {
+      role: session.role,
+      salonId: session.salonId,
+      staffId: session.staffId,
+      branchId: session.branchId,
+      name: session.name,
+      subActive: !!session.sub_active,
+      isImpersonating: !!session.impersonatedBy,
+      agentId: session.agentId,
+      isDemo: session.isDemo,
+    };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Used by the /paywall page poll. Reads salon.subscription_status, reissues
+ * the JWT with a fresh sub_active claim, and reports the current status so
+ * the client can decide whether to redirect to /dashboard.
  */
 export async function checkSubscriptionStatus(): Promise<{ status: 'active' | 'pending' | 'expired' | 'suspended' | 'none' }> {
   const session = await verifySession();
-  const status = await lookupSubStatus(session.salonId);
-  await writeSubCookie(status);
+  if (!session.salonId || session.salonId === 'super-admin') {
+    return { status: 'active' };
+  }
+  const { createServerClient } = await import('@/lib/supabase');
+  const supabase = createServerClient();
+  const { data } = await supabase
+    .from('salons')
+    .select('subscription_status')
+    .eq('id', session.salonId)
+    .maybeSingle();
+  const raw = data?.subscription_status;
+  const status = (raw === 'active' || raw === 'pending' || raw === 'expired' || raw === 'suspended')
+    ? raw : 'none';
+
+  // Reissue the JWT so sub_active reflects the latest DB row. The client polls
+  // this endpoint until it sees 'active' — without the reissue, the proxy gate
+  // would still bounce them to /paywall on the next navigation.
+  await signSession({ ...session, sub_active: undefined });
+
   return { status };
 }
 
@@ -279,19 +381,75 @@ export async function getPlanLimits(plan: string): Promise<PlanLimits> {
 export async function destroySession() {
   const cookieStore = await cookies();
   cookieStore.delete(COOKIE_NAME);
-  cookieStore.delete(SUB_COOKIE);
+  // Scrub legacy cookies too — they're no longer trusted by the proxy but any
+  // still-present value would be confusing during the transition.
+  cookieStore.delete(LEGACY_SESSION_COOKIE);
+  cookieStore.delete(LEGACY_ROLE_COOKIE);
+  cookieStore.delete(LEGACY_SUB_COOKIE);
   return { success: true };
 }
 
 /**
  * After Supabase Auth login, resolve the user's role by checking DB tables.
  * Returns the user type, their record, salon, and branches.
+ *
+ * Lookup rules (tightened vs the previous `.or(auth_user_id.eq.X,email.eq.Y)`
+ * pattern, which had two problems: PostgREST filter-string injection of the
+ * user-controlled email, and an email-only hijack where an attacker who could
+ * register an auth account with a pre-existing staff email would inherit
+ * that staff's row):
+ *
+ *   1. Try to match by auth_user_id. If found, this user is already linked —
+ *      use the row as-is.
+ *   2. Else, only if the auth user has confirmed their email, try to match by
+ *      email where auth_user_id is NULL (unlinked — a partner/staff row
+ *      created by the owner but never signed in before). On match, link the
+ *      row to this auth_user_id so subsequent logins take path 1.
+ *
+ * The email-match path is gated on email_confirmed_at so an attacker can't
+ * simply register an unconfirmed auth.users row with a victim's email and
+ * hijack their staff/partner record.
+ *
+ * Rate-limited: login happens client-side via supabase.auth.signInWithPassword
+ * (outside our server action surface), but every successful client login is
+ * followed by this server call. Gating here throttles automated credential
+ * stuffing that makes it past Supabase's own rate limit. Keyed on IP + email
+ * so one attacker can't mask their rate by rotating emails from a single IP.
  */
 export async function resolveUserRole(authUserId: string, authEmail: string) {
+  try {
+    const h = await headers();
+    const ip = getClientIp(new Request('http://x', { headers: h }));
+    const rl = await checkRateLimit(
+      'login',
+      `${ip}:${authEmail.toLowerCase()}`,
+      BUCKETS.LOGIN_ATTEMPTS.max,
+      BUCKETS.LOGIN_ATTEMPTS.windowMs,
+    );
+    if (!rl.ok) {
+      throw new Error(rl.error ?? 'Too many login attempts, please try again later.');
+    }
+  } catch (err) {
+    // Headers may be unavailable in non-request contexts; only re-throw the
+    // explicit rate-limit error so tests without headers() can still resolve.
+    if (err instanceof Error && err.message.startsWith('Too many')) throw err;
+  }
   const { createServerClient } = await import('@/lib/supabase');
   const supabase = createServerClient();
 
-  // 1. Check if owner (salon.owner_id matches auth user)
+  const normalizedEmail = authEmail?.trim().toLowerCase() || '';
+
+  // Gate email-based linking on Supabase email verification.
+  let emailVerified = false;
+  try {
+    const { data: userData } = await supabase.auth.admin.getUserById(authUserId);
+    emailVerified = !!userData?.user?.email_confirmed_at;
+  } catch {
+    emailVerified = false;
+  }
+
+  // 1. Check if owner (salon.owner_id matches auth user). Owners are always
+  //    linked by auth_user_id — there's no email-fallback for them.
   const { data: salon } = await supabase
     .from('salons')
     .select('*')
@@ -307,19 +465,34 @@ export async function resolveUserRole(authUserId: string, authEmail: string) {
     return { type: 'owner' as const, salon, branches: branches || [], staff: null, partner: null, agent: null };
   }
 
-  // 2. Check if partner (by auth_user_id or email)
-  const { data: partner } = await supabase
+  // 2. Partner — try auth_user_id first, then (only if email is verified)
+  //    an unlinked row by email.
+  const linkedPartner = await supabase
     .from('salon_partners')
     .select('*')
-    .or(`auth_user_id.eq.${authUserId},email.eq.${authEmail}`)
+    .eq('auth_user_id', authUserId)
     .eq('is_active', true)
     .maybeSingle();
 
-  if (partner) {
-    // Link auth_user_id if not yet linked
-    if (!partner.auth_user_id) {
-      await supabase.from('salon_partners').update({ auth_user_id: authUserId }).eq('id', partner.id);
+  let partner = linkedPartner.data;
+  if (!partner && emailVerified && normalizedEmail) {
+    const { data: byEmail } = await supabase
+      .from('salon_partners')
+      .select('*')
+      .eq('email', normalizedEmail)
+      .is('auth_user_id', null)
+      .eq('is_active', true)
+      .maybeSingle();
+    if (byEmail) {
+      await supabase
+        .from('salon_partners')
+        .update({ auth_user_id: authUserId })
+        .eq('id', byEmail.id);
+      partner = { ...byEmail, auth_user_id: authUserId };
     }
+  }
+
+  if (partner) {
     const { data: partnerSalon } = await supabase.from('salons').select('*').eq('id', partner.salon_id).single();
     const { data: branches } = await supabase
       .from('branches')
@@ -329,19 +502,33 @@ export async function resolveUserRole(authUserId: string, authEmail: string) {
     return { type: 'partner' as const, salon: partnerSalon, branches: branches || [], staff: null, partner, agent: null };
   }
 
-  // 3. Check if staff (by auth_user_id or email)
-  const { data: staffMember } = await supabase
+  // 3. Staff — same two-step: auth_user_id, then verified-email fallback.
+  const linkedStaff = await supabase
     .from('staff')
     .select('*')
-    .or(`auth_user_id.eq.${authUserId},email.eq.${authEmail}`)
+    .eq('auth_user_id', authUserId)
     .eq('is_active', true)
     .maybeSingle();
 
-  if (staffMember) {
-    // Link auth_user_id if not yet linked
-    if (!staffMember.auth_user_id) {
-      await supabase.from('staff').update({ auth_user_id: authUserId }).eq('id', staffMember.id);
+  let staffMember = linkedStaff.data;
+  if (!staffMember && emailVerified && normalizedEmail) {
+    const { data: byEmail } = await supabase
+      .from('staff')
+      .select('*')
+      .eq('email', normalizedEmail)
+      .is('auth_user_id', null)
+      .eq('is_active', true)
+      .maybeSingle();
+    if (byEmail) {
+      await supabase
+        .from('staff')
+        .update({ auth_user_id: authUserId })
+        .eq('id', byEmail.id);
+      staffMember = { ...byEmail, auth_user_id: authUserId };
     }
+  }
+
+  if (staffMember) {
     const { data: staffSalon } = await supabase.from('salons').select('*').eq('id', staffMember.salon_id).single();
     const { data: branches } = await supabase
       .from('branches')
@@ -404,6 +591,24 @@ export async function resolveAdminRole(email: string): Promise<string | null> {
     .from('admin_users')
     .select('role, active')
     .eq('email', normalized)
+    .maybeSingle();
+  if (!data || !data.active) return null;
+  return data.role as string;
+}
+
+/**
+ * Same as resolveAdminRole but keyed by auth user id. Used by exitImpersonation
+ * to re-verify that the stashed admin identity still has super_admin — the
+ * JWT claim alone isn't trustworthy once we rely on it to elevate roles.
+ */
+export async function resolveAdminRoleByAuthId(authUserId: string): Promise<string | null> {
+  if (!authUserId) return null;
+  const { createServerClient } = await import('@/lib/supabase');
+  const supabase = createServerClient();
+  const { data } = await supabase
+    .from('admin_users')
+    .select('role, active')
+    .eq('user_id', authUserId)
     .maybeSingle();
   if (!data || !data.active) return null;
   return data.role as string;

@@ -3,16 +3,25 @@ services:
     build:
       context: .
       args:
+        # Public (shipped to browser) — safe as build args.
         NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL}
         NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY}
         NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL}
         NEXT_PUBLIC_APP_NAME: ${NEXT_PUBLIC_APP_NAME}
         NEXT_PUBLIC_DEMO_MODE: ${NEXT_PUBLIC_DEMO_MODE}
-        NEXT_SERVER_ACTIONS_ENCRYPTION_KEY: ${NEXT_SERVER_ACTIONS_ENCRYPTION_KEY}
+      # NEXT_SERVER_ACTIONS_ENCRYPTION_KEY is wired in via BuildKit secret so it
+      # never lands in image layers / `docker history`. The Dockerfile consumes
+      # it inside the `RUN --mount=type=secret,id=nextsa_key` build step.
+      secrets:
+        - nextsa_key
     restart: unless-stopped
+    # Runtime env (including the encryption key again for runtime use, plus
+    # SUPABASE_SERVICE_ROLE_KEY, JWT signing secret, etc.) comes from .env.local.
     env_file: .env.local
+    # Bind only to loopback: the public internet reaches the app through
+    # Caddy (on the docker network as `app:3000`), never directly.
     ports:
-      - "3000:3000"
+      - "127.0.0.1:3000:3000"
 
   caddy:
     image: caddy:2-alpine
@@ -25,6 +34,13 @@ services:
       - ./Caddyfile:/etc/caddy/Caddyfile
       - caddy_data:/data
       - caddy_config:/config
+
+secrets:
+  nextsa_key:
+    # TODO(ops): create /opt/brbr/secrets/nextsa_key.txt on the VPS with
+    # `chmod 600`, containing the raw NEXT_SERVER_ACTIONS_ENCRYPTION_KEY.
+    # This file must exist at build time (docker compose build).
+    file: ./secrets/nextsa_key.txt
 
 volumes:
   caddy_data:

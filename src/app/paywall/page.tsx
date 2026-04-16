@@ -146,9 +146,10 @@ export default function PaywallPage() {
   }
 
   async function logout() {
-    document.cookie = 'icut-session=; path=/; max-age=0';
-    document.cookie = 'icut-role=; path=/; max-age=0';
-    document.cookie = 'icut-sub=; path=/; max-age=0';
+    // destroySession clears icut-token (HttpOnly JWT) plus legacy icut-session /
+    // icut-role / icut-sub cookies server-side. No client-side document.cookie
+    // clears needed — those cookies were never HttpOnly, but the proxy doesn't
+    // trust them anymore either way.
     useAppStore.getState().reset();
     await destroySession().catch(() => {});
     window.location.href = '/login';

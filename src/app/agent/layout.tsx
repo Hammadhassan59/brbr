@@ -41,15 +41,27 @@ export default function AgentLayout({ children }: { children: React.ReactNode })
 
   useEffect(() => {
     if (!isHydrated) return;
-    if (!isSalesAgent) {
-      if (typeof document !== 'undefined' && document.cookie.includes('icut-role=sales_agent')) {
-        return;
-      }
-      router.push('/login');
+    if (isSalesAgent) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setAuthChecked(true);
       return;
     }
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setAuthChecked(true);
+    // Zustand says we're not a sales agent, but the proxy already gated this
+    // route via the JWT — so if we got past the proxy, the JWT says we are.
+    // Ask the server once to disambiguate (stale localStorage vs actually
+    // logged out). Previously we read the non-HttpOnly icut-role cookie here;
+    // that cookie is gone now that the proxy uses the HttpOnly JWT.
+    let cancelled = false;
+    getAgentSessionInfo().then((info) => {
+      if (cancelled) return;
+      if (info) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setAuthChecked(true);
+      } else {
+        router.push('/login');
+      }
+    });
+    return () => { cancelled = true; };
   }, [isHydrated, isSalesAgent, router]);
 
   if (!authChecked) {
@@ -61,8 +73,7 @@ export default function AgentLayout({ children }: { children: React.ReactNode })
   }
 
   function handleLogout() {
-    document.cookie = 'icut-session=; path=/; max-age=0';
-    document.cookie = 'icut-role=; path=/; max-age=0';
+    // destroySession clears the HttpOnly icut-token JWT and legacy gate cookies.
     reset();
     destroySession().catch(() => {});
     window.location.href = '/login';

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { ChevronLeft, ChevronRight as ChevronRightIcon, Printer, Wallet, Plus, Lock } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 import { supabase } from '@/lib/supabase';
+import { getDailySummaryAction } from '@/app/actions/dashboard';
 import { useAppStore } from '@/store/app-store';
 import { formatPKR } from '@/lib/utils/currency';
 import { getTodayPKT, formatPKDate, formatDateTime } from '@/lib/utils/dates';
@@ -70,12 +71,12 @@ export default function DailyReportPage() {
         const bid = effectiveBranchId || currentBranch?.id;
         if (!bid) return;
         const [sumRes, billsRes, drawerRes, expRes] = await Promise.all([
-          supabase.rpc('get_daily_summary', { p_branch_id: bid, p_date: date }),
+          getDailySummaryAction(bid, date),
           supabase.from('bills').select('*, items:bill_items(*)').eq('branch_id', bid).gte('created_at', `${date}T00:00:00`).lte('created_at', `${date}T23:59:59`).order('created_at', { ascending: false }),
           supabase.from('cash_drawers').select('*').eq('branch_id', bid).eq('date', date).maybeSingle(),
           supabase.from('expenses').select('*').eq('branch_id', bid).eq('date', date).order('created_at', { ascending: false }),
         ]);
-        if (sumRes.data) setSummary(sumRes.data as DailySummary);
+        if (sumRes.data) setSummary(sumRes.data);
         if (billsRes.data) setBills(billsRes.data as (Bill & { items?: BillItem[] })[]);
         if (drawerRes.data) setDrawer(drawerRes.data as CashDrawer);
         else setDrawer(null);

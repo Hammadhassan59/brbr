@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { upsertAttendance, recordAdvance } from '@/app/actions/staff';
+import { getStaffMonthlyCommissionAction } from '@/app/actions/dashboard';
 import { formatPKR } from '@/lib/utils/currency';
 import { formatPKDate, formatTime } from '@/lib/utils/dates';
 import { Button } from '@/components/ui/button';
@@ -81,7 +82,7 @@ export default function StaffProfilePage() {
         supabase.from('appointments').select('*, client:clients(*), services:appointment_services(*)').eq('staff_id', staffId).eq('appointment_date', today).order('start_time'),
         supabase.from('attendance').select('*').eq('staff_id', staffId).gte('date', startDate).lte('date', endDate).order('date'),
         supabase.from('advances').select('*').eq('staff_id', staffId).order('date', { ascending: false }).limit(50),
-        supabase.rpc('get_staff_monthly_commission', { p_staff_id: staffId, p_month: month, p_year: year }),
+        getStaffMonthlyCommissionAction(staffId, month, year),
       ]);
 
       if (staffRes.data) setStaff(staffRes.data as Staff);

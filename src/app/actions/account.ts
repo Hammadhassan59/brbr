@@ -1,11 +1,17 @@
 'use server';
 
 import { createClient } from '@supabase/supabase-js';
+import { headers } from 'next/headers';
 import { verifySession } from './auth';
+import { checkRateLimit } from '@/lib/with-rate-limit';
+import { BUCKETS } from '@/lib/rate-limit-buckets';
+import { getClientIp } from '@/lib/rate-limit';
+import { PasswordSchema } from '@/lib/schemas/common';
+import { safeError } from '@/lib/action-error';
 
 type ActionResult<T> = { data: T; error: null } | { data: null; error: string };
 
-const MIN_PASSWORD_LENGTH = 6;
+const MIN_PASSWORD_LENGTH = 10;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export type AccountRole = 'owner' | 'partner' | 'staff' | 'super_admin' | 'sales_agent';
@@ -78,7 +84,7 @@ export async function getAccountProfile(): Promise<ActionResult<AccountProfile>>
   const { createServerClient } = await import('@/lib/supabase');
   const supabase = createServerClient();
   const { data: userData, error: userErr } = await supabase.auth.admin.getUserById(resolved.authUserId);
-  if (userErr || !userData.user) return { data: null, error: userErr?.message || 'User not found' };
+  if (userErr || !userData.user) return { data: null, error: userErr ? safeError(userErr) : 'User not found' };
 
   const email = userData.user.email || '';
 
@@ -121,17 +127,17 @@ export async function updateAccountProfile(
 
   if (resolved.role === 'partner') {
     const { error } = await supabase.from('salon_partners').update(patch).eq('id', resolved.session.staffId);
-    if (error) return { data: null, error: error.message };
+    if (error) return { data: null, error: safeError(error) };
     return { data: { name: name ?? null, phone: phone ?? null }, error: null };
   }
   if (resolved.role === 'staff') {
     const { error } = await supabase.from('staff').update(patch).eq('id', resolved.session.staffId);
-    if (error) return { data: null, error: error.message };
+    if (error) return { data: null, error: safeError(error) };
     return { data: { name: name ?? null, phone: phone ?? null }, error: null };
   }
   if (resolved.role === 'sales_agent') {
     const { error } = await supabase.from('sales_agents').update(patch).eq('user_id', resolved.authUserId);
-    if (error) return { data: null, error: error.message };
+    if (error) return { data: null, error: safeError(error) };
     return { data: { name: name ?? null, phone: phone ?? null }, error: null };
   }
 
@@ -145,7 +151,7 @@ export async function getAccountEmail(): Promise<ActionResult<{ email: string }>
   const { createServerClient } = await import('@/lib/supabase');
   const supabase = createServerClient();
   const { data, error } = await supabase.auth.admin.getUserById(resolved.authUserId);
-  if (error || !data.user) return { data: null, error: error?.message || 'User not found' };
+  if (error || !data.user) return { data: null, error: error ? safeError(error) : 'User not found' };
   return { data: { email: data.user.email || '' }, error: null };
 }
 
@@ -158,6 +164,10 @@ export async function changeAccountPassword(
   if (!newPassword || newPassword.length < MIN_PASSWORD_LENGTH) {
     return { data: null, error: `New password must be at least ${MIN_PASSWORD_LENGTH} characters` };
   }
+  const parsed = PasswordSchema.safeParse(newPassword);
+  if (!parsed.success) {
+    return { data: null, error: parsed.error.issues[0]?.message ?? 'Invalid password' };
+  }
   if (currentPassword === newPassword) {
     return { data: null, error: 'New password must differ from current password' };
   }
@@ -165,12 +175,29 @@ export async function changeAccountPassword(
   const resolved = await resolveAuthUserId();
   if ('error' in resolved) return { data: null, error: resolved.error };
 
+  // Rate-limit the online brute-force surface: each call re-verifies the
+  // current password via signInWithPassword. Keyed by IP + userId so a single
+  // attacker can't hammer one account regardless of IP rotation.
+  try {
+    const h = await headers();
+    const ip = getClientIp(new Request('http://x', { headers: h }));
+    const rl = await checkRateLimit(
+      'login',
+      `${ip}:${resolved.authUserId}`,
+      BUCKETS.LOGIN_ATTEMPTS.max,
+      BUCKETS.LOGIN_ATTEMPTS.windowMs,
+    );
+    if (!rl.ok) return { data: null, error: rl.error ?? 'Too many attempts, please try again later.' };
+  } catch {
+    // headers() may be unavailable in some test environments; fall through.
+  }
+
   const { createServerClient } = await import('@/lib/supabase');
   const supabase = createServerClient();
 
   const { data: userData, error: userErr } = await supabase.auth.admin.getUserById(resolved.authUserId);
   if (userErr || !userData.user?.email) {
-    return { data: null, error: userErr?.message || 'User not found' };
+    return { data: null, error: userErr ? safeError(userErr) : 'User not found' };
   }
 
   // Verify current password by attempting sign-in on a throwaway anon client.
@@ -185,7 +212,7 @@ export async function changeAccountPassword(
   const { error: updErr } = await supabase.auth.admin.updateUserById(resolved.authUserId, {
     password: newPassword,
   });
-  if (updErr) return { data: null, error: updErr.message };
+  if (updErr) return { data: null, error: safeError(updErr) };
 
   return { data: { success: true }, error: null };
 }
@@ -202,39 +229,79 @@ export async function changeAccountEmail(
   const resolved = await resolveAuthUserId();
   if ('error' in resolved) return { data: null, error: resolved.error };
 
+  // Rate-limit email changes per user to prevent mass-account takeover if a
+  // session cookie is stolen. GENERIC_WRITE is the right shape — per-user,
+  // 60/min, tight enough to make abuse obvious without blocking real use.
+  const rl = await checkRateLimit(
+    'change-email',
+    resolved.authUserId,
+    BUCKETS.GENERIC_WRITE.max,
+    BUCKETS.GENERIC_WRITE.windowMs,
+  );
+  if (!rl.ok) return { data: null, error: rl.error ?? 'Too many attempts, please try again later.' };
+
   const { createServerClient } = await import('@/lib/supabase');
   const supabase = createServerClient();
 
   const { data: userData, error: userErr } = await supabase.auth.admin.getUserById(resolved.authUserId);
   if (userErr || !userData.user?.email) {
-    return { data: null, error: userErr?.message || 'User not found' };
+    return { data: null, error: userErr ? safeError(userErr) : 'User not found' };
   }
   const currentEmail = userData.user.email;
   if (newEmail === currentEmail.toLowerCase()) {
     return { data: null, error: 'New email is the same as current email' };
   }
 
-  // Verify current password before changing email.
+  // Verify current password before changing email. We reuse the anon client's
+  // signInWithPassword so we never trust a claim coming from the client — and
+  // we grab the user's access token from that sign-in so we can do the email
+  // change as the user, not as service-role.
   const anon = anonClient();
-  const { error: signInErr } = await anon.auth.signInWithPassword({
+  const { data: signInData, error: signInErr } = await anon.auth.signInWithPassword({
     email: currentEmail,
     password: currentPassword,
   });
-  if (signInErr) return { data: null, error: 'Current password is incorrect' };
-  await anon.auth.signOut();
-
-  const { error: updErr } = await supabase.auth.admin.updateUserById(resolved.authUserId, {
-    email: newEmail,
-    email_confirm: true,
-  });
-  if (updErr) return { data: null, error: updErr.message };
-
-  // Mirror email on staff / salon_partners rows so lookups by email still work.
-  if (resolved.role === 'partner') {
-    await supabase.from('salon_partners').update({ email: newEmail }).eq('id', resolved.session.staffId);
-  } else if (resolved.role === 'staff') {
-    await supabase.from('staff').update({ email: newEmail }).eq('id', resolved.session.staffId);
+  if (signInErr || !signInData.session) {
+    await anon.auth.signOut().catch(() => {});
+    return { data: null, error: 'Current password is incorrect' };
   }
+
+  // Email change flow (Supabase "double-confirm" when Secure email change is on):
+  //   1. user.auth.updateUser({ email }) — triggered via the user's own
+  //      access token so Supabase sends the verification email and keeps the
+  //      OLD email in place until both old and new addresses confirm.
+  //   2. We do NOT call supabase.auth.admin.updateUserById({ email_confirm: true }),
+  //      which would bypass verification and hand the account to anyone who
+  //      submits a new email (no link click required). The old code did this.
+  //
+  // The user's email on the auth row only flips to `newEmail` AFTER they
+  // click the confirmation link(s). Until then, getAccountEmail() still
+  // returns their current email — that's expected behaviour.
+  //
+  // We use the user's access token by passing it as the Authorization header
+  // on a fresh supabase client. This is the "client-authenticated" path the
+  // task description mentions; no service-role bypass.
+  const userAccessToken = signInData.session.access_token;
+  const { createClient: createAuthedClient } = await import('@supabase/supabase-js');
+  const authed = createAuthedClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      auth: { persistSession: false, autoRefreshToken: false },
+      global: { headers: { Authorization: `Bearer ${userAccessToken}` } },
+    },
+  );
+  const { error: updErr } = await authed.auth.updateUser({ email: newEmail });
+  await anon.auth.signOut().catch(() => {});
+  if (updErr) return { data: null, error: safeError(updErr) };
+
+  // Intentionally NOT mirroring email to staff / salon_partners rows here.
+  // The auth.users row won't change until the user confirms, so writing the
+  // tentative newEmail to staff.email or salon_partners.email would put the
+  // lookup tables out of sync with reality and create a window where the user
+  // appears under both old and new emails. When they confirm, re-login via
+  // resolveUserRole will link by auth_user_id regardless. If we ever need to
+  // mirror, do it from a Supabase email-change webhook, not from this action.
 
   return { data: { email: newEmail }, error: null };
 }

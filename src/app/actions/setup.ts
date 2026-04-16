@@ -1,10 +1,62 @@
 'use server';
 
+import { headers } from 'next/headers';
 import { createServerClient } from '@/lib/supabase';
+import { createServerClient as createSupabaseSSRClient } from '@supabase/auth-helpers-nextjs';
+import { cookies } from 'next/headers';
 import { sendEmail } from '@/lib/email-sender';
 import { welcomeEmail } from '@/lib/email-templates';
+import { checkRateLimit } from '@/lib/with-rate-limit';
+import { BUCKETS } from '@/lib/rate-limit-buckets';
+import { getClientIp } from '@/lib/rate-limit';
+import { safeError } from '@/lib/action-error';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/**
+ * Resolve the Supabase Auth user for the current request from cookies.
+ * Returns null when there's no valid session. Used by setupSalon() — setup
+ * is a pre-session flow (no iCut JWT yet) so we authenticate against the
+ * Supabase Auth cookie the signup page wrote after createUser.
+ */
+async function getAuthUserFromCookies(): Promise<{ id: string; email?: string } | null> {
+  try {
+    const cookieStore = await cookies();
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    if (!url || !anonKey) return null;
+    const ssr = createSupabaseSSRClient(url, anonKey, {
+      cookies: {
+        getAll: () => cookieStore.getAll(),
+        setAll: () => {
+          // Server Actions during setup should never rewrite auth cookies —
+          // login already issued them. Silently no-op so we don't throw
+          // trying to mutate cookies outside a proper response context.
+        },
+      },
+    });
+    const { data, error } = await ssr.auth.getUser();
+    if (error || !data?.user) return null;
+    return { id: data.user.id, email: data.user.email };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Shared helper: read the client IP from the request headers. Wrapped in
+ * try/catch because `headers()` is only available in a request scope — during
+ * unit tests it may throw, and in that case we want to skip rate limiting
+ * rather than crash.
+ */
+async function getIpOrUnknown(): Promise<string> {
+  try {
+    const h = await headers();
+    return getClientIp(new Request('http://x', { headers: h }));
+  } catch {
+    return 'unknown';
+  }
+}
 
 /**
  * Check whether an email is already registered with Supabase Auth.
@@ -18,6 +70,17 @@ export async function checkEmailAvailable(
   if (!normalized || !EMAIL_RE.test(normalized)) {
     return { available: false, reason: 'invalid' };
   }
+
+  // Rate-limit: legitimate users retype emails a handful of times during
+  // signup, scrapers want thousands of lookups. 30/hour/IP separates the two.
+  const ip = await getIpOrUnknown();
+  const rl = await checkRateLimit(
+    'email-availability',
+    ip,
+    BUCKETS.EMAIL_AVAILABILITY.max,
+    BUCKETS.EMAIL_AVAILABILITY.windowMs,
+  );
+  if (!rl.ok) return { available: true, reason: 'error' };
 
   const supabase = createServerClient();
 
@@ -60,8 +123,10 @@ export async function checkEmailAvailable(
   }
 }
 
-// Setup does NOT call verifySession — there is no session yet during first-time setup.
-// The owner is authenticated via Supabase Auth (owner_id comes from getUser()).
+// Setup does NOT call verifySession — there is no iCut JWT yet during
+// first-time setup. Instead we authenticate against the Supabase Auth cookie
+// the signup page wrote (getAuthUserFromCookies above). Owner identity must
+// come from that verified auth user — NEVER trust a client-supplied ownerId.
 
 /**
  * Public lookup so the setup wizard can validate a sales agent code before
@@ -74,13 +139,26 @@ export async function lookupAgentByCode(
 ): Promise<{ data: { name: string } | null; error: string | null }> {
   const trimmed = code?.trim().toUpperCase();
   if (!trimmed) return { data: null, error: 'Code is required' };
+
+  // Brute-force surface: the code space is small (1000) and the endpoint
+  // reveals agent names. Throttle per-IP with the GENERIC_READ shape so real
+  // users typing their code don't trip but scrapers get stalled.
+  const ip = await getIpOrUnknown();
+  const rl = await checkRateLimit(
+    'agent-lookup',
+    ip,
+    BUCKETS.GENERIC_READ.max,
+    BUCKETS.GENERIC_READ.windowMs,
+  );
+  if (!rl.ok) return { data: null, error: rl.error ?? 'Too many lookups, please slow down.' };
+
   const supabase = createServerClient();
   const { data, error } = await supabase
     .from('sales_agents')
     .select('name, active')
     .eq('code', trimmed)
     .maybeSingle();
-  if (error) return { data: null, error: error.message };
+  if (error) return { data: null, error: safeError(error) };
   if (!data || !data.active) return { data: null, error: null };
   return { data: { name: data.name }, error: null };
 }
@@ -103,6 +181,29 @@ export async function setupSalon(data: {
   partners: Array<{ name: string; email: string; phone: string; password: string }>;
   staff: Array<{ name: string; email: string; phone: string; role: string; password: string; baseSalary?: number; commissionType?: string; commissionRate?: number }>;
 }) {
+  // Defense-in-depth: setupSalon already requires a Supabase auth session
+  // (ownerId), but an attacker who has a valid auth cookie could still script
+  // repeated setup calls. A SIGNUP-shape per-IP cap matches the spirit of the
+  // bucket (new-account farming).
+  const ip = await getIpOrUnknown();
+  const rl = await checkRateLimit(
+    'setup-salon',
+    ip,
+    BUCKETS.SIGNUP.max,
+    BUCKETS.SIGNUP.windowMs,
+  );
+  if (!rl.ok) return { data: null, error: rl.error ?? 'Too many setup attempts, please try again later.' };
+
+  // Authenticate via Supabase Auth cookie. We REJECT any client-supplied
+  // ownerId that doesn't match — otherwise a motivated caller could take
+  // over someone else's salon by passing their user id.
+  const authUser = await getAuthUserFromCookies();
+  if (!authUser) return { data: null, error: 'Not authenticated' };
+  if (data.ownerId && data.ownerId !== authUser.id) {
+    return { data: null, error: 'Not allowed' };
+  }
+  const ownerId = authUser.id;
+
   const supabase = createServerClient();
 
   if (!data.phone?.trim()) return { data: null, error: 'Salon phone is required' };
@@ -114,13 +215,24 @@ export async function setupSalon(data: {
   }
 
   // Resolve target salon id: prefer explicit existingSalonId, else the owner's
-  // existing salon (retry case where the prior setup attempt already created one).
+  // existing salon (retry case where the prior setup attempt already created
+  // one). For existingSalonId, verify the caller owns it — otherwise they
+  // could overwrite another salon's profile.
   let targetSalonId = data.existingSalonId;
-  if (!targetSalonId && data.ownerId) {
+  if (targetSalonId) {
+    const { data: existing } = await supabase
+      .from('salons')
+      .select('id, owner_id')
+      .eq('id', targetSalonId)
+      .maybeSingle();
+    if (!existing) return { data: null, error: 'Salon not found' };
+    if (existing.owner_id !== ownerId) return { data: null, error: 'Not allowed' };
+  }
+  if (!targetSalonId) {
     const { data: ownedSalon } = await supabase
       .from('salons')
       .select('id')
-      .eq('owner_id', data.ownerId)
+      .eq('owner_id', ownerId)
       .maybeSingle();
     if (ownedSalon) targetSalonId = ownedSalon.id;
   }
@@ -164,7 +276,7 @@ export async function setupSalon(data: {
       address: data.address,
       phone: data.phone,
       whatsapp: data.whatsapp,
-      owner_id: data.ownerId,
+      owner_id: ownerId,
       setup_complete: true,
       prayer_block_enabled: data.prayerBlockEnabled,
       ...(soldByAgentId ? { sold_by_agent_id: soldByAgentId } : {}),
@@ -172,7 +284,7 @@ export async function setupSalon(data: {
     .select()
     .single();
 
-  if (salonErr) return { data: null, error: salonErr.message };
+  if (salonErr) return { data: null, error: safeError(salonErr) };
 
   // Create main branch — prefer user-provided name, fall back to "{city} Branch"
   // or "Main Branch" if neither was supplied.
@@ -192,7 +304,7 @@ export async function setupSalon(data: {
     .select()
     .single();
 
-  if (branchErr) return { data: null, error: branchErr.message };
+  if (branchErr) return { data: null, error: safeError(branchErr) };
 
   // Create services
   if (data.services.length > 0) {
@@ -206,7 +318,7 @@ export async function setupSalon(data: {
         sort_order: i,
       }))
     );
-    if (svcErr) return { data: null, error: svcErr.message };
+    if (svcErr) return { data: null, error: safeError(svcErr) };
   }
 
   // Create partners — each gets a Supabase Auth account
@@ -217,7 +329,7 @@ export async function setupSalon(data: {
       email_confirm: true,
     });
 
-    if (authErr) return { data: null, error: `Failed to create account for ${p.name}: ${authErr.message}` };
+    if (authErr) return { data: null, error: `Failed to create account for ${p.name}: ${safeError(authErr)}` };
 
     const { error: partnerErr } = await supabase.from('salon_partners').insert({
       salon_id: newSalon.id,
@@ -227,7 +339,7 @@ export async function setupSalon(data: {
       auth_user_id: authUser.user.id,
       pin_code: null,
     });
-    if (partnerErr) return { data: null, error: partnerErr.message };
+    if (partnerErr) return { data: null, error: safeError(partnerErr) };
   }
 
   // Create staff — each gets a Supabase Auth account
@@ -238,7 +350,7 @@ export async function setupSalon(data: {
       email_confirm: true,
     });
 
-    if (authErr) return { data: null, error: `Failed to create account for ${s.name}: ${authErr.message}` };
+    if (authErr) return { data: null, error: `Failed to create account for ${s.name}: ${safeError(authErr)}` };
 
     const { error: staffErr } = await supabase.from('staff').insert({
       salon_id: newSalon.id,
@@ -253,12 +365,12 @@ export async function setupSalon(data: {
       commission_type: s.commissionType && s.commissionType !== 'none' ? s.commissionType : null,
       commission_rate: s.commissionRate ?? 0,
     });
-    if (staffErr) return { data: null, error: staffErr.message };
+    if (staffErr) return { data: null, error: safeError(staffErr) };
   }
 
   // Send welcome email — best-effort, failures don't block setup.
   try {
-    const { data: authData } = await supabase.auth.admin.getUserById(data.ownerId);
+    const { data: authData } = await supabase.auth.admin.getUserById(ownerId);
     const ownerEmail = authData?.user?.email;
     if (ownerEmail) {
       const dashboardUrl = process.env.NEXT_PUBLIC_APP_URL

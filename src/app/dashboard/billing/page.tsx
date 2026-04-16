@@ -8,6 +8,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { getBillingData, type BillingData, type BillingPaymentRow } from '@/app/actions/billing';
+import { getPaymentScreenshotUrl } from '@/app/actions/storage';
 import { PaymentSubmitModal } from '@/components/payment-submit-modal';
 import { DEFAULT_PLANS, type PlanOption } from '@/lib/bank-details';
 import { formatPKDate } from '@/lib/utils/dates';
@@ -23,6 +24,24 @@ export default function BillingPage() {
   const [loading, setLoading] = useState(true);
   const [renewPlan, setRenewPlan] = useState<PlanOption | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
+  const [viewingId, setViewingId] = useState<string | null>(null);
+
+  // Click-to-view handler — the bucket is private, so we mint a signed URL
+  // on demand and open it in a new tab rather than storing expiring links
+  // on the page.
+  async function viewScreenshot(paymentId: string) {
+    setViewingId(paymentId);
+    try {
+      const url = await getPaymentScreenshotUrl(paymentId);
+      if (!url) {
+        toast.error('Screenshot not available');
+        return;
+      }
+      window.open(url, '_blank', 'noopener,noreferrer');
+    } finally {
+      setViewingId(null);
+    }
+  }
 
   const load = useCallback(async () => {
     const { data, error } = await getBillingData();
@@ -215,15 +234,15 @@ export default function BillingPage() {
                           </span>
                         </TableCell>
                         <TableCell className="pr-4">
-                          {row.screenshot_url ? (
-                            <a
-                              href={row.screenshot_url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-xs text-gold hover:underline"
+                          {row.screenshot_path || row.screenshot_url ? (
+                            <button
+                              type="button"
+                              onClick={() => viewScreenshot(row.id)}
+                              disabled={viewingId === row.id}
+                              className="text-xs text-gold hover:underline disabled:opacity-50"
                             >
-                              View
-                            </a>
+                              {viewingId === row.id ? 'Loading…' : 'View'}
+                            </button>
                           ) : (
                             <span className="text-xs text-muted-foreground">—</span>
                           )}

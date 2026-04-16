@@ -1,8 +1,8 @@
 'use server';
 
-import { cookies } from 'next/headers';
 import { createServerClient } from '@/lib/supabase';
-import { verifySession, signSession } from './auth';
+import { verifySession, signSession, resolveAdminRoleByAuthId } from './auth';
+import { safeError } from '@/lib/action-error';
 import type { SubscriptionPlan, SubscriptionStatus } from '@/types/database';
 
 async function requireSuperAdmin() {
@@ -393,7 +393,7 @@ export async function impersonateSalon(salonId: string): Promise<{
     .select('*')
     .eq('id', salonId)
     .maybeSingle();
-  if (salonErr) return { data: null, error: salonErr.message };
+  if (salonErr) return { data: null, error: safeError(salonErr) };
   if (!salon) return { data: null, error: 'Salon not found' };
 
   const { data: branches } = await supabase
@@ -425,21 +425,31 @@ export async function impersonateSalon(salonId: string): Promise<{
   });
   const tokenHash = linkData?.properties?.hashed_token;
   if (linkErr || !tokenHash) {
-    return { data: null, error: linkErr?.message || 'Could not mint owner session' };
+    return { data: null, error: linkErr ? safeError(linkErr) : 'Could not mint owner session' };
   }
 
+  // TODO: once the admin_impersonation_sessions table ships (separate SQL
+  // agent), write a row here keyed by this admin auth user id and stash the
+  // row id on the JWT instead of trusting the nested impersonatedBy blob on
+  // its own. For now we stash the admin's auth user id so exitImpersonation()
+  // can re-verify against admin_users before restoring super_admin.
   await signSession({
     salonId: salon.id,
     staffId: salon.owner_id,
     role: 'owner',
     branchId: mainBranch.id,
     name: `Admin viewing ${salon.name}`,
-    impersonatedBy: { staffId: session.staffId, name: session.name || 'Super Admin' },
+    impersonatedBy: {
+      staffId: session.staffId,
+      name: session.name || 'Super Admin',
+      adminAuthUserId: session.staffId,
+    },
   });
 
-  const cookieStore = await cookies();
-  cookieStore.set('icut-session', '1', { path: '/', sameSite: 'strict' });
-  cookieStore.set('icut-role', 'owner', { path: '/', sameSite: 'strict' });
+  // Previously this action also set cleartext icut-session/icut-role cookies
+  // for the proxy gate to read. The proxy now verifies the HttpOnly icut-token
+  // JWT instead, so those cookies are gone — the fresh signSession above is
+  // the single source of truth for the impersonated role.
 
   return {
     data: {
@@ -465,16 +475,30 @@ export async function exitImpersonation(): Promise<{
   if (!session.impersonatedBy) {
     return { success: false, error: 'Not currently impersonating', supabaseAuth: null };
   }
+
+  // Defense-in-depth: the JWT's impersonatedBy blob is signed by us and can't
+  // be forged, but if a super admin were demoted mid-impersonation (e.g. a
+  // second super admin revoked them via admin_users.active=false) we must
+  // NOT restore their admin session. Re-check admin_users by auth user id
+  // before re-issuing.
+  //
+  // TODO: once admin_impersonation_sessions exists, also verify the row id
+  // stashed on the token and mark the session row as closed.
+  const adminAuthUserId = session.impersonatedBy.adminAuthUserId || session.impersonatedBy.staffId;
+  const adminRole = await resolveAdminRoleByAuthId(adminAuthUserId);
+  if (adminRole !== 'super_admin') {
+    return { success: false, error: 'Original admin is no longer authorized', supabaseAuth: null };
+  }
+
   await signSession({
     salonId: 'super-admin',
-    staffId: session.impersonatedBy.staffId,
+    staffId: adminAuthUserId,
     role: 'super_admin',
     branchId: '',
     name: session.impersonatedBy.name,
   });
-  const cookieStore = await cookies();
-  cookieStore.set('icut-session', '1', { path: '/', sameSite: 'strict' });
-  cookieStore.set('icut-role', 'super_admin', { path: '/', sameSite: 'strict' });
+  // Previously also mirrored icut-session + icut-role here. Proxy now reads
+  // role from the verified JWT, so those cleartext cookies are gone.
 
   // Mint a fresh Supabase Auth session for the super admin so the browser's
   // Supabase client flips back from the impersonated owner. Without this the
@@ -484,7 +508,7 @@ export async function exitImpersonation(): Promise<{
   let supabaseAuth: { tokenHash: string; email: string } | null = null;
   try {
     const supabase = createServerClient();
-    const { data: adminUser } = await supabase.auth.admin.getUserById(session.impersonatedBy.staffId);
+    const { data: adminUser } = await supabase.auth.admin.getUserById(adminAuthUserId);
     const adminEmail = adminUser?.user?.email;
     if (adminEmail) {
       const { data: linkData } = await supabase.auth.admin.generateLink({
@@ -540,7 +564,7 @@ export async function deleteSalonAndAllData(
     .select('id, name, owner_id')
     .eq('id', salonId)
     .maybeSingle();
-  if (loadErr) return { success: false, deletedAuthUsers: 0, error: loadErr.message };
+  if (loadErr) return { success: false, deletedAuthUsers: 0, error: safeError(loadErr) };
   if (!salon) return { success: false, deletedAuthUsers: 0, error: 'Salon not found' };
   if (confirmName.trim() !== salon.name) {
     return { success: false, deletedAuthUsers: 0, error: 'Salon name confirmation does not match' };
@@ -614,31 +638,31 @@ export async function deleteSalonAndAllData(
   ];
   for (const [table, column, ids] of blockerSequence) {
     const err = await purge(table, column, ids);
-    if (err) return { success: false, deletedAuthUsers: 0, error: `${table}: ${err.message}` };
+    if (err) return { success: false, deletedAuthUsers: 0, error: `${table}: ${safeError(err)}` };
   }
   // stock_movements may also point at products via product_id (a separate
   // NO ACTION FK); catch those too in case any survived the branch_id pass
   // (e.g. a movement logged against a product but with branch_id null).
   const stockProductErr = await purge('stock_movements', 'product_id', productIds);
-  if (stockProductErr) return { success: false, deletedAuthUsers: 0, error: `stock_movements/product: ${stockProductErr.message}` };
+  if (stockProductErr) return { success: false, deletedAuthUsers: 0, error: `stock_movements/product: ${safeError(stockProductErr)}` };
 
   // Step 2: tips → bills (NO ACTION) → appointments (NO ACTION). Have to
   // unwind the chain in reverse: tips first so bills can drop, bills before
   // appointments so the bills.appointment_id FK doesn't block the
   // appointments delete. tips lacks salon_id; scope via staff_id.
   const tipsErr = await purge('tips', 'staff_id', staffIds);
-  if (tipsErr) return { success: false, deletedAuthUsers: 0, error: `tips: ${tipsErr.message}` };
+  if (tipsErr) return { success: false, deletedAuthUsers: 0, error: `tips: ${safeError(tipsErr)}` };
 
   const { error: billErr } = await supabase.from('bills').delete().eq('salon_id', salonId);
-  if (billErr) return { success: false, deletedAuthUsers: 0, error: `bills: ${billErr.message}` };
+  if (billErr) return { success: false, deletedAuthUsers: 0, error: `bills: ${safeError(billErr)}` };
   const { error: aptErr } = await supabase.from('appointments').delete().eq('salon_id', salonId);
-  if (aptErr) return { success: false, deletedAuthUsers: 0, error: `appointments: ${aptErr.message}` };
+  if (aptErr) return { success: false, deletedAuthUsers: 0, error: `appointments: ${safeError(aptErr)}` };
   const { error: loyaltyErr } = await supabase.from('loyalty_rules').delete().eq('salon_id', salonId);
-  if (loyaltyErr) return { success: false, deletedAuthUsers: 0, error: `loyalty_rules: ${loyaltyErr.message}` };
+  if (loyaltyErr) return { success: false, deletedAuthUsers: 0, error: `loyalty_rules: ${safeError(loyaltyErr)}` };
 
   // Step 3: salons cascade handles the rest (branches, staff, services, etc.)
   const { error: delErr } = await supabase.from('salons').delete().eq('id', salonId);
-  if (delErr) return { success: false, deletedAuthUsers: 0, error: `salons: ${delErr.message}` };
+  if (delErr) return { success: false, deletedAuthUsers: 0, error: `salons: ${safeError(delErr)}` };
 
   // Best-effort auth user removal — individual failures are non-fatal (data
   // is already gone, orphan auth rows can be cleaned up later).

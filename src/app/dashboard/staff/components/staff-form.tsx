@@ -50,9 +50,9 @@ export function StaffForm({ staff, onSaved }: StaffFormProps) {
     if (!name.trim()) { toast.error('Name is required'); return; }
     if (!phone.trim()) { toast.error('Phone is required'); return; }
     if (!isEditing && !email.trim()) { toast.error('Email is required'); return; }
-    if (!isEditing && password.length < 6) { toast.error('Password must be at least 6 characters'); return; }
+    if (!isEditing && password.length < 10) { toast.error('Password must be at least 10 characters'); return; }
     if (!isEditing && password !== confirmPassword) { toast.error('Passwords do not match'); return; }
-    if (isEditing && password && password.length < 6) { toast.error('Password must be at least 6 characters'); return; }
+    if (isEditing && password && password.length < 10) { toast.error('Password must be at least 10 characters'); return; }
     if (isEditing && password && password !== confirmPassword) { toast.error('Passwords do not match'); return; }
 
     setSaving(true);
@@ -120,7 +120,7 @@ export function StaffForm({ staff, onSaved }: StaffFormProps) {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <Label>{isEditing ? 'New Password (leave blank to keep)' : 'Password *'}</Label>
-            <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} minLength={6} className="mt-1" />
+            <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} minLength={10} className="mt-1" />
           </div>
           <div>
             <Label>Confirm Password</Label>

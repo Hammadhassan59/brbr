@@ -61,7 +61,11 @@ export async function GET() {
     supabase.from('branches').select('*').eq('salon_id', session.salonId).order('is_main', { ascending: false }),
     supabase.from('staff').select('id, name, role, email, phone, branch_id, base_salary, commission_type, commission_rate, is_active').eq('salon_id', session.salonId).order('name'),
     supabase.from('services').select('id, name, category, base_price, duration_minutes, is_active').eq('salon_id', session.salonId).order('name'),
-    supabase.from('clients').select('id, name, phone, udhaar_balance, total_visits, last_visit_at, created_at').eq('salon_id', session.salonId).order('created_at', { ascending: false }),
+    // Cap at 5,000 rows to prevent a DoS where a salon with 100k+ clients
+    // allocates unbounded memory during PDF generation. The summary counts
+    // and udhaar table below still reflect this capped slice; anything
+    // larger should use a paginated CSV export instead.
+    supabase.from('clients').select('id, name, phone, udhaar_balance, total_visits, last_visit_at, created_at').eq('salon_id', session.salonId).order('created_at', { ascending: false }).limit(5000),
     supabase.from('products').select('id, name, brand, current_stock, low_stock_threshold, unit, purchase_price, retail_price').eq('salon_id', session.salonId).eq('is_active', true).order('name'),
   ]);
 

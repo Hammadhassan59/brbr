@@ -22,13 +22,20 @@ vi.mock('@/lib/supabase', () => ({
 vi.mock('@/lib/email-sender', () => ({ sendEmail: vi.fn() }));
 vi.mock('@/lib/email-templates', () => ({ welcomeEmail: vi.fn() }));
 
+vi.mock('next/headers', () => ({
+  headers: async () => new Headers({ 'x-forwarded-for': '127.0.0.1' }),
+}));
+
 const originalFetch = globalThis.fetch;
 
-beforeEach(() => {
+beforeEach(async () => {
   vi.clearAllMocks();
   process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://example.supabase';
   process.env.SUPABASE_SERVICE_ROLE_KEY = 'service-role';
   schemaMaybeSingle.mockReset();
+  // Clear rate-limit counters between tests.
+  const { resetRateLimit } = await import('../src/lib/rate-limit');
+  resetRateLimit('email-availability:127.0.0.1');
 });
 
 afterEach(() => {

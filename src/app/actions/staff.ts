@@ -2,6 +2,10 @@
 
 import { checkWriteAccess, getPlanLimits } from './auth';
 import { createServerClient } from '@/lib/supabase';
+import { staffUpdateSchema } from '@/lib/schemas';
+import { assertStaffOwned, assertBranchOwned, tenantErrorMessage } from '@/lib/tenant-guard';
+
+const ROLE_WRITABLE_BY: ReadonlyArray<string> = ['owner', 'partner', 'manager'];
 
 export async function createStaff(data: {
   branchId: string;
@@ -21,6 +25,14 @@ export async function createStaff(data: {
   const supabase = createServerClient();
 
   if (!data.phone?.trim()) return { data: null, error: 'Phone is required' };
+
+  // Branch must belong to this salon — otherwise the staff row gets created
+  // pointing at someone else's branch.
+  try {
+    await assertBranchOwned(data.branchId, session.salonId);
+  } catch (e) {
+    return { data: null, error: tenantErrorMessage(e) };
+  }
 
   // Enforce staff limit based on plan
   const { data: salon } = await supabase
@@ -75,19 +87,48 @@ export async function createStaff(data: {
   return { data: result, error: null };
 }
 
-export async function updateStaff(id: string, data: Record<string, unknown>) {
+export async function updateStaff(id: string, data: unknown) {
   const writeCheck = await checkWriteAccess();
   if (writeCheck.error !== null) return { error: writeCheck.error };
   const session = writeCheck.session;
   const supabase = createServerClient();
 
-  // Ensure salon_id matches session
-  data.salon_id = session.salonId;
+  // Mass-assignment guard: strip any keys not in the allow-list.
+  const parsed = staffUpdateSchema.safeParse(data);
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message || 'Invalid input' };
+  }
+  const update: Record<string, unknown> = { ...parsed.data };
+
+  // Role changes require owner/partner/manager (session.role comes from the
+  // JWT, so it's trusted).
+  if ('role' in update && !ROLE_WRITABLE_BY.includes(session.role)) {
+    return { error: 'Only owners, partners, or managers can change staff roles' };
+  }
+
+  // If branch is changing, it must belong to this salon.
+  if (typeof update.branch_id === 'string') {
+    try {
+      await assertBranchOwned(update.branch_id, session.salonId);
+    } catch (e) {
+      return { error: tenantErrorMessage(e) };
+    }
+  }
+
+  // Make absolutely sure the row being updated is ours — both via salon_id
+  // filter AND by pre-checking (so a missing row doesn't silently succeed
+  // on a zero-row update).
+  try {
+    await assertStaffOwned(id, session.salonId);
+  } catch (e) {
+    return { error: tenantErrorMessage(e) };
+  }
 
   const { error } = await supabase
     .from('staff')
-    .update(data)
-    .eq('id', id);
+    .update(update)
+    .eq('id', id)
+    .eq('salon_id', session.salonId);
 
   if (error) return { error: error.message };
   return { error: null };
@@ -104,9 +145,19 @@ export async function upsertAttendance(data: {
   lateMinutes?: number;
   deductionAmount?: number;
 }) {
-  const { error: writeError } = await checkWriteAccess();
-  if (writeError) return { error: writeError };
+  const writeCheck = await checkWriteAccess();
+  if (writeCheck.error !== null) return { error: writeCheck.error };
+  const session = writeCheck.session;
   const supabase = createServerClient();
+
+  // Both the staff member AND the branch must be ours — attendance has no
+  // salon_id column, so these ownership checks are the only isolation.
+  try {
+    await assertStaffOwned(data.staffId, session.salonId);
+    await assertBranchOwned(data.branchId, session.salonId);
+  } catch (e) {
+    return { error: tenantErrorMessage(e) };
+  }
 
   const { error } = await supabase
     .from('attendance')
@@ -129,9 +180,17 @@ export async function upsertAttendance(data: {
 }
 
 export async function recordAdvance(staffId: string, amount: number, reason?: string | null) {
-  const { error: writeError } = await checkWriteAccess();
-  if (writeError) return { data: null, error: writeError };
+  const writeCheck = await checkWriteAccess();
+  if (writeCheck.error !== null) return { data: null, error: writeCheck.error };
+  const session = writeCheck.session;
   const supabase = createServerClient();
+
+  // advances has no salon_id column — staff ownership is the only isolation.
+  try {
+    await assertStaffOwned(staffId, session.salonId);
+  } catch (e) {
+    return { data: null, error: tenantErrorMessage(e) };
+  }
 
   const { data: result, error } = await supabase
     .from('advances')

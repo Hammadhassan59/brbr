@@ -242,10 +242,8 @@ export default function AdminSalonDetailPage({
       toast.error(error || 'Could not start impersonation');
       return;
     }
-    // Match the login flow — set session/role cookies client-side with 24h
-    // max-age. Server-action-set cookies race with window.location.href.
-    document.cookie = `icut-session=1; path=/; max-age=${60 * 60 * 24}; SameSite=Strict`;
-    document.cookie = `icut-role=owner; path=/; max-age=${60 * 60 * 24}; SameSite=Strict`;
+    // impersonateSalon() signed a new icut-token JWT with role=owner server-side.
+    // Proxy verifies that on the next navigation. No client-side cookie writes.
     // Mirror a normal owner login into Zustand so every {isOwner && ...} gate opens.
     setSalon(data.salon as unknown as Salon);
     setStoreBranches((data.branches as unknown) as Branch[]);

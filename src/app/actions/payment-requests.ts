@@ -5,6 +5,9 @@ import { verifySession } from './auth';
 import { sendEmail } from '@/lib/email-sender';
 import { paymentApprovedEmail, paymentDeniedEmail } from '@/lib/email-templates';
 import { accrueCommissionForPaymentRequest, reverseCommissionsForPaymentRequest } from './agent-commissions';
+import { checkRateLimit } from '@/lib/with-rate-limit';
+import { BUCKETS } from '@/lib/rate-limit-buckets';
+import { safeError } from '@/lib/action-error';
 
 type Plan = 'basic' | 'growth' | 'pro';
 type Method = 'bank' | 'jazzcash';
@@ -19,7 +22,13 @@ export interface PaymentRequest {
   method: Method | null;
   status: Status;
   duration_days: number;
+  // Legacy: old rows have screenshot_url set (full public URL from pre-
+  // migration-030 era). New rows leave it empty and use screenshot_path
+  // instead — see migration 029_storage_paths.sql.
   screenshot_url: string | null;
+  // Storage object path in the private payment-screenshots bucket. Render
+  // via getPaymentScreenshotUrl() which mints a short-lived signed URL.
+  screenshot_path: string | null;
   reviewed_by: string | null;
   reviewed_at: string | null;
   reviewer_notes: string | null;
@@ -69,8 +78,10 @@ async function lookupPlanPrice(plan: Plan): Promise<number> {
 /**
  * Owner-side: create a pending payment request for the current salon.
  * Accepts a FormData payload with the screenshot file plus form fields.
- * Uploads the screenshot to the payment-screenshots bucket then inserts the
- * request row referencing the public URL.
+ * Uploads the screenshot to the (private) payment-screenshots bucket and
+ * records the STORAGE PATH — not a URL. Signed URLs are minted at render
+ * time by getPaymentScreenshotUrl() so they never expire before an admin
+ * actually opens the payment.
  */
 export async function submitPaymentRequest(
   formData: FormData
@@ -84,6 +95,17 @@ export async function submitPaymentRequest(
   if (!session.salonId || session.salonId === 'super-admin') {
     return { data: null, error: 'No salon associated with this session' };
   }
+
+  // Rate-limit: legitimate payments are infrequent, each submission uploads a
+  // screenshot and sits in admin review. 5/hour/salon-user is generous for
+  // real use and kills spam.
+  const rl = await checkRateLimit(
+    'payment-submit',
+    `${session.salonId}:${session.staffId}`,
+    BUCKETS.PAYMENT_SUBMIT.max,
+    BUCKETS.PAYMENT_SUBMIT.windowMs,
+  );
+  if (!rl.ok) return { data: null, error: rl.error ?? 'Too many payment submissions, please try again later.' };
 
   const plan = String(formData.get('plan') || '') as Plan;
   const reference = String(formData.get('reference') || '').trim() || null;
@@ -103,7 +125,8 @@ export async function submitPaymentRequest(
   const supabase = createServerClient();
 
   // Upload screenshot first. Path is salon_id/uuid.ext so it's namespaced and
-  // not enumerable. Bucket is public-read but paths are random.
+  // not enumerable. Bucket is PRIVATE (migration 030); the object is only
+  // fetched via a short-lived signed URL minted at render time.
   const ext = screenshot.name.split('.').pop()?.toLowerCase().replace(/[^a-z0-9]/g, '') || 'jpg';
   const uuid = crypto.randomUUID();
   const path = `${session.salonId}/${uuid}.${ext}`;
@@ -114,15 +137,13 @@ export async function submitPaymentRequest(
       contentType: screenshot.type || 'image/jpeg',
       upsert: false,
     });
-  if (uploadErr) return { data: null, error: `Upload failed: ${uploadErr.message}` };
-
-  const { data: urlData } = supabase.storage
-    .from('payment-screenshots')
-    .getPublicUrl(path);
-  const screenshot_url = urlData.publicUrl;
+  if (uploadErr) return { data: null, error: `Upload failed: ${safeError(uploadErr)}` };
 
   const amount = await lookupPlanPrice(plan);
 
+  // Store the storage path in screenshot_path (new column, migration 029).
+  // We leave screenshot_url empty for new rows — read sites prefer
+  // screenshot_path and only fall back to screenshot_url for legacy rows.
   const { data, error } = await supabase
     .from('payment_requests')
     .insert({
@@ -131,7 +152,8 @@ export async function submitPaymentRequest(
       amount,
       reference,
       method,
-      screenshot_url,
+      screenshot_path: path,
+      screenshot_url: null,
       status: 'pending',
     })
     .select()
@@ -140,7 +162,7 @@ export async function submitPaymentRequest(
   if (error) {
     // Try to clean up the orphaned screenshot
     await supabase.storage.from('payment-screenshots').remove([path]).catch(() => {});
-    return { data: null, error: error.message };
+    return { data: null, error: safeError(error) };
   }
   return { data: data as PaymentRequest, error: null };
 }
@@ -218,7 +240,7 @@ export async function listPaymentRequests(
   }
 
   const { data, error } = await query.limit(200);
-  if (error) return { data: [], error: error.message };
+  if (error) return { data: [], error: safeError(error) };
   return { data: (data || []) as PaymentRequestWithSalon[], error: null };
 }
 
@@ -241,7 +263,7 @@ export async function getPaymentRequestCounts(): Promise<{
 
   const firstError = pending.error || approved.error || rejected.error;
   if (firstError) {
-    return { data: { pending: 0, approved: 0, rejected: 0 }, error: firstError.message };
+    return { data: { pending: 0, approved: 0, rejected: 0 }, error: safeError(firstError) };
   }
 
   return {
@@ -307,7 +329,7 @@ export async function approvePaymentRequest(
         : new Date().toISOString(),
     })
     .eq('id', request.salon_id);
-  if (salonErr) return { error: salonErr.message };
+  if (salonErr) return { error: safeError(salonErr) };
 
   const { error: reqErr } = await supabase
     .from('payment_requests')
@@ -320,7 +342,7 @@ export async function approvePaymentRequest(
       duration_days: days,
     })
     .eq('id', id);
-  if (reqErr) return { error: reqErr.message };
+  if (reqErr) return { error: safeError(reqErr) };
 
   // Commission accrual — no-ops if salon has no agent.
   await accrueCommissionForPaymentRequest({
@@ -393,7 +415,7 @@ export async function rejectPaymentRequest(
       reviewer_notes: options?.reason ?? null,
     })
     .eq('id', id);
-  if (error) return { error: error.message };
+  if (error) return { error: safeError(error) };
 
   // Owner notification — best-effort.
   try {
@@ -471,7 +493,7 @@ export async function reversePaymentRequest(
       reviewer_notes: reversalNote,
     })
     .eq('id', id);
-  if (reqErr) return { error: reqErr.message };
+  if (reqErr) return { error: safeError(reqErr) };
 
   await reverseCommissionsForPaymentRequest(id);
 

@@ -2,6 +2,8 @@
 
 import { checkWriteAccess } from './auth';
 import { createServerClient } from '@/lib/supabase';
+import { clientUpdateSchema } from '@/lib/schemas';
+import { assertClientOwned, tenantErrorMessage } from '@/lib/tenant-guard';
 
 export async function createClient(data: {
   name: string;
@@ -42,15 +44,20 @@ export async function createClient(data: {
   return { data: result, error: null };
 }
 
-export async function updateClient(id: string, data: Record<string, unknown>) {
+export async function updateClient(id: string, data: unknown) {
   const writeCheck = await checkWriteAccess();
   if (writeCheck.error !== null) return { error: writeCheck.error };
   const session = writeCheck.session;
   const supabase = createServerClient();
 
+  const parsed = clientUpdateSchema.safeParse(data);
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message || 'Invalid input' };
+  }
+
   const { error } = await supabase
     .from('clients')
-    .update(data)
+    .update(parsed.data)
     .eq('id', id)
     .eq('salon_id', session.salonId);
 
@@ -80,6 +87,15 @@ export async function recordUdhaarPayment(clientId: string, amount: number, paym
   const session = writeCheck.session;
   const supabase = createServerClient();
 
+  // Verify the client belongs to this salon BEFORE any insert — udhaar_payments
+  // has no salon_id column, so this is the only tenant guard on the insert.
+  let client: { id: string; salon_id: string; udhaar_balance: number | null };
+  try {
+    client = await assertClientOwned(clientId, session.salonId);
+  } catch (e) {
+    return { error: tenantErrorMessage(e) };
+  }
+
   const { error: paymentErr } = await supabase
     .from('udhaar_payments')
     .insert({
@@ -90,22 +106,15 @@ export async function recordUdhaarPayment(clientId: string, amount: number, paym
 
   if (paymentErr) return { error: paymentErr.message };
 
-  // Get current balance to compute new balance
-  const { data: client } = await supabase
+  // Compute new balance from the row we already fetched, then update.
+  const current = Number(client.udhaar_balance ?? 0);
+  const { error: updErr } = await supabase
     .from('clients')
-    .select('udhaar_balance')
+    .update({ udhaar_balance: Math.max(0, current - amount) })
     .eq('id', clientId)
-    .eq('salon_id', session.salonId)
-    .single();
+    .eq('salon_id', session.salonId);
 
-  if (client) {
-    await supabase
-      .from('clients')
-      .update({ udhaar_balance: Math.max(0, client.udhaar_balance - amount) })
-      .eq('id', clientId)
-      .eq('salon_id', session.salonId);
-  }
-
+  if (updErr) return { error: updErr.message };
   return { error: null };
 }
 
