@@ -63,6 +63,28 @@ export async function checkEmailAvailable(
 // Setup does NOT call verifySession — there is no session yet during first-time setup.
 // The owner is authenticated via Supabase Auth (owner_id comes from getUser()).
 
+/**
+ * Public lookup so the setup wizard can validate a sales agent code before
+ * the user finishes signup. Returns only the agent's display name — never
+ * email, phone, or user_id. The codespace is small (1000) but the response
+ * exposes nothing more than would be visible on a marketing flyer.
+ */
+export async function lookupAgentByCode(
+  code: string
+): Promise<{ data: { name: string } | null; error: string | null }> {
+  const trimmed = code?.trim().toUpperCase();
+  if (!trimmed) return { data: null, error: 'Code is required' };
+  const supabase = createServerClient();
+  const { data, error } = await supabase
+    .from('sales_agents')
+    .select('name, active')
+    .eq('code', trimmed)
+    .maybeSingle();
+  if (error) return { data: null, error: error.message };
+  if (!data || !data.active) return { data: null, error: null };
+  return { data: { name: data.name }, error: null };
+}
+
 export async function setupSalon(data: {
   existingSalonId?: string;
   name: string;
@@ -74,6 +96,7 @@ export async function setupSalon(data: {
   whatsapp: string;
   branchName?: string;
   ownerId: string;
+  agentCode?: string;
   prayerBlockEnabled: boolean;
   workingHours: Record<string, unknown>;
   services: Array<{ name: string; category: string; price: number; duration: number }>;
@@ -114,6 +137,21 @@ export async function setupSalon(data: {
     uniqueSlug = `${data.slug}-${attempt}`;
   }
 
+  // Resolve sales agent code → agent_id. Soft-fail: if code is missing or
+  // unknown we proceed without attribution rather than blocking signup. The
+  // commission accrual in payment-requests.approvePaymentRequest() reads
+  // salons.sold_by_agent_id when the first payment lands, so as long as we
+  // set it here the agent gets credited automatically on approval.
+  let soldByAgentId: string | null = null;
+  if (data.agentCode?.trim()) {
+    const { data: agent } = await supabase
+      .from('sales_agents')
+      .select('id, active')
+      .eq('code', data.agentCode.trim().toUpperCase())
+      .maybeSingle();
+    if (agent && agent.active) soldByAgentId = agent.id;
+  }
+
   // Create or update salon
   const { data: newSalon, error: salonErr } = await supabase
     .from('salons')
@@ -129,6 +167,7 @@ export async function setupSalon(data: {
       owner_id: data.ownerId,
       setup_complete: true,
       prayer_block_enabled: data.prayerBlockEnabled,
+      ...(soldByAgentId ? { sold_by_agent_id: soldByAgentId } : {}),
     })
     .select()
     .single();

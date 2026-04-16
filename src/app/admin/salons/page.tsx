@@ -37,6 +37,7 @@ export default function AdminSalonsPage() {
   const [salons, setSalons] = useState<Salon[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [enteringName, setEnteringName] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>(() => {
     if (typeof window !== 'undefined') return (localStorage.getItem('icut-admin-salons-view') as ViewMode) || 'card';
     return 'card';
@@ -67,8 +68,12 @@ export default function AdminSalonsPage() {
   }, [salons, search]);
 
   async function enterSalon(salon: Salon) {
+    // Show an overlay immediately so the click-to-navigation gap doesn't look
+    // like the app went offline. The overlay stays up through the hard nav.
+    setEnteringName(salon.name);
     const { data, error } = await impersonateSalon(salon.id);
     if (error || !data) {
+      setEnteringName(null);
       toast.error(error || 'Could not log in as this salon');
       return;
     }
@@ -80,6 +85,7 @@ export default function AdminSalonsPage() {
       token_hash: data.supabaseAuth.tokenHash,
     });
     if (otpErr) {
+      setEnteringName(null);
       toast.error('Could not establish salon session: ' + otpErr.message);
       return;
     }
@@ -116,6 +122,13 @@ export default function AdminSalonsPage() {
 
   return (
     <div className="space-y-4">
+      {enteringName && (
+        <div className="fixed inset-0 z-[100] bg-background/95 backdrop-blur-sm flex flex-col items-center justify-center gap-4">
+          <Loader2 className="w-8 h-8 animate-spin text-gold" />
+          <p className="text-sm font-medium text-foreground">Logging in as <span className="text-gold">{enteringName}</span>…</p>
+          <p className="text-xs text-muted-foreground">Loading salon dashboard</p>
+        </div>
+      )}
       {/* Header */}
       <div className="flex items-center justify-between">
         <h2 className="font-heading text-xl font-bold">All Salons ({salons.length})</h2>
@@ -199,7 +212,7 @@ export default function AdminSalonsPage() {
                     <Button variant="outline" size="sm" className="flex-1 text-xs gap-1" onClick={() => router.push(`/admin/salons/${salon.id}`)}>
                       <Settings className="w-3 h-3" /> Manage
                     </Button>
-                    <Button size="sm" className="flex-1 text-xs gap-1 bg-gold text-black border border-gold hover:bg-gold/90" onClick={() => enterSalon(salon)}>
+                    <Button size="sm" className="flex-1 text-xs gap-1 bg-gold text-black border border-gold hover:bg-gold/90" onClick={() => enterSalon(salon)} disabled={!!enteringName}>
                       <LogIn className="w-3 h-3" /> Login as Salon
                     </Button>
                   </div>
@@ -262,7 +275,7 @@ export default function AdminSalonsPage() {
                           <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={() => router.push(`/admin/salons/${salon.id}`)}>
                             <Settings className="w-3 h-3" /> Manage
                           </Button>
-                          <Button size="sm" className="h-7 text-xs gap-1 bg-gold text-black border border-gold hover:bg-gold/90" onClick={() => enterSalon(salon)}>
+                          <Button size="sm" className="h-7 text-xs gap-1 bg-gold text-black border border-gold hover:bg-gold/90" onClick={() => enterSalon(salon)} disabled={!!enteringName}>
                             <LogIn className="w-3 h-3" /> Login
                           </Button>
                         </div>

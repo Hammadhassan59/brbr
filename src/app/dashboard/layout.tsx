@@ -26,8 +26,9 @@ import { destroySession, refreshSalonData, getDashboardBootstrap } from '@/app/a
 interface NavItem {
   href: string;
   icon: typeof LayoutDashboard;
-  labelKey: 'dashboard' | 'appointments' | 'clients' | 'pos' | 'staff' | 'inventory' | 'expenses' | 'reports' | 'settings' | 'packages';
+  labelKey: 'dashboard' | 'appointments' | 'clients' | 'pos' | 'staff' | 'inventory' | 'expenses' | 'reports' | 'settings' | 'packages' | 'billing';
   access: StaffRoleAccess[];
+  ownerOnly?: boolean;
 }
 
 const ALL_NAV_ITEMS: NavItem[] = [
@@ -40,6 +41,7 @@ const ALL_NAV_ITEMS: NavItem[] = [
   { href: '/dashboard/expenses', icon: Wallet, labelKey: 'expenses', access: ['full', 'front_desk'] },
   { href: '/dashboard/packages', icon: Gift, labelKey: 'packages', access: ['full'] },
   { href: '/dashboard/reports', icon: BarChart3, labelKey: 'reports', access: ['full'] },
+  { href: '/dashboard/billing', icon: CreditCard, labelKey: 'billing', access: ['full'], ownerOnly: true },
 ];
 
 const ALL_MOBILE_NAV: NavItem[] = [
@@ -119,8 +121,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const canSwitchBranch = branches.length > 1 && (roleAccess === 'full' || isOwner || isPartner);
 
   const navItems = useMemo(
-    () => ALL_NAV_ITEMS.filter((item) => item.access.includes(roleAccess)),
-    [roleAccess]
+    () => ALL_NAV_ITEMS.filter((item) => {
+      if (!item.access.includes(roleAccess)) return false;
+      if (item.ownerOnly && !isOwner) return false;
+      return true;
+    }),
+    [roleAccess, isOwner]
   );
 
   const mobileNav = useMemo(

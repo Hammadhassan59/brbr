@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
+import { Copy } from 'lucide-react';
 import { getSalesAgent, updateAgentRates, setAgentActive, updateAgentProfile } from '@/app/actions/sales-agents';
 import type { SalesAgent } from '@/types/sales';
 import { Button } from '@/components/ui/button';
@@ -28,6 +29,7 @@ export default function AgentDetailPage() {
       renewalPct: String(data.renewal_pct),
     });
   }
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { load(); }, [params.id]);
 
   if (!agent) return <p className="text-muted-foreground">Loading…</p>;
@@ -57,6 +59,21 @@ export default function AgentDetailPage() {
   return (
     <div className="space-y-6 max-w-xl">
       <h2 className="font-heading text-2xl font-semibold">{agent.name}</h2>
+
+      <div className="border border-gold/30 bg-gold/5 rounded-lg p-4 flex items-center justify-between gap-4">
+        <div>
+          <p className="text-xs uppercase tracking-wider text-muted-foreground">Agent code</p>
+          <p className="font-mono text-2xl font-bold text-gold mt-1">{agent.code}</p>
+          <p className="text-xs text-muted-foreground mt-1">Share this code with new salons so the agent gets credit on signup.</p>
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => navigator.clipboard.writeText(agent.code).then(() => toast.success(`${agent.code} copied`))}
+        >
+          <Copy className="w-4 h-4 mr-1.5" /> Copy
+        </Button>
+      </div>
 
       <div className="space-y-4 border rounded-lg p-5">
         <h3 className="font-medium">Profile</h3>

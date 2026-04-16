@@ -146,6 +146,60 @@ export async function submitPaymentRequest(
 }
 
 /**
+ * Owner-side: bootstrap the /paywall page in one round trip. Returns the
+ * salon's name + status, the most recent payment request (so we can show a
+ * "submitted, awaiting review" panel), and the plan price table.
+ */
+export async function getPaywallContext(): Promise<{
+  data: {
+    salon: { id: string; name: string; subscription_status: string; subscription_plan: string | null };
+    pendingRequest: PaymentRequest | null;
+    planPrices: Record<Plan, number>;
+  } | null;
+  error: string | null;
+}> {
+  let session;
+  try {
+    session = await verifySession();
+  } catch {
+    return { data: null, error: 'Not authenticated' };
+  }
+  if (!session.salonId || session.salonId === 'super-admin') {
+    return { data: null, error: 'No salon associated with this session' };
+  }
+
+  const supabase = createServerClient();
+  const [{ data: salon }, { data: latest }] = await Promise.all([
+    supabase
+      .from('salons')
+      .select('id, name, subscription_status, subscription_plan')
+      .eq('id', session.salonId)
+      .maybeSingle(),
+    supabase
+      .from('payment_requests')
+      .select('*')
+      .eq('salon_id', session.salonId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+  ]);
+  if (!salon) return { data: null, error: 'Salon not found' };
+
+  const planPrices: Record<Plan, number> = {
+    basic: await lookupPlanPrice('basic'),
+    growth: await lookupPlanPrice('growth'),
+    pro: await lookupPlanPrice('pro'),
+  };
+
+  const pendingRequest = latest && latest.status === 'pending' ? (latest as PaymentRequest) : null;
+
+  return {
+    data: { salon: salon as { id: string; name: string; subscription_status: string; subscription_plan: string | null }, pendingRequest, planPrices },
+    error: null,
+  };
+}
+
+/**
  * Admin-side: list payment requests, optionally filtered by status.
  */
 export async function listPaymentRequests(

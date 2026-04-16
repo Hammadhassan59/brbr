@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Scissors, ChevronRight, ChevronLeft, Check, Plus, X, Sparkles, Users } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { supabase } from '@/lib/supabase';
-import { setupSalon, checkEmailAvailable } from '@/app/actions/setup';
+import { setupSalon, checkEmailAvailable, lookupAgentByCode } from '@/app/actions/setup';
 import { useLanguage } from '@/components/providers/language-provider';
 import { useAppStore } from '@/store/app-store';
 import { Button } from '@/components/ui/button';
@@ -103,6 +103,8 @@ export default function SetupPage() {
   const [whatsapp, setWhatsapp] = useState('');
   const [sameAsPhone, setSameAsPhone] = useState(true);
   const [branchName, setBranchName] = useState('');
+  const [agentCode, setAgentCode] = useState('');
+  const [agentLookup, setAgentLookup] = useState<{ status: 'idle' | 'checking' | 'ok' | 'bad'; name?: string }>({ status: 'idle' });
 
   // Step 3 — Ownership
   const [ownershipType, setOwnershipType] = useState<'single' | 'multiple'>('single');
@@ -155,6 +157,17 @@ export default function SetupPage() {
     return takenEmails[email.trim().toLowerCase()] === true;
   }
 
+  async function verifyAgentCode(rawCode: string) {
+    const code = rawCode.trim().toUpperCase();
+    if (!code) {
+      setAgentLookup({ status: 'idle' });
+      return;
+    }
+    setAgentLookup({ status: 'checking' });
+    const { data } = await lookupAgentByCode(code);
+    setAgentLookup(data ? { status: 'ok', name: data.name } : { status: 'bad' });
+  }
+
   // ─── Draft persistence ───
   // Save wizard state to localStorage on every change; restore on mount; clear on finish.
   const DRAFT_KEY = 'icut-setup-draft-v1';
@@ -174,6 +187,7 @@ export default function SetupPage() {
         if (typeof d.whatsapp === 'string') setWhatsapp(d.whatsapp);
         if (typeof d.sameAsPhone === 'boolean') setSameAsPhone(d.sameAsPhone);
         if (typeof d.branchName === 'string') setBranchName(d.branchName);
+        if (typeof d.agentCode === 'string') setAgentCode(d.agentCode);
         if (d.ownershipType) setOwnershipType(d.ownershipType);
         if (Array.isArray(d.partners) && d.partners.length) setPartners(d.partners);
         if (d.hours) setHours(d.hours);
@@ -189,11 +203,11 @@ export default function SetupPage() {
   useEffect(() => {
     if (!hydrated.current || typeof window === 'undefined') return;
     const draft = {
-      step, salonName, salonType, city, address, phone, whatsapp, sameAsPhone, branchName,
+      step, salonName, salonType, city, address, phone, whatsapp, sameAsPhone, branchName, agentCode,
       ownershipType, partners, hours, jummahBreak, prayerBlocks, services, staffList,
     };
     try { localStorage.setItem(DRAFT_KEY, JSON.stringify(draft)); } catch { /* quota */ }
-  }, [step, salonName, salonType, city, address, phone, whatsapp, sameAsPhone, branchName, ownershipType, partners, hours, jummahBreak, prayerBlocks, services, staffList]);
+  }, [step, salonName, salonType, city, address, phone, whatsapp, sameAsPhone, branchName, agentCode, ownershipType, partners, hours, jummahBreak, prayerBlocks, services, staffList]);
 
   function addPartnerRow() {
     setPartners([...partners, { name: '', email: '', phone: '', password: '', confirmPassword: '' }]);
@@ -301,6 +315,7 @@ export default function SetupPage() {
         whatsapp: sameAsPhone ? phone : whatsapp,
         branchName: branchName.trim(),
         ownerId: user?.id ?? '',
+        agentCode: agentCode.trim() || undefined,
         prayerBlockEnabled: prayerBlocks,
         workingHours,
         services: selectedServices.map(s => ({ name: s.name, category: s.category, price: s.price, duration: s.duration })),
@@ -335,12 +350,12 @@ export default function SetupPage() {
         name: 'Owner',
       });
 
-      toast.success('Salon setup complete!');
+      toast.success('Salon setup complete! Activate your subscription to continue.');
       try { localStorage.removeItem(DRAFT_KEY); } catch { /* ignore */ }
-      // Hard navigation: the JWT cookie was just re-signed with the new salonId,
-      // and Zustand just got fresh salon/branch data. A full page load ensures
-      // the dashboard reads consistent state from both cookie and store.
-      window.location.href = '/dashboard';
+      // Hard navigation to the paywall. New salons land in subscription_status
+      // 'pending' and stay there until the super admin approves a payment, so
+      // /dashboard would just bounce them back here via the proxy gate anyway.
+      window.location.href = '/paywall';
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Setup failed';
       toast.error(message);
@@ -480,6 +495,30 @@ export default function SetupPage() {
                   {t('sameAsPhone')}
                 </label>
               </div>
+            </div>
+
+            <div>
+              <Label>Sales agent code (optional)</Label>
+              <Input
+                value={agentCode}
+                onChange={(e) => { setAgentCode(e.target.value.toUpperCase()); setAgentLookup({ status: 'idle' }); }}
+                onBlur={(e) => verifyAgentCode(e.target.value)}
+                placeholder="e.g. SA342"
+                className="mt-1.5 font-mono uppercase"
+                maxLength={6}
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                If a sales agent referred you, enter their code so they get credit. Leave blank if you signed up directly.
+              </p>
+              {agentLookup.status === 'checking' && (
+                <p className="text-xs text-muted-foreground mt-1">Checking…</p>
+              )}
+              {agentLookup.status === 'ok' && (
+                <p className="text-xs text-green-600 mt-1">✓ Credited to: {agentLookup.name}</p>
+              )}
+              {agentLookup.status === 'bad' && (
+                <p className="text-xs text-amber-600 mt-1">⚠ Code not recognized — you can continue, but no agent will be credited.</p>
+              )}
             </div>
           </div>
         )}

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Plus, UserCog } from 'lucide-react';
+import { Plus, UserCog, Copy } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { listSalesAgents, createSalesAgent } from '@/app/actions/sales-agents';
 import type { SalesAgent } from '@/types/sales';
@@ -22,6 +22,7 @@ export default function AgentsPage() {
     setAgents(data);
     setLoading(false);
   }
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { load(); }, []);
 
   return (
@@ -45,6 +46,7 @@ export default function AgentsPage() {
           <table className="w-full text-sm">
             <thead className="bg-muted/50">
               <tr className="text-left">
+                <th className="px-4 py-3">Code</th>
                 <th className="px-4 py-3">Name</th>
                 <th className="px-4 py-3">Phone</th>
                 <th className="px-4 py-3">City</th>
@@ -57,6 +59,18 @@ export default function AgentsPage() {
             <tbody>
               {agents.map(a => (
                 <tr key={a.id} className="border-t">
+                  <td className="px-4 py-3">
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(a.code).then(() => toast.success(`${a.code} copied`));
+                      }}
+                      className="inline-flex items-center gap-1.5 font-mono font-semibold text-gold hover:underline"
+                      title="Click to copy"
+                    >
+                      {a.code}
+                      <Copy className="w-3 h-3 opacity-60" />
+                    </button>
+                  </td>
                   <td className="px-4 py-3 font-medium">{a.name}</td>
                   <td className="px-4 py-3">{a.phone || '—'}</td>
                   <td className="px-4 py-3">{a.city || '—'}</td>

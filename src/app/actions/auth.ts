@@ -12,6 +12,33 @@ function getSecret(): Uint8Array {
   return new TextEncoder().encode(secret);
 }
 const COOKIE_NAME = 'icut-token';
+const SUB_COOKIE = 'icut-sub';
+
+/**
+ * Mirror salons.subscription_status into a cookie the proxy can read without
+ * a DB roundtrip. Values: active | pending | expired | suspended | none.
+ * Sessions without a salon (super_admin, sales_agent, owners mid-setup) get
+ * 'active' so the paywall gate doesn't bounce them. The DB column remains the
+ * source of truth — verifyWriteAccess() still checks it on every mutation.
+ */
+async function writeSubCookie(value: 'active' | 'pending' | 'expired' | 'suspended' | 'none') {
+  const cookieStore = await cookies();
+  cookieStore.set(SUB_COOKIE, value, {
+    path: '/',
+    sameSite: 'strict',
+    maxAge: 60 * 60 * 24,
+  });
+}
+
+async function lookupSubStatus(salonId: string | undefined): Promise<'active' | 'pending' | 'expired' | 'suspended' | 'none'> {
+  if (!salonId || salonId === 'super-admin') return 'active';
+  const { createServerClient } = await import('@/lib/supabase');
+  const supabase = createServerClient();
+  const { data } = await supabase.from('salons').select('subscription_status').eq('id', salonId).maybeSingle();
+  const status = data?.subscription_status;
+  if (status === 'active' || status === 'pending' || status === 'expired' || status === 'suspended') return status;
+  return 'none';
+}
 
 export interface SessionPayload {
   salonId: string;
@@ -43,6 +70,11 @@ export async function signSession(payload: SessionPayload) {
     maxAge: 60 * 60 * 24,
     path: '/',
   });
+
+  // Refresh the proxy-readable subscription cookie alongside the JWT so login,
+  // role swaps, and impersonation all keep the gate in sync.
+  const sub = await lookupSubStatus(payload.salonId);
+  await writeSubCookie(sub);
 
   return { success: true };
 }
@@ -159,6 +191,13 @@ export async function getDashboardBootstrap(): Promise<{
   if (!salon) return null;
   const list = branches || [];
   const mainBranch = list.find((b: { is_main?: boolean }) => b.is_main) || list[0] || null;
+
+  // Refresh the proxy gate cookie on every dashboard load so it stays accurate
+  // after a super-admin approval or a status change made elsewhere.
+  const status = (salon as { subscription_status?: string }).subscription_status;
+  const known = status === 'active' || status === 'pending' || status === 'expired' || status === 'suspended';
+  await writeSubCookie(known ? (status as 'active' | 'pending' | 'expired' | 'suspended') : 'none');
+
   return {
     salon,
     branches: list,
@@ -166,6 +205,18 @@ export async function getDashboardBootstrap(): Promise<{
     isImpersonating: !!session.impersonatedBy,
     role: session.role,
   };
+}
+
+/**
+ * Used by the /paywall page poll. Reads salon.subscription_status, refreshes
+ * the proxy cookie, and reports the current status so the client can decide
+ * whether to redirect to /dashboard.
+ */
+export async function checkSubscriptionStatus(): Promise<{ status: 'active' | 'pending' | 'expired' | 'suspended' | 'none' }> {
+  const session = await verifySession();
+  const status = await lookupSubStatus(session.salonId);
+  await writeSubCookie(status);
+  return { status };
 }
 
 /** Plan limits from platform_settings (fallback to hardcoded defaults) */
@@ -211,6 +262,7 @@ export async function getPlanLimits(plan: string): Promise<PlanLimits> {
 export async function destroySession() {
   const cookieStore = await cookies();
   cookieStore.delete(COOKIE_NAME);
+  cookieStore.delete(SUB_COOKIE);
   return { success: true };
 }
 

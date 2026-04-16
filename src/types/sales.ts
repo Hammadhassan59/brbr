@@ -7,6 +7,7 @@ export interface SalesAgent {
   active: boolean;
   first_sale_pct: number;
   renewal_pct: number;
+  code: string;
   created_at: string;
   deactivated_at: string | null;
 }
