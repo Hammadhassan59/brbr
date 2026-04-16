@@ -792,8 +792,10 @@ const BANK_DEFAULTS = {
   accountTitle: '',
   accountNumber: '',
   jazzcashEnabled: true,
+  jazzcashTitle: '',
   jazzcash: '',
   easypaisaEnabled: false,
+  easypaisaTitle: '',
   easypaisa: '',
   supportWhatsapp: '',
 };
@@ -827,8 +829,10 @@ function SubscriptionTab({ salon, branches }: { salon: Salon | null; branches: B
           accountTitle: cfg.payment.accountTitle,
           accountNumber: cfg.payment.bankAccount,
           jazzcashEnabled: cfg.payment.jazzcashEnabled,
+          jazzcashTitle: cfg.payment.jazzcashTitle,
           jazzcash: cfg.payment.jazzcashAccount,
           easypaisaEnabled: cfg.payment.easypaisaEnabled,
+          easypaisaTitle: cfg.payment.easypaisaTitle,
           easypaisa: cfg.payment.easypaisaAccount,
           supportWhatsapp: cfg.supportWhatsApp,
         });
@@ -980,10 +984,18 @@ function SubscriptionTab({ salon, branches }: { salon: Salon | null; branches: B
                 </button>
               </div>
             )}
+            {bank.jazzcashEnabled && bank.jazzcashTitle && (
+              <div className="flex items-center justify-between gap-3 p-3 bg-secondary/30 rounded-lg">
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs text-muted-foreground">JazzCash Title</p>
+                  <p className="font-medium break-words">{bank.jazzcashTitle}</p>
+                </div>
+              </div>
+            )}
             {bank.jazzcashEnabled && bank.jazzcash && (
               <div className="flex items-center justify-between gap-3 p-3 bg-secondary/30 rounded-lg">
                 <div className="min-w-0 flex-1">
-                  <p className="text-xs text-muted-foreground">JazzCash</p>
+                  <p className="text-xs text-muted-foreground">JazzCash Number</p>
                   <p className="font-medium font-mono break-all">{bank.jazzcash}</p>
                 </div>
                 <button aria-label="Copy JazzCash number" onClick={() => copyText(bank.jazzcash, 'JazzCash number')} className="p-2 -mr-1 shrink-0 hover:bg-secondary rounded">
@@ -991,10 +1003,18 @@ function SubscriptionTab({ salon, branches }: { salon: Salon | null; branches: B
                 </button>
               </div>
             )}
+            {bank.easypaisaEnabled && bank.easypaisaTitle && (
+              <div className="flex items-center justify-between gap-3 p-3 bg-secondary/30 rounded-lg">
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs text-muted-foreground">EasyPaisa Title</p>
+                  <p className="font-medium break-words">{bank.easypaisaTitle}</p>
+                </div>
+              </div>
+            )}
             {bank.easypaisaEnabled && bank.easypaisa && (
               <div className="flex items-center justify-between gap-3 p-3 bg-secondary/30 rounded-lg">
                 <div className="min-w-0 flex-1">
-                  <p className="text-xs text-muted-foreground">EasyPaisa</p>
+                  <p className="text-xs text-muted-foreground">EasyPaisa Number</p>
                   <p className="font-medium font-mono break-all">{bank.easypaisa}</p>
                 </div>
                 <button aria-label="Copy EasyPaisa number" onClick={() => copyText(bank.easypaisa, 'EasyPaisa number')} className="p-2 -mr-1 shrink-0 hover:bg-secondary rounded">

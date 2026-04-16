@@ -44,8 +44,10 @@ interface PlatformSettings {
   accountTitle: string;
   bankAccount: string;
   jazzcashEnabled: boolean;
+  jazzcashTitle: string;
   jazzcashAccount: string;
   easypaisaEnabled: boolean;
+  easypaisaTitle: string;
   easypaisaAccount: string;
 }
 
@@ -105,8 +107,10 @@ const DEFAULT_SETTINGS: PlatformSettings = {
   accountTitle: '',
   bankAccount: '',
   jazzcashEnabled: true,
+  jazzcashTitle: '',
   jazzcashAccount: '',
   easypaisaEnabled: false,
+  easypaisaTitle: '',
   easypaisaAccount: '',
 };
 
@@ -188,8 +192,10 @@ export default function AdminSettingsPage() {
           accountTitle: String(py.accountTitle ?? DEFAULT_SETTINGS.accountTitle),
           bankAccount: String(py.bankAccount ?? DEFAULT_SETTINGS.bankAccount),
           jazzcashEnabled: py.jazzcashEnabled === undefined ? !!py.jazzcashAccount : Boolean(py.jazzcashEnabled),
+          jazzcashTitle: String(py.jazzcashTitle ?? DEFAULT_SETTINGS.jazzcashTitle),
           jazzcashAccount: String(py.jazzcashAccount ?? DEFAULT_SETTINGS.jazzcashAccount),
           easypaisaEnabled: py.easypaisaEnabled === undefined ? false : Boolean(py.easypaisaEnabled),
+          easypaisaTitle: String(py.easypaisaTitle ?? DEFAULT_SETTINGS.easypaisaTitle),
           easypaisaAccount: String(py.easypaisaAccount ?? DEFAULT_SETTINGS.easypaisaAccount),
         });
       })
@@ -325,8 +331,10 @@ export default function AdminSettingsPage() {
           accountTitle: settings.accountTitle,
           bankAccount: settings.bankAccount,
           jazzcashEnabled: settings.jazzcashEnabled,
+          jazzcashTitle: settings.jazzcashTitle,
           jazzcashAccount: settings.jazzcashAccount,
           easypaisaEnabled: settings.easypaisaEnabled,
+          easypaisaTitle: settings.easypaisaTitle,
           easypaisaAccount: settings.easypaisaAccount,
         }),
       ]);
@@ -470,6 +478,7 @@ export default function AdminSettingsPage() {
                     </div>
                     <Switch checked={settings.jazzcashEnabled} onCheckedChange={(v) => update('jazzcashEnabled', v)} />
                   </div>
+                  <div><Label className="text-xs">Account title</Label><Input value={settings.jazzcashTitle} onChange={(e) => update('jazzcashTitle', e.target.value)} className="mt-1" placeholder="iCut Technologies" /></div>
                   <div><Label className="text-xs">JazzCash number</Label><Input value={settings.jazzcashAccount} onChange={(e) => update('jazzcashAccount', e.target.value)} className="mt-1" placeholder="03001234567" /></div>
                 </CardContent>
               </Card>
@@ -486,6 +495,7 @@ export default function AdminSettingsPage() {
                     </div>
                     <Switch checked={settings.easypaisaEnabled} onCheckedChange={(v) => update('easypaisaEnabled', v)} />
                   </div>
+                  <div><Label className="text-xs">Account title</Label><Input value={settings.easypaisaTitle} onChange={(e) => update('easypaisaTitle', e.target.value)} className="mt-1" placeholder="iCut Technologies" /></div>
                   <div><Label className="text-xs">EasyPaisa number</Label><Input value={settings.easypaisaAccount} onChange={(e) => update('easypaisaAccount', e.target.value)} className="mt-1" placeholder="03001234567" /></div>
                 </CardContent>
               </Card>

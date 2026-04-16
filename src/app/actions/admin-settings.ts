@@ -134,8 +134,10 @@ export interface PaymentConfig {
   accountTitle: string;
   bankAccount: string;
   jazzcashEnabled: boolean;
+  jazzcashTitle: string;
   jazzcashAccount: string;
   easypaisaEnabled: boolean;
+  easypaisaTitle: string;
   easypaisaAccount: string;
 }
 
@@ -191,8 +193,10 @@ export async function getPublicPlatformConfig(): Promise<{
       accountTitle: String(pay.accountTitle ?? ''),
       bankAccount,
       jazzcashEnabled: pay.jazzcashEnabled === undefined ? !!jazzcashAccount : Boolean(pay.jazzcashEnabled),
+      jazzcashTitle: String(pay.jazzcashTitle ?? ''),
       jazzcashAccount,
       easypaisaEnabled: pay.easypaisaEnabled === undefined ? false : Boolean(pay.easypaisaEnabled),
+      easypaisaTitle: String(pay.easypaisaTitle ?? ''),
       easypaisaAccount,
     },
     supportWhatsApp: String(gen.supportWhatsApp ?? ''),

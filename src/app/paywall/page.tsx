@@ -49,8 +49,10 @@ interface BankConfig {
   accountTitle: string;
   accountNumber: string;
   jazzcashEnabled: boolean;
+  jazzcashTitle: string;
   jazzcash: string;
   easypaisaEnabled: boolean;
+  easypaisaTitle: string;
   easypaisa: string;
   supportWhatsapp: string;
 }
@@ -64,8 +66,8 @@ export default function PaywallPage() {
   const [refreshing, setRefreshing] = useState(false);
   const [bank, setBank] = useState<BankConfig>({
     bankEnabled: true, bankName: BANK_DETAILS.bankName, accountTitle: BANK_DETAILS.accountTitle, accountNumber: BANK_DETAILS.accountNumber,
-    jazzcashEnabled: true, jazzcash: BANK_DETAILS.jazzcash,
-    easypaisaEnabled: false, easypaisa: '',
+    jazzcashEnabled: true, jazzcashTitle: '', jazzcash: BANK_DETAILS.jazzcash,
+    easypaisaEnabled: false, easypaisaTitle: '', easypaisa: '',
     supportWhatsapp: BANK_DETAILS.supportWhatsapp,
   });
 
@@ -83,8 +85,10 @@ export default function PaywallPage() {
           accountTitle: cfg.payment.accountTitle || BANK_DETAILS.accountTitle,
           accountNumber: cfg.payment.bankAccount || BANK_DETAILS.accountNumber,
           jazzcashEnabled: cfg.payment.jazzcashEnabled,
+          jazzcashTitle: cfg.payment.jazzcashTitle,
           jazzcash: cfg.payment.jazzcashAccount || BANK_DETAILS.jazzcash,
           easypaisaEnabled: cfg.payment.easypaisaEnabled,
+          easypaisaTitle: cfg.payment.easypaisaTitle,
           easypaisa: cfg.payment.easypaisaAccount || '',
           supportWhatsapp: cfg.supportWhatsApp || BANK_DETAILS.supportWhatsapp,
         });
@@ -297,8 +301,14 @@ export default function PaywallPage() {
                       if (bank.accountTitle) rows.push(['Account Title', bank.accountTitle, false] as const);
                       if (bank.accountNumber) rows.push(['Account Number', bank.accountNumber, true] as const);
                     }
-                    if (bank.jazzcashEnabled && bank.jazzcash) rows.push(['JazzCash', bank.jazzcash, true] as const);
-                    if (bank.easypaisaEnabled && bank.easypaisa) rows.push(['EasyPaisa', bank.easypaisa, true] as const);
+                    if (bank.jazzcashEnabled) {
+                      if (bank.jazzcashTitle) rows.push(['JazzCash Title', bank.jazzcashTitle, false] as const);
+                      if (bank.jazzcash) rows.push(['JazzCash Number', bank.jazzcash, true] as const);
+                    }
+                    if (bank.easypaisaEnabled) {
+                      if (bank.easypaisaTitle) rows.push(['EasyPaisa Title', bank.easypaisaTitle, false] as const);
+                      if (bank.easypaisa) rows.push(['EasyPaisa Number', bank.easypaisa, true] as const);
+                    }
                     if (rows.length === 0) {
                       return <p className="text-xs text-muted-foreground p-3">No payment methods are enabled. Please contact support.</p>;
                     }
