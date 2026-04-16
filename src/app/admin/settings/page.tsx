@@ -36,13 +36,17 @@ interface PlatformSettings {
   emailEnabled: boolean;
   enabledTemplates: Record<string, boolean>;
   plans: Record<string, PlanSettings>;
-  trialDuration: string;
-  gracePeriod: string;
-  requirePaymentOnSignup: boolean;
-  jazzcashAccount: string;
-  bankAccount: string;
+  // Per-method enable + account fields. Tenants only see methods that are
+  // enabled here. Trial fields removed in 2026-04 — platform doesn't offer
+  // trials, every signup pays first via /paywall.
+  bankEnabled: boolean;
   bankName: string;
   accountTitle: string;
+  bankAccount: string;
+  jazzcashEnabled: boolean;
+  jazzcashAccount: string;
+  easypaisaEnabled: boolean;
+  easypaisaAccount: string;
 }
 
 const DEFAULT_SETTINGS: PlatformSettings = {
@@ -96,13 +100,14 @@ const DEFAULT_SETTINGS: PlatformSettings = {
       ].join('\n'),
     },
   },
-  trialDuration: '0',
-  gracePeriod: '0',
-  requirePaymentOnSignup: true,
-  jazzcashAccount: '',
-  bankAccount: '',
+  bankEnabled: true,
   bankName: '',
   accountTitle: '',
+  bankAccount: '',
+  jazzcashEnabled: true,
+  jazzcashAccount: '',
+  easypaisaEnabled: false,
+  easypaisaAccount: '',
 };
 
 export default function AdminSettingsPage() {
@@ -115,7 +120,6 @@ export default function AdminSettingsPage() {
         const g = (db.general ?? {}) as Record<string, unknown>;
         const e = (db.email ?? {}) as Record<string, unknown>;
         const pl = (db.plans ?? {}) as Record<string, unknown>;
-        const tr = (db.trial ?? {}) as Record<string, unknown>;
         const py = (db.payment ?? {}) as Record<string, unknown>;
 
         interface DbPlan {
@@ -177,13 +181,16 @@ export default function AdminSettingsPage() {
           resendKey: String(e.resendKey ?? DEFAULT_SETTINGS.resendKey),
           enabledTemplates: (e.enabledTemplates as Record<string, boolean>) ?? DEFAULT_SETTINGS.enabledTemplates,
           plans,
-          trialDuration: String(tr.durationDays ?? DEFAULT_SETTINGS.trialDuration),
-          gracePeriod: String(tr.graceDays ?? DEFAULT_SETTINGS.gracePeriod),
-          requirePaymentOnSignup: Boolean(tr.requirePayment ?? DEFAULT_SETTINGS.requirePaymentOnSignup),
-          jazzcashAccount: String(py.jazzcashAccount ?? DEFAULT_SETTINGS.jazzcashAccount),
-          bankAccount: String(py.bankAccount ?? DEFAULT_SETTINGS.bankAccount),
+          // Default each enabled flag based on whether an account is set —
+          // backward compat with the pre-toggle shape.
+          bankEnabled: py.bankEnabled === undefined ? !!py.bankAccount : Boolean(py.bankEnabled),
           bankName: String(py.bankName ?? DEFAULT_SETTINGS.bankName),
           accountTitle: String(py.accountTitle ?? DEFAULT_SETTINGS.accountTitle),
+          bankAccount: String(py.bankAccount ?? DEFAULT_SETTINGS.bankAccount),
+          jazzcashEnabled: py.jazzcashEnabled === undefined ? !!py.jazzcashAccount : Boolean(py.jazzcashEnabled),
+          jazzcashAccount: String(py.jazzcashAccount ?? DEFAULT_SETTINGS.jazzcashAccount),
+          easypaisaEnabled: py.easypaisaEnabled === undefined ? false : Boolean(py.easypaisaEnabled),
+          easypaisaAccount: String(py.easypaisaAccount ?? DEFAULT_SETTINGS.easypaisaAccount),
         });
       })
       .catch(() => {
@@ -309,16 +316,18 @@ export default function AdminSettingsPage() {
             features: featuresFromText(settings.plans.Pro.features),
           },
         }),
-        savePlatformSetting('trial', {
-          durationDays: toNumber(settings.trialDuration, 14),
-          graceDays: toNumber(settings.gracePeriod, 3),
-          requirePayment: settings.requirePaymentOnSignup,
-        }),
+        // Trial settings removed in 2026-04 — platform requires payment on
+        // signup via /paywall, no trial. Old trial keys in platform_settings
+        // become inert (no consumer reads them).
         savePlatformSetting('payment', {
-          jazzcashAccount: settings.jazzcashAccount,
-          bankAccount: settings.bankAccount,
+          bankEnabled: settings.bankEnabled,
           bankName: settings.bankName,
           accountTitle: settings.accountTitle,
+          bankAccount: settings.bankAccount,
+          jazzcashEnabled: settings.jazzcashEnabled,
+          jazzcashAccount: settings.jazzcashAccount,
+          easypaisaEnabled: settings.easypaisaEnabled,
+          easypaisaAccount: settings.easypaisaAccount,
         }),
       ]);
       toast.success('Platform settings saved to database');
@@ -418,38 +427,76 @@ export default function AdminSettingsPage() {
           </Card>
         </TabsContent>
 
-        {/* ── Payments & Trial ──────────────────────────────────── */}
+        {/* ── Payment methods ──────────────────────────────────── */}
+        {/* Each method is a separate sub-tab with its own toggle + account
+            fields. Tenants only see methods that are toggled on, on /paywall,
+            /dashboard/settings, /dashboard/billing, and the upload modal. */}
         <TabsContent value="payments" className="mt-4">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <Card>
-              <CardHeader className="pb-2"><CardTitle className="text-sm">Payment Collection</CardTitle></CardHeader>
-              <CardContent className="space-y-3">
-                <div className="grid grid-cols-2 gap-3">
-                  <div><Label className="text-xs">Bank name</Label><Input value={settings.bankName} onChange={(e) => update('bankName', e.target.value)} className="mt-1" placeholder="e.g. Meezan Bank" /></div>
-                  <div><Label className="text-xs">Account title</Label><Input value={settings.accountTitle} onChange={(e) => update('accountTitle', e.target.value)} className="mt-1" placeholder="iCut Technologies" /></div>
-                </div>
-                <div><Label className="text-xs">Bank account number</Label><Input value={settings.bankAccount} onChange={(e) => update('bankAccount', e.target.value)} className="mt-1" placeholder="02340105566723" /></div>
-                <div><Label className="text-xs">JazzCash number</Label><Input value={settings.jazzcashAccount} onChange={(e) => update('jazzcashAccount', e.target.value)} className="mt-1" placeholder="03001234567" /></div>
-                <p className="text-[11px] text-muted-foreground">
-                  These show up on the public paywall, the tenant&apos;s billing page, and the
-                  in-app payment-submit modal. Tenants upload screenshots in-app for super-admin
-                  approval — no WhatsApp involved.
-                </p>
-              </CardContent>
-            </Card>
+          <Tabs defaultValue="bank">
+            <TabsList>
+              <TabsTrigger value="bank">Bank transfer</TabsTrigger>
+              <TabsTrigger value="jazzcash">JazzCash</TabsTrigger>
+              <TabsTrigger value="easypaisa">EasyPaisa</TabsTrigger>
+            </TabsList>
 
-            <Card>
-              <CardHeader className="pb-2"><CardTitle className="text-sm">Trial Settings</CardTitle></CardHeader>
-              <CardContent className="space-y-3">
-                <div><Label className="text-xs">Trial Duration (days)</Label><Input type="number" value={settings.trialDuration} onChange={(e) => update('trialDuration', e.target.value)} className="mt-1 w-full sm:w-24" /></div>
-                <div><Label className="text-xs">Grace Period After Trial (days)</Label><Input type="number" value={settings.gracePeriod} onChange={(e) => update('gracePeriod', e.target.value)} className="mt-1 w-full sm:w-24" /></div>
-                <div className="flex items-center justify-between p-3 border rounded-lg">
-                  <div><p className="text-sm font-medium">Require Payment on Signup</p><p className="text-xs text-muted-foreground">If off, users start trial without payment</p></div>
-                  <Switch checked={settings.requirePaymentOnSignup} onCheckedChange={(v) => update('requirePaymentOnSignup', v)} />
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+            <TabsContent value="bank" className="mt-4">
+              <Card>
+                <CardHeader className="pb-2"><CardTitle className="text-sm">Bank transfer</CardTitle></CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="flex items-center justify-between p-3 border rounded-lg">
+                    <div>
+                      <p className="text-sm font-medium">Accept bank transfers</p>
+                      <p className="text-xs text-muted-foreground">Tenants will see this option on the paywall when toggled on.</p>
+                    </div>
+                    <Switch checked={settings.bankEnabled} onCheckedChange={(v) => update('bankEnabled', v)} />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div><Label className="text-xs">Bank name</Label><Input value={settings.bankName} onChange={(e) => update('bankName', e.target.value)} className="mt-1" placeholder="e.g. Meezan Bank" /></div>
+                    <div><Label className="text-xs">Account title</Label><Input value={settings.accountTitle} onChange={(e) => update('accountTitle', e.target.value)} className="mt-1" placeholder="iCut Technologies" /></div>
+                  </div>
+                  <div><Label className="text-xs">Account number</Label><Input value={settings.bankAccount} onChange={(e) => update('bankAccount', e.target.value)} className="mt-1" placeholder="02340105566723" /></div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="jazzcash" className="mt-4">
+              <Card>
+                <CardHeader className="pb-2"><CardTitle className="text-sm">JazzCash</CardTitle></CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="flex items-center justify-between p-3 border rounded-lg">
+                    <div>
+                      <p className="text-sm font-medium">Accept JazzCash</p>
+                      <p className="text-xs text-muted-foreground">Tenants will see this option on the paywall when toggled on.</p>
+                    </div>
+                    <Switch checked={settings.jazzcashEnabled} onCheckedChange={(v) => update('jazzcashEnabled', v)} />
+                  </div>
+                  <div><Label className="text-xs">JazzCash number</Label><Input value={settings.jazzcashAccount} onChange={(e) => update('jazzcashAccount', e.target.value)} className="mt-1" placeholder="03001234567" /></div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="easypaisa" className="mt-4">
+              <Card>
+                <CardHeader className="pb-2"><CardTitle className="text-sm">EasyPaisa</CardTitle></CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="flex items-center justify-between p-3 border rounded-lg">
+                    <div>
+                      <p className="text-sm font-medium">Accept EasyPaisa</p>
+                      <p className="text-xs text-muted-foreground">Tenants will see this option on the paywall when toggled on.</p>
+                    </div>
+                    <Switch checked={settings.easypaisaEnabled} onCheckedChange={(v) => update('easypaisaEnabled', v)} />
+                  </div>
+                  <div><Label className="text-xs">EasyPaisa number</Label><Input value={settings.easypaisaAccount} onChange={(e) => update('easypaisaAccount', e.target.value)} className="mt-1" placeholder="03001234567" /></div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
+
+          <p className="text-[11px] text-muted-foreground mt-3">
+            These accounts show on the paywall, the tenant&apos;s billing page, and the
+            in-app payment-submit modal. Tenants upload screenshots; super admin approves
+            in /admin/payments. No WhatsApp involved.
+          </p>
         </TabsContent>
 
         {/* ── Email Automation ──────────────────────────────────── */}

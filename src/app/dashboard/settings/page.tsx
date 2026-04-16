@@ -783,14 +783,18 @@ const PLANS_FALLBACK = [
   { key: 'pro', name: 'Pro', price: 9000, branches: 3, staff: 0, features: ['Up to 3 branches', 'Unlimited staff', 'Priority support'] },
 ];
 
-// Bank details + supportWhatsApp are loaded live from platform_settings on
-// mount (see SubscriptionTab below). The constant here is purely a fallback
-// shape used before the fetch resolves.
+// Bank/JC/EasyPaisa toggles + account details are loaded live from
+// platform_settings on mount (see SubscriptionTab). The constant here is a
+// fallback shape used before the fetch resolves.
 const BANK_DEFAULTS = {
+  bankEnabled: true,
   bankName: '',
   accountTitle: '',
   accountNumber: '',
+  jazzcashEnabled: true,
   jazzcash: '',
+  easypaisaEnabled: false,
+  easypaisa: '',
   supportWhatsapp: '',
 };
 
@@ -818,10 +822,14 @@ function SubscriptionTab({ salon, branches }: { salon: Salon | null; branches: B
           return live ? { ...p, name: live.displayName || p.name, price: live.price || p.price } : p;
         }));
         setBank({
+          bankEnabled: cfg.payment.bankEnabled,
           bankName: cfg.payment.bankName,
           accountTitle: cfg.payment.accountTitle,
           accountNumber: cfg.payment.bankAccount,
+          jazzcashEnabled: cfg.payment.jazzcashEnabled,
           jazzcash: cfg.payment.jazzcashAccount,
+          easypaisaEnabled: cfg.payment.easypaisaEnabled,
+          easypaisa: cfg.payment.easypaisaAccount,
           supportWhatsapp: cfg.supportWhatsApp,
         });
       })
@@ -942,8 +950,10 @@ function SubscriptionTab({ salon, branches }: { salon: Salon | null; branches: B
             </p>
           </div>
 
+          {/* Each method shows only when enabled in /admin/settings AND has
+              a value. Bank renders as multiple rows; mobile money as one. */}
           <div className="space-y-3 text-sm">
-            {bank.bankName && (
+            {bank.bankEnabled && bank.bankName && (
               <div className="flex items-center justify-between gap-3 p-3 bg-secondary/30 rounded-lg">
                 <div className="min-w-0 flex-1">
                   <p className="text-xs text-muted-foreground">Bank</p>
@@ -951,7 +961,7 @@ function SubscriptionTab({ salon, branches }: { salon: Salon | null; branches: B
                 </div>
               </div>
             )}
-            {bank.accountTitle && (
+            {bank.bankEnabled && bank.accountTitle && (
               <div className="flex items-center justify-between gap-3 p-3 bg-secondary/30 rounded-lg">
                 <div className="min-w-0 flex-1">
                   <p className="text-xs text-muted-foreground">Account Title</p>
@@ -959,7 +969,7 @@ function SubscriptionTab({ salon, branches }: { salon: Salon | null; branches: B
                 </div>
               </div>
             )}
-            {bank.accountNumber && (
+            {bank.bankEnabled && bank.accountNumber && (
               <div className="flex items-center justify-between gap-3 p-3 bg-secondary/30 rounded-lg">
                 <div className="min-w-0 flex-1">
                   <p className="text-xs text-muted-foreground">Account Number</p>
@@ -970,7 +980,7 @@ function SubscriptionTab({ salon, branches }: { salon: Salon | null; branches: B
                 </button>
               </div>
             )}
-            {bank.jazzcash && (
+            {bank.jazzcashEnabled && bank.jazzcash && (
               <div className="flex items-center justify-between gap-3 p-3 bg-secondary/30 rounded-lg">
                 <div className="min-w-0 flex-1">
                   <p className="text-xs text-muted-foreground">JazzCash</p>
@@ -980,6 +990,20 @@ function SubscriptionTab({ salon, branches }: { salon: Salon | null; branches: B
                   <Copy className="w-4 h-4 text-muted-foreground" />
                 </button>
               </div>
+            )}
+            {bank.easypaisaEnabled && bank.easypaisa && (
+              <div className="flex items-center justify-between gap-3 p-3 bg-secondary/30 rounded-lg">
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs text-muted-foreground">EasyPaisa</p>
+                  <p className="font-medium font-mono break-all">{bank.easypaisa}</p>
+                </div>
+                <button aria-label="Copy EasyPaisa number" onClick={() => copyText(bank.easypaisa, 'EasyPaisa number')} className="p-2 -mr-1 shrink-0 hover:bg-secondary rounded">
+                  <Copy className="w-4 h-4 text-muted-foreground" />
+                </button>
+              </div>
+            )}
+            {!bank.bankEnabled && !bank.jazzcashEnabled && !bank.easypaisaEnabled && (
+              <p className="text-xs text-muted-foreground p-3">No payment methods are enabled. Please contact support.</p>
             )}
           </div>
 

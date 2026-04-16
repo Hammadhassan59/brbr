@@ -128,9 +128,20 @@ function coerceFeatures(raw: unknown): Array<{ text: string; ok: boolean }> {
  * plan marketing copy, and bank details. Never expose Resend API keys or other
  * sensitive admin keys here.
  */
+export interface PaymentConfig {
+  bankEnabled: boolean;
+  bankName: string;
+  accountTitle: string;
+  bankAccount: string;
+  jazzcashEnabled: boolean;
+  jazzcashAccount: string;
+  easypaisaEnabled: boolean;
+  easypaisaAccount: string;
+}
+
 export async function getPublicPlatformConfig(): Promise<{
   plans: Record<string, PublicPlan>;
-  payment: { jazzcashAccount: string; bankAccount: string; bankName: string; accountTitle: string };
+  payment: PaymentConfig;
   supportWhatsApp: string;
 }> {
   const supabase = createServerClient();
@@ -167,13 +178,22 @@ export async function getPublicPlatformConfig(): Promise<{
   const pay = (map.payment ?? {}) as Record<string, unknown>;
   const gen = (map.general ?? {}) as Record<string, unknown>;
 
+  // Default the per-method enabled flags to true when missing — keeps
+  // backward compatibility with existing setups that pre-date the toggle.
+  const bankAccount = String(pay.bankAccount ?? '');
+  const jazzcashAccount = String(pay.jazzcashAccount ?? '');
+  const easypaisaAccount = String(pay.easypaisaAccount ?? '');
   return {
     plans,
     payment: {
-      jazzcashAccount: String(pay.jazzcashAccount ?? ''),
-      bankAccount: String(pay.bankAccount ?? ''),
+      bankEnabled: pay.bankEnabled === undefined ? !!bankAccount : Boolean(pay.bankEnabled),
       bankName: String(pay.bankName ?? ''),
       accountTitle: String(pay.accountTitle ?? ''),
+      bankAccount,
+      jazzcashEnabled: pay.jazzcashEnabled === undefined ? !!jazzcashAccount : Boolean(pay.jazzcashEnabled),
+      jazzcashAccount,
+      easypaisaEnabled: pay.easypaisaEnabled === undefined ? false : Boolean(pay.easypaisaEnabled),
+      easypaisaAccount,
     },
     supportWhatsApp: String(gen.supportWhatsApp ?? ''),
   };

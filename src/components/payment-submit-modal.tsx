@@ -1,15 +1,22 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Loader2, Upload, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { submitPaymentRequest } from '@/app/actions/payment-requests';
+import { getPublicPlatformConfig } from '@/app/actions/admin-settings';
 import type { PlanOption } from '@/lib/bank-details';
 
-type Method = 'bank' | 'jazzcash';
+type Method = 'bank' | 'jazzcash' | 'easypaisa';
+
+const METHOD_LABELS: Record<Method, string> = {
+  bank: 'Bank Transfer',
+  jazzcash: 'JazzCash',
+  easypaisa: 'EasyPaisa',
+};
 
 interface Props {
   open: boolean;
@@ -19,17 +26,43 @@ interface Props {
 }
 
 /**
- * Shared in-app payment submission flow used by both /paywall (first-time
- * activation) and /dashboard/billing (renewal). Owner uploads a screenshot,
- * picks a method, optionally adds a transaction reference; we hand the file +
- * fields to submitPaymentRequest which uploads to Supabase Storage and inserts
- * the pending payment_requests row.
+ * Shared in-app payment submission flow used by /paywall, /dashboard/billing,
+ * and /dashboard/settings. Owner uploads a screenshot, picks an enabled method,
+ * optionally adds a transaction reference. We hand the file + fields to
+ * submitPaymentRequest which uploads to Supabase Storage and inserts the
+ * pending payment_requests row.
+ *
+ * Method options come from platform_settings — super admin toggles which of
+ * Bank / JazzCash / EasyPaisa are accepted, and only those show here.
  */
 export function PaymentSubmitModal({ open, onClose, plan, onSubmitted }: Props) {
   const [method, setMethod] = useState<Method>('bank');
   const [reference, setReference] = useState('');
   const [file, setFile] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [enabledMethods, setEnabledMethods] = useState<Method[]>([]);
+
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    getPublicPlatformConfig()
+      .then((cfg) => {
+        if (cancelled) return;
+        const enabled: Method[] = [];
+        if (cfg.payment.bankEnabled) enabled.push('bank');
+        if (cfg.payment.jazzcashEnabled) enabled.push('jazzcash');
+        if (cfg.payment.easypaisaEnabled) enabled.push('easypaisa');
+        setEnabledMethods(enabled);
+        // Reset selection to first enabled method on open.
+        if (enabled.length > 0) setMethod(enabled[0]);
+      })
+      .catch(() => {
+        // If the config fetch fails, fall back to bank + jazzcash so the
+        // owner can still submit.
+        setEnabledMethods(['bank', 'jazzcash']);
+      });
+    return () => { cancelled = true; };
+  }, [open]);
 
   if (!open) return null;
 
@@ -86,22 +119,26 @@ export function PaymentSubmitModal({ open, onClose, plan, onSubmitted }: Props) 
         </div>
 
         <div className="p-4 space-y-4">
-          <div>
-            <Label className="text-xs">Payment method</Label>
-            <div className="grid grid-cols-2 gap-2 mt-1">
-              {(['bank', 'jazzcash'] as Method[]).map((m) => (
-                <button
-                  key={m}
-                  onClick={() => setMethod(m)}
-                  className={`text-sm font-medium py-2 rounded-md border transition-all capitalize ${
-                    method === m ? 'border-gold bg-gold/10 text-gold' : 'border-border hover:border-gold/40'
-                  }`}
-                >
-                  {m === 'jazzcash' ? 'JazzCash' : 'Bank Transfer'}
-                </button>
-              ))}
+          {enabledMethods.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No payment methods enabled — contact support.</p>
+          ) : (
+            <div>
+              <Label className="text-xs">Payment method</Label>
+              <div className={`grid gap-2 mt-1 ${enabledMethods.length === 1 ? 'grid-cols-1' : enabledMethods.length === 2 ? 'grid-cols-2' : 'grid-cols-3'}`}>
+                {enabledMethods.map((m) => (
+                  <button
+                    key={m}
+                    onClick={() => setMethod(m)}
+                    className={`text-sm font-medium py-2 rounded-md border transition-all ${
+                      method === m ? 'border-gold bg-gold/10 text-gold' : 'border-border hover:border-gold/40'
+                    }`}
+                  >
+                    {METHOD_LABELS[m]}
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
 
           <div>
             <Label className="text-xs">Transaction reference (optional)</Label>
@@ -136,7 +173,7 @@ export function PaymentSubmitModal({ open, onClose, plan, onSubmitted }: Props) 
 
           <Button
             onClick={submit}
-            disabled={submitting || !file}
+            disabled={submitting || !file || enabledMethods.length === 0}
             className="w-full bg-gold hover:bg-gold/90 text-black font-semibold h-11"
           >
             {submitting ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Submitting…</> : 'Submit for review'}

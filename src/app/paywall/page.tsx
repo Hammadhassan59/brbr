@@ -44,10 +44,14 @@ function copy(value: string, label: string) {
 }
 
 interface BankConfig {
+  bankEnabled: boolean;
   bankName: string;
   accountTitle: string;
   accountNumber: string;
+  jazzcashEnabled: boolean;
   jazzcash: string;
+  easypaisaEnabled: boolean;
+  easypaisa: string;
   supportWhatsapp: string;
 }
 
@@ -58,22 +62,30 @@ export default function PaywallPage() {
   const [selectedPlan, setSelectedPlan] = useState<PlanOption | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  const [bank, setBank] = useState<BankConfig>(BANK_DETAILS);
+  const [bank, setBank] = useState<BankConfig>({
+    bankEnabled: true, bankName: BANK_DETAILS.bankName, accountTitle: BANK_DETAILS.accountTitle, accountNumber: BANK_DETAILS.accountNumber,
+    jazzcashEnabled: true, jazzcash: BANK_DETAILS.jazzcash,
+    easypaisaEnabled: false, easypaisa: '',
+    supportWhatsapp: BANK_DETAILS.supportWhatsapp,
+  });
 
-  // Live bank/JC details from platform_settings (super admin manages them in
-  // /admin/settings). Falls back to the constant in bank-details.ts if the
-  // settings query fails — e.g. during initial render before the request
-  // resolves.
+  // Live payment config from platform_settings (super admin manages in
+  // /admin/settings). Each method has its own enabled toggle — only enabled
+  // ones render below. Falls back to constants if the request fails.
   useEffect(() => {
     let cancelled = false;
     getPublicPlatformConfig()
       .then((cfg) => {
         if (cancelled) return;
         setBank({
+          bankEnabled: cfg.payment.bankEnabled,
           bankName: cfg.payment.bankName || BANK_DETAILS.bankName,
           accountTitle: cfg.payment.accountTitle || BANK_DETAILS.accountTitle,
           accountNumber: cfg.payment.bankAccount || BANK_DETAILS.accountNumber,
+          jazzcashEnabled: cfg.payment.jazzcashEnabled,
           jazzcash: cfg.payment.jazzcashAccount || BANK_DETAILS.jazzcash,
+          easypaisaEnabled: cfg.payment.easypaisaEnabled,
+          easypaisa: cfg.payment.easypaisaAccount || '',
           supportWhatsapp: cfg.supportWhatsApp || BANK_DETAILS.supportWhatsapp,
         });
       })
@@ -275,24 +287,35 @@ export default function PaywallPage() {
                 </div>
 
                 <div className="space-y-2 text-sm">
-                  {([
-                    ['Bank', bank.bankName, false],
-                    ['Account Title', bank.accountTitle, false],
-                    ['Account Number', bank.accountNumber, true],
-                    ['JazzCash', bank.jazzcash, true],
-                  ] as const).map(([label, value, copyable]) => (
-                    <div key={label} className="flex items-center justify-between gap-3 p-3 bg-secondary/30 rounded-lg">
-                      <div className="min-w-0 flex-1">
-                        <p className="text-xs text-muted-foreground">{label}</p>
-                        <p className={`font-medium break-all ${copyable ? 'font-mono' : ''}`}>{value}</p>
+                  {(() => {
+                    // Build the rendered list dynamically from per-method
+                    // toggles. Bank shows as 4 rows (name/title/number); each
+                    // mobile-money method as 1 row.
+                    const rows: Array<readonly [label: string, value: string, copyable: boolean]> = [];
+                    if (bank.bankEnabled) {
+                      if (bank.bankName) rows.push(['Bank', bank.bankName, false] as const);
+                      if (bank.accountTitle) rows.push(['Account Title', bank.accountTitle, false] as const);
+                      if (bank.accountNumber) rows.push(['Account Number', bank.accountNumber, true] as const);
+                    }
+                    if (bank.jazzcashEnabled && bank.jazzcash) rows.push(['JazzCash', bank.jazzcash, true] as const);
+                    if (bank.easypaisaEnabled && bank.easypaisa) rows.push(['EasyPaisa', bank.easypaisa, true] as const);
+                    if (rows.length === 0) {
+                      return <p className="text-xs text-muted-foreground p-3">No payment methods are enabled. Please contact support.</p>;
+                    }
+                    return rows.map(([label, value, copyable]) => (
+                      <div key={label} className="flex items-center justify-between gap-3 p-3 bg-secondary/30 rounded-lg">
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs text-muted-foreground">{label}</p>
+                          <p className={`font-medium break-all ${copyable ? 'font-mono' : ''}`}>{value}</p>
+                        </div>
+                        {copyable && (
+                          <button onClick={() => copy(value, label)} className="p-2 hover:bg-secondary rounded shrink-0">
+                            <Copy className="w-4 h-4 text-muted-foreground" />
+                          </button>
+                        )}
                       </div>
-                      {copyable && (
-                        <button onClick={() => copy(value, label)} className="p-2 hover:bg-secondary rounded shrink-0">
-                          <Copy className="w-4 h-4 text-muted-foreground" />
-                        </button>
-                      )}
-                    </div>
-                  ))}
+                    ));
+                  })()}
                 </div>
 
                 <div className="bg-secondary/30 border border-border rounded-lg p-4 space-y-1 text-xs text-muted-foreground">

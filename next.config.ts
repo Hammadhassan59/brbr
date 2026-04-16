@@ -5,13 +5,19 @@ const nextConfig: NextConfig = {
   experimental: {
     viewTransition: true,
   },
-  // pdfkit ships .afm font files (Helvetica, Times, etc.) that it loads at
-  // runtime via fs.readFileSync. Next.js's standalone output trace can't see
-  // those reads, so the files don't get copied into /ROOT/node_modules/pdfkit
-  // and the data-export route crashes with ENOENT. Force-include them here.
+  // pdfkit reads .afm font files at runtime via fs.readFileSync (Helvetica,
+  // Courier, Times). Two layers of fix needed:
+  //  1. serverExternalPackages: stop Turbopack from bundling pdfkit into a
+  //     chunk that hardcodes paths like /ROOT/node_modules/pdfkit/js/data/...
+  //     which then never resolve. Keeping it external means Node's normal
+  //     `require('pdfkit')` resolves to /app/node_modules/pdfkit at runtime.
+  //  2. outputFileTracingIncludes: explicitly pull pdfkit's data folder
+  //     into the standalone trace so it's actually present in /app/node_modules.
+  serverExternalPackages: ['pdfkit'],
   outputFileTracingIncludes: {
     '/api/dashboard/data-export.pdf': [
       './node_modules/pdfkit/js/data/**/*',
+      './node_modules/fontkit/**/*',
     ],
   },
   async headers() {
