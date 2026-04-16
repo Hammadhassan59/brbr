@@ -21,7 +21,7 @@ import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { getTodayPKT, formatPKDate } from '@/lib/utils/dates';
 import type { Branch } from '@/types/database';
-import { destroySession, refreshSalonData, getDashboardBootstrap } from '@/app/actions/auth';
+import { destroySession, refreshSalonData, getDashboardBootstrap, getSessionInfo, exitDemoMode } from '@/app/actions/auth';
 
 interface NavItem {
   href: string;
@@ -72,8 +72,21 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   // but during SSR there is no localStorage so the first render has empty state.
   // Wait one tick so the client-side store is populated before running the auth check.
   const [isHydrated, setIsHydrated] = useState(false);
-   
+
   useEffect(() => { setIsHydrated(true); }, []);
+
+  // Demo-mode banner state. The JWT isDemo flag lives server-side; surface it
+  // to the client via getSessionInfo() on mount. This is the only client-side
+  // signal for demo mode — Zustand doesn't persist it (JWT is the source of
+  // truth, sessions can end on logout or exit-demo without triggering store
+  // writes).
+  const [isDemoMode, setIsDemoMode] = useState(false);
+  useEffect(() => {
+    if (!isHydrated) return;
+    getSessionInfo().then((info) => {
+      if (info?.isDemo) setIsDemoMode(true);
+    }).catch(() => {});
+  }, [isHydrated]);
 
   // Self-heal: if the client-side store is missing salon/branches (e.g. an
   // admin just impersonated and the setters didn't flush before the hard
@@ -177,6 +190,25 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   return (
     <div className="h-screen flex flex-col overflow-hidden bg-background">
       <ImpersonationBanner />
+      {isDemoMode && (
+        <div className="bg-amber-500/15 border-b border-amber-500/30 px-4 lg:px-6 py-2 text-sm flex items-center justify-between gap-3 no-print">
+          <span className="font-medium text-amber-800">
+            DEMO MODE — data resets every 10 min
+          </span>
+          <button
+            onClick={async () => {
+              const r = await exitDemoMode();
+              if (r.success) {
+                useAppStore.getState().reset();
+                window.location.href = '/agent/leads';
+              }
+            }}
+            className="text-xs font-semibold bg-amber-600 text-white px-3 py-1 rounded-md hover:bg-amber-700 transition-all shrink-0"
+          >
+            Exit to Agent Panel
+          </button>
+        </div>
+      )}
       <div className="flex-1 flex overflow-hidden">
       {/* Mobile sidebar overlay */}
       {sidebarOpen && (

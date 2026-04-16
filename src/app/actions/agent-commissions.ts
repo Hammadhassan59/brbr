@@ -29,11 +29,14 @@ export async function accrueCommissionForPaymentRequest(
 
   const { data: salon, error: salonErr } = await supabase
     .from('salons')
-    .select('id, sold_by_agent_id')
+    .select('id, sold_by_agent_id, is_demo')
     .eq('id', input.salonId)
     .maybeSingle();
   if (salonErr) return { data: null, error: salonErr.message };
   if (!salon?.sold_by_agent_id) return { data: null, error: null };
+  // Never accrue commissions against the shared demo salon — it's a showcase
+  // tenant, not a real sale.
+  if (salon.is_demo) return { data: null, error: null };
 
   const { data: agent, error: agentErr } = await supabase
     .from('sales_agents')
@@ -102,7 +105,8 @@ export async function listMySalons(): Promise<{ data: MySalonRow[]; error: strin
   const { data: salons, error } = await supabase
     .from('salons')
     .select('id, name, subscription_plan, subscription_status, subscription_expires_at')
-    .eq('sold_by_agent_id', session.agentId!);
+    .eq('sold_by_agent_id', session.agentId!)
+    .eq('is_demo', false);
   if (error) return { data: [], error: error.message };
 
   const { data: commissions } = await supabase
@@ -273,7 +277,8 @@ export async function getAgentReport(input: {
     supabase
       .from('salons')
       .select('id, name, subscription_plan, subscription_status, subscription_expires_at')
-      .eq('sold_by_agent_id', input.agentId),
+      .eq('sold_by_agent_id', input.agentId)
+      .eq('is_demo', false),
   ]);
 
   if (agentErr) return { data: null, error: agentErr.message };
@@ -475,7 +480,8 @@ export async function getAgentsLeaderboard(input: {
     const { data: salonRows } = await supabase
       .from('salons')
       .select('id, sold_by_agent_id')
-      .in('id', salonIds);
+      .in('id', salonIds)
+      .eq('is_demo', false);
     for (const s of (salonRows || []) as { id: string; sold_by_agent_id: string | null }[]) {
       if (s.sold_by_agent_id) salonAgentMap.set(s.id, s.sold_by_agent_id);
     }

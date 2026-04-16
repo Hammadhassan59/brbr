@@ -20,6 +20,7 @@ import {
   DEMO_STAFF_SUPERADMIN,
   DEMO_PARTNER_ROYAL,
 } from '@/lib/demo-data';
+import { DEMO_SALON_ID, DEMO_BRANCH_ID } from '@/lib/demo-salon-constants';
 import type { Salon, Branch, Staff, SalonPartner } from '@/types/database';
 
 const IS_DEV = process.env.NODE_ENV === 'development';
@@ -108,6 +109,45 @@ export default function LoginPage() {
       }
 
       if (result.type === 'sales_agent' && result.agent) {
+        // Demo agent path: land them in the shared demo salon as a synthetic
+        // owner so they can showcase the full product. Real demo data lives
+        // in DB (seeded by migration 032 + reset cron), so we don't have to
+        // pre-populate Zustand from Supabase queries — just mirror the owner
+        // shape with the demo salon id and let the dashboard layout's
+        // getDashboardBootstrap() fetch fill in the rest.
+        if (result.agent.is_demo) {
+          const { setIsSalesAgent, setAgentId, setIsSuperAdmin } = useAppStore.getState();
+          setIsSuperAdmin(false);
+          setIsSalesAgent(false);
+          setAgentId(null);
+          setIsPartner(false);
+          setCurrentStaff(null);
+          setCurrentPartner(null);
+          // Minimal client-side placeholder; the real salon row is loaded from
+          // the server on /dashboard mount. Shape matches `Salon` closely
+          // enough for the layout's optional chains.
+          setSalon({
+            id: DEMO_SALON_ID,
+            name: 'Demo Salon',
+            subscription_status: 'active',
+          } as unknown as Salon);
+          setBranches([]);
+          setCurrentBranch(null);
+          setIsOwner(true);
+          await signSession({
+            salonId: DEMO_SALON_ID,
+            staffId: data.user.id,
+            role: 'owner',
+            branchId: DEMO_BRANCH_ID,
+            name: `${result.agent.name} (demo)`,
+            isDemo: true,
+            agentId: result.agent.id,
+          });
+          router.push('/dashboard');
+          return;
+        }
+
+        // Real sales agent — lands on /agent/leads.
         const { setIsSalesAgent, setAgentId, setIsSuperAdmin } = useAppStore.getState();
         setIsSuperAdmin(false);
         setIsOwner(false);
@@ -126,7 +166,7 @@ export default function LoginPage() {
           branchId: '',
           name: result.agent.name,
           agentId: result.agent.id,
-          isDemo: !!result.agent.is_demo,
+          isDemo: false,
         });
         router.push('/agent/leads');
         return;
