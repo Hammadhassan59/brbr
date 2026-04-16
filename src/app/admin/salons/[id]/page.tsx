@@ -21,6 +21,7 @@ import {
   deleteSalonAndAllData,
 } from '@/app/actions/admin';
 import { listSalesAgents } from '@/app/actions/sales-agents';
+import { getPublicPlatformConfig } from '@/app/actions/admin-settings';
 import type { SalesAgent } from '@/types/sales';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -43,7 +44,10 @@ const STATUS_BADGE: Record<SubscriptionStatus, { label: string; cls: string }> =
   suspended: { label: 'Suspended', cls: 'bg-red-500/15 text-red-600 border-red-500/25' },
 };
 
-const PLAN_PRICES: Record<SubscriptionPlan, string> = {
+// Fallback labels — only used until the live platform_settings load resolves.
+// Real labels come from getPublicPlatformConfig and reflect what super admin
+// has configured in /admin/settings (and shown on /paywall + /dashboard/billing).
+const PLAN_PRICES_FALLBACK: Record<SubscriptionPlan, string> = {
   none: 'No Plan',
   basic: 'Basic — Rs 2,500/mo',
   growth: 'Growth — Rs 5,000/mo',
@@ -110,6 +114,27 @@ export default function AdminSalonDetailPage({
   const [plan, setPlan] = useState<SubscriptionPlan>('none');
   const [status, setStatus] = useState<SubscriptionStatus>('pending');
   const [expiresAt, setExpiresAt] = useState('');
+
+  // Live plan price labels from platform_settings, so the dropdown reflects
+  // what the super admin set in /admin/settings (and what the tenant sees
+  // on /paywall + /dashboard/billing). Falls back to the constant above.
+  const [planPrices, setPlanPrices] = useState<Record<SubscriptionPlan, string>>(PLAN_PRICES_FALLBACK);
+
+  useEffect(() => {
+    let cancelled = false;
+    getPublicPlatformConfig()
+      .then((cfg) => {
+        if (cancelled) return;
+        setPlanPrices({
+          none: 'No Plan',
+          basic: `${cfg.plans.basic.displayName || 'Basic'} — Rs ${cfg.plans.basic.price.toLocaleString()}/mo`,
+          growth: `${cfg.plans.growth.displayName || 'Growth'} — Rs ${cfg.plans.growth.price.toLocaleString()}/mo`,
+          pro: `${cfg.plans.pro.displayName || 'Pro'} — Rs ${cfg.plans.pro.price.toLocaleString()}/mo`,
+        });
+      })
+      .catch(() => { /* keep fallback */ });
+    return () => { cancelled = true; };
+  }, []);
 
   // Sales agents
   const [agents, setAgents] = useState<SalesAgent[]>([]);
@@ -419,7 +444,7 @@ export default function AdminSalonDetailPage({
                 onChange={(e) => setPlan(e.target.value as SubscriptionPlan)}
                 className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-1 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
               >
-                {Object.entries(PLAN_PRICES).map(([key, label]) => (
+                {Object.entries(planPrices).map(([key, label]) => (
                   <option key={key} value={key}>{label}</option>
                 ))}
               </select>
