@@ -622,11 +622,17 @@ export async function deleteSalonAndAllData(
   const stockProductErr = await purge('stock_movements', 'product_id', productIds);
   if (stockProductErr) return { success: false, deletedAuthUsers: 0, error: `stock_movements/product: ${stockProductErr.message}` };
 
-  // Step 2: salons FK is NO ACTION on these three.
-  const { error: aptErr } = await supabase.from('appointments').delete().eq('salon_id', salonId);
-  if (aptErr) return { success: false, deletedAuthUsers: 0, error: `appointments: ${aptErr.message}` };
+  // Step 2: tips → bills (NO ACTION) → appointments (NO ACTION). Have to
+  // unwind the chain in reverse: tips first so bills can drop, bills before
+  // appointments so the bills.appointment_id FK doesn't block the
+  // appointments delete. tips lacks salon_id; scope via staff_id.
+  const tipsErr = await purge('tips', 'staff_id', staffIds);
+  if (tipsErr) return { success: false, deletedAuthUsers: 0, error: `tips: ${tipsErr.message}` };
+
   const { error: billErr } = await supabase.from('bills').delete().eq('salon_id', salonId);
   if (billErr) return { success: false, deletedAuthUsers: 0, error: `bills: ${billErr.message}` };
+  const { error: aptErr } = await supabase.from('appointments').delete().eq('salon_id', salonId);
+  if (aptErr) return { success: false, deletedAuthUsers: 0, error: `appointments: ${aptErr.message}` };
   const { error: loyaltyErr } = await supabase.from('loyalty_rules').delete().eq('salon_id', salonId);
   if (loyaltyErr) return { success: false, deletedAuthUsers: 0, error: `loyalty_rules: ${loyaltyErr.message}` };
 

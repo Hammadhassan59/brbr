@@ -83,7 +83,13 @@ const fromMock = vi.fn((table: string) => {
   if (table === 'appointments' || table === 'bills' || table === 'loyalty_rules') {
     return {
       delete: () => ({
-        eq: () => {
+        eq: (col: string) => {
+          // Defensive: the salon delete action calls bills/appointments/
+          // loyalty_rules with .eq('salon_id', X). Anything else likely
+          // means the action shape changed.
+          if (col !== 'salon_id') {
+            return Promise.resolve({ error: { message: `unexpected column ${col}` } });
+          }
           deleteCalls.push(table);
           return Promise.resolve({ error: null });
         },
@@ -254,13 +260,13 @@ describe('deleteSalonAndAllData', () => {
     // delete if any FK still points at a salon-scoped child.
     // Blocker tables that prevent the salons cascade go first (in
     // dependency-safe order), then the second stock_movements pass for
-    // product_id, then the three NO ACTION tables on salons
-    // (appointments/bills/loyalty_rules), then the salon row itself.
+    // product_id, then tips → bills → appointments (each FK-blocked by
+    // the next), then loyalty_rules, then the salon row itself.
     expect(deleteCalls).toEqual([
       'cash_drawers', 'attendance', 'expenses', 'purchase_orders',
       'stock_movements', 'udhaar_payments', 'advances', 'client_packages',
       'stock_movements',
-      'appointments', 'bills', 'loyalty_rules', 'salons',
+      'tips', 'bills', 'appointments', 'loyalty_rules', 'salons',
     ]);
     // owner + partner-auth-1 + staff-auth-1 + staff-auth-2 (4 unique)
     expect(adminDeleteUser).toHaveBeenCalledTimes(4);
