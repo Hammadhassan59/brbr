@@ -102,7 +102,7 @@ export default function ResetPasswordPage() {
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                minLength={6}
+                minLength={10}
                 required
                 className="mt-1.5"
                 placeholder="Min 6 characters"
@@ -115,7 +115,7 @@ export default function ResetPasswordPage() {
                 type="password"
                 value={confirm}
                 onChange={(e) => setConfirm(e.target.value)}
-                minLength={6}
+                minLength={10}
                 required
                 className="mt-1.5"
               />

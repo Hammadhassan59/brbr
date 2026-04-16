@@ -1,7 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { timingSafeEqual } from 'node:crypto';
 import { createServerClient } from '@/lib/supabase';
 import { sendEmail } from '@/lib/email-sender';
 import { planRenewalReminderEmail } from '@/lib/email-templates';
+
+// Constant-time comparison so the secret can't be recovered by measuring
+// how fast the naive `!==` check bails out on the first differing byte.
+function secretsEqual(a: string, b: string): boolean {
+  const ab = Buffer.from(a, 'utf8');
+  const bb = Buffer.from(b, 'utf8');
+  if (ab.length !== bb.length) return false;
+  return timingSafeEqual(ab, bb);
+}
 
 // Run daily via systemd timer on the Hetzner box.
 // Call: curl -H "X-Cron-Secret: <secret>" https://icut.pk/api/cron/renewal-reminders
@@ -49,7 +59,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'CRON_SECRET not configured' }, { status: 500 });
   }
   const provided = req.headers.get('x-cron-secret');
-  if (provided !== secret) {
+  if (!provided || !secretsEqual(provided, secret)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
