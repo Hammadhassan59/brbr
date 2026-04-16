@@ -89,6 +89,38 @@ export async function reassignLead(leadId: string, agentId: string): Promise<{ e
   return { error: error?.message ?? null };
 }
 
+/**
+ * Returns a count per status. Powers the named tab strip on /admin/leads
+ * and /agent/leads. Optional agentId scopes to one agent.
+ */
+export async function getLeadCounts(filter?: {
+  agentId?: string;
+}): Promise<{ data: Record<string, number>; error: string | null }> {
+  // Both super admin and the agent themselves can hit this; reject everyone
+  // else.
+  const session = await verifySession();
+  if (!session) throw new Error('Unauthorized');
+  const isAdmin = session.role === 'super_admin';
+  const isAgent = session.role === 'sales_agent' && !!session.agentId;
+  if (!isAdmin && !isAgent) throw new Error('Unauthorized');
+
+  const supabase = createServerClient();
+  let q = supabase.from('leads').select('status');
+  if (isAgent) {
+    q = q.eq('assigned_agent_id', session.agentId!);
+  } else if (filter?.agentId) {
+    q = q.eq('assigned_agent_id', filter.agentId);
+  }
+  const { data, error } = await q;
+  if (error) return { data: {}, error: error.message };
+
+  const counts: Record<string, number> = {};
+  for (const row of (data || []) as { status: string }[]) {
+    counts[row.status] = (counts[row.status] ?? 0) + 1;
+  }
+  return { data: counts, error: null };
+}
+
 /** Agent-side: list my assigned leads. */
 export async function listMyLeads(
   filter?: { status?: LeadStatus | 'all' },

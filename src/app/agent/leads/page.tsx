@@ -4,7 +4,7 @@ import { useEffect, useState, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import { Users, Plus, Camera, ImageIcon, X, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { listMyLeads, createMyLead } from '@/app/actions/leads';
+import { listMyLeads, createMyLead, getLeadCounts } from '@/app/actions/leads';
 import { compressImage } from '@/lib/image-compress';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,21 +14,44 @@ import type { Lead, LeadStatus } from '@/types/sales';
 
 const STATUSES: (LeadStatus | 'all')[] = ['all','new','contacted','visited','followup','interested','not_interested','onboarded','converted','lost'];
 
+const STATUS_LABELS: Record<string, string> = {
+  all: 'All',
+  new: 'New',
+  contacted: 'Contacted',
+  visited: 'Visited',
+  followup: 'Follow-up',
+  interested: 'Interested',
+  not_interested: 'Not interested',
+  onboarded: 'Onboarded',
+  converted: 'Converted',
+  lost: 'Lost',
+};
+
 export default function AgentLeadsPage() {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [status, setStatus] = useState<LeadStatus | 'all'>('all');
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
+  const [counts, setCounts] = useState<Record<string, number>>({});
 
   const load = useCallback(async () => {
     setLoading(true);
-    const { data } = await listMyLeads({ status });
+    const [{ data }, countsRes] = await Promise.all([
+      listMyLeads({ status }),
+      getLeadCounts(),
+    ]);
     setLeads(data);
+    setCounts(countsRes.data || {});
     setLoading(false);
   }, [status]);
 
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { load(); }, [load]);
+
+  const totalCount = Object.values(counts).reduce((s, n) => s + n, 0);
+  function countFor(s: LeadStatus | 'all'): number {
+    return s === 'all' ? totalCount : (counts[s] ?? 0);
+  }
 
   return (
     <div className="space-y-4">
@@ -42,15 +65,32 @@ export default function AgentLeadsPage() {
         </Button>
       </div>
 
-      <div className="flex gap-2 overflow-x-auto pb-2">
-        {STATUSES.map(s => (
-          <button key={s} onClick={() => setStatus(s)}
-            className={`px-3 py-1.5 text-xs rounded-full border whitespace-nowrap ${
-              status === s ? 'bg-gold text-black border-gold' : 'bg-white border-border text-muted-foreground'
-            }`}>
-            {s === 'all' ? 'All' : s.replace('_', ' ')}
-          </button>
-        ))}
+      {/* Status filter — bigger named tabs with per-status counts. Replaces
+          the old uniform pill row so 'Follow-up' and 'Onboarded' are
+          unmissable, and forces a new HTML chunk hash to bust the CDN cache. */}
+      <div className="flex gap-2 overflow-x-auto pb-2 -mx-1 px-1">
+        {STATUSES.map((s) => {
+          const active = status === s;
+          const count = countFor(s);
+          return (
+            <button
+              key={s}
+              onClick={() => setStatus(s)}
+              className={`shrink-0 inline-flex items-center gap-1.5 px-4 h-10 rounded-lg border text-sm font-medium transition-colors ${
+                active
+                  ? 'bg-gold text-black border-gold shadow-sm'
+                  : 'bg-white border-border text-foreground hover:border-gold/50'
+              }`}
+            >
+              <span>{STATUS_LABELS[s] ?? s}</span>
+              <span className={`text-[11px] px-1.5 py-0.5 rounded-full ${
+                active ? 'bg-black/15 text-black' : 'bg-muted text-muted-foreground'
+              }`}>
+                {count}
+              </span>
+            </button>
+          );
+        })}
       </div>
 
       {loading ? (

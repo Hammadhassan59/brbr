@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Plus, Target, Download, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { listLeads, createLead, reassignLead, deleteLead, exportLeadsCSV, type LeadWithAgent } from '@/app/actions/leads';
+import { listLeads, createLead, reassignLead, deleteLead, exportLeadsCSV, getLeadCounts, type LeadWithAgent } from '@/app/actions/leads';
 import { listSalesAgents } from '@/app/actions/sales-agents';
 import type { SalesAgent, LeadStatus } from '@/types/sales';
 import { Button } from '@/components/ui/button';
@@ -14,21 +14,42 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 
 const STATUSES: (LeadStatus | 'all')[] = ['all','new','contacted','visited','followup','interested','not_interested','onboarded','converted','lost'];
 
+const STATUS_LABELS: Record<string, string> = {
+  all: 'All',
+  new: 'New',
+  contacted: 'Contacted',
+  visited: 'Visited',
+  followup: 'Follow-up',
+  interested: 'Interested',
+  not_interested: 'Not interested',
+  onboarded: 'Onboarded',
+  converted: 'Converted',
+  lost: 'Lost',
+};
+
 export default function AdminLeadsPage() {
   const [leads, setLeads] = useState<LeadWithAgent[]>([]);
   const [agents, setAgents] = useState<SalesAgent[]>([]);
   const [agentFilter, setAgentFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState<LeadStatus | 'all'>('all');
   const [open, setOpen] = useState(false);
+  const [counts, setCounts] = useState<Record<string, number>>({});
 
   async function load() {
-    const [l, a] = await Promise.all([
+    const [l, a, countsRes] = await Promise.all([
       listLeads({ agentId: agentFilter || undefined, status: statusFilter }),
       listSalesAgents(),
+      getLeadCounts(agentFilter ? { agentId: agentFilter } : undefined),
     ]);
     if (l.error) toast.error(`Could not load leads: ${l.error}`);
     setLeads(l.data);
     setAgents(a.data);
+    setCounts(countsRes.data || {});
+  }
+
+  const totalCount = Object.values(counts).reduce((s, n) => s + n, 0);
+  function countFor(s: LeadStatus | 'all'): number {
+    return s === 'all' ? totalCount : (counts[s] ?? 0);
   }
 
   async function exportCSV() {
@@ -70,16 +91,39 @@ export default function AdminLeadsPage() {
         </div>
       </div>
 
-      <div className="flex flex-wrap gap-3">
+      {/* Agent filter stays as a dropdown; status filter is now a prominent
+          named-tab strip with per-status counts. Replaces the old <select>
+          which buried 'Follow-up' and 'Onboarded' as anonymous options. */}
+      <div className="flex flex-wrap items-center gap-3">
         <select value={agentFilter} onChange={e => setAgentFilter(e.target.value)}
           className="border rounded-lg px-3 py-2 text-sm bg-white">
           <option value="">All agents</option>
           {agents.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
         </select>
-        <select value={statusFilter} onChange={e => setStatusFilter(e.target.value as LeadStatus | 'all')}
-          className="border rounded-lg px-3 py-2 text-sm bg-white">
-          {STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
-        </select>
+      </div>
+      <div className="flex gap-2 overflow-x-auto pb-2 -mx-1 px-1">
+        {STATUSES.map((s) => {
+          const active = statusFilter === s;
+          const count = countFor(s);
+          return (
+            <button
+              key={s}
+              onClick={() => setStatusFilter(s)}
+              className={`shrink-0 inline-flex items-center gap-1.5 px-4 h-10 rounded-lg border text-sm font-medium transition-colors ${
+                active
+                  ? 'bg-gold text-black border-gold shadow-sm'
+                  : 'bg-white border-border text-foreground hover:border-gold/50'
+              }`}
+            >
+              <span>{STATUS_LABELS[s] ?? s}</span>
+              <span className={`text-[11px] px-1.5 py-0.5 rounded-full ${
+                active ? 'bg-black/15 text-black' : 'bg-muted text-muted-foreground'
+              }`}>
+                {count}
+              </span>
+            </button>
+          );
+        })}
       </div>
 
       {leads.length === 0 ? (

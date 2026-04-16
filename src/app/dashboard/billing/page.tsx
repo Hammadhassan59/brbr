@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { Loader2, CreditCard, CheckCircle2, Clock, XCircle, Wallet, CalendarDays, Receipt, AlertTriangle } from 'lucide-react';
+import { Loader2, CreditCard, CheckCircle2, Clock, XCircle, Wallet, CalendarDays, Receipt, AlertTriangle, Download } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -241,6 +241,25 @@ export default function BillingPage() {
       <p className="text-[11px] text-muted-foreground text-center">
         We&apos;ll remind you 7 days before, 3 days before, and on the expiry date.
       </p>
+
+      {/* Data export — always available, regardless of subscription status.
+          Owner can pull a backup of their data anytime as a PDF. */}
+      <Card>
+        <CardContent className="p-5 flex items-center justify-between gap-4 flex-wrap">
+          <div>
+            <p className="text-sm font-semibold">Your data</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Download a PDF with your salon profile, branches, staff, services, clients,
+              last 90 days of bills + appointments, and current inventory snapshot.
+            </p>
+          </div>
+          <a href="/api/dashboard/data-export.pdf" download>
+            <Button variant="outline" className="h-10">
+              <Download className="w-4 h-4 mr-1.5" /> Download my data (PDF)
+            </Button>
+          </a>
+        </CardContent>
+      </Card>
 
       {renewPlan && (
         <PaymentSubmitModal

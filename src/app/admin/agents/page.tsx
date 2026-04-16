@@ -1,20 +1,28 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
-import { Plus, UserCog, Copy } from 'lucide-react';
+import { Plus, UserCog, Copy, TrendingUp, Banknote, Store, Trophy, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { listSalesAgents, createSalesAgent } from '@/app/actions/sales-agents';
+import { getAgentsLeaderboard } from '@/app/actions/agent-commissions';
 import type { SalesAgent } from '@/types/sales';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Card, CardContent } from '@/components/ui/card';
+import { formatPKR } from '@/lib/utils/currency';
+
+type Leaderboard = Awaited<ReturnType<typeof getAgentsLeaderboard>>['data'];
 
 export default function AgentsPage() {
   const [agents, setAgents] = useState<SalesAgent[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
+  const [from, setFrom] = useState(() => { const d = new Date(); d.setDate(d.getDate() - 30); return d.toISOString().slice(0, 10); });
+  const [to, setTo] = useState(() => new Date().toISOString().slice(0, 10));
+  const [leaderboard, setLeaderboard] = useState<Leaderboard>(null);
 
   async function load() {
     setLoading(true);
@@ -22,8 +30,16 @@ export default function AgentsPage() {
     setAgents(data);
     setLoading(false);
   }
+
+  const loadLeaderboard = useCallback(async () => {
+    const { data } = await getAgentsLeaderboard({ from, to });
+    setLeaderboard(data);
+  }, [from, to]);
+
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { load(); }, []);
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => { loadLeaderboard(); }, [loadLeaderboard]);
 
   return (
     <div className="space-y-6">
@@ -32,6 +48,73 @@ export default function AgentsPage() {
         <Button onClick={() => setOpen(true)}>
           <Plus className="w-4 h-4 mr-1" /> New agent
         </Button>
+      </div>
+
+      {/* Top performers — cross-agent overview for the chosen window */}
+      <div className="space-y-3">
+        <div className="flex items-center gap-3 flex-wrap">
+          <h3 className="font-medium text-sm flex items-center gap-2">
+            <Trophy className="w-4 h-4 text-gold" /> Performance overview
+          </h3>
+          <div className="flex items-center gap-2 ml-auto">
+            <Label className="text-xs">From</Label>
+            <Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="w-36 h-8" />
+            <Label className="text-xs">To</Label>
+            <Input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="w-36 h-8" />
+          </div>
+        </div>
+
+        {leaderboard ? (
+          <>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <Card><CardContent className="p-4">
+                <div className="flex items-center gap-2 text-xs text-muted-foreground uppercase tracking-wider">
+                  <TrendingUp className="w-3.5 h-3.5" /> Commissions paid
+                </div>
+                <p className="text-2xl font-bold mt-2">{formatPKR(leaderboard.totals.commissions_paid)}</p>
+              </CardContent></Card>
+              <Card><CardContent className="p-4">
+                <div className="flex items-center gap-2 text-xs text-muted-foreground uppercase tracking-wider">
+                  <Banknote className="w-3.5 h-3.5" /> Cash collected
+                </div>
+                <p className="text-2xl font-bold mt-2">{formatPKR(leaderboard.totals.cash_collected)}</p>
+              </CardContent></Card>
+              <Card><CardContent className="p-4">
+                <div className="flex items-center gap-2 text-xs text-muted-foreground uppercase tracking-wider">
+                  <Store className="w-3.5 h-3.5" /> Salons activated
+                </div>
+                <p className="text-2xl font-bold mt-2">{leaderboard.totals.salons_onboarded}</p>
+              </CardContent></Card>
+            </div>
+
+            {leaderboard.leaderboard.filter((a) => a.earned > 0).length > 0 && (
+              <Card><CardContent className="p-4">
+                <p className="text-xs uppercase tracking-wider text-muted-foreground mb-3">Top performers (by commissions earned)</p>
+                <div className="space-y-2">
+                  {leaderboard.leaderboard.slice(0, 3).map((a, i) => (
+                    <Link key={a.agent_id} href={`/admin/agents/${a.agent_id}`} className="flex items-center justify-between p-2 rounded-lg hover:bg-muted/40 transition-colors">
+                      <div className="flex items-center gap-3">
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
+                          i === 0 ? 'bg-gold text-black' : i === 1 ? 'bg-gray-300 text-black' : 'bg-amber-700/40 text-amber-900'
+                        }`}>{i + 1}</div>
+                        <div>
+                          <p className="font-medium text-sm">{a.agent_name}</p>
+                          <p className="text-[11px] text-muted-foreground font-mono">{a.agent_code}</p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-semibold">{formatPKR(a.earned)}</p>
+                        <p className="text-[11px] text-muted-foreground">{a.salons} salon{a.salons === 1 ? '' : 's'}</p>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              </CardContent></Card>
+            )}
+          </>
+        ) : (
+          <div className="flex justify-center py-6"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>
+        )}
       </div>
 
       {loading ? (
