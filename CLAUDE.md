@@ -28,3 +28,28 @@ Key routing rules:
 - When adding error handling, write a test that triggers the error
 - When adding a conditional, write tests for both paths
 - Never commit code that makes existing tests fail
+
+## Security hardening pass — 2026-04-16
+
+Landed C1–C13 + most High-severity findings from the full-surface audit. Summary of what's live in prod now:
+
+**Tenant isolation.** Every server-action that writes to per-salon tables now uses `requireAdminRole([...])` / `verifySession()` + explicit `.eq('salon_id', session.salonId)` filter + zod allow-lists (`src/lib/schemas.ts`, `src/lib/tenant-guard.ts`). Closed cross-tenant IDOR and mass-assignment on staff, clients, bills, tips, promos, packages, inventory, expenses, cash-drawer, settings, setup. `setupSalon` now requires a real auth session and derives `ownerId` from the verified JWT — no longer accepts client-supplied ownership.
+
+**Auth architecture.** `src/proxy.ts` rewritten to `jose.jwtVerify` the HttpOnly `icut-token` cookie and derive role/sub_active from the payload; every `document.cookie = 'icut-role=...'` write killed. JWT now carries `iss/aud/kid/jti/sub_active`; `SESSION_SECRET` length floor enforced. `resolveUserRole` PostgREST `.or()` filter-injection closed; email-hijack path gated on `email_confirmed_at`. `changeAccountEmail` no longer uses `email_confirm: true` (verification link required). Admin impersonation re-verifies the super admin via `admin_users` OR `SUPERADMIN_EMAILS` env on exit.
+
+**SECURITY DEFINER RPCs.** Migration 029 — `get_daily_summary`, `get_staff_monthly_commission`, `get_udhaar_report`, `get_client_stats` all now require `p_salon_id`, assert ownership, `EXECUTE` revoked from anon+authenticated, granted to service_role only. Callers moved into `src/app/actions/dashboard.ts`. New tables `admin_impersonation_sessions`, `admin_audit_log` added.
+
+**Storage.** Migration 030 — `payment-screenshots` and `lead-photos` buckets flipped to private. Migration 031 — added `screenshot_path` and `photo_path` columns. `listPaymentRequests` and `listMyLeads` mint 15-min signed URLs server-side; admin payments page renders inline thumbnails; `getPaymentScreenshotUrl` and `getLeadPhotoUrl` in `src/app/actions/storage.ts` handle on-click full views.
+
+**Rate limiting + validation.** `src/lib/rate-limit-buckets.ts` + `with-rate-limit.ts` wired into login, password-reset, signup, email-availability, payment-submit, admin-invite, agent-code-lookup, change-password. `src/lib/schemas/common.ts` has `PasswordSchema` (min 10), email/phone/UUID/amount/date/percent primitives. `MIN_PASSWORD_LENGTH` bumped to 10 for new signups/changes; existing logins keep 6 for transition. `safeError` adopted on high-value action returns.
+
+**Infra.** `next.config.ts` CSP dropped `'unsafe-eval'`, added COOP/CORP; Caddyfile adds HSTS/nosniff/Referrer-Policy/Permissions-Policy. Dockerfile uses BuildKit `--mount=type=secret,id=nextsa_key` so the server-actions encryption key never lands in image layers (file on VPS: `/opt/brbr/secrets/nextsa_key.txt`). `docker-compose.yml` binds port 3000 to 127.0.0.1 (Caddy-only ingress). `deploy.yml` changed from `workflow_run` auto-deploy to `workflow_dispatch` + required reviewers under `environment: production` — honors the deploy-gate rule. CI actions pinned to SHAs.
+
+**Admin sub-roles.** `requireAdminRole([...])` wired across 9 admin-action files so `customer_support`, `technical_support`, and `leads_team` can actually reach the pages `ADMIN_ROUTE_ACCESS` permits. Previously every admin action had a hard-coded `requireSuperAdmin()` that crashed the page as a "Server Components render error."
+
+**Known unresolved (from the audit):**
+- **Rotate `SESSION_SECRET` / `SUPABASE_SERVICE_ROLE_KEY` / `POSTGRES_PASSWORD` / Resend / S3 keys.** They still sit unencrypted in `~/icut/icut-handoff/*.env` from the dev-laptop era. Code is ready; user must rotate via Supabase Studio and update VPS `.env.local`.
+- **Scrub git history of leaked VPS IPs** (`138.199.175.90`, `91.99.117.168`). Redacted in plan docs on-disk but still in history — requires `filter-repo`, destructive, pending user go-ahead.
+- **Impersonation Supabase session redemption.** `enterDashboard` in `/admin/salons/[id]` and `exitImpersonation` callers never redeem the `supabaseAuth.tokenHash` returned by the server action, so the browser's Supabase session stays as the super-admin while the iCut JWT flips. Client-side `.from('appointments').select()` etc. hit RLS with the wrong auth-uid and return zero rows. Pre-existing bug (exists in `047ef85`), not caused by the security pass. Fix is ~5 lines: call `supabase.auth.verifyOtp({ token_hash, type: 'magiclink' })` before the redirect.
+
+**Current prod commit: `625e75c`** — see `~/.claude/projects/-Users-alkhatalrafie-icut/memory/project_security_rollback_point.md` for rollback instructions.

@@ -4,7 +4,7 @@ import { use, useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   ArrowLeft, Loader2, Save, Users, UserCheck, DollarSign, TrendingUp,
-  CreditCard, Zap, Ban, Building2, MapPin,
+  CreditCard, Zap, Ban, Building2, MapPin, Key, Copy, Check, AlertTriangle,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAppStore } from '@/store/app-store';
@@ -21,6 +21,7 @@ import {
   deleteSalonAndAllData,
 } from '@/app/actions/admin';
 import { listSalesAgents } from '@/app/actions/sales-agents';
+import { generateSalonOwnerPassword } from '@/app/actions/admin-users';
 import { getPublicPlatformConfig } from '@/app/actions/admin-settings';
 import type { SalesAgent } from '@/types/sales';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -94,6 +95,14 @@ export default function AdminSalonDetailPage({
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+
+  // Password reset modal state. Holds the generated password only for the
+  // duration of the modal — cleared on close so it's never in component
+  // memory after the admin has copied + shared it.
+  const [pwOpen, setPwOpen] = useState(false);
+  const [pwLoading, setPwLoading] = useState(false);
+  const [pwResult, setPwResult] = useState<{ email: string; password: string } | null>(null);
+  const [pwCopied, setPwCopied] = useState(false);
 
   // Detail data
   const [salon, setSalonData] = useState<Salon | null>(null);
@@ -235,6 +244,44 @@ export default function AdminSalonDetailPage({
     }
   }
 
+  async function handleGeneratePassword() {
+    if (!salon) return;
+    setPwLoading(true);
+    setPwCopied(false);
+    try {
+      const res = await generateSalonOwnerPassword(salon.id);
+      if (!res.success) {
+        toast.error(res.error);
+        return;
+      }
+      setPwResult({ email: res.email, password: res.password });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to generate password');
+    } finally {
+      setPwLoading(false);
+    }
+  }
+
+  async function copyGeneratedPassword() {
+    if (!pwResult) return;
+    try {
+      await navigator.clipboard.writeText(pwResult.password);
+      setPwCopied(true);
+      toast.success('Password copied');
+      window.setTimeout(() => setPwCopied(false), 2500);
+    } catch {
+      toast.error('Copy failed — select and copy manually');
+    }
+  }
+
+  function closePwModal() {
+    // Always clear the password from state when the modal closes so it
+    // doesn't linger in memory after the admin has already shared it.
+    setPwOpen(false);
+    setPwResult(null);
+    setPwCopied(false);
+  }
+
   async function enterDashboard() {
     if (!salon) return;
     const { data, error } = await impersonateSalon(salon.id);
@@ -321,6 +368,9 @@ export default function AdminSalonDetailPage({
           </div>
         </div>
         <div className="flex items-center gap-2 sm:shrink-0">
+          <Button size="sm" variant="outline" className="flex-1 sm:flex-initial h-10 sm:h-9" onClick={() => { setPwOpen(true); setPwResult(null); }}>
+            <Key className="w-4 h-4 mr-1.5" /> Reset Owner Password
+          </Button>
           <Button size="sm" variant="outline" className="flex-1 sm:flex-initial h-10 sm:h-9 text-destructive border-destructive/40 hover:bg-destructive/10" onClick={deleteTenant}>
             Delete Tenant
           </Button>
@@ -648,6 +698,79 @@ export default function AdminSalonDetailPage({
           Save Changes
         </Button>
       </div>
+
+      {/* Reset Owner Password modal */}
+      {pwOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 animate-in fade-in duration-150"
+          role="dialog"
+          aria-modal="true"
+          onClick={(e) => { if (e.target === e.currentTarget) closePwModal(); }}
+        >
+          <div className="bg-card border border-border rounded-lg shadow-lg w-full max-w-md">
+            <div className="p-5 border-b border-border">
+              <h2 className="font-heading text-lg font-semibold flex items-center gap-2">
+                <Key className="w-5 h-5 text-gold" /> Reset owner password
+              </h2>
+              <p className="text-xs text-muted-foreground mt-1">
+                Generates a new login password for <span className="font-medium">{salon?.name}</span>&apos;s owner account. The old password stops working immediately.
+              </p>
+            </div>
+
+            {!pwResult ? (
+              <div className="p-5 space-y-4">
+                <div className="flex gap-2 p-3 rounded-md bg-amber-500/10 border border-amber-500/25">
+                  <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                  <p className="text-xs text-amber-700 dark:text-amber-500">
+                    The new password will be shown <strong>once</strong>. Copy it now and share with the owner via WhatsApp, SMS, or call. It will NOT be shown again.
+                  </p>
+                </div>
+                <div className="flex justify-end gap-2 pt-2">
+                  <Button variant="outline" onClick={closePwModal} disabled={pwLoading}>Cancel</Button>
+                  <Button className="bg-gold text-black border border-gold" onClick={handleGeneratePassword} disabled={pwLoading}>
+                    {pwLoading ? <Loader2 className="w-4 h-4 animate-spin mr-1.5" /> : <Key className="w-4 h-4 mr-1.5" />}
+                    Generate new password
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="p-5 space-y-4">
+                <div>
+                  <Label className="text-xs text-muted-foreground">Email</Label>
+                  <div className="mt-1 font-mono text-sm">{pwResult.email}</div>
+                </div>
+                <div>
+                  <Label className="text-xs text-muted-foreground">New password</Label>
+                  <div className="mt-1 flex items-center gap-2">
+                    <div className="flex-1 font-mono text-base p-2.5 rounded-md border border-border bg-secondary/30 select-all tracking-wider break-all">
+                      {pwResult.password}
+                    </div>
+                    <Button
+                      size="sm"
+                      variant={pwCopied ? 'default' : 'outline'}
+                      onClick={copyGeneratedPassword}
+                      className={pwCopied ? 'bg-green-600 text-white border-green-600' : ''}
+                    >
+                      {pwCopied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                    </Button>
+                  </div>
+                </div>
+                <a
+                  href={`https://wa.me/?text=${encodeURIComponent(`Your iCut password has been reset. Email: ${pwResult.email} — New password: ${pwResult.password} — Please log in and change it from Settings.`)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block text-center text-sm text-gold hover:underline"
+                >
+                  Open WhatsApp to share
+                </a>
+                <div className="flex justify-end pt-2">
+                  <Button onClick={closePwModal}>Done</Button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
