@@ -194,15 +194,33 @@ export async function setupSalon(data: {
   );
   if (!rl.ok) return { data: null, error: rl.error ?? 'Too many setup attempts, please try again later.' };
 
-  // Authenticate via Supabase Auth cookie. We REJECT any client-supplied
-  // ownerId that doesn't match — otherwise a motivated caller could take
-  // over someone else's salon by passing their user id.
-  const authUser = await getAuthUserFromCookies();
-  if (!authUser) return { data: null, error: 'Not authenticated' };
-  if (data.ownerId && data.ownerId !== authUser.id) {
+  // Authenticate via the server-minted icut-token JWT. signSession() at
+  // signup wrote this cookie with staffId=<Supabase auth user id>; the JWT
+  // is HttpOnly, Secure, SameSite=Strict, and signed with SESSION_SECRET,
+  // so trusting its staffId as the authenticated user is safe. A motivated
+  // caller cannot forge it.
+  //
+  // We deliberately don't gate on Supabase auth cookies here because the
+  // browser client stores its session in localStorage (the default for
+  // createClient from @supabase/supabase-js), so there are no sb-*-auth-token
+  // cookies for the server to read. The JWT check is equivalent authentication
+  // with a different transport.
+  let session;
+  try {
+    const { verifySession } = await import('./auth');
+    session = await verifySession();
+  } catch {
+    // Fall back to the old Supabase-SSR cookie path so any session created
+    // by a non-default (cookie-backed) Supabase client still works.
+    const authUser = await getAuthUserFromCookies();
+    if (!authUser) return { data: null, error: 'Not authenticated' };
+    session = { staffId: authUser.id };
+  }
+  if (!session.staffId) return { data: null, error: 'Invalid session' };
+  if (data.ownerId && data.ownerId !== session.staffId) {
     return { data: null, error: 'Not allowed' };
   }
-  const ownerId = authUser.id;
+  const ownerId = session.staffId;
 
   const supabase = createServerClient();
 
