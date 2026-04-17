@@ -43,7 +43,11 @@ export default function ProfitLossPage() {
 
     if (branchScope === 'all') {
       billQuery = billQuery.eq('salon_id', salon.id);
-      expQuery = expQuery.eq('salon_id', salon.id);
+      // expenses has no salon_id column — scope by the salon's branch_ids.
+      const branchIds = branches.map((b) => b.id);
+      expQuery = branchIds.length
+        ? expQuery.in('branch_id', branchIds)
+        : expQuery.eq('branch_id', '__none__'); // force-empty when salon has no branches
     } else {
       const bid = branchScope === 'current' ? currentBranch?.id : branchScope;
       if (bid) {

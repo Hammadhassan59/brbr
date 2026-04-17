@@ -7,13 +7,16 @@ import { supabase } from '@/lib/supabase';
 import { getStaffMonthlyCommissionAction } from '@/app/actions/dashboard';
 import { useAppStore } from '@/store/app-store';
 import { formatPKR } from '@/lib/utils/currency';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import type { Staff } from '@/types/database';
 
+type BranchScope = 'current' | 'all';
+
 export default function StaffReportPage() {
-  const { salon } = useAppStore();
+  const { salon, currentBranch, branches, isPartner, currentStaff } = useAppStore();
   const now = new Date();
   const [staffList, setStaffList] = useState<Staff[]>([]);
   const [selectedStaffId, setSelectedStaffId] = useState('');
@@ -22,13 +25,30 @@ export default function StaffReportPage() {
   const [loading, setLoading] = useState(true);
   const [commData, setCommData] = useState<{ services_count: number; total_revenue: number; commission_earned: number; tips_total: number; advances_total: number; late_deductions: number; net_payable: number } | null>(null);
   const [attendance, setAttendance] = useState<{ present: number; absent: number; late: number; leave: number }>({ present: 0, absent: 0, late: 0, leave: 0 });
+  const [branchScope, setBranchScope] = useState<BranchScope>('current');
+
+  const canSeeAllBranches = branches.length > 1 && (isPartner || currentStaff?.role === 'owner' || currentStaff?.role === 'manager');
 
   useEffect(() => {
     if (!salon) return;
-    supabase.from('staff').select('*').eq('salon_id', salon.id).eq('is_active', true).order('name').then(({ data }: { data: Staff[] | null }) => {
-      if (data) { setStaffList(data); if (data.length > 0) setSelectedStaffId(data[0].id); }
+    let query = supabase.from('staff').select('*').eq('salon_id', salon.id).eq('is_active', true);
+    if (branchScope === 'current' && currentBranch) {
+      query = query.eq('branch_id', currentBranch.id);
+    }
+    query.order('name').then(({ data }: { data: Staff[] | null }) => {
+      if (data) {
+        setStaffList(data);
+        // Preserve the current selection if still in the filtered list;
+        // otherwise pick the first row.
+        if (!data.some((s) => s.id === selectedStaffId)) {
+          setSelectedStaffId(data.length > 0 ? data[0].id : '');
+        }
+      }
     });
-  }, [salon]);
+    // selectedStaffId deliberately omitted — we only want to refetch when
+    // salon/branch scope changes, not on every selection change.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [salon, currentBranch, branchScope]);
 
   const fetchReport = useCallback(async () => {
     if (!selectedStaffId) return;
@@ -67,6 +87,26 @@ export default function StaffReportPage() {
 
       <div className="bg-card border border-border rounded-lg p-4 flex flex-wrap items-center gap-3">
         <h2 className="font-heading text-xl font-bold">Staff Report</h2>
+        {canSeeAllBranches && (
+          <div className="inline-flex rounded-md border border-border bg-background p-0.5">
+            <Button
+              size="sm"
+              variant={branchScope === 'current' ? 'default' : 'ghost'}
+              className="h-7 px-3 text-xs"
+              onClick={() => setBranchScope('current')}
+            >
+              {currentBranch?.name || 'Current Branch'}
+            </Button>
+            <Button
+              size="sm"
+              variant={branchScope === 'all' ? 'default' : 'ghost'}
+              className="h-7 px-3 text-xs"
+              onClick={() => setBranchScope('all')}
+            >
+              All Branches
+            </Button>
+          </div>
+        )}
         <select value={selectedStaffId} onChange={(e) => { if (e.target.value) setSelectedStaffId(e.target.value); }}
           className="w-[180px] h-8 text-xs border border-border bg-background rounded-md px-2">
           <option value="">Select staff</option>

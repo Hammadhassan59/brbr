@@ -58,10 +58,14 @@ export default function DailyReportPage() {
     try {
       if (branchScope === 'all') {
         // Cross-branch: aggregate across all branches
+        // expenses has no salon_id column; go through branch_ids instead.
+        const branchIds = branches.map((b) => b.id);
         const [sumRes, billsRes, expRes] = await Promise.all([
           supabase.rpc('get_salon_daily_summary', { p_salon_id: salon.id, p_date: date }),
           supabase.from('bills').select('*, items:bill_items(*)').eq('salon_id', salon.id).gte('created_at', `${date}T00:00:00`).lte('created_at', `${date}T23:59:59`).order('created_at', { ascending: false }),
-          supabase.from('expenses').select('*').eq('salon_id', salon.id).eq('date', date).order('created_at', { ascending: false }),
+          branchIds.length
+            ? supabase.from('expenses').select('*').in('branch_id', branchIds).eq('date', date).order('created_at', { ascending: false })
+            : Promise.resolve({ data: [], error: null }),
         ]);
         if (sumRes.data) setSummary(sumRes.data as DailySummary);
         if (billsRes.data) setBills(billsRes.data as (Bill & { items?: BillItem[] })[]);

@@ -147,10 +147,17 @@ export default function InventoryReportPage() {
           movements" column which was unreliable. */}
       <Card className="border-border">
         <CardHeader className="pb-2">
-          <CardTitle className="text-sm">Backbar Consumption</CardTitle>
+          <CardTitle className="text-sm flex items-center gap-2">
+            Backbar Consumption
+            <span className="text-[10px] font-normal text-muted-foreground border border-border rounded px-1.5 py-0.5">
+              Salon-wide
+            </span>
+          </CardTitle>
           <p className="text-xs text-muted-foreground">
             Expected product usage based on services performed in this window. Click a row to see which stylists
             consumed how much. Hit &quot;Audit&quot; on a row to enter your physical stocktake count and see the variance.
+            Stocktake counts are recorded per-salon (not per-branch) — if you need branch-level reconciliation, ask
+            for the migration that adds branch_id to backbar_actuals.
           </p>
         </CardHeader>
         <CardContent className="px-0">
