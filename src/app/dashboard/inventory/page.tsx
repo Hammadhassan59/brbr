@@ -40,10 +40,8 @@ export default function InventoryDashboardPage() {
         fetchProductsWithBranchStock(salon.id, currentBranch.id),
         // stock_movements has no salon_id column — inner-join products and filter
         // by product.salon_id so we never surface another tenant's movements.
-        // Note: movements are branch-tagged via `branch_id` on the row itself,
-        // but we intentionally show recent activity across the whole salon here
-        // so owners can see cross-branch activity at a glance.
-        supabase.from('stock_movements').select('*, product:products!inner(name, salon_id)').eq('product.salon_id', salon.id).order('created_at', { ascending: false }).limit(10),
+        // Scope to the current branch too — nothing crosses branch boundaries.
+        supabase.from('stock_movements').select('*, product:products!inner(name, salon_id)').eq('product.salon_id', salon.id).eq('branch_id', currentBranch.id).order('created_at', { ascending: false }).limit(10),
       ]);
       setProducts(prods);
       if (movRes.data) setMovements(movRes.data.map((m: Record<string, unknown>) => ({
