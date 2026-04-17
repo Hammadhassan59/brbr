@@ -20,6 +20,7 @@ import {
   setSalonSoldByAgent,
   impersonateSalon,
   deleteSalonAndAllData,
+  activateSalonManually,
 } from '@/app/actions/admin';
 import { listSalesAgents } from '@/app/actions/sales-agents';
 import { generateSalonOwnerPassword } from '@/app/actions/admin-users';
@@ -216,15 +217,26 @@ export default function AdminSalonDetailPage({
 
   async function handleActivate() {
     const activePlan = plan === 'none' ? 'basic' : plan;
+    const confirmed = window.confirm(
+      `Activate "${salon?.name ?? 'this salon'}" on the ${activePlan.toUpperCase()} plan for 30 days without a payment?\n\n` +
+        `This will be recorded in admin_audit_log and as an approved payment_requests row marked admin_override.`,
+    );
+    if (!confirmed) return;
     setPlan(activePlan);
     setStatus('active');
     setSaving(true);
     try {
-      await updateSubscription(id, {
-        subscription_plan: activePlan,
-        subscription_status: 'active',
-      });
-      toast.success('Subscription activated');
+      const { error } = await activateSalonManually(id, { plan: activePlan });
+      if (error) {
+        toast.error(error);
+        return;
+      }
+      // Refresh expires_at display on the form.
+      const newExpiry = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+        .toISOString()
+        .slice(0, 10);
+      setExpiresAt(newExpiry);
+      toast.success(`Activated on ${activePlan} plan until ${newExpiry}`);
     } catch {
       toast.error('Failed to activate');
     } finally {

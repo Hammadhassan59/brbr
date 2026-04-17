@@ -59,7 +59,7 @@ export interface PaymentRequestWithSalon extends PaymentRequest {
  * Used when the owner submits a request so the recorded amount matches what they
  * were shown on the paywall, even if admin updates prices later.
  */
-async function lookupPlanPrice(plan: Plan): Promise<number> {
+export async function lookupPlanPrice(plan: Plan): Promise<number> {
   const supabase = createServerClient();
   const { data } = await supabase
     .from('platform_settings')

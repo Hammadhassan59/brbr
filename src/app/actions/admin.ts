@@ -322,6 +322,88 @@ export async function updateSubscription(
   return { success: true };
 }
 
+/**
+ * Activate a salon's subscription manually — the admin path that bypasses the
+ * owner's /paywall flow. Unlike the bare updateSubscription call the Activate
+ * button used to make, this:
+ *
+ *   1. Always sets `subscription_expires_at` to now + durationDays (30 by
+ *      default). No more infinite free subscriptions.
+ *   2. Inserts a `payment_requests` row with `status='approved'`,
+ *      `method='admin_override'` so the admin payments list reflects the
+ *      activation history.
+ *   3. Writes an `admin_audit_log` row attributing the action to the calling
+ *      super admin.
+ *
+ * super_admin only. Returns { error } on failure.
+ */
+export async function activateSalonManually(
+  salonId: string,
+  opts: { plan: 'basic' | 'growth' | 'pro'; durationDays?: number; notes?: string },
+): Promise<{ error: string | null }> {
+  const session = await requireAdminRole(['super_admin']);
+  const supabase = createServerClient();
+
+  const days = Math.max(1, Math.min(3650, opts.durationDays ?? 30));
+  const now = new Date();
+  const expiresAt = new Date(now.getTime() + days * 24 * 60 * 60 * 1000).toISOString();
+
+  // Look up plan price so the dummy payment_requests row reflects what the
+  // owner would have paid if they'd gone through the normal flow.
+  const { lookupPlanPrice } = await import('./payment-requests');
+  const amount = await lookupPlanPrice(opts.plan);
+
+  // Flip the salon into active + write a real expiry.
+  const { error: salonErr } = await supabase
+    .from('salons')
+    .update({
+      subscription_plan: opts.plan,
+      subscription_status: 'active',
+      subscription_expires_at: expiresAt,
+      subscription_started_at: now.toISOString(),
+    })
+    .eq('id', salonId);
+  if (salonErr) return { error: safeError(salonErr) };
+
+  // History row in payment_requests — approved on insert, clearly marked
+  // as an admin override. payment_source stays 'salon_self' (default) since
+  // the enum only knows salon_self + agent_collected.
+  const { error: prErr } = await supabase.from('payment_requests').insert({
+    salon_id: salonId,
+    plan: opts.plan,
+    amount,
+    method: 'admin_override',
+    reference: `Manual activation by admin ${session.staffId.slice(0, 8)}`,
+    status: 'approved',
+    duration_days: days,
+    reviewed_by: session.staffId,
+    reviewed_at: now.toISOString(),
+    reviewer_notes: opts.notes ?? 'Activated without payment by super_admin',
+  });
+  // Don't unwind the activation if the history row fails — the salon is
+  // already active and the audit log below still records the action. Just
+  // surface the error for visibility.
+  if (prErr) {
+    console.error('activateSalonManually: payment_requests history insert failed', prErr);
+  }
+
+  await supabase.from('admin_audit_log').insert({
+    admin_auth_user_id: session.staffId,
+    action: 'activate_subscription_manually',
+    target_table: 'salons',
+    target_id: salonId,
+    salon_id: salonId,
+    metadata: {
+      plan: opts.plan,
+      durationDays: days,
+      expiresAt,
+      notes: opts.notes ?? null,
+    },
+  });
+
+  return { error: null };
+}
+
 export async function getAdminSalonMetrics(salonId: string) {
   await requireAdminRole(['super_admin', 'customer_support', 'technical_support']);
   const supabase = createServerClient();
