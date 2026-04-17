@@ -83,14 +83,16 @@ export default function PermissionsPage() {
     );
   }
 
-  return <PermissionsEditor salonId={salon?.id ?? null} memberBranches={memberBranches} />;
+  return <PermissionsEditor salonId={salon?.id ?? null} currentBranch={currentBranch} memberBranches={memberBranches} />;
 }
 
 function PermissionsEditor({
   salonId,
+  currentBranch,
   memberBranches,
 }: {
   salonId: string | null;
+  currentBranch: { id: string; name: string } | null;
   memberBranches: Array<{ id: string; name: string }>;
 }) {
   const [loading, setLoading] = useState(true);
