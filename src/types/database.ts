@@ -108,7 +108,7 @@ export interface Branch {
 export interface Staff {
   id: string;
   salon_id: string;
-  branch_id: string | null;
+  primary_branch_id: string | null;
   name: string;
   phone: string | null;
   email: string | null;

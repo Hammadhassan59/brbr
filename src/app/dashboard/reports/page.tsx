@@ -2,9 +2,12 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import toast from 'react-hot-toast';
 import { Calendar, CalendarRange, UserCog, Package, Users, TrendingUp, ArrowRight, ArrowUpRight, ArrowDownRight, BarChart3 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAppStore } from '@/store/app-store';
+import { usePermission } from '@/lib/permissions';
 import { getTodayPKT } from '@/lib/utils/dates';
 import { formatPKR, formatPKRShort } from '@/lib/utils/currency';
 import { EmptyState } from '@/components/empty-state';
@@ -19,9 +22,18 @@ interface ReportPreview {
 }
 
 export default function ReportsPage() {
+  const router = useRouter();
   const { salon, currentBranch } = useAppStore();
+  const canViewReports = usePermission('view_reports');
   const [data, setData] = useState<ReportPreview | null>(null);
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!canViewReports) {
+      toast.error('You do not have permission to view reports');
+      router.replace('/dashboard');
+    }
+  }, [canViewReports, router]);
 
   const fetchPreviews = useCallback(async () => {
     if (!salon || !currentBranch) { setLoading(false); return; }

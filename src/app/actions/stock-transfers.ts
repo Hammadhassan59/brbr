@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { checkWriteAccess } from './auth';
 import { createServerClient } from '@/lib/supabase';
 import {
+  assertBranchMembership,
   assertBranchOwned,
   assertProductOwned,
   tenantErrorMessage,
@@ -62,11 +63,15 @@ export async function transferStock(input: {
   const supabase = createServerClient();
 
   // All three parents must belong to this salon. branch_products has no
-  // salon_id, so these checks are the only cross-tenant guard.
+  // salon_id, so these checks are the only cross-tenant guard. Both source
+  // and destination must also be in the session's allow-list — otherwise a
+  // manager in branch A could pull stock out of branch B.
   try {
     await assertBranchOwned(fromBranchId, session.salonId);
     await assertBranchOwned(toBranchId, session.salonId);
     await assertProductOwned(productId, session.salonId);
+    assertBranchMembership(session, fromBranchId);
+    assertBranchMembership(session, toBranchId);
   } catch (e) {
     return { data: null, error: tenantErrorMessage(e) };
   }
@@ -253,6 +258,7 @@ export async function listStockTransfers(input: {
 
   try {
     await assertBranchOwned(input.branchId, session.salonId);
+    assertBranchMembership(session, input.branchId);
   } catch (e) {
     return { data: null, error: tenantErrorMessage(e) };
   }

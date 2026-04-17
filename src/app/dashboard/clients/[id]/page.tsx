@@ -8,6 +8,7 @@ import {
   Package, StickyNote, Award, MessageCircle,
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import { useAppStore } from '@/store/app-store';
 import { updateClientNotes, recordUdhaarPayment } from '@/app/actions/clients';
 import { getClientStatsAction } from '@/app/actions/dashboard';
 import { formatPKR } from '@/lib/utils/currency';
@@ -31,6 +32,7 @@ export default function ClientProfilePage() {
   const params = useParams();
   const router = useRouter();
   const { open: openWhatsApp } = useWhatsAppCompose();
+  const { currentBranch } = useAppStore();
   const clientId = params.id as string;
 
   const [client, setClient] = useState<Client | null>(null);
@@ -50,10 +52,10 @@ export default function ClientProfilePage() {
   const [savingNotes, setSavingNotes] = useState(false);
 
   async function saveNotes(field: 'notes' | 'hair_notes' | 'allergy_notes') {
-    if (!client) return;
+    if (!client || !currentBranch) return;
     setSavingNotes(true);
     try {
-      const { error } = await updateClientNotes(client.id, field, editingNotesValue);
+      const { error } = await updateClientNotes(client.id, currentBranch.id, field, editingNotesValue);
       if (showActionError(error)) return;
       setClient({ ...client, [field]: editingNotesValue });
       setEditingNotes(null);
@@ -110,13 +112,13 @@ export default function ClientProfilePage() {
   useEffect(() => { fetchData(); }, [fetchData]);
 
   async function recordPayment() {
-    if (!client || !paymentAmount) return;
+    if (!client || !currentBranch || !paymentAmount) return;
     setSavingPayment(true);
     try {
       const amount = Number(paymentAmount);
       if (amount <= 0) throw new Error('Invalid amount');
 
-      const { error } = await recordUdhaarPayment(client.id, amount, paymentMethod);
+      const { error } = await recordUdhaarPayment(client.id, currentBranch.id, amount, paymentMethod);
       if (showActionError(error)) return;
 
       toast.success(`Payment of ${formatPKR(amount)} recorded`);

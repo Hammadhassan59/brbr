@@ -73,10 +73,12 @@ function makeClient(name: string) {
 
 function makeStaff(name: string) {
   return {
-    id: name, salon_id: 'd', branch_id: 'd', name, phone: null,
+    id: name, salon_id: 'd', primary_branch_id: 'd', name, phone: null,
+    email: null, auth_user_id: null,
     role: 'senior_stylist' as const, photo_url: null, pin_code: '0000',
     base_salary: 15000, commission_type: 'percentage' as const,
-    commission_rate: 25, join_date: '', is_active: true, created_at: '',
+    commission_rate: 25, join_date: '', is_active: true,
+    last_login_at: null, first_login_seen: false, created_at: '',
   };
 }
 

@@ -3,9 +3,15 @@
 import { checkWriteAccess } from './auth';
 import { createServerClient } from '@/lib/supabase';
 import { packageUpdateSchema, promoUpdateSchema } from '@/lib/schemas';
-import { assertOwnsBy, tenantErrorMessage } from '@/lib/tenant-guard';
+import {
+  assertBranchMembership,
+  assertBranchOwned,
+  assertOwnsBy,
+  tenantErrorMessage,
+} from '@/lib/tenant-guard';
 
 export async function createPackage(data: {
+  branchId: string;
   name: string;
   description?: string | null;
   price: number;
@@ -18,10 +24,18 @@ export async function createPackage(data: {
   const session = writeCheck.session;
   const supabase = createServerClient();
 
+  try {
+    await assertBranchOwned(data.branchId, session.salonId);
+    assertBranchMembership(session, data.branchId);
+  } catch (e) {
+    return { error: tenantErrorMessage(e) };
+  }
+
   const { error } = await supabase
     .from('packages')
     .insert({
       salon_id: session.salonId,
+      branch_id: data.branchId,
       name: data.name.trim(),
       description: data.description || null,
       price: data.price,
@@ -34,11 +48,17 @@ export async function createPackage(data: {
   return { error: null };
 }
 
-export async function updatePackage(id: string, data: unknown) {
+export async function updatePackage(id: string, branchId: string, data: unknown) {
   const writeCheck = await checkWriteAccess();
   if (writeCheck.error !== null) return { error: writeCheck.error };
   const session = writeCheck.session;
   const supabase = createServerClient();
+
+  try {
+    assertBranchMembership(session, branchId);
+  } catch (e) {
+    return { error: tenantErrorMessage(e) };
+  }
 
   // Accept both the old camelCase shape (name, validityDays, isActive) and
   // the raw snake_case shape the schema accepts. Normalize to snake_case
@@ -62,13 +82,15 @@ export async function updatePackage(id: string, data: unknown) {
     .from('packages')
     .update(update)
     .eq('id', id)
-    .eq('salon_id', session.salonId);
+    .eq('salon_id', session.salonId)
+    .eq('branch_id', branchId);
 
   if (error) return { error: error.message };
   return { error: null };
 }
 
 export async function createPromo(data: {
+  branchId: string;
   code: string;
   discountType: string;
   discountValue: number;
@@ -82,10 +104,18 @@ export async function createPromo(data: {
   const session = writeCheck.session;
   const supabase = createServerClient();
 
+  try {
+    await assertBranchOwned(data.branchId, session.salonId);
+    assertBranchMembership(session, data.branchId);
+  } catch (e) {
+    return { error: tenantErrorMessage(e) };
+  }
+
   const { error } = await supabase
     .from('promo_codes')
     .insert({
       salon_id: session.salonId,
+      branch_id: data.branchId,
       code: data.code.toUpperCase(),
       discount_type: data.discountType,
       discount_value: data.discountValue,
@@ -100,11 +130,17 @@ export async function createPromo(data: {
   return { error: null };
 }
 
-export async function updatePromo(id: string, data: unknown) {
+export async function updatePromo(id: string, branchId: string, data: unknown) {
   const writeCheck = await checkWriteAccess();
   if (writeCheck.error !== null) return { error: writeCheck.error };
   const session = writeCheck.session;
   const supabase = createServerClient();
+
+  try {
+    assertBranchMembership(session, branchId);
+  } catch (e) {
+    return { error: tenantErrorMessage(e) };
+  }
 
   const normalized = normalizePromoPayload(data);
   const parsed = promoUpdateSchema.safeParse(normalized);
@@ -125,7 +161,8 @@ export async function updatePromo(id: string, data: unknown) {
     .from('promo_codes')
     .update(update)
     .eq('id', id)
-    .eq('salon_id', session.salonId);
+    .eq('salon_id', session.salonId)
+    .eq('branch_id', branchId);
 
   if (error) return { error: error.message };
   return { error: null };

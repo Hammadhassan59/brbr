@@ -1,9 +1,11 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { Plus } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAppStore } from '@/store/app-store';
+import { usePermission } from '@/lib/permissions';
 import { formatPKR } from '@/lib/utils/currency';
 import { formatPKDate } from '@/lib/utils/dates';
 import { createPurchaseOrder, updateOrderStatus } from '@/app/actions/inventory';
@@ -26,8 +28,17 @@ const STATUS_COLORS: Record<PurchaseOrderStatus, string> = {
 };
 
 export default function OrdersPage() {
+  const router = useRouter();
   const { salon, currentBranch } = useAppStore();
+  const canManageSuppliers = usePermission('manage_suppliers');
   const [orders, setOrders] = useState<(PurchaseOrder & { supplier?: Supplier })[]>([]);
+
+  useEffect(() => {
+    if (!canManageSuppliers) {
+      toast.error('You do not have permission to manage purchase orders');
+      router.replace('/dashboard');
+    }
+  }, [canManageSuppliers, router]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -43,7 +54,7 @@ export default function OrdersPage() {
     setLoading(true);
     const [ordRes, supRes] = await Promise.all([
       supabase.from('purchase_orders').select('*, supplier:suppliers(*)').eq('branch_id', currentBranch.id).order('created_at', { ascending: false }),
-      supabase.from('suppliers').select('*').eq('salon_id', salon.id).order('name'),
+      supabase.from('suppliers').select('*').eq('salon_id', salon.id).eq('branch_id', currentBranch.id).order('name'),
     ]);
     if (ordRes.data) setOrders(ordRes.data as (PurchaseOrder & { supplier?: Supplier })[]);
     if (supRes.data) setSuppliers(supRes.data as Supplier[]);

@@ -74,7 +74,7 @@ describe('getDemoBranchFixture', () => {
       const f = getDemoBranchFixture(id);
       expect(f).not.toBeNull();
       for (const s of f!.stylists) {
-        expect(s.branch_id).toBe(f!.branch.id);
+        expect(s.primary_branch_id).toBe(f!.branch.id);
       }
     }
   });

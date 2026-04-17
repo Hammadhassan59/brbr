@@ -1,9 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { supabase } from '@/lib/supabase';
 import { useAppStore } from '@/store/app-store';
-import { createStaff, updateStaff } from '@/app/actions/staff';
+import { createStaff, updateStaff, updateStaffBranches } from '@/app/actions/staff';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -29,7 +30,7 @@ const ROLES: { value: StaffRole; label: string }[] = [
 
 export function StaffForm({ staff, onSaved }: StaffFormProps) {
   const router = useRouter();
-  const { salon, currentBranch } = useAppStore();
+  const { salon, currentBranch, memberBranches } = useAppStore();
   const isEditing = !!staff;
 
   const [name, setName] = useState(staff?.name || '');
@@ -44,6 +45,29 @@ export function StaffForm({ staff, onSaved }: StaffFormProps) {
   const [commissionRate, setCommissionRate] = useState(String(staff?.commission_rate ?? 0));
   const [isActive, setIsActive] = useState(staff?.is_active ?? true);
   const [saving, setSaving] = useState(false);
+
+  // Multi-branch membership (migration 036). For a new staff row we default
+  // to the current branch; for an existing row we hydrate from staff_branches.
+  const [branchIds, setBranchIds] = useState<string[]>(
+    staff ? [] : (currentBranch ? [currentBranch.id] : [])
+  );
+
+  useEffect(() => {
+    if (!staff) return;
+    (async () => {
+      const { data } = await supabase
+        .from('staff_branches')
+        .select('branch_id')
+        .eq('staff_id', staff.id);
+      if (data) {
+        setBranchIds((data as Array<{ branch_id: string }>).map((r) => r.branch_id));
+      }
+    })();
+  }, [staff]);
+
+  function toggleBranch(id: string, checked: boolean) {
+    setBranchIds((prev) => (checked ? Array.from(new Set([...prev, id])) : prev.filter((b) => b !== id)));
+  }
 
   async function handleSave() {
     if (!salon || !currentBranch) return;
@@ -72,10 +96,18 @@ export function StaffForm({ staff, onSaved }: StaffFormProps) {
 
         const { error } = await updateStaff(staff.id, data);
         if (showActionError(error)) return;
+        // Persist the multi-branch grants (migration 036). Empty array is
+        // allowed — the server action keeps at least primary_branch_id in
+        // the set.
+        const { error: branchErr } = await updateStaffBranches(staff.id, branchIds);
+        if (showActionError(branchErr)) return;
         toast.success('Staff updated');
       } else {
+        // createStaff now takes branchIds[] (migration 036); it sets the first
+        // as primary_branch_id and inserts all into staff_branches atomically.
+        const grants = branchIds.length > 0 ? branchIds : [currentBranch.id];
         const { data: newStaff, error } = await createStaff({
-          branchId: currentBranch.id,
+          branchIds: grants,
           name: name.trim(),
           email: email.trim(),
           password,
@@ -173,6 +205,27 @@ export function StaffForm({ staff, onSaved }: StaffFormProps) {
             <Input type="number" value={commissionRate} onChange={(e) => setCommissionRate(e.target.value)} className="mt-1" inputMode="numeric" />
           </div>
         </div>
+      </div>
+
+      <div className="bg-card border border-border rounded-lg p-5 space-y-3">
+        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Works At</p>
+        {memberBranches.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No branches available.</p>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {memberBranches.map((b) => (
+              <label key={b.id} className="flex items-center gap-2 p-3 border border-border rounded-md cursor-pointer hover:border-gold/40">
+                <input
+                  type="checkbox"
+                  checked={branchIds.includes(b.id)}
+                  onChange={(e) => toggleBranch(b.id, e.target.checked)}
+                  className="rounded"
+                />
+                <span className="text-sm">{b.name}</span>
+              </label>
+            ))}
+          </div>
+        )}
       </div>
 
       {isEditing && (

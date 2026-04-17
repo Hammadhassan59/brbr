@@ -67,6 +67,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const setIsSuperAdminStore = useAppStore((s) => s.setIsSuperAdmin);
   const setCurrentStaffStore = useAppStore((s) => s.setCurrentStaff);
   const setCurrentPartnerStore = useAppStore((s) => s.setCurrentPartner);
+  const hydrateFromBootstrap = useAppStore((s) => s.hydrateFromBootstrap);
 
   // Zustand 5 persist hydrates synchronously from localStorage on the client,
   // but during SSR there is no localStorage so the first render has empty state.
@@ -97,10 +98,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     if (!isHydrated) return;
     getDashboardBootstrap().then((boot) => {
       if (!boot) return;
-       
+
       setSalon(boot.salon as unknown as typeof salon);
       if (boot.branches?.length) {
-         
+
         setBranchesStore((boot.branches as unknown) as typeof branches);
       }
       // Reconcile currentBranch: if Zustand has a branch that no longer exists
@@ -112,17 +113,28 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
         setCurrentBranchStore(boot.mainBranch as unknown as typeof currentBranch);
       }
+      // Hydrate permissions / branchIds / memberBranches from the server
+      // bootstrap, and let the store also validate currentBranch against
+      // branchIds (e.g. if staff_branches just revoked access to the
+      // persisted branch, snap back to primaryBranch).
+      hydrateFromBootstrap({
+        permissions: boot.permissions,
+        branchIds: boot.branchIds,
+        memberBranches: boot.memberBranches,
+        mainBranch: boot.mainBranch as { id: string; name?: string } | null,
+        primaryBranchId: boot.primaryBranchId,
+      });
       // If we're impersonating, ensure the role flags reflect an owner session.
       if (boot.isImpersonating && boot.role === 'owner') {
-         
+
         setIsOwnerStore(true);
-         
+
         setIsPartnerStore(false);
-         
+
         setIsSuperAdminStore(false);
-         
+
         setCurrentStaffStore(null);
-         
+
         setCurrentPartnerStore(null);
       }
     }).catch(() => {});
@@ -133,7 +145,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         if (result?.salon) setSalon(result.salon as unknown as typeof salon);
       }).catch(() => {});
     }
-  }, [isHydrated, salon?.id, isSuperAdmin, setSalon, setBranchesStore, setCurrentBranchStore, setIsOwnerStore, setIsPartnerStore, setIsSuperAdminStore, setCurrentStaffStore, setCurrentPartnerStore, currentBranch]);
+  }, [isHydrated, salon?.id, isSuperAdmin, setSalon, setBranchesStore, setCurrentBranchStore, setIsOwnerStore, setIsPartnerStore, setIsSuperAdminStore, setCurrentStaffStore, setCurrentPartnerStore, currentBranch, hydrateFromBootstrap]);
 
   const roleAccess: StaffRoleAccess = (isOwner || isPartner) ? 'full' : getRoleAccess(currentStaff?.role || 'helper');
   const canSwitchBranch = branches.length > 1 && (roleAccess === 'full' || isOwner || isPartner);

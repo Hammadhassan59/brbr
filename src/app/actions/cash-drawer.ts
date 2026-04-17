@@ -2,7 +2,7 @@
 
 import { checkWriteAccess } from './auth';
 import { createServerClient } from '@/lib/supabase';
-import { assertBranchOwned, tenantErrorMessage } from '@/lib/tenant-guard';
+import { assertBranchMembership, assertBranchOwned, tenantErrorMessage } from '@/lib/tenant-guard';
 
 export async function openCashDrawer(data: {
   branchId: string;
@@ -15,9 +15,11 @@ export async function openCashDrawer(data: {
   const session = writeCheck.session;
   const supabase = createServerClient();
 
-  // cash_drawers has no salon_id — branch ownership is the only guard.
+  // cash_drawers has no salon_id — branch ownership + session membership are
+  // the only guards.
   try {
     await assertBranchOwned(data.branchId, session.salonId);
+    assertBranchMembership(session, data.branchId);
   } catch (e) {
     return { error: tenantErrorMessage(e) };
   }
@@ -59,6 +61,7 @@ export async function closeCashDrawer(drawerId: string, data: {
   try {
     if (!drawer.branch_id) return { error: 'Not allowed' };
     await assertBranchOwned(drawer.branch_id, session.salonId);
+    assertBranchMembership(session, drawer.branch_id);
   } catch (e) {
     return { error: tenantErrorMessage(e) };
   }

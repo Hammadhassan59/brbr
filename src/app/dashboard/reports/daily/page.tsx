@@ -2,11 +2,13 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { ChevronLeft, ChevronRight as ChevronRightIcon, Printer, Wallet, Plus, Lock } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 import { supabase } from '@/lib/supabase';
 import { getDailySummaryAction } from '@/app/actions/dashboard';
 import { useAppStore } from '@/store/app-store';
+import { usePermission } from '@/lib/permissions';
 import { formatPKR } from '@/lib/utils/currency';
 import { getTodayPKT, formatPKDate, formatDateTime } from '@/lib/utils/dates';
 import { Button } from '@/components/ui/button';
@@ -28,7 +30,8 @@ const PIE_COLORS: Record<string, string> = {
 };
 
 export default function DailyReportPage() {
-  const { salon, branches, currentBranch, currentStaff, isPartner } = useAppStore();
+  const router = useRouter();
+  const { salon, currentBranch, currentStaff, memberBranches } = useAppStore();
   const [date, setDate] = useState(getTodayPKT());
   const [loading, setLoading] = useState(true);
   const [summary, setSummary] = useState<DailySummary | null>(null);
@@ -37,7 +40,22 @@ export default function DailyReportPage() {
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [branchScope, setBranchScope] = useState<string>('current'); // 'current' | 'all' | branch id
 
-  const canSeeAllBranches = branches.length > 1 && (isPartner || currentStaff?.role === 'owner' || currentStaff?.role === 'manager');
+  // Permission-driven now — role check replaced with the resolved permission
+  // map. Multi-branch UI only renders when the session actually has more than
+  // one member branch to choose from. Call the hooks unconditionally to keep
+  // the hook order stable across renders.
+  const canViewReports = usePermission('view_reports');
+  const hasViewOtherBranches = usePermission('view_other_branches');
+  const canSeeAllBranches = memberBranches.length > 1 && hasViewOtherBranches;
+
+  // Page-level gate: bounce anyone without `view_reports` back to /dashboard
+  // with a toast. Owners/partners always have it (lockout-safe).
+  useEffect(() => {
+    if (!canViewReports) {
+      toast.error('You do not have permission to view reports');
+      router.replace('/dashboard');
+    }
+  }, [canViewReports, router]);
   const effectiveBranchId = branchScope === 'current' ? currentBranch?.id : branchScope === 'all' ? null : branchScope;
 
   // Modals
@@ -57,15 +75,20 @@ export default function DailyReportPage() {
     setLoading(true);
     try {
       if (branchScope === 'all') {
-        // Cross-branch: aggregate across all branches
-        // expenses has no salon_id column; go through branch_ids instead.
-        const branchIds = branches.map((b) => b.id);
+        // Cross-branch: aggregate across all member branches. Migration 036
+        // added expenses.salon_id, so the tenant filter is now a straight
+        // .eq('salon_id', ...) — this was the bug previously (#4 in the
+        // known-unfixed list) where a bogus .eq('salon_id', ...) silently
+        // returned empty. Now it works. For bills we also scope by member
+        // branches so a manager with partial branch access doesn't leak
+        // rows from branches they can't read.
+        const memberBranchIds = memberBranches.map((b) => b.id);
         const [sumRes, billsRes, expRes] = await Promise.all([
           supabase.rpc('get_salon_daily_summary', { p_salon_id: salon.id, p_date: date }),
-          supabase.from('bills').select('*, items:bill_items(*)').eq('salon_id', salon.id).gte('created_at', `${date}T00:00:00`).lte('created_at', `${date}T23:59:59`).order('created_at', { ascending: false }),
-          branchIds.length
-            ? supabase.from('expenses').select('*').in('branch_id', branchIds).eq('date', date).order('created_at', { ascending: false })
+          memberBranchIds.length
+            ? supabase.from('bills').select('*, items:bill_items(*)').in('branch_id', memberBranchIds).gte('created_at', `${date}T00:00:00`).lte('created_at', `${date}T23:59:59`).order('created_at', { ascending: false })
             : Promise.resolve({ data: [], error: null }),
+          supabase.from('expenses').select('*').eq('salon_id', salon.id).eq('date', date).order('created_at', { ascending: false }),
         ]);
         if (sumRes.data) setSummary(sumRes.data as DailySummary);
         if (billsRes.data) setBills(billsRes.data as (Bill & { items?: BillItem[] })[]);
@@ -78,7 +101,9 @@ export default function DailyReportPage() {
           getDailySummaryAction(bid, date),
           supabase.from('bills').select('*, items:bill_items(*)').eq('branch_id', bid).gte('created_at', `${date}T00:00:00`).lte('created_at', `${date}T23:59:59`).order('created_at', { ascending: false }),
           supabase.from('cash_drawers').select('*').eq('branch_id', bid).eq('date', date).maybeSingle(),
-          supabase.from('expenses').select('*').eq('branch_id', bid).eq('date', date).order('created_at', { ascending: false }),
+          // Single-branch mode: scope by both salon_id (tenant) and branch_id
+          // (per-branch filter from migration 036).
+          supabase.from('expenses').select('*').eq('salon_id', salon.id).eq('branch_id', bid).eq('date', date).order('created_at', { ascending: false }),
         ]);
         if (sumRes.data) setSummary(sumRes.data);
         if (billsRes.data) setBills(billsRes.data as (Bill & { items?: BillItem[] })[]);
@@ -88,7 +113,7 @@ export default function DailyReportPage() {
       }
     } catch (err) { console.error(err); }
     finally { setLoading(false); }
-  }, [currentBranch, salon, date, branchScope, effectiveBranchId, branches]);
+  }, [currentBranch, salon, date, branchScope, effectiveBranchId, memberBranches]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
@@ -183,7 +208,7 @@ export default function DailyReportPage() {
             >
               {currentBranch?.name || 'Current'}
             </button>
-            {branches.filter(b => b.id !== currentBranch?.id).map(b => (
+            {memberBranches.filter(b => b.id !== currentBranch?.id).map(b => (
               <button
                 key={b.id}
                 onClick={() => setBranchScope(b.id)}

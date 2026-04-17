@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { getDailySummaryAction } from '@/app/actions/dashboard';
 import { useAppStore } from '@/store/app-store';
+import { usePermission } from '@/lib/permissions';
 import { getTodayPKT } from '@/lib/utils/dates';
 import { KPICards } from './components/kpi-cards';
 import { RevenueChart } from './components/revenue-chart';
@@ -28,6 +29,10 @@ interface ChartData {
 
 export default function DashboardPage() {
   const { salon, currentBranch, currentStaff } = useAppStore();
+  // Owner-only onboarding shortcut card is really gated on "can you configure
+  // the salon" — `manage_salon` captures that. Owners/partners have it via
+  // lockout-safe, anyone else with a preset that grants it also sees it.
+  const canManageSalon = usePermission('manage_salon');
   const [loading, setLoading] = useState(true);
   const [summary, setSummary] = useState<DailySummary | null>(null);
   const [appointments, setAppointments] = useState<AppointmentWithDetails[]>([]);
@@ -176,6 +181,7 @@ export default function DashboardPage() {
         .from('clients')
         .select('udhaar_balance')
         .eq('salon_id', salon.id)
+        .eq('branch_id', currentBranch.id)
         .gt('udhaar_balance', 0);
       if (udhaarData) {
         setUdhaarInfo({
@@ -231,7 +237,17 @@ export default function DashboardPage() {
         if (billsData && billsData.length > 0) {
           const totalRev = billsData.reduce((s: number, b: { total_amount: number }) => s + b.total_amount, 0);
           const byMethod = (m: string) => billsData.filter((b: { payment_method: string }) => b.payment_method === m).reduce((s: number, b: { total_amount: number }) => s + b.total_amount, 0);
-          const allStaffData = await supabase.from('staff').select('*').eq('branch_id', currentBranch.id).eq('is_active', true);
+          // Branch-members via staff_branches (migration 036 — staff are
+          // multi-branch; staff.primary_branch_id alone would miss cross-branch
+          // stylists).
+          const { data: memberRows } = await supabase
+            .from('staff_branches')
+            .select('staff_id')
+            .eq('branch_id', currentBranch.id);
+          const staffIds = (memberRows || []).map((r: { staff_id: string }) => r.staff_id);
+          const allStaffData = staffIds.length > 0
+            ? await supabase.from('staff').select('*').in('id', staffIds).eq('is_active', true)
+            : { data: [] as Staff[] };
           const staffList = (allStaffData.data || []) as Staff[];
           const staffMap = new Map<string, { services_done: number; revenue: number }>();
           for (const bill of billsData) {
@@ -279,11 +295,17 @@ export default function DashboardPage() {
         setChartData(hourBuckets);
       }
 
-      const { data: staffData } = await supabase
-        .from('staff')
-        .select('*')
-        .eq('branch_id', currentBranch.id)
-        .eq('is_active', true);
+      // Branch-members via staff_branches (staff can belong to multiple
+      // branches post-036). The previous `.eq('branch_id', ...)` path only
+      // matched the renamed primary_branch_id column.
+      const { data: branchStaffRows } = await supabase
+        .from('staff_branches')
+        .select('staff_id')
+        .eq('branch_id', currentBranch.id);
+      const branchStaffIds = (branchStaffRows || []).map((r: { staff_id: string }) => r.staff_id);
+      const { data: staffData } = branchStaffIds.length > 0
+        ? await supabase.from('staff').select('*').in('id', branchStaffIds).eq('is_active', true)
+        : { data: [] as Staff[] };
       if (staffData) setBranchStaff(staffData as Staff[]);
 
       if (currentStaff && (currentStaff.role === 'senior_stylist' || currentStaff.role === 'junior_stylist')) {
@@ -504,7 +526,7 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {currentStaff?.role === 'owner' && salon && (
+      {canManageSalon && salon && (
         <OnboardingBanner salonId={salon.id} />
       )}
 

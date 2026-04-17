@@ -63,12 +63,18 @@ function fromMock(table: string) {
     };
   }
   if (table === 'backbar_actuals') {
+    const resolved = { data: actuals, error: null };
+    const terminal = {
+      eq: () => Promise.resolve(resolved),
+      then: <T>(onResolve: (v: typeof resolved) => T, onReject?: (e: unknown) => T): Promise<T> =>
+        Promise.resolve(resolved).then(onResolve, onReject),
+    };
     return {
       select: () => ({
         eq: () => ({
           eq: () => ({
             eq: () => ({
-              in: () => Promise.resolve({ data: actuals, error: null }),
+              in: () => terminal,
             }),
           }),
         }),
@@ -119,7 +125,7 @@ beforeEach(() => {
 describe('getBackbarConsumptionReport', () => {
   it('rolls up expected qty across all bills (3 haircuts × 30ml = 90ml)', async () => {
     const { getBackbarConsumptionReport } = await import('../src/app/actions/inventory');
-    const { data } = await getBackbarConsumptionReport({ from: '2026-04-01', to: '2026-04-30' });
+    const { data } = await getBackbarConsumptionReport({ from: '2026-04-01', to: '2026-04-30', branchId: 'branch-main' });
     expect(data?.rows).toHaveLength(1);
     expect(data?.rows[0].expected_qty).toBe(90);
     expect(data?.rows[0].services_count).toBe(3);
@@ -127,7 +133,7 @@ describe('getBackbarConsumptionReport', () => {
 
   it('breaks down expected by stylist (X: 60ml across 2 services, Y: 30ml across 1)', async () => {
     const { getBackbarConsumptionReport } = await import('../src/app/actions/inventory');
-    const { data } = await getBackbarConsumptionReport({ from: '2026-04-01', to: '2026-04-30' });
+    const { data } = await getBackbarConsumptionReport({ from: '2026-04-01', to: '2026-04-30', branchId: 'branch-main' });
     const byStylist = data?.rows[0].by_stylist;
     expect(byStylist).toHaveLength(2);
     const x = byStylist?.find((s) => s.staff_id === 'stylist-x');
@@ -138,13 +144,13 @@ describe('getBackbarConsumptionReport', () => {
 
   it('orders the by_stylist breakdown by descending expected_qty (heavy users first)', async () => {
     const { getBackbarConsumptionReport } = await import('../src/app/actions/inventory');
-    const { data } = await getBackbarConsumptionReport({ from: '2026-04-01', to: '2026-04-30' });
+    const { data } = await getBackbarConsumptionReport({ from: '2026-04-01', to: '2026-04-30', branchId: 'branch-main' });
     expect(data?.rows[0].by_stylist[0].staff_id).toBe('stylist-x');
   });
 
   it('returns null variance when no owner stocktake exists for the period', async () => {
     const { getBackbarConsumptionReport } = await import('../src/app/actions/inventory');
-    const { data } = await getBackbarConsumptionReport({ from: '2026-04-01', to: '2026-04-30' });
+    const { data } = await getBackbarConsumptionReport({ from: '2026-04-01', to: '2026-04-30', branchId: 'branch-main' });
     expect(data?.rows[0].actual_qty).toBeNull();
     expect(data?.rows[0].variance_qty).toBeNull();
     expect(data?.rows[0].variance_pct).toBeNull();
@@ -153,7 +159,7 @@ describe('getBackbarConsumptionReport', () => {
   it('computes variance when an actual stocktake exists (expected 90, actual 100 → -10ml, -11.1%)', async () => {
     actuals = [{ id: 'a-1', product_id: 'prod-shampoo', actual_qty: 100, notes: null }];
     const { getBackbarConsumptionReport } = await import('../src/app/actions/inventory');
-    const { data } = await getBackbarConsumptionReport({ from: '2026-04-01', to: '2026-04-30' });
+    const { data } = await getBackbarConsumptionReport({ from: '2026-04-01', to: '2026-04-30', branchId: 'branch-main' });
     expect(data?.rows[0].actual_qty).toBe(100);
     expect(data?.rows[0].variance_qty).toBe(-10);
     expect(data?.rows[0].variance_pct).toBeCloseTo(-11.11, 1);
@@ -161,7 +167,7 @@ describe('getBackbarConsumptionReport', () => {
 
   it('staff filter restricts the bill set so totals only reflect that stylist', async () => {
     const { getBackbarConsumptionReport } = await import('../src/app/actions/inventory');
-    const { data } = await getBackbarConsumptionReport({ from: '2026-04-01', to: '2026-04-30', staffId: 'stylist-y' });
+    const { data } = await getBackbarConsumptionReport({ from: '2026-04-01', to: '2026-04-30', branchId: 'branch-main', staffId: 'stylist-y' });
     expect(data?.rows[0].expected_qty).toBe(30);
     expect(data?.rows[0].by_stylist).toHaveLength(1);
     expect(data?.rows[0].by_stylist[0].staff_id).toBe('stylist-y');
@@ -170,7 +176,7 @@ describe('getBackbarConsumptionReport', () => {
   it('returns empty rows when no bills match the window', async () => {
     bills = [];
     const { getBackbarConsumptionReport } = await import('../src/app/actions/inventory');
-    const { data } = await getBackbarConsumptionReport({ from: '2026-04-01', to: '2026-04-30' });
+    const { data } = await getBackbarConsumptionReport({ from: '2026-04-01', to: '2026-04-30', branchId: 'branch-main' });
     expect(data?.rows).toEqual([]);
   });
 });

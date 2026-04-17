@@ -17,6 +17,7 @@
 import { NextResponse } from 'next/server';
 import { verifySession } from '@/app/actions/auth';
 import { createServerClient } from '@/lib/supabase';
+import { hasPermission } from '@/lib/tenant-guard';
 import { ReportPDF } from '@/lib/pdf-export';
 
 // pdfkit needs Node.js runtime (filesystem font loading), not edge.
@@ -43,8 +44,8 @@ export async function GET() {
   if (!session.salonId || session.salonId === 'super-admin') {
     return NextResponse.json({ error: 'No salon for this session' }, { status: 400 });
   }
-  if (session.role !== 'owner' && session.role !== 'partner') {
-    return NextResponse.json({ error: 'Owner or partner only' }, { status: 403 });
+  if (!hasPermission(session, 'export_data')) {
+    return NextResponse.json({ error: 'You do not have permission to export data' }, { status: 403 });
   }
 
   const supabase = createServerClient();

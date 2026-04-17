@@ -2,10 +2,13 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import toast from 'react-hot-toast';
 import { ChevronRight, TrendingUp, TrendingDown, Minus, Download } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { supabase } from '@/lib/supabase';
 import { useAppStore } from '@/store/app-store';
+import { usePermission } from '@/lib/permissions';
 import { formatPKR } from '@/lib/utils/currency';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -15,7 +18,8 @@ import { Separator } from '@/components/ui/separator';
 import type { Bill, BillItem, Expense, Staff } from '@/types/database';
 
 export default function ProfitLossPage() {
-  const { salon, branches, currentBranch, currentStaff, isPartner } = useAppStore();
+  const router = useRouter();
+  const { salon, currentBranch, memberBranches } = useAppStore();
   const now = new Date();
   const [month, setMonth] = useState(now.getMonth() + 1);
   const [year, setYear] = useState(now.getFullYear());
@@ -26,7 +30,16 @@ export default function ProfitLossPage() {
   const [staff, setStaff] = useState<Staff[]>([]);
   const [branchScope, setBranchScope] = useState<string>('current');
 
-  const canSeeAllBranches = branches.length > 1 && (isPartner || currentStaff?.role === 'owner' || currentStaff?.role === 'manager');
+  const canViewReports = usePermission('view_reports');
+  const hasViewOtherBranches = usePermission('view_other_branches');
+  const canSeeAllBranches = memberBranches.length > 1 && hasViewOtherBranches;
+
+  useEffect(() => {
+    if (!canViewReports) {
+      toast.error('You do not have permission to view reports');
+      router.replace('/dashboard');
+    }
+  }, [canViewReports, router]);
   const monthName = new Date(year, month - 1).toLocaleString('default', { month: 'long' });
 
   const fetchData = useCallback(async () => {
@@ -38,16 +51,22 @@ export default function ProfitLossPage() {
 
     let billQuery = supabase.from('bills').select('*').eq('status', 'paid')
       .gte('created_at', `${startDate}T00:00:00`).lte('created_at', `${endDate}T23:59:59`);
-    let expQuery = supabase.from('expenses').select('*')
+    // Migration 036 added expenses.salon_id, so tenant-scope by salon_id and
+    // let the per-branch filter layer on top.
+    let expQuery = supabase.from('expenses').select('*').eq('salon_id', salon.id)
       .gte('date', startDate).lte('date', endDate);
 
     if (branchScope === 'all') {
-      billQuery = billQuery.eq('salon_id', salon.id);
-      // expenses has no salon_id column — scope by the salon's branch_ids.
-      const branchIds = branches.map((b) => b.id);
-      expQuery = branchIds.length
-        ? expQuery.in('branch_id', branchIds)
-        : expQuery.eq('branch_id', '__none__'); // force-empty when salon has no branches
+      // Cross-branch: scope bills + expenses to the session's member branches
+      // so partial-access roles don't leak rows from branches they can't read.
+      const memberBranchIds = memberBranches.map((b) => b.id);
+      if (memberBranchIds.length > 0) {
+        billQuery = billQuery.in('branch_id', memberBranchIds);
+        expQuery = expQuery.in('branch_id', memberBranchIds);
+      } else {
+        billQuery = billQuery.eq('salon_id', salon.id);
+        // expQuery already salon-scoped above.
+      }
     } else {
       const bid = branchScope === 'current' ? currentBranch?.id : branchScope;
       if (bid) {
@@ -78,16 +97,19 @@ export default function ProfitLossPage() {
       }
     }
     if (expRes.data) {
-      if (branchScope === 'all') {
-        const branchIds = new Set(branches.map(b => b.id));
-        setExpenses((expRes.data as Expense[]).filter(e => e.branch_id && branchIds.has(e.branch_id)));
+      if (branchScope === 'all' && memberBranches.length > 0) {
+        // Defense-in-depth: even though the query already filters, drop any
+        // rows that slipped through (RLS misses, NULL branch_id, etc.) so
+        // the P&L doesn't silently count non-member-branch expenses.
+        const memberBranchIdSet = new Set(memberBranches.map(b => b.id));
+        setExpenses((expRes.data as Expense[]).filter(e => e.branch_id && memberBranchIdSet.has(e.branch_id)));
       } else {
         setExpenses(expRes.data as Expense[]);
       }
     }
     if (staffRes.data) setStaff(staffRes.data as Staff[]);
     setLoading(false);
-  }, [salon, currentBranch, branches, month, year, branchScope]);
+  }, [salon, currentBranch, memberBranches, month, year, branchScope]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
@@ -111,10 +133,16 @@ export default function ProfitLossPage() {
     expenseByCategory[cat] = (expenseByCategory[cat] || 0) + e.amount;
   });
 
-  // ── Staff costs ──
   const relevantStaff = branchScope === 'all'
-    ? staff
-    : staff.filter(s => s.branch_id === (branchScope === 'current' ? currentBranch?.id : branchScope));
+    ? staff.filter(s => {
+        if (memberBranches.length === 0) return true;
+        const primary = s.primary_branch_id;
+        return primary ? memberBranches.some(b => b.id === primary) : false;
+      })
+    : staff.filter(s => {
+        const scoped = branchScope === 'current' ? currentBranch?.id : branchScope;
+        return s.primary_branch_id === scoped;
+      });
   const totalSalaries = relevantStaff.reduce((s, st) => s + st.base_salary, 0);
 
   // Commissions — service items only. Product line items (retail sales)
@@ -213,7 +241,7 @@ export default function ProfitLossPage() {
             className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${branchScope === 'current' ? 'bg-gold text-black' : 'bg-secondary/50 border border-border text-muted-foreground hover:bg-secondary/80'}`}>
             {currentBranch?.name || 'Current'}
           </button>
-          {branches.filter(b => b.id !== currentBranch?.id).map(b => (
+          {memberBranches.filter(b => b.id !== currentBranch?.id).map(b => (
             <button key={b.id} onClick={() => setBranchScope(b.id)}
               className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${branchScope === b.id ? 'bg-gold text-black' : 'bg-secondary/50 border border-border text-muted-foreground hover:bg-secondary/80'}`}>
               {b.name}

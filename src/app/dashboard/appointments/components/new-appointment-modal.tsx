@@ -81,18 +81,30 @@ export function NewAppointmentModal({
   useEffect(() => {
     if (!open || !salon || !currentBranch) return;
     async function load() {
+      // Staff members at this branch via the staff_branches join (migration
+      // 036 made staff multi-branch). primary_branch_id alone would miss
+      // stylists who split time across branches.
+      const { data: memberRows } = await supabase
+        .from('staff_branches')
+        .select('staff_id')
+        .eq('branch_id', currentBranch!.id);
+      const staffIds = (memberRows || []).map((r: { staff_id: string }) => r.staff_id);
+
       const [staffRes, svcRes] = await Promise.all([
-        supabase
-          .from('staff')
-          .select('*')
-          .eq('branch_id', currentBranch!.id)
-          .eq('is_active', true)
-          .in('role', ['senior_stylist', 'junior_stylist'])
-          .order('name'),
+        staffIds.length > 0
+          ? supabase
+              .from('staff')
+              .select('*')
+              .in('id', staffIds)
+              .eq('is_active', true)
+              .in('role', ['senior_stylist', 'junior_stylist'])
+              .order('name')
+          : Promise.resolve({ data: [] as Staff[] }),
         supabase
           .from('services')
           .select('*')
           .eq('salon_id', salon!.id)
+          .eq('branch_id', currentBranch!.id)
           .eq('is_active', true)
           .order('sort_order'),
       ]);
@@ -140,7 +152,7 @@ export function NewAppointmentModal({
   }, [open, editing, salon?.id]);
 
   const searchClients = useCallback(async (query: string) => {
-    if (!salon || query.length < 2) { setClientResults([]); return; }
+    if (!salon || !currentBranch || query.length < 2) { setClientResults([]); return; }
     const trimmed = query.trim().slice(0, 100);
     if (!trimmed) { setClientResults([]); return; }
 
@@ -149,14 +161,14 @@ export function NewAppointmentModal({
     // operators (ISSUE-008).
     const pattern = `%${trimmed}%`;
     const [nameRes, phoneRes] = await Promise.all([
-      supabase.from('clients').select('*').eq('salon_id', salon.id).ilike('name', pattern).limit(10),
-      supabase.from('clients').select('*').eq('salon_id', salon.id).ilike('phone', pattern).limit(10),
+      supabase.from('clients').select('*').eq('salon_id', salon.id).eq('branch_id', currentBranch.id).ilike('name', pattern).limit(10),
+      supabase.from('clients').select('*').eq('salon_id', salon.id).eq('branch_id', currentBranch.id).ilike('phone', pattern).limit(10),
     ]);
     const merged = new Map<string, Client>();
     for (const row of (nameRes.data || []) as Client[]) merged.set(row.id, row);
     for (const row of (phoneRes.data || []) as Client[]) merged.set(row.id, row);
     setClientResults(Array.from(merged.values()).slice(0, 10));
-  }, [salon]);
+  }, [salon, currentBranch]);
 
   useEffect(() => {
     const timer = setTimeout(() => searchClients(clientSearch), 300);
@@ -200,7 +212,7 @@ export function NewAppointmentModal({
       let clientId: string | null = null;
 
       if (isNewClient && newClientName) {
-        const { data: newClient, error } = await createClient({ name: newClientName, phone: newClientPhone || null });
+        const { data: newClient, error } = await createClient({ branchId: currentBranch.id, name: newClientName, phone: newClientPhone || null });
         if (showActionError(error)) return;
         clientId = newClient!.id;
       } else if (selectedClient) {

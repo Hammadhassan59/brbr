@@ -22,7 +22,7 @@ interface ClientFormProps {
 
 export function ClientForm({ client, onSaved }: ClientFormProps) {
   const router = useRouter();
-  const { salon } = useAppStore();
+  const { salon, currentBranch } = useAppStore();
   const isEditing = !!client;
 
   const [name, setName] = useState(client?.name || '');
@@ -39,7 +39,7 @@ export function ClientForm({ client, onSaved }: ClientFormProps) {
   const [saving, setSaving] = useState(false);
 
   async function handleSave() {
-    if (!salon) return;
+    if (!salon || !currentBranch) return;
     if (!name.trim()) { toast.error('Name is required'); return; }
     if (!phone.trim()) { toast.error('Phone number is required'); return; }
     if (!isValidPKPhone(phone)) { toast.error('Invalid phone format — expected 03XX-XXXXXXX'); return; }
@@ -60,16 +60,17 @@ export function ClientForm({ client, onSaved }: ClientFormProps) {
       };
 
       if (isEditing && client) {
-        const { error } = await updateClient(client.id, data);
+        const { error } = await updateClient(client.id, currentBranch.id, data);
         if (showActionError(error)) return;
         toast.success('Client updated');
       } else {
-        // Check for duplicate phone
+        // Check for duplicate phone within the current branch
         if (phone) {
           const { data: existing } = await supabase
             .from('clients')
             .select('id')
             .eq('salon_id', salon.id)
+            .eq('branch_id', currentBranch.id)
             .eq('phone', phone)
             .limit(1);
           if (existing && existing.length > 0) {
@@ -80,6 +81,7 @@ export function ClientForm({ client, onSaved }: ClientFormProps) {
         }
 
         const { data: newClient, error } = await createClientAction({
+          branchId: currentBranch.id,
           name: name.trim(),
           phone: phone || null,
           whatsapp: sameAsPhone ? phone || null : whatsapp || null,

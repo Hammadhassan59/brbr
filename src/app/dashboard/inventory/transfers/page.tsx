@@ -1,9 +1,11 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { ArrowLeftRight, Plus, Search } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAppStore } from '@/store/app-store';
+import { usePermission } from '@/lib/permissions';
 import { formatDateTime } from '@/lib/utils/dates';
 import { transferStock, listStockTransfers } from '@/app/actions/stock-transfers';
 import { Button } from '@/components/ui/button';
@@ -20,8 +22,17 @@ import { showActionError, handleSubscriptionError } from '@/components/paywall-d
 import type { Product, StockTransfer, BranchProduct } from '@/types/database';
 
 export default function TransfersPage() {
+  const router = useRouter();
   const { salon, branches, currentBranch } = useAppStore();
+  const canManageInventory = usePermission('manage_inventory');
   const [transfers, setTransfers] = useState<StockTransfer[]>([]);
+
+  useEffect(() => {
+    if (!canManageInventory) {
+      toast.error('You do not have permission to manage inventory');
+      router.replace('/dashboard');
+    }
+  }, [canManageInventory, router]);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);

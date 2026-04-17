@@ -100,7 +100,7 @@ export default function StaffProfilePage() {
     try {
       const { error } = await upsertAttendance({
         staffId,
-        branchId: staff?.branch_id || '',
+        branchId: staff?.primary_branch_id || '',
         date: attDate,
         status: attStatus,
         checkIn: attCheckIn || null,

@@ -1,9 +1,11 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { Plus, Trash2, Wallet, Banknote, Pencil } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAppStore } from '@/store/app-store';
+import { usePermission } from '@/lib/permissions';
 import { formatPKR } from '@/lib/utils/currency';
 import { getTodayPKT, formatPKDate } from '@/lib/utils/dates';
 import { Button } from '@/components/ui/button';
@@ -34,8 +36,17 @@ const CATEGORIES = [
 ];
 
 export default function ExpensesPage() {
+  const router = useRouter();
   const { salon, currentBranch, currentStaff, currentPartner, isPartner, isOwner } = useAppStore();
+  const canManageExpenses = usePermission('manage_expenses');
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!canManageExpenses) {
+      toast.error('You do not have permission to manage expenses');
+      router.replace('/dashboard');
+    }
+  }, [canManageExpenses, router]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [income, setIncome] = useState(0);
   const [showAdd, setShowAdd] = useState(false);
@@ -134,11 +145,25 @@ export default function ExpensesPage() {
 
   useEffect(() => { fetchExpenses(); }, [fetchExpenses]);
 
-  // Fetch staff for advance dialog
+  // Fetch staff for advance dialog — scope to staff assigned to this branch
+  // via staff_branches (migration 036 — staff can belong to multiple branches).
   useEffect(() => {
     if (!currentBranch) return;
-    supabase.from('staff').select('*').eq('branch_id', currentBranch.id).eq('is_active', true).order('name')
-      .then(({ data }) => { if (data) setStaffList(data as Staff[]); });
+    (async () => {
+      const { data: memberRows } = await supabase
+        .from('staff_branches')
+        .select('staff_id')
+        .eq('branch_id', currentBranch.id);
+      const staffIds = (memberRows || []).map((r: { staff_id: string }) => r.staff_id);
+      if (staffIds.length === 0) { setStaffList([]); return; }
+      const { data } = await supabase
+        .from('staff')
+        .select('*')
+        .in('id', staffIds)
+        .eq('is_active', true)
+        .order('name');
+      if (data) setStaffList(data as Staff[]);
+    })();
   }, [currentBranch]);
 
   async function saveAdvance() {
@@ -192,7 +217,7 @@ export default function ExpensesPage() {
       if (editingExpense) {
         const oldAmount = editingExpense.amount;
         const newAmount = Number(amount);
-        const { error: updateError } = await updateExpense(editingExpense.id, {
+        const { error: updateError } = await updateExpense(editingExpense.id, currentBranch.id, {
           category: finalCategory || null,
           amount: newAmount,
           description: description || null,
@@ -266,9 +291,10 @@ export default function ExpensesPage() {
   }
 
   async function handleDeleteExpense(expense: Expense) {
+    if (!currentBranch) return;
     if (!confirm('Delete this expense?')) return;
     try {
-      const { error } = await deleteExpenseAction(expense.id);
+      const { error } = await deleteExpenseAction(expense.id, currentBranch.id);
       if (showActionError(error)) return;
       toast.success('Expense deleted');
       fetchExpenses();

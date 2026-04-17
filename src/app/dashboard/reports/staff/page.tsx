@@ -2,10 +2,13 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import toast from 'react-hot-toast';
 import { ChevronRight } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { getStaffMonthlyCommissionAction } from '@/app/actions/dashboard';
 import { useAppStore } from '@/store/app-store';
+import { usePermission } from '@/lib/permissions';
 import { formatPKR } from '@/lib/utils/currency';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -16,7 +19,8 @@ import type { Staff } from '@/types/database';
 type BranchScope = 'current' | 'all';
 
 export default function StaffReportPage() {
-  const { salon, currentBranch, branches, isPartner, currentStaff } = useAppStore();
+  const router = useRouter();
+  const { salon, currentBranch, memberBranches } = useAppStore();
   const now = new Date();
   const [staffList, setStaffList] = useState<Staff[]>([]);
   const [selectedStaffId, setSelectedStaffId] = useState('');
@@ -27,13 +31,31 @@ export default function StaffReportPage() {
   const [attendance, setAttendance] = useState<{ present: number; absent: number; late: number; leave: number }>({ present: 0, absent: 0, late: 0, leave: 0 });
   const [branchScope, setBranchScope] = useState<BranchScope>('current');
 
-  const canSeeAllBranches = branches.length > 1 && (isPartner || currentStaff?.role === 'owner' || currentStaff?.role === 'manager');
+  // Staff report needs BOTH view_reports (page access) and view_commissions
+  // (to see commission / net-payable rows). Owners/partners are lockout-safe.
+  const canViewReports = usePermission('view_reports');
+  const canViewCommissions = usePermission('view_commissions');
+  const hasViewOtherBranches = usePermission('view_other_branches');
+  const canSeeAllBranches = memberBranches.length > 1 && hasViewOtherBranches;
+
+  useEffect(() => {
+    if (!canViewReports || !canViewCommissions) {
+      toast.error('You do not have permission to view staff commissions');
+      router.replace('/dashboard');
+    }
+  }, [canViewReports, canViewCommissions, router]);
 
   useEffect(() => {
     if (!salon) return;
+    // Migration 036 renamed staff.branch_id → staff.primary_branch_id. Use
+    // the new name; the old column no longer exists post-migration. For the
+    // "all branches" scope we pull everyone in the salon regardless of
+    // primary branch — the secondary-branch membership (staff_branches)
+    // isn't surfaced in this picker because the commission RPC aggregates
+    // by staff_id alone.
     let query = supabase.from('staff').select('*').eq('salon_id', salon.id).eq('is_active', true);
     if (branchScope === 'current' && currentBranch) {
-      query = query.eq('branch_id', currentBranch.id);
+      query = query.eq('primary_branch_id', currentBranch.id);
     }
     query.order('name').then(({ data }: { data: Staff[] | null }) => {
       if (data) {

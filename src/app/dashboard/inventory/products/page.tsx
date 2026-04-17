@@ -6,6 +6,7 @@ import { Search, Plus, Package as PackageIcon, Minus, X } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { fetchProductsWithBranchStock, type ProductWithBranchStock } from '@/lib/db';
 import { useAppStore } from '@/store/app-store';
+import { usePermission } from '@/lib/permissions';
 import { formatPKR } from '@/lib/utils/currency';
 import { createProduct, updateProduct, syncProductServiceLinks, adjustStock } from '@/app/actions/inventory';
 import { Button } from '@/components/ui/button';
@@ -37,6 +38,14 @@ function ProductsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { salon, currentBranch } = useAppStore();
+  const canManageInventory = usePermission('manage_inventory');
+
+  useEffect(() => {
+    if (!canManageInventory) {
+      toast.error('You do not have permission to manage inventory');
+      router.replace('/dashboard');
+    }
+  }, [canManageInventory, router]);
 
   const [products, setProducts] = useState<ProductWithBranchStock[]>([]);
   const [loading, setLoading] = useState(true);
@@ -103,9 +112,9 @@ function ProductsContent() {
   const [formLinkQty, setFormLinkQty] = useState('');
 
   async function openForm(product?: ProductWithBranchStock) {
-    // Load services for link picker
-    if (salon && services.length === 0) {
-      const { data } = await supabase.from('services').select('*').eq('salon_id', salon.id).eq('is_active', true).order('name');
+    // Load services for link picker (per-branch after migration 036).
+    if (salon && currentBranch && services.length === 0) {
+      const { data } = await supabase.from('services').select('*').eq('salon_id', salon.id).eq('branch_id', currentBranch.id).eq('is_active', true).order('name');
       if (data) setServices(data as Service[]);
     }
 
@@ -119,7 +128,7 @@ function ProductsContent() {
       // Load existing links
       const { data: linkData } = await supabase.from('product_service_links').select('*').eq('product_id', product.id);
       if (linkData) {
-        const svcRes = services.length > 0 ? services : (await supabase.from('services').select('*').eq('salon_id', salon!.id).eq('is_active', true).order('name')).data as Service[] || [];
+        const svcRes = services.length > 0 ? services : (await supabase.from('services').select('*').eq('salon_id', salon!.id).eq('branch_id', currentBranch!.id).eq('is_active', true).order('name')).data as Service[] || [];
         if (svcRes.length > 0 && services.length === 0) setServices(svcRes);
         setFormLinks((linkData as ProductServiceLink[]).map(l => {
           const svc = svcRes.find(s => s.id === l.service_id);

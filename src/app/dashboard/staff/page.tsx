@@ -51,7 +51,21 @@ export default function StaffListPage() {
         .eq('salon_id', salon.id)
         .eq('is_active', true)
         .order('name');
-      if (currentBranch) staffQuery = staffQuery.eq('branch_id', currentBranch.id);
+      if (currentBranch) {
+        // Filter to staff assigned to the current branch via staff_branches
+        // (migration 036 — staff can belong to multiple branches).
+        const { data: memberRows } = await supabase
+          .from('staff_branches')
+          .select('staff_id')
+          .eq('branch_id', currentBranch.id);
+        const staffIds = (memberRows || []).map((r: { staff_id: string }) => r.staff_id);
+        if (staffIds.length === 0) {
+          setStaff([]);
+          setLoading(false);
+          return;
+        }
+        staffQuery = staffQuery.in('id', staffIds);
+      }
       const { data: staffData } = await staffQuery;
       if (!staffData) { setLoading(false); return; }
 

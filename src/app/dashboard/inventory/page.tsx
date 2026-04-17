@@ -2,10 +2,13 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import toast from 'react-hot-toast';
 import { Package, AlertTriangle, ShoppingBag, Beaker, ArrowRight } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { fetchProductsWithBranchStock, type ProductWithBranchStock } from '@/lib/db';
 import { useAppStore } from '@/store/app-store';
+import { usePermission } from '@/lib/permissions';
 import { formatPKR } from '@/lib/utils/currency';
 import { formatDateTime } from '@/lib/utils/dates';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -15,8 +18,17 @@ import { Button } from '@/components/ui/button';
 import type { StockMovement } from '@/types/database';
 
 export default function InventoryDashboardPage() {
+  const router = useRouter();
   const { salon, currentBranch } = useAppStore();
+  const canManageInventory = usePermission('manage_inventory');
   const [products, setProducts] = useState<ProductWithBranchStock[]>([]);
+
+  useEffect(() => {
+    if (!canManageInventory) {
+      toast.error('You do not have permission to manage inventory');
+      router.replace('/dashboard');
+    }
+  }, [canManageInventory, router]);
   const [movements, setMovements] = useState<(StockMovement & { product_name?: string })[]>([]);
   const [loading, setLoading] = useState(true);
 

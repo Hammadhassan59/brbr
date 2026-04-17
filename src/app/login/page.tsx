@@ -101,7 +101,10 @@ export default function LoginPage() {
           salonId: 'super-admin',
           staffId: data.user.id,
           role: adminRole,
+          primaryBranchId: '',
           branchId: '',
+          branchIds: [],
+          permissions: { '*': true },
           name: data.user.email || email,
         });
         router.push('/admin');
@@ -134,11 +137,13 @@ export default function LoginPage() {
           setBranches([]);
           setCurrentBranch(null);
           setIsOwner(true);
+          // branchIds + permissions resolved by signSession from the DB
+          // (owner => all branches, permissions => { "*": true }).
           await signSession({
             salonId: DEMO_SALON_ID,
             staffId: data.user.id,
             role: 'owner',
-            branchId: DEMO_BRANCH_ID,
+            primaryBranchId: DEMO_BRANCH_ID,
             name: `${result.agent.name} (demo)`,
             isDemo: true,
             agentId: result.agent.id,
@@ -163,7 +168,9 @@ export default function LoginPage() {
           salonId: '',
           staffId: data.user.id,
           role: 'sales_agent',
-          branchId: '',
+          primaryBranchId: '',
+          branchIds: [],
+          permissions: { '*': true },
           name: result.agent.name,
           agentId: result.agent.id,
           isDemo: false,
@@ -195,11 +202,17 @@ export default function LoginPage() {
           setIsOwner(true);
           setIsPartner(false);
           useAppStore.getState().setIsSuperAdmin(false);
+          // Owners see every branch in the salon. We pass the explicit list +
+          // full-access permissions here (rather than letting signSession
+          // re-query) because we already loaded result.branches above — saves
+          // one roundtrip per login.
           await signSession({
             salonId: result.salon.id,
             staffId: data.user.id,
             role: 'owner',
-            branchId: mainBranch?.id || '',
+            primaryBranchId: mainBranch?.id || '',
+            branchIds: result.branches.map((b: Branch) => b.id),
+            permissions: { '*': true },
             name: 'Owner',
           });
         } else if (result.type === 'partner') {
@@ -208,11 +221,14 @@ export default function LoginPage() {
           setIsOwner(false);
           setCurrentStaff(null);
           useAppStore.getState().setIsSuperAdmin(false);
+          // Partners have the same cross-branch reach as owners.
           await signSession({
             salonId: result.salon.id,
             staffId: result.partner!.id,
             role: 'partner',
-            branchId: mainBranch?.id || '',
+            primaryBranchId: mainBranch?.id || '',
+            branchIds: result.branches.map((b: Branch) => b.id),
+            permissions: { '*': true },
             name: result.partner!.name,
           });
         } else if (result.type === 'staff') {
@@ -221,11 +237,19 @@ export default function LoginPage() {
           setIsOwner(false);
           setIsPartner(false);
           useAppStore.getState().setIsSuperAdmin(false);
+          // Read the staff's multi-branch grants from staff_branches (shipped
+          // in migration 036). The signSession call will fall back to
+          // [primaryBranchId] if the table/columns aren't populated yet.
+          //
+          const staffRow = result.staff!;
+          const primary = staffRow.primary_branch_id || mainBranch?.id || '';
           await signSession({
             salonId: result.salon.id,
             staffId: result.staff!.id,
             role: result.staff!.role,
-            branchId: result.staff!.branch_id || mainBranch?.id || '',
+            primaryBranchId: primary,
+            // branchIds + permissions resolved by signSession from
+            // staff_branches + role_presets + staff.permissions_override.
             name: result.staff!.name,
           });
         }

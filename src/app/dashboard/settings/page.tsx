@@ -1,8 +1,10 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { Plus, X, Scissors, Sparkles, Users, MapPin, Pencil, Trash2, Copy, CreditCard, Check, Lock } from 'lucide-react';
+import Link from 'next/link';
+import { Plus, X, Scissors, Sparkles, Users, MapPin, Pencil, Trash2, Copy, CreditCard, Check, Lock, ChevronRight, ShieldCheck } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import { usePermission } from '@/lib/permissions';
 import { updateSalon, updateBranchWorkingHours, createService, updateService, deleteService, createBranch, updateBranch, deleteBranch } from '@/app/actions/settings';
 import { getPublicPlatformConfig } from '@/app/actions/admin-settings';
 import { PaymentSubmitModal } from '@/components/payment-submit-modal';
@@ -40,6 +42,7 @@ const DAY_LABELS: Record<string, string> = { mon: 'Monday', tue: 'Tuesday', wed:
 export default function SettingsPage() {
   const { salon, setSalon, currentBranch, setCurrentBranch, isOwner, isPartner } = useAppStore();
   const canManage = isOwner || isPartner;
+  const canManagePermissions = usePermission('manage_permissions');
   const { language, setLanguage } = useLanguage();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -86,9 +89,14 @@ export default function SettingsPage() {
   const fetchData = useCallback(async () => {
     if (!salon) return;
     setLoading(true);
+    // Services are per-branch (migration 036). If no branch is selected yet,
+    // fall back to an empty services list rather than mixing branches.
+    const svcPromise = currentBranch
+      ? supabase.from('services').select('*').eq('salon_id', salon.id).eq('branch_id', currentBranch.id).order('sort_order')
+      : Promise.resolve({ data: [] as Service[] });
     const [branchRes, svcRes] = await Promise.all([
       supabase.from('branches').select('*').eq('salon_id', salon.id).order('is_main', { ascending: false }),
-      supabase.from('services').select('*').eq('salon_id', salon.id).order('sort_order'),
+      svcPromise,
     ]);
 
     setSalonName(salon.name);
@@ -120,24 +128,33 @@ export default function SettingsPage() {
         setJummahBreak(!!(wh.fri as DayHours & { jummah_break?: boolean }).jummah_break);
       }
 
-      // Fetch per-branch stats
+      // Fetch per-branch stats. Staff counts come from staff_branches (each
+      // staff can appear under multiple branches post-036).
       const today = new Date().toISOString().slice(0, 10);
       const branchIds = branchList.map((b) => b.id);
       const [staffRes, billsRes, aptsRes] = await Promise.all([
-        supabase.from('staff').select('branch_id').eq('salon_id', salon.id).eq('is_active', true),
+        supabase
+          .from('staff_branches')
+          .select('branch_id, staff:staff!inner(id, is_active, salon_id)')
+          .in('branch_id', branchIds),
         supabase.from('bills').select('branch_id, total_amount').eq('salon_id', salon.id).gte('created_at', today + 'T00:00:00').lt('created_at', today + 'T23:59:59'),
         supabase.from('appointments').select('branch_id').eq('salon_id', salon.id).eq('appointment_date', today),
       ]);
       const stats: Record<string, { staffCount: number; todayRevenue: number; todayAppointments: number }> = {};
       branchIds.forEach((id) => { stats[id] = { staffCount: 0, todayRevenue: 0, todayAppointments: 0 }; });
-      staffRes.data?.forEach((s: { branch_id: string | null }) => { if (s.branch_id && stats[s.branch_id]) stats[s.branch_id].staffCount++; });
+      (staffRes.data || []).forEach((row: { branch_id: string; staff?: { is_active?: boolean; salon_id?: string } | { is_active?: boolean; salon_id?: string }[] }) => {
+        const s = Array.isArray(row.staff) ? row.staff[0] : row.staff;
+        if (s?.is_active && s.salon_id === salon.id && stats[row.branch_id]) {
+          stats[row.branch_id].staffCount++;
+        }
+      });
       billsRes.data?.forEach((b: { branch_id: string | null; total_amount: number }) => { if (b.branch_id && stats[b.branch_id]) stats[b.branch_id].todayRevenue += b.total_amount; });
       aptsRes.data?.forEach((a: { branch_id: string | null }) => { if (a.branch_id && stats[a.branch_id]) stats[a.branch_id].todayAppointments++; });
       setBranchStats(stats);
     }
     if (svcRes.data) setServices(svcRes.data as Service[]);
     setLoading(false);
-  }, [salon]);
+  }, [salon, currentBranch]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
@@ -219,13 +236,15 @@ export default function SettingsPage() {
   }
 
   async function toggleServiceActive(id: string, active: boolean) {
-    await updateService(id, { is_active: active });
+    if (!currentBranch) return;
+    await updateService(id, currentBranch.id, { is_active: active });
     setServices(services.map((s) => s.id === id ? { ...s, is_active: active } : s));
     toast.success(active ? 'Service activated' : 'Service deactivated');
   }
 
   async function updateServicePrice(id: string, price: number) {
-    await updateService(id, { base_price: price });
+    if (!currentBranch) return;
+    await updateService(id, currentBranch.id, { base_price: price });
     setServices(services.map((s) => s.id === id ? { ...s, base_price: price } : s));
   }
 
@@ -233,6 +252,29 @@ export default function SettingsPage() {
 
   return (
     <div className="space-y-6">
+      {/* Permissions shortcut — rendered only for staff with `manage_permissions`
+          (owners/partners/super admins get it via the lockout-safe wildcard,
+          same as any other permission). Click navigates to the dedicated
+          editor page rather than a tab because the editor needs its own URL
+          so deep-links survive refresh. */}
+      {canManagePermissions && (
+        <Link
+          href="/dashboard/settings/permissions"
+          className="flex items-center gap-3 bg-card border border-border rounded-lg p-4 hover:border-gold/40 transition-all duration-150 group"
+        >
+          <div className="w-9 h-9 bg-gold/10 flex items-center justify-center shrink-0">
+            <ShieldCheck className="w-5 h-5 text-gold" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold">Permissions</p>
+            <p className="text-xs text-muted-foreground">
+              Edit role defaults and per-staff access
+            </p>
+          </div>
+          <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-gold shrink-0" />
+        </Link>
+      )}
+
       <Tabs defaultValue={canManage ? 'profile' : 'display'}>
         <div className="bg-card border border-border rounded-lg p-2 sm:p-4 overflow-x-auto">
           <TabsList className="bg-transparent h-auto gap-1.5 p-0 flex-nowrap w-max min-w-full">
@@ -327,6 +369,7 @@ export default function SettingsPage() {
           <ServiceManager
             services={services}
             salonId={salon?.id || ''}
+            branchId={currentBranch?.id || ''}
             onToggle={toggleServiceActive}
             onPriceChange={updateServicePrice}
             onAdded={(svc) => setServices([...services, svc])}
@@ -446,10 +489,11 @@ export default function SettingsPage() {
 // ───────────────────────────────────────
 
 function ServiceManager({
-  services, salonId, onToggle, onPriceChange, onAdded, onUpdated, onRemoved,
+  services, salonId, branchId, onToggle, onPriceChange, onAdded, onUpdated, onRemoved,
 }: {
   services: Service[];
   salonId: string;
+  branchId: string;
   onToggle: (id: string, active: boolean) => void;
   onPriceChange: (id: string, price: number) => void;
   onAdded: (svc: Service) => void;
@@ -482,11 +526,12 @@ function ServiceManager({
     if (!name.trim()) { toast.error('Service name is required'); return; }
     if (!price || isNaN(Number(price)) || Number(price) <= 0) { toast.error('Enter a valid price'); return; }
     if (duration && (isNaN(Number(duration)) || Number(duration) < 5 || Number(duration) > 480)) { toast.error('Duration must be 5–480 minutes'); return; }
+    if (!branchId) { toast.error('Select a branch first'); return; }
 
     setSaving(true);
     try {
       if (editingId) {
-        const { data, error } = await updateService(editingId, {
+        const { data, error } = await updateService(editingId, branchId, {
           name: name.trim(),
           category,
           duration_minutes: Number(duration) || 30,
@@ -497,6 +542,7 @@ function ServiceManager({
         toast.success(`"${name.trim()}" updated`);
       } else {
         const { data, error } = await createService({
+          branchId,
           name: name.trim(),
           category,
           durationMinutes: Number(duration) || 30,
@@ -518,8 +564,9 @@ function ServiceManager({
 
   async function removeService(svc: Service) {
     if (!confirm(`Remove "${svc.name}"? This cannot be undone.`)) return;
+    if (!branchId) { toast.error('Select a branch first'); return; }
     try {
-      const { error } = await deleteService(svc.id);
+      const { error } = await deleteService(svc.id, branchId);
       if (showActionError(error)) return;
       onRemoved(svc.id);
       toast.success(`"${svc.name}" removed`);
@@ -587,6 +634,9 @@ function ServiceManager({
           </div>
           <Input type="number" value={svc.base_price} onChange={(e) => onPriceChange(svc.id, Number(e.target.value))} className="w-20 sm:w-24 h-8 text-xs text-right" inputMode="numeric" />
           <Button variant="ghost" size="sm" className="h-8 text-xs px-2" onClick={() => startEdit(svc)}>Edit</Button>
+          {/* TODO: wire updateService-clone-to-branches — copy this service's
+              price/duration/category into every other branch in the salon. */}
+          <Button variant="ghost" size="sm" className="h-8 text-xs px-2" onClick={() => toast('Copy to all branches — coming soon')}>Copy to all</Button>
           <Button variant="ghost" size="sm" className="h-8 text-xs px-2 text-destructive hover:text-destructive" onClick={() => removeService(svc)}>Remove</Button>
         </div>
       ))}

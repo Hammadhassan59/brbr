@@ -1,9 +1,11 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { Plus, Phone as PhoneIcon } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAppStore } from '@/store/app-store';
+import { usePermission } from '@/lib/permissions';
 import { formatPKR } from '@/lib/utils/currency';
 import { createSupplier, updateSupplier, recordSupplierPayment } from '@/app/actions/inventory';
 import { Button } from '@/components/ui/button';
@@ -18,8 +20,17 @@ import { showActionError, handleSubscriptionError } from '@/components/paywall-d
 import type { Supplier } from '@/types/database';
 
 export default function SuppliersPage() {
-  const { salon } = useAppStore();
+  const router = useRouter();
+  const { salon, currentBranch } = useAppStore();
+  const canManageSuppliers = usePermission('manage_suppliers');
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+
+  useEffect(() => {
+    if (!canManageSuppliers) {
+      toast.error('You do not have permission to manage suppliers');
+      router.replace('/dashboard');
+    }
+  }, [canManageSuppliers, router]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editSupplier, setEditSupplier] = useState<Supplier | null>(null);
@@ -35,12 +46,12 @@ export default function SuppliersPage() {
   const [savingPay, setSavingPay] = useState(false);
 
   const fetch = useCallback(async () => {
-    if (!salon) return;
+    if (!salon || !currentBranch) return;
     setLoading(true);
-    const { data } = await supabase.from('suppliers').select('*').eq('salon_id', salon.id).order('name');
+    const { data } = await supabase.from('suppliers').select('*').eq('salon_id', salon.id).eq('branch_id', currentBranch.id).order('name');
     if (data) setSuppliers(data as Supplier[]);
     setLoading(false);
-  }, [salon]);
+  }, [salon, currentBranch]);
 
   useEffect(() => { fetch(); }, [fetch]);
 
@@ -51,15 +62,15 @@ export default function SuppliersPage() {
   }
 
   async function saveSupplier() {
-    if (!salon || !formName.trim()) { toast.error('Name required'); return; }
+    if (!salon || !currentBranch || !formName.trim()) { toast.error('Name required'); return; }
     setSaving(true);
     try {
       if (editSupplier) {
-        const { error } = await updateSupplier(editSupplier.id, { name: formName.trim(), phone: formPhone || null, notes: formNotes || null });
+        const { error } = await updateSupplier(editSupplier.id, currentBranch.id, { name: formName.trim(), phone: formPhone || null, notes: formNotes || null });
         if (showActionError(error)) return;
         toast.success('Supplier updated');
       } else {
-        const { error } = await createSupplier({ name: formName.trim(), phone: formPhone || null, notes: formNotes || null });
+        const { error } = await createSupplier({ branchId: currentBranch.id, name: formName.trim(), phone: formPhone || null, notes: formNotes || null });
         if (showActionError(error)) return;
         toast.success('Supplier added');
       }
@@ -72,13 +83,13 @@ export default function SuppliersPage() {
   }
 
   async function recordPayment() {
-    if (!paySupplier) return;
+    if (!paySupplier || !currentBranch) return;
     if (!payAmount) { toast.error('Enter a payment amount'); return; }
     setSavingPay(true);
     try {
       const amount = Number(payAmount);
       if (amount > paySupplier.udhaar_balance) { toast.error('Payment amount exceeds outstanding balance'); setSavingPay(false); return; }
-      const { error } = await recordSupplierPayment(paySupplier.id, amount, paySupplier.udhaar_balance);
+      const { error } = await recordSupplierPayment(paySupplier.id, currentBranch.id, amount, paySupplier.udhaar_balance);
       if (showActionError(error)) return;
       toast.success(`Payment of ${formatPKR(amount)} recorded`);
       setShowPayment(false); setPayAmount(''); fetch();

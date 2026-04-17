@@ -2,10 +2,13 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import toast from 'react-hot-toast';
 import { ChevronRight as ChevronRightIcon } from 'lucide-react';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, PieChart, Pie, Cell } from 'recharts';
 import { supabase } from '@/lib/supabase';
 import { useAppStore } from '@/store/app-store';
+import { usePermission } from '@/lib/permissions';
 import { formatPKR } from '@/lib/utils/currency';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -15,7 +18,8 @@ import type { Bill, Staff } from '@/types/database';
 const PIE_COLORS = ['#4ADE80', '#F87171', '#34D399', '#60A5FA', '#C084FC', '#FB923C', '#8B5CF6', '#EC4899', '#14B8A6', '#F97316'];
 
 export default function MonthlyReportPage() {
-  const { salon, branches, currentBranch, currentStaff, isPartner } = useAppStore();
+  const router = useRouter();
+  const { salon, currentBranch, memberBranches } = useAppStore();
   const now = new Date();
   const [month, setMonth] = useState(now.getMonth() + 1);
   const [year, setYear] = useState(now.getFullYear());
@@ -25,7 +29,16 @@ export default function MonthlyReportPage() {
   const [staffNameMap, setStaffNameMap] = useState<Record<string, string>>({});
   const [branchScope, setBranchScope] = useState<string>('current');
 
-  const canSeeAllBranches = branches.length > 1 && (isPartner || currentStaff?.role === 'owner' || currentStaff?.role === 'manager');
+  const canViewReports = usePermission('view_reports');
+  const hasViewOtherBranches = usePermission('view_other_branches');
+  const canSeeAllBranches = memberBranches.length > 1 && hasViewOtherBranches;
+
+  useEffect(() => {
+    if (!canViewReports) {
+      toast.error('You do not have permission to view reports');
+      router.replace('/dashboard');
+    }
+  }, [canViewReports, router]);
 
   const fetchData = useCallback(async () => {
     if (!salon) return;
@@ -40,13 +53,24 @@ export default function MonthlyReportPage() {
     const prevDays = new Date(prevYear, prevMonth, 0).getDate();
     const prevEnd = `${prevYear}-${String(prevMonth).padStart(2, '0')}-${prevDays}`;
 
-    // Build query based on scope
+    // Build query based on scope. All-branches mode scopes to the session's
+    // member branches (not just salon_id) so a manager with partial branch
+    // access doesn't see rows from branches they can't otherwise read. If
+    // memberBranches is empty (unlikely for a salon user) fall back to
+    // salon_id so we still fetch something — RLS / tenant-guard downstream
+    // is the safety net.
     let curQuery = supabase.from('bills').select('*').eq('status', 'paid').gte('created_at', `${startDate}T00:00:00`).lte('created_at', `${endDate}T23:59:59`);
     let prevQuery = supabase.from('bills').select('*').eq('status', 'paid').gte('created_at', `${prevStart}T00:00:00`).lte('created_at', `${prevEnd}T23:59:59`);
 
     if (branchScope === 'all') {
-      curQuery = curQuery.eq('salon_id', salon.id);
-      prevQuery = prevQuery.eq('salon_id', salon.id);
+      const memberBranchIds = memberBranches.map((b) => b.id);
+      if (memberBranchIds.length > 0) {
+        curQuery = curQuery.in('branch_id', memberBranchIds);
+        prevQuery = prevQuery.in('branch_id', memberBranchIds);
+      } else {
+        curQuery = curQuery.eq('salon_id', salon.id);
+        prevQuery = prevQuery.eq('salon_id', salon.id);
+      }
     } else {
       const bid = branchScope === 'current' ? currentBranch?.id : branchScope;
       if (!bid) { setLoading(false); return; }
@@ -67,7 +91,7 @@ export default function MonthlyReportPage() {
       setStaffNameMap(map);
     }
     setLoading(false);
-  }, [currentBranch, salon, month, year, branchScope]);
+  }, [currentBranch, salon, month, year, branchScope, memberBranches]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
@@ -134,7 +158,7 @@ export default function MonthlyReportPage() {
             >
               {currentBranch?.name || 'Current'}
             </button>
-            {branches.filter(b => b.id !== currentBranch?.id).map(b => (
+            {memberBranches.filter(b => b.id !== currentBranch?.id).map(b => (
               <button
                 key={b.id}
                 onClick={() => setBranchScope(b.id)}

@@ -70,7 +70,24 @@ export interface SessionPayload {
   salonId: string;
   staffId: string;
   role: string;
+  // Primary branch the session is currently scoped to. Multi-branch stylists
+  // (see migration 036) can hop between branches via switchBranch() — this
+  // field is what per-branch queries filter on. Older callers still read
+  // `branchId`, which is kept as an alias that mirrors primaryBranchId so the
+  // whole codebase doesn't have to churn in one PR.
+  primaryBranchId: string;
+  /** @deprecated alias for primaryBranchId — kept for backward compat. */
   branchId: string;
+  // Every branch this session is allowed to access. For owner/partner this is
+  // every branch in the salon; for staff it's the rows from staff_branches
+  // joined on staff_id (plus the staff's primary_branch_id). Stamped once at
+  // sign time so authorization reads cost zero.
+  branchIds: string[];
+  // Effective permissions, resolved at sign time: role_presets row shallow-
+  // merged with staff.permissions_override. Owner/partner/super_admin get
+  // { "*": true }; sales_agent + admin sub-roles pass through with { "*": true }
+  // since their auth is domain-separate (they never touch tenant surfaces).
+  permissions: Record<string, boolean>;
   name: string;
   agentId?: string;
   // True when this session belongs to a demo sales-agent identity. Used to
@@ -97,10 +114,154 @@ export interface SessionPayload {
   jti?: string;
 }
 
-export async function signSession(payload: SessionPayload) {
+/**
+ * Input shape accepted by signSession. Looser than SessionPayload so callers
+ * can omit branchIds/permissions (resolved from the DB) and can supply either
+ * `primaryBranchId` or the legacy `branchId` alias.
+ */
+export type SignSessionInput =
+  Omit<SessionPayload, 'primaryBranchId' | 'branchId' | 'branchIds' | 'permissions'>
+  & {
+    primaryBranchId?: string;
+    branchId?: string;
+    branchIds?: string[];
+    permissions?: Record<string, boolean>;
+  };
+
+/**
+ * Resolve the effective permission set for a given (salon, role) pair, with an
+ * optional per-staff override shallow-merged on top.
+ *
+ * Introduced in migration 036 alongside the `role_presets` table. Called from
+ * signSession so every JWT carries its own frozen permissions map — dashboard
+ * gates read it straight off the session instead of re-querying the DB.
+ *
+ * Semantics:
+ *   - owner/partner/super_admin get { "*": true } (full access; no preset row).
+ *   - admin sub-roles (technical_support, customer_support, leads_team) and
+ *     sales_agent also return { "*": true } — their access is policed by
+ *     requireAdminRole() / agent checks, not by this permission map, so we
+ *     pass through rather than force the migration to seed preset rows for
+ *     out-of-tenant identities.
+ *   - For any other role (staff, manager, stylist, …) we fetch
+ *     role_presets(salon_id, role_name) and, if `permissionsOverride` is a
+ *     non-null object, shallow-merge override on top. Missing preset + no
+ *     override yields `{}` (deny-by-default).
+ */
+export async function resolvePermissions(
+  salonId: string | undefined,
+  role: string,
+  permissionsOverride: Record<string, boolean> | null | undefined,
+): Promise<Record<string, boolean>> {
+  if (role === 'owner' || role === 'partner' || role === 'super_admin') {
+    return { '*': true };
+  }
+  // Admin sub-roles + sales agents live outside the tenant permission model;
+  // their access is gated by requireAdminRole() / agent checks rather than by
+  // this map. Pass through with full access so no caller accidentally denies
+  // them on a permission key that doesn't apply.
+  if (role === 'technical_support' || role === 'customer_support' || role === 'leads_team' || role === 'sales_agent') {
+    return { '*': true };
+  }
+  if (!salonId || salonId === 'super-admin') return {};
+
+  const { createServerClient } = await import('@/lib/supabase');
+  const supabase = createServerClient();
+  const { data: preset } = await supabase
+    .from('role_presets')
+    .select('permissions')
+    .eq('salon_id', salonId)
+    .eq('role_name', role)
+    .maybeSingle();
+
+  const base: Record<string, boolean> = (preset?.permissions && typeof preset.permissions === 'object')
+    ? (preset.permissions as Record<string, boolean>)
+    : {};
+  if (permissionsOverride && typeof permissionsOverride === 'object') {
+    return { ...base, ...permissionsOverride };
+  }
+  return base;
+}
+
+/**
+ * Look up every branch this session is allowed to access.
+ *   - owner/partner: all branches of the salon.
+ *   - everyone else (staff/manager/…): rows from staff_branches keyed by
+ *     staff_id, plus whatever primaryBranchId was passed in (so a newly-
+ *     created staff row without any staff_branches entries still sees their
+ *     own primary branch). Duplicates de-duped.
+ * Returns [] for sessions without a salon (super_admin, sales_agent stub).
+ */
+async function resolveBranchIds(
+  salonId: string | undefined,
+  staffId: string | undefined,
+  role: string,
+  primaryBranchId: string | undefined,
+): Promise<string[]> {
+  if (!salonId || salonId === 'super-admin') return [];
+  const { createServerClient } = await import('@/lib/supabase');
+  const supabase = createServerClient();
+
+  if (role === 'owner' || role === 'partner') {
+    const { data } = await supabase
+      .from('branches')
+      .select('id')
+      .eq('salon_id', salonId);
+    return (data || []).map((b: { id: string }) => b.id);
+  }
+
+  if (!staffId) return primaryBranchId ? [primaryBranchId] : [];
+
+  const { data } = await supabase
+    .from('staff_branches')
+    .select('branch_id')
+    .eq('staff_id', staffId);
+  const ids = new Set<string>((data || []).map((r: { branch_id: string }) => r.branch_id));
+  if (primaryBranchId) ids.add(primaryBranchId);
+  return Array.from(ids);
+}
+
+export async function signSession(payload: SignSessionInput) {
   const subActive = payload.sub_active ?? await lookupSubActive(payload.salonId, payload.role);
+  // Normalize primaryBranchId/branchId aliases. Callers may supply either
+  // field (older login paths still write `branchId`); whichever is set wins,
+  // and we mirror it to the other for backward compat.
+  const primaryBranchId = payload.primaryBranchId ?? payload.branchId ?? '';
+
+  // If the caller already resolved branchIds/permissions, respect them — e.g.
+  // switchBranch() reuses the existing arrays. Otherwise resolve from the DB.
+  const branchIds = payload.branchIds
+    ?? await resolveBranchIds(payload.salonId, payload.staffId, payload.role, primaryBranchId);
+
+  let permissions = payload.permissions;
+  if (!permissions) {
+    // Pull the staff row's permissions_override if we're signing for a staff
+    // identity — owners/partners/etc. skip this and go straight to the
+    // role-based fallback in resolvePermissions.
+    let override: Record<string, boolean> | null = null;
+    if (payload.salonId && payload.salonId !== 'super-admin' && payload.staffId
+        && payload.role !== 'owner' && payload.role !== 'partner'
+        && payload.role !== 'super_admin' && payload.role !== 'sales_agent'
+        && payload.role !== 'technical_support' && payload.role !== 'customer_support' && payload.role !== 'leads_team') {
+      const { createServerClient } = await import('@/lib/supabase');
+      const supabase = createServerClient();
+      const { data: staffRow } = await supabase
+        .from('staff')
+        .select('permissions_override')
+        .eq('id', payload.staffId)
+        .maybeSingle();
+      const raw = staffRow?.permissions_override;
+      if (raw && typeof raw === 'object') override = raw as Record<string, boolean>;
+    }
+    permissions = await resolvePermissions(payload.salonId, payload.role, override);
+  }
+
   const claims: Record<string, unknown> = {
     ...payload,
+    primaryBranchId,
+    branchId: primaryBranchId,
+    branchIds,
+    permissions,
     sub_active: subActive,
     jti: payload.jti ?? randomUUID(),
   };
@@ -143,10 +304,53 @@ export async function verifySession(): Promise<SessionPayload> {
       issuer: JWT_ISS,
       audience: JWT_AUD,
     });
-    return payload as unknown as SessionPayload;
+    // Backward-compat shim: tokens minted before migration 036 don't carry
+    // primaryBranchId / branchIds / permissions. Fill sensible defaults from
+    // the legacy `branchId` claim so existing callers don't NPE. The next
+    // signSession call (e.g. on dashboard mount) re-stamps a fresh token.
+    const raw = payload as unknown as SessionPayload & { branchId?: string };
+    if (!raw.primaryBranchId && raw.branchId) raw.primaryBranchId = raw.branchId;
+    if (!raw.branchId && raw.primaryBranchId) raw.branchId = raw.primaryBranchId;
+    if (!Array.isArray(raw.branchIds)) {
+      raw.branchIds = raw.primaryBranchId ? [raw.primaryBranchId] : [];
+    }
+    if (!raw.permissions || typeof raw.permissions !== 'object') {
+      raw.permissions = (raw.role === 'owner' || raw.role === 'partner' || raw.role === 'super_admin') ? { '*': true } : {};
+    }
+    return raw;
   } catch {
     throw new Error('Invalid or expired session');
   }
+}
+
+/**
+ * Switch the session's active branch. The target must already be in the
+ * session's branchIds allow-list (stamped at login from staff_branches). On
+ * success, re-signs the JWT with primaryBranchId=targetBranchId; branchIds,
+ * permissions, and every other claim are preserved.
+ *
+ * Throws 'FORBIDDEN' if the branch isn't in the session's allow-list — never
+ * leaks whether the branch exists in some other salon.
+ */
+export async function switchBranch(targetBranchId: string): Promise<{ success: true }> {
+  if (!targetBranchId || typeof targetBranchId !== 'string') {
+    throw new Error('FORBIDDEN');
+  }
+  const session = await verifySession();
+  if (!session.branchIds.includes(targetBranchId)) {
+    throw new Error('FORBIDDEN');
+  }
+  // Reuse the resolved branchIds + permissions — we don't need to re-query
+  // the DB just to pivot the primary branch pointer. sub_active is also kept
+  // as-is so paywall state doesn't bounce on a branch switch.
+  await signSession({
+    ...session,
+    primaryBranchId: targetBranchId,
+    branchId: targetBranchId,
+    branchIds: session.branchIds,
+    permissions: session.permissions,
+  });
+  return { success: true };
 }
 
 /**
@@ -232,6 +436,10 @@ export async function getDashboardBootstrap(): Promise<{
   mainBranch: Record<string, unknown> | null;
   isImpersonating: boolean;
   role: string;
+  permissions: Record<string, boolean>;
+  branchIds: string[];
+  memberBranches: Array<{ id: string; name: string }>;
+  primaryBranchId: string | null;
 } | null> {
   const session = await verifySession();
   if (!session.salonId || session.salonId === 'super-admin') return null;
@@ -250,7 +458,26 @@ export async function getDashboardBootstrap(): Promise<{
   // an owner whose admin just approved their plan would still carry
   // sub_active=false in their token and bounce back to /paywall until their
   // next login. Reissuing here keeps the gate accurate on every dashboard load.
-  await signSession({ ...session, sub_active: undefined });
+  // Also re-resolves branchIds + permissions, picking up any role_presets or
+  // staff_branches changes an admin pushed since last login.
+  const { branchIds: _bIds, permissions: _perms, ...refreshInput } = session;
+  void _bIds; void _perms;
+  await signSession({ ...refreshInput, sub_active: undefined });
+
+  // Re-read the session we just signed so we hand the client the freshly-
+  // resolved permissions/branchIds, not the stale pre-remint values.
+  const refreshed = await verifySession();
+
+  // memberBranches = the subset of salon branches the session can actually
+  // operate on. Filter the already-fetched `list` by the session's branchIds
+  // so we don't round-trip the DB a second time. If branchIds is empty (old
+  // JWT grandfathered without the claim) fall back to the full list for
+  // owner/partner-ish sessions so the branch picker isn't empty.
+  const branchIdSet = new Set(refreshed.branchIds || []);
+  const memberBranches = (branchIdSet.size > 0
+    ? list.filter((b: { id: string }) => branchIdSet.has(b.id))
+    : list
+  ).map((b: { id: string; name: string }) => ({ id: b.id, name: b.name }));
 
   return {
     salon,
@@ -258,6 +485,10 @@ export async function getDashboardBootstrap(): Promise<{
     mainBranch,
     isImpersonating: !!session.impersonatedBy,
     role: session.role,
+    permissions: refreshed.permissions,
+    branchIds: refreshed.branchIds,
+    memberBranches,
+    primaryBranchId: refreshed.primaryBranchId ?? null,
   };
 }
 
@@ -285,6 +516,9 @@ export async function getSessionInfo(): Promise<{
   salonId: string;
   staffId: string;
   branchId: string;
+  primaryBranchId: string;
+  branchIds: string[];
+  permissions: Record<string, boolean>;
   name: string;
   subActive: boolean;
   isImpersonating: boolean;
@@ -298,6 +532,9 @@ export async function getSessionInfo(): Promise<{
       salonId: session.salonId,
       staffId: session.staffId,
       branchId: session.branchId,
+      primaryBranchId: session.primaryBranchId,
+      branchIds: session.branchIds,
+      permissions: session.permissions,
       name: session.name,
       subActive: !!session.sub_active,
       isImpersonating: !!session.impersonatedBy,
@@ -402,7 +639,10 @@ export async function exitDemoMode(): Promise<{ success: boolean; error: string 
       salonId: '',
       staffId: session.staffId,
       role: 'sales_agent',
+      primaryBranchId: '',
       branchId: '',
+      branchIds: [],
+      permissions: { '*': true },
       name: session.name.replace(/ \(demo\)$/, ''),
       agentId: session.agentId,
       isDemo: false,

@@ -1,12 +1,14 @@
 'use server';
 
-import { checkWriteAccess } from './auth';
+import { checkWriteAccess, verifySession } from './auth';
 import { createServerClient } from '@/lib/supabase';
 import { productUpdateSchema, supplierUpdateSchema } from '@/lib/schemas';
 import {
+  assertBranchMembership,
   assertBranchOwned,
   assertProductOwned,
   assertSupplierOwned,
+  hasPermission,
   tenantErrorMessage,
 } from '@/lib/tenant-guard';
 
@@ -29,9 +31,11 @@ export async function createProduct(data: {
   const session = writeCheck.session;
   const supabase = createServerClient();
 
-  // Branch must belong to this salon — opening stock will be written to it.
+  // Branch must belong to this salon AND be in the session's allow-list —
+  // opening stock will be written to it.
   try {
     await assertBranchOwned(data.branchId, session.salonId);
+    assertBranchMembership(session, data.branchId);
   } catch (e) {
     return { data: null, error: tenantErrorMessage(e) };
   }
@@ -190,6 +194,7 @@ export async function adjustStock(productId: string, branchId: string, quantity:
   try {
     await assertProductOwned(productId, session.salonId);
     await assertBranchOwned(branchId, session.salonId);
+    assertBranchMembership(session, branchId);
   } catch (e) {
     return { error: tenantErrorMessage(e) };
   }
@@ -253,9 +258,11 @@ export async function deductStockForBill(params: {
   const session = writeCheck.session;
   const supabase = createServerClient();
 
-  // Branch must belong to this salon — stock is deducted at this branch.
+  // Branch must belong to this salon AND be in the session's allow-list —
+  // stock is deducted at this branch.
   try {
     await assertBranchOwned(params.branchId, session.salonId);
+    assertBranchMembership(session, params.branchId);
   } catch (e) {
     return { error: tenantErrorMessage(e) };
   }
@@ -391,6 +398,7 @@ export async function createPurchaseOrder(data: {
   try {
     await assertSupplierOwned(data.supplierId, session.salonId);
     await assertBranchOwned(data.branchId, session.salonId);
+    assertBranchMembership(session, data.branchId);
   } catch (e) {
     return { error: tenantErrorMessage(e) };
   }
@@ -445,6 +453,7 @@ export async function updateOrderStatus(orderId: string, status: string) {
 }
 
 export async function createSupplier(data: {
+  branchId: string;
   name: string;
   phone?: string | null;
   notes?: string | null;
@@ -454,10 +463,18 @@ export async function createSupplier(data: {
   const session = writeCheck.session;
   const supabase = createServerClient();
 
+  try {
+    await assertBranchOwned(data.branchId, session.salonId);
+    assertBranchMembership(session, data.branchId);
+  } catch (e) {
+    return { error: tenantErrorMessage(e) };
+  }
+
   const { error } = await supabase
     .from('suppliers')
     .insert({
       salon_id: session.salonId,
+      branch_id: data.branchId,
       name: data.name.trim(),
       phone: data.phone || null,
       notes: data.notes || null,
@@ -467,11 +484,17 @@ export async function createSupplier(data: {
   return { error: null };
 }
 
-export async function updateSupplier(id: string, data: unknown) {
+export async function updateSupplier(id: string, branchId: string, data: unknown) {
   const writeCheck = await checkWriteAccess();
   if (writeCheck.error !== null) return { error: writeCheck.error };
   const session = writeCheck.session;
   const supabase = createServerClient();
+
+  try {
+    assertBranchMembership(session, branchId);
+  } catch (e) {
+    return { error: tenantErrorMessage(e) };
+  }
 
   const parsed = supplierUpdateSchema.safeParse(data);
   if (!parsed.success) {
@@ -492,19 +515,26 @@ export async function updateSupplier(id: string, data: unknown) {
     .from('suppliers')
     .update(update)
     .eq('id', id)
-    .eq('salon_id', session.salonId);
+    .eq('salon_id', session.salonId)
+    .eq('branch_id', branchId);
 
   if (error) return { error: error.message };
   return { error: null };
 }
 
-export async function recordSupplierPayment(supplierId: string, amount: number, currentBalance: number) {
+export async function recordSupplierPayment(
+  supplierId: string,
+  branchId: string,
+  amount: number,
+  currentBalance: number,
+) {
   const writeCheck = await checkWriteAccess();
   if (writeCheck.error !== null) return { error: writeCheck.error };
   const session = writeCheck.session;
   const supabase = createServerClient();
 
   try {
+    assertBranchMembership(session, branchId);
     await assertSupplierOwned(supplierId, session.salonId);
   } catch (e) {
     return { error: tenantErrorMessage(e) };
@@ -514,7 +544,8 @@ export async function recordSupplierPayment(supplierId: string, amount: number, 
     .from('suppliers')
     .update({ udhaar_balance: currentBalance - amount })
     .eq('id', supplierId)
-    .eq('salon_id', session.salonId);
+    .eq('salon_id', session.salonId)
+    .eq('branch_id', branchId);
 
   if (error) return { error: error.message };
   return { error: null };
@@ -567,12 +598,27 @@ export interface BackbarReportRow {
 export async function getBackbarConsumptionReport(input: {
   from: string; // YYYY-MM-DD
   to: string;   // YYYY-MM-DD
+  branchId: string;
   staffId?: string;
+  allBranches?: boolean;
 }): Promise<{ data: { rows: BackbarReportRow[] } | null; error: string | null }> {
   const writeCheck = await checkWriteAccess();
   if (writeCheck.error !== null) return { data: null, error: writeCheck.error };
   const session = writeCheck.session;
   const supabase = createServerClient();
+
+  const allBranches = !!input.allBranches;
+  if (allBranches) {
+    if (!hasPermission(session, 'view_other_branches')) {
+      return { data: null, error: 'Not allowed' };
+    }
+  } else {
+    try {
+      assertBranchMembership(session, input.branchId);
+    } catch (e) {
+      return { data: null, error: tenantErrorMessage(e) };
+    }
+  }
 
   // Bills in window for this salon. Time bounds use Asia/Karachi day so the
   // report matches what the dashboard shows for the same dates.
@@ -583,6 +629,7 @@ export async function getBackbarConsumptionReport(input: {
     .eq('status', 'paid')
     .gte('created_at', `${input.from}T00:00:00+05:00`)
     .lte('created_at', `${input.to}T23:59:59+05:00`);
+  if (!allBranches) billsQ = billsQ.eq('branch_id', input.branchId);
   if (input.staffId) billsQ = billsQ.eq('staff_id', input.staffId);
 
   const { data: bills, error: billsErr } = await billsQ;
@@ -689,17 +736,20 @@ export async function getBackbarConsumptionReport(input: {
     }
   }
 
-  // Owner-entered actuals for this exact period.
+  // Owner-entered actuals for this exact period. Branch-scoped unless the
+  // caller opted into allBranches (gated above by view_other_branches).
   const productIds = Array.from(byProduct.keys());
   const actualByProduct = new Map<string, { id: string; actual_qty: number; notes: string | null }>();
   if (productIds.length > 0) {
-    const { data: actuals } = await supabase
+    let actualsQ = supabase
       .from('backbar_actuals')
       .select('id, product_id, actual_qty, notes')
       .eq('salon_id', session.salonId)
       .eq('period_start', input.from)
       .eq('period_end', input.to)
       .in('product_id', productIds);
+    if (!allBranches) actualsQ = actualsQ.eq('branch_id', input.branchId);
+    const { data: actuals } = await actualsQ;
     for (const a of (actuals || []) as { id: string; product_id: string; actual_qty: number; notes: string | null }[]) {
       actualByProduct.set(a.product_id, { id: a.id, actual_qty: Number(a.actual_qty), notes: a.notes });
     }
@@ -751,6 +801,7 @@ export async function getBackbarConsumptionReport(input: {
  * so re-saving the same window simply updates the existing row.
  */
 export async function recordBackbarActual(input: {
+  branch_id: string;
   product_id: string;
   period_start: string; // YYYY-MM-DD
   period_end: string;   // YYYY-MM-DD
@@ -766,11 +817,24 @@ export async function recordBackbarActual(input: {
   if (input.period_end < input.period_start) {
     return { error: 'Period end must be on or after period start' };
   }
+
+  // Branch must belong to this salon and be in the caller's allow-list.
+  try {
+    await assertBranchOwned(input.branch_id, session.salonId);
+    assertBranchMembership(session, input.branch_id);
+  } catch (e) {
+    return { error: tenantErrorMessage(e) };
+  }
+
   const supabase = createServerClient();
+  // Migration 036 swapped the unique constraint from
+  // (salon_id, product_id, period_start, period_end) to
+  // (branch_id, product_id, period_start, period_end). Upsert on the new key.
   const { error } = await supabase
     .from('backbar_actuals')
     .upsert({
       salon_id: session.salonId,
+      branch_id: input.branch_id,
       product_id: input.product_id,
       period_start: input.period_start,
       period_end: input.period_end,
@@ -778,7 +842,47 @@ export async function recordBackbarActual(input: {
       notes: input.notes ?? null,
       recorded_by: session.staffId,
       recorded_at: new Date().toISOString(),
-    }, { onConflict: 'salon_id,product_id,period_start,period_end' });
+    }, { onConflict: 'branch_id,product_id,period_start,period_end' });
   if (error) return { error: error.message };
   return { error: null };
+}
+
+/**
+ * Fetch backbar_actuals rows for a (branch, window). Used by the backbar UI
+ * to show previously-entered counts next to today's expected numbers.
+ */
+export async function getBackbarActuals(input: {
+  branchId: string;
+  periodStart: string;
+  periodEnd: string;
+  allBranches?: boolean;
+}): Promise<{ data: Array<{ id: string; branch_id: string; product_id: string; actual_qty: number; notes: string | null }> | null; error: string | null }> {
+  const session = await verifySession();
+  if (!session.salonId) return { data: null, error: 'No salon context' };
+  const supabase = createServerClient();
+
+  const allBranches = !!input.allBranches;
+  if (allBranches) {
+    if (!hasPermission(session, 'view_other_branches')) {
+      return { data: null, error: 'Not allowed' };
+    }
+  } else {
+    try {
+      assertBranchMembership(session, input.branchId);
+    } catch (e) {
+      return { data: null, error: tenantErrorMessage(e) };
+    }
+  }
+
+  let q = supabase
+    .from('backbar_actuals')
+    .select('id, branch_id, product_id, actual_qty, notes')
+    .eq('salon_id', session.salonId)
+    .eq('period_start', input.periodStart)
+    .eq('period_end', input.periodEnd);
+  if (!allBranches) q = q.eq('branch_id', input.branchId);
+
+  const { data, error } = await q;
+  if (error) return { data: null, error: error.message };
+  return { data: (data ?? []) as Array<{ id: string; branch_id: string; product_id: string; actual_qty: number; notes: string | null }>, error: null };
 }

@@ -61,7 +61,7 @@ export const DEMO_BRANCH: Branch = {
 export const DEMO_STAFF_OWNER: Staff = {
   id: '33333333-3333-3333-3333-333333333301',
   salon_id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
-  branch_id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaab',
+  primary_branch_id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaab',
   name: 'Fatima Khan',
   phone: '0300-1234567',
   email: null,
@@ -82,7 +82,7 @@ export const DEMO_STAFF_OWNER: Staff = {
 export const DEMO_STAFF_STYLIST: Staff = {
   id: '33333333-3333-3333-3333-333333333302',
   salon_id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
-  branch_id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaab',
+  primary_branch_id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaab',
   name: 'Sadia Ahmed',
   phone: '0312-9876543',
   email: null,
@@ -103,7 +103,7 @@ export const DEMO_STAFF_STYLIST: Staff = {
 export const DEMO_STAFF_RECEPTIONIST: Staff = {
   id: '33333333-3333-3333-3333-333333333305',
   salon_id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
-  branch_id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaab',
+  primary_branch_id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaab',
   name: 'Zainab Bibi',
   phone: '0301-2345678',
   email: null,
@@ -182,7 +182,7 @@ export const DEMO_BRANCH_GENTS: Branch = {
 export const DEMO_GENTS_OWNER: Staff = {
   id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaa001',
   salon_id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
-  branch_id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaab',
+  primary_branch_id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaab',
   name: 'Ahmed Raza',
   phone: '0333-1112233',
   email: null,
@@ -203,7 +203,7 @@ export const DEMO_GENTS_OWNER: Staff = {
 export const DEMO_GENTS_BARBER_SENIOR: Staff = {
   id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaa002',
   salon_id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
-  branch_id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaab',
+  primary_branch_id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaab',
   name: 'Usman Ghani',
   phone: '0345-5551234',
   email: null,
@@ -224,7 +224,7 @@ export const DEMO_GENTS_BARBER_SENIOR: Staff = {
 export const DEMO_GENTS_BARBER_JUNIOR: Staff = {
   id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaa003',
   salon_id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
-  branch_id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaab',
+  primary_branch_id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaab',
   name: 'Bilal Saeed',
   phone: '0300-7778899',
   email: null,
@@ -245,7 +245,7 @@ export const DEMO_GENTS_BARBER_JUNIOR: Staff = {
 export const DEMO_GENTS_HELPER: Staff = {
   id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaa004',
   salon_id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
-  branch_id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaab',
+  primary_branch_id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaab',
   name: 'Hamza Ali',
   phone: '0301-4445566',
   email: null,
@@ -291,7 +291,7 @@ export const DEMO_BRANCH_GENTS_2: Branch = {
 export const DEMO_GENTS_BRANCH2_SENIOR: Staff = {
   id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaa005',
   salon_id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
-  branch_id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaac',
+  primary_branch_id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaac',
   name: 'Nadeem Khan',
   phone: '0345-7771234',
   email: null,
@@ -312,7 +312,7 @@ export const DEMO_GENTS_BRANCH2_SENIOR: Staff = {
 export const DEMO_GENTS_BRANCH2_JUNIOR: Staff = {
   id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaa006',
   salon_id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
-  branch_id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaac',
+  primary_branch_id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaac',
   name: 'Waqar Ahmed',
   phone: '0300-7775678',
   email: null,
@@ -354,7 +354,7 @@ export const DEMO_PARTNER_ROYAL: SalonPartner = {
 export const DEMO_STAFF_SUPERADMIN: Staff = {
   id: '00000000-0000-0000-0000-000000000000',
   salon_id: '',
-  branch_id: null,
+  primary_branch_id: null,
   name: 'iCut Super Admin',
   phone: '0300-ICUT-PK',
   email: null,

@@ -7,7 +7,10 @@ describe('SessionPayload', () => {
       salonId: '',
       staffId: 'user-1',
       role: 'sales_agent',
+      primaryBranchId: '',
       branchId: '',
+      branchIds: [],
+      permissions: { '*': true },
       name: 'Ali',
       agentId: 'agent-1',
     };
@@ -20,7 +23,10 @@ describe('SessionPayload', () => {
       salonId: 'salon-1',
       staffId: 'staff-1',
       role: 'owner',
+      primaryBranchId: 'branch-1',
       branchId: 'branch-1',
+      branchIds: ['branch-1'],
+      permissions: { '*': true },
       name: 'Owner',
     };
     expect(s.agentId).toBeUndefined();

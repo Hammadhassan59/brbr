@@ -2,6 +2,44 @@
 
 import { checkWriteAccess } from './auth';
 import { createServerClient } from '@/lib/supabase';
+import { assertBranchMembership, tenantErrorMessage } from '@/lib/tenant-guard';
+
+/**
+ * Verify a staff member is assigned to a given branch via the staff_branches
+ * join table (migration 036). Returns true iff (staff_id, branch_id) exists
+ * AND the staff row belongs to the caller's salon.
+ *
+ * We check salon first through a staff lookup, then existence in
+ * staff_branches. Two queries instead of a join because PostgREST
+ * nested-select shapes are harder to audit.
+ */
+async function assertStaffAtBranch(
+  supabase: ReturnType<typeof createServerClient>,
+  staffId: string,
+  salonId: string,
+  branchId: string,
+): Promise<boolean> {
+  const { data: staff } = await supabase
+    .from('staff')
+    .select('id, salon_id, primary_branch_id')
+    .eq('id', staffId)
+    .maybeSingle();
+  if (!staff) return false;
+  if ((staff as { salon_id: string }).salon_id !== salonId) return false;
+
+  // Primary branch match is the fast path.
+  if ((staff as { primary_branch_id: string | null }).primary_branch_id === branchId) {
+    return true;
+  }
+
+  const { data: link } = await supabase
+    .from('staff_branches')
+    .select('id')
+    .eq('staff_id', staffId)
+    .eq('branch_id', branchId)
+    .maybeSingle();
+  return !!link;
+}
 
 const VALID_STATUSES = [
   'booked',
@@ -37,6 +75,13 @@ export async function createAppointment(data: {
   const session = writeCheck.session;
   const supabase = createServerClient();
 
+  // Session must be allowed to operate on this branch.
+  try {
+    assertBranchMembership(session, data.branchId);
+  } catch (e) {
+    return { data: null, error: tenantErrorMessage(e) };
+  }
+
   // Verify the branch belongs to this salon
   const { data: branch } = await supabase
     .from('branches')
@@ -46,25 +91,25 @@ export async function createAppointment(data: {
     .maybeSingle();
   if (!branch) return { data: null, error: 'Invalid branch' };
 
-  // Verify the staff belongs to this salon AND this branch
-  const { data: staff } = await supabase
-    .from('staff')
-    .select('id')
-    .eq('id', data.staffId)
-    .eq('salon_id', session.salonId)
-    .eq('branch_id', data.branchId)
-    .maybeSingle();
-  if (!staff) return { data: null, error: 'Invalid staff for branch' };
+  // Verify the staff is assigned to this branch (via staff_branches join or
+  // primary_branch_id match). Multi-branch stylists may live in multiple
+  // rows of staff_branches — check there, not just the primary_branch_id.
+  const ok = await assertStaffAtBranch(supabase, data.staffId, session.salonId, data.branchId);
+  if (!ok) return { data: null, error: 'Invalid staff for branch' };
 
-  // If a client was provided, verify it belongs to this salon
+  // If a client was provided, verify it belongs to this salon AND this branch.
   if (data.clientId) {
     const { data: client } = await supabase
       .from('clients')
-      .select('id')
+      .select('id, branch_id')
       .eq('id', data.clientId)
       .eq('salon_id', session.salonId)
       .maybeSingle();
     if (!client) return { data: null, error: 'Invalid client' };
+    const cBranch = (client as { branch_id: string | null }).branch_id;
+    if (cBranch && cBranch !== data.branchId) {
+      return { data: null, error: 'Client belongs to a different branch' };
+    }
   }
 
   // Conflict detection. Running server-side closes the client-side round-trip
@@ -127,6 +172,13 @@ export async function updateAppointment(id: string, data: {
   const session = writeCheck.session;
   const supabase = createServerClient();
 
+  // Session must be allowed to operate on the target branch.
+  try {
+    assertBranchMembership(session, data.branchId);
+  } catch (e) {
+    return { data: null, error: tenantErrorMessage(e) };
+  }
+
   // Ownership: the appointment must already belong to this salon
   const { data: existing } = await supabase
     .from('appointments')
@@ -150,23 +202,21 @@ export async function updateAppointment(id: string, data: {
     .maybeSingle();
   if (!branch) return { data: null, error: 'Invalid branch' };
 
-  const { data: staff } = await supabase
-    .from('staff')
-    .select('id')
-    .eq('id', data.staffId)
-    .eq('salon_id', session.salonId)
-    .eq('branch_id', data.branchId)
-    .maybeSingle();
-  if (!staff) return { data: null, error: 'Invalid staff for branch' };
+  const ok = await assertStaffAtBranch(supabase, data.staffId, session.salonId, data.branchId);
+  if (!ok) return { data: null, error: 'Invalid staff for branch' };
 
   if (data.clientId) {
     const { data: client } = await supabase
       .from('clients')
-      .select('id')
+      .select('id, branch_id')
       .eq('id', data.clientId)
       .eq('salon_id', session.salonId)
       .maybeSingle();
     if (!client) return { data: null, error: 'Invalid client' };
+    const cBranch = (client as { branch_id: string | null }).branch_id;
+    if (cBranch && cBranch !== data.branchId) {
+      return { data: null, error: 'Client belongs to a different branch' };
+    }
   }
 
   // Conflict detection — exclude the appointment being edited so moving it
@@ -342,6 +392,13 @@ export async function createAppointmentWithServices(
   const session = writeCheck.session;
   const supabase = createServerClient();
 
+  // Session must be allowed to operate on this branch.
+  try {
+    assertBranchMembership(session, data.branchId);
+  } catch (e) {
+    return { data: null, error: tenantErrorMessage(e) };
+  }
+
   // Ownership: branch must belong to this salon
   const { data: branch } = await supabase
     .from('branches')
@@ -351,25 +408,24 @@ export async function createAppointmentWithServices(
     .maybeSingle();
   if (!branch) return { data: null, error: 'Invalid branch' };
 
-  // Ownership: staff must belong to this salon AND this branch
-  const { data: staff } = await supabase
-    .from('staff')
-    .select('id')
-    .eq('id', data.staffId)
-    .eq('salon_id', session.salonId)
-    .eq('branch_id', data.branchId)
-    .maybeSingle();
-  if (!staff) return { data: null, error: 'Invalid staff for branch' };
+  // Ownership: staff must be in this salon AND assigned to this branch (via
+  // staff_branches or primary_branch_id).
+  const staffOk = await assertStaffAtBranch(supabase, data.staffId, session.salonId, data.branchId);
+  if (!staffOk) return { data: null, error: 'Invalid staff for branch' };
 
-  // Ownership: client (if any) must belong to this salon
+  // Ownership: client (if any) must belong to this salon AND this branch.
   if (data.clientId) {
     const { data: client } = await supabase
       .from('clients')
-      .select('id')
+      .select('id, branch_id')
       .eq('id', data.clientId)
       .eq('salon_id', session.salonId)
       .maybeSingle();
     if (!client) return { data: null, error: 'Invalid client' };
+    const cBranch = (client as { branch_id: string | null }).branch_id;
+    if (cBranch && cBranch !== data.branchId) {
+      return { data: null, error: 'Client belongs to a different branch' };
+    }
   }
 
   // Preferred path: atomic RPC from migration 008

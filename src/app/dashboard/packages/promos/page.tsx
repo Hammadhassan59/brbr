@@ -1,9 +1,11 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { Plus, Copy } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAppStore } from '@/store/app-store';
+import { usePermission } from '@/lib/permissions';
 import { formatPKR } from '@/lib/utils/currency';
 import { formatPKDate } from '@/lib/utils/dates';
 import { Button } from '@/components/ui/button';
@@ -20,8 +22,17 @@ import { createPromo, updatePromo } from '@/app/actions/packages';
 import type { PromoCode, DiscountType } from '@/types/database';
 
 export default function PromosPage() {
-  const { salon } = useAppStore();
+  const router = useRouter();
+  const { salon, currentBranch } = useAppStore();
+  const canManagePromos = usePermission('manage_promos');
   const [promos, setPromos] = useState<PromoCode[]>([]);
+
+  useEffect(() => {
+    if (!canManagePromos) {
+      toast.error('You do not have permission to manage promos');
+      router.replace('/dashboard');
+    }
+  }, [canManagePromos, router]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editPromo, setEditPromo] = useState<PromoCode | null>(null);
@@ -36,12 +47,12 @@ export default function PromosPage() {
   const [saving, setSaving] = useState(false);
 
   const fetch = useCallback(async () => {
-    if (!salon) return;
+    if (!salon || !currentBranch) return;
     setLoading(true);
-    const { data } = await supabase.from('promo_codes').select('*').eq('salon_id', salon.id).order('created_at', { ascending: false });
+    const { data } = await supabase.from('promo_codes').select('*').eq('salon_id', salon.id).eq('branch_id', currentBranch.id).order('created_at', { ascending: false });
     if (data) setPromos(data as PromoCode[]);
     setLoading(false);
-  }, [salon]);
+  }, [salon, currentBranch]);
 
   useEffect(() => { fetch(); }, [fetch]);
 
@@ -67,17 +78,18 @@ export default function PromosPage() {
   }
 
   async function savePromo() {
-    if (!salon || !formCode || !formDiscountValue) { toast.error('Code and discount required'); return; }
+    if (!salon || !currentBranch || !formCode || !formDiscountValue) { toast.error('Code and discount required'); return; }
     if (Number(formDiscountValue) <= 0) { toast.error('Discount must be positive'); return; }
     setSaving(true);
     try {
       const data = {
+        branchId: currentBranch.id,
         code: formCode.toUpperCase(), discountType: formDiscountType,
         discountValue: Number(formDiscountValue), minBillAmount: Number(formMinBill) || 0,
         maxUses: formMaxUses ? Number(formMaxUses) : null, expiryDate: formExpiry || null, isActive: formActive,
       };
       if (editPromo) {
-        const { error } = await updatePromo(editPromo.id, data);
+        const { error } = await updatePromo(editPromo.id, currentBranch.id, data);
         if (showActionError(error)) return;
         toast.success('Promo updated');
       } else {

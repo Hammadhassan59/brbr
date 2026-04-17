@@ -159,8 +159,8 @@ const PR_RB = [
 // ═══════════════════════════════════════
 
 const glamourExtraStaff: Staff[] = [
-  { id: ST.nadia, salon_id: GL_SALON, branch_id: GL_BRANCH, name: 'Nadia Hussain', phone: '0333-4567890', email: null, auth_user_id: null, role: 'senior_stylist', photo_url: null, pin_code: '3456', base_salary: 18000, commission_type: 'percentage', commission_rate: 30, join_date: '2024-08-01', is_active: true, last_login_at: null, first_login_seen: true, created_at: '2024-08-01T00:00:00Z' },
-  { id: ST.rabia, salon_id: GL_SALON, branch_id: GL_BRANCH, name: 'Rabia Ali', phone: '0345-6789012', email: null, auth_user_id: null, role: 'junior_stylist', photo_url: null, pin_code: '4567', base_salary: 12000, commission_type: 'percentage', commission_rate: 20, join_date: '2024-09-01', is_active: true, last_login_at: null, first_login_seen: true, created_at: '2024-09-01T00:00:00Z' },
+  { id: ST.nadia, salon_id: GL_SALON, primary_branch_id: GL_BRANCH, name: 'Nadia Hussain', phone: '0333-4567890', email: null, auth_user_id: null, role: 'senior_stylist', photo_url: null, pin_code: '3456', base_salary: 18000, commission_type: 'percentage', commission_rate: 30, join_date: '2024-08-01', is_active: true, last_login_at: null, first_login_seen: true, created_at: '2024-08-01T00:00:00Z' },
+  { id: ST.rabia, salon_id: GL_SALON, primary_branch_id: GL_BRANCH, name: 'Rabia Ali', phone: '0345-6789012', email: null, auth_user_id: null, role: 'junior_stylist', photo_url: null, pin_code: '4567', base_salary: 12000, commission_type: 'percentage', commission_rate: 20, join_date: '2024-09-01', is_active: true, last_login_at: null, first_login_seen: true, created_at: '2024-09-01T00:00:00Z' },
 ];
 
 

@@ -366,7 +366,7 @@ describe('AppointmentsFeed', () => {
     reminder_sent: false,
     created_at: '2026-04-10T00:00:00Z',
     client: { id: 'c1', salon_id: 's1', name: 'Ayesha Khan', phone: '0300-1234567', whatsapp: null, gender: 'female', is_vip: false, is_blacklisted: false, notes: null, hair_notes: null, allergy_notes: null, loyalty_points: 0, total_visits: 5, total_spent: 10000, udhaar_balance: 0, udhaar_limit: 5000, created_at: '2025-01-01' },
-    staff: { id: 's1', salon_id: 's1', branch_id: 'b1', name: 'Sadia', phone: null, email: null, auth_user_id: null, role: 'senior_stylist', photo_url: null, pin_code: '1234', base_salary: 20000, commission_type: 'percentage', commission_rate: 30, join_date: '2025-01-01', is_active: true, last_login_at: null, first_login_seen: false, created_at: '2025-01-01' },
+    staff: { id: 's1', salon_id: 's1', primary_branch_id: 'b1', name: 'Sadia', phone: null, email: null, auth_user_id: null, role: 'senior_stylist', photo_url: null, pin_code: '1234', base_salary: 20000, commission_type: 'percentage', commission_rate: 30, join_date: '2025-01-01', is_active: true, last_login_at: null, first_login_seen: false, created_at: '2025-01-01' },
     services: [{ id: 'svc1', appointment_id: 'a1', service_id: 'sv1', service_name: 'Haircut', price: 500, duration_minutes: 30 }],
     ...overrides,
   })
@@ -597,7 +597,7 @@ describe('StylistDashboard', () => {
     reminder_sent: false,
     created_at: '2026-04-10T00:00:00Z',
     client: { id: 'c1', salon_id: 's1', name: 'Client A', phone: null, whatsapp: null, gender: null, is_vip: false, is_blacklisted: false, notes: null, hair_notes: null, allergy_notes: null, loyalty_points: 0, total_visits: 0, total_spent: 0, udhaar_balance: 0, udhaar_limit: 0, created_at: '' },
-    staff: { id: 's1', salon_id: 's1', branch_id: 'b1', name: 'Stylist', phone: null, email: null, auth_user_id: null, role: 'senior_stylist', photo_url: null, pin_code: '1234', base_salary: 20000, commission_type: 'percentage', commission_rate: 30, join_date: '', is_active: true, last_login_at: null, first_login_seen: false, created_at: '' },
+    staff: { id: 's1', salon_id: 's1', primary_branch_id: 'b1', name: 'Stylist', phone: null, email: null, auth_user_id: null, role: 'senior_stylist', photo_url: null, pin_code: '1234', base_salary: 20000, commission_type: 'percentage', commission_rate: 30, join_date: '', is_active: true, last_login_at: null, first_login_seen: false, created_at: '' },
     services: [{ id: 'svc1', appointment_id: 'a1', service_id: 'sv1', service_name: 'Haircut', price: 500, duration_minutes: 30 }],
     ...overrides,
   })

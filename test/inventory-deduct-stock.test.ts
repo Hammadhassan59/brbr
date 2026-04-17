@@ -8,13 +8,23 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 vi.mock('@/app/actions/auth', () => ({
   checkWriteAccess: vi.fn().mockResolvedValue({
-    session: { salonId: 'salon-A', staffId: 's1', role: 'owner', branchId: 'b1', name: 'T' },
+    session: {
+      salonId: 'salon-A',
+      staffId: 's1',
+      role: 'owner',
+      branchId: 'b1',
+      primaryBranchId: 'b1',
+      branchIds: ['b1', 'b2'],
+      permissions: { '*': true },
+      name: 'T',
+    },
     error: null,
   }),
 }));
 
 vi.mock('@/lib/tenant-guard', () => ({
   assertBranchOwned: vi.fn().mockResolvedValue(undefined),
+  assertBranchMembership: vi.fn(),
   tenantErrorMessage: () => null,
 }));
 

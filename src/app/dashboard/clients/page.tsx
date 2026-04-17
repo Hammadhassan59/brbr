@@ -30,7 +30,7 @@ export default function ClientsPage() {
 function ClientsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { salon } = useAppStore();
+  const { salon, currentBranch } = useAppStore();
 
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
@@ -44,13 +44,14 @@ function ClientsContent() {
   });
 
   const fetchClients = useCallback(async () => {
-    if (!salon) return;
+    if (!salon || !currentBranch) return;
     setLoading(true);
     try {
       const { data, error } = await supabase
         .from('clients')
         .select('*')
         .eq('salon_id', salon.id)
+        .eq('branch_id', currentBranch.id)
         .order('name');
       if (error) throw error;
       setClients((data || []) as Client[]);
@@ -59,7 +60,7 @@ function ClientsContent() {
     } finally {
       setLoading(false);
     }
-  }, [salon]);
+  }, [salon, currentBranch]);
 
   useEffect(() => { fetchClients(); }, [fetchClients]);
 

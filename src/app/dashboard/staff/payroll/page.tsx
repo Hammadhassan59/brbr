@@ -46,12 +46,28 @@ export default function PayrollPage() {
     if (!salon) return;
     setLoading(true);
     try {
-      const { data: staffData } = await supabase
+      let staffQuery = supabase
         .from('staff')
         .select('*')
         .eq('salon_id', salon.id)
         .eq('is_active', true)
         .order('name');
+      if (currentBranch) {
+        // Scope payroll to staff assigned to the current branch via
+        // staff_branches (migration 036 — staff are multi-branch).
+        const { data: memberRows } = await supabase
+          .from('staff_branches')
+          .select('staff_id')
+          .eq('branch_id', currentBranch.id);
+        const staffIds = (memberRows || []).map((r: { staff_id: string }) => r.staff_id);
+        if (staffIds.length === 0) {
+          setRows([]);
+          setLoading(false);
+          return;
+        }
+        staffQuery = staffQuery.in('id', staffIds);
+      }
+      const { data: staffData } = await staffQuery;
       if (!staffData) { setLoading(false); return; }
 
       const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
@@ -111,7 +127,7 @@ export default function PayrollPage() {
       setRows(payrollRows);
     } catch { toast.error('Failed to load payroll data'); }
     finally { setLoading(false); }
-  }, [salon, month, year]);
+  }, [salon, currentBranch, month, year]);
 
   useEffect(() => { fetchPayroll(); }, [fetchPayroll]);
 

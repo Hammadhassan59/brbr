@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useState, useCallback } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { ArrowLeft, Search, UserPlus, X } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { supabase } from '@/lib/supabase';
 import { createClient, updateClientStats } from '@/app/actions/clients';
 import { createBill, createBillItems, recordTip, updateCashDrawer, updatePromoCodeUsage, rollbackBill } from '@/app/actions/bills';
@@ -10,6 +11,7 @@ import { deductStockForBill } from '@/app/actions/inventory';
 import { updateAppointmentStatus } from '@/app/actions/appointments';
 import { showActionError, handleSubscriptionError } from '@/components/paywall-dialog';
 import { useAppStore } from '@/store/app-store';
+import { usePermission } from '@/lib/permissions';
 import { formatPKR } from '@/lib/utils/currency';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -19,7 +21,6 @@ import { BillBuilder, type BillLineItem } from './components/bill-builder';
 import { PaymentPanel, type SplitPaymentEntry } from './components/payment-panel';
 import { CheckoutConfirmation } from './components/checkout-confirmation';
 import { getCheckoutBlockReason } from './components/checkout-gate';
-import toast from 'react-hot-toast';
 import type { Client, Staff, Service, Product, PaymentMethod, AppointmentWithDetails, Package as PkgType, BranchProduct } from '@/types/database';
 
 export default function POSPage() {
@@ -34,6 +35,16 @@ function POSContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { salon, currentBranch, currentStaff } = useAppStore();
+  const canUsePos = usePermission('use_pos');
+
+  // Page-level gate — anyone without `use_pos` gets bounced back to the
+  // dashboard with a toast. Owners/partners are lockout-safe.
+  useEffect(() => {
+    if (!canUsePos) {
+      toast.error('You do not have permission to use the POS');
+      router.replace('/dashboard');
+    }
+  }, [canUsePos, router]);
 
   // Data
   const [services, setServices] = useState<Service[]>([]);
@@ -96,15 +107,25 @@ function POSContent() {
   useEffect(() => {
     if (!salon || !currentBranch) return;
     async function load() {
+      // Staff at this branch via staff_branches (migration 036 — staff can
+      // belong to multiple branches, so primary_branch_id alone is wrong).
+      const { data: memberRows } = await supabase
+        .from('staff_branches')
+        .select('staff_id')
+        .eq('branch_id', currentBranch!.id);
+      const staffIds = (memberRows || []).map((r: { staff_id: string }) => r.staff_id);
+
       const [svcRes, prodRes, branchProdRes, pkgRes, staffRes] = await Promise.all([
-        supabase.from('services').select('*').eq('salon_id', salon!.id).eq('is_active', true).order('sort_order'),
+        supabase.from('services').select('*').eq('salon_id', salon!.id).eq('branch_id', currentBranch!.id).eq('is_active', true).order('sort_order'),
         supabase.from('products').select('*').eq('salon_id', salon!.id).eq('is_active', true).order('name'),
         // Per-branch inventory (migration 035). The salon-level
         // products.current_stock / .low_stock_threshold are tombstones —
         // always merge these in for display + checkout warnings.
         supabase.from('branch_products').select('product_id,current_stock,low_stock_threshold').eq('branch_id', currentBranch!.id),
-        supabase.from('packages').select('*').eq('salon_id', salon!.id).eq('is_active', true).order('name'),
-        supabase.from('staff').select('*').eq('branch_id', currentBranch!.id).eq('is_active', true).in('role', ['senior_stylist', 'junior_stylist']).order('name'),
+        supabase.from('packages').select('*').eq('salon_id', salon!.id).eq('branch_id', currentBranch!.id).eq('is_active', true).order('name'),
+        staffIds.length > 0
+          ? supabase.from('staff').select('*').in('id', staffIds).eq('is_active', true).in('role', ['senior_stylist', 'junior_stylist']).order('name')
+          : Promise.resolve({ data: [] as Staff[] }),
       ]);
       if (svcRes.data) setServices(svcRes.data as Service[]);
       if (prodRes.data) {
@@ -174,25 +195,26 @@ function POSContent() {
 
   // Client search (ISSUE-008: typed .ilike() calls, no .or() string templating)
   const searchClients = useCallback(async (query: string) => {
-    if (!salon || query.length < 2) { setClientResults([]); return; }
+    if (!salon || !currentBranch || query.length < 2) { setClientResults([]); return; }
     const trimmed = query.trim().slice(0, 100);
     if (!trimmed) { setClientResults([]); return; }
     const pattern = `%${trimmed}%`;
     const [nameRes, phoneRes] = await Promise.all([
-      supabase.from('clients').select('*').eq('salon_id', salon.id).ilike('name', pattern).limit(10),
-      supabase.from('clients').select('*').eq('salon_id', salon.id).ilike('phone', pattern).limit(10),
+      supabase.from('clients').select('*').eq('salon_id', salon.id).eq('branch_id', currentBranch.id).ilike('name', pattern).limit(10),
+      supabase.from('clients').select('*').eq('salon_id', salon.id).eq('branch_id', currentBranch.id).ilike('phone', pattern).limit(10),
     ]);
     const merged = new Map<string, Client>();
     for (const row of (nameRes.data || []) as Client[]) merged.set(row.id, row);
     for (const row of (phoneRes.data || []) as Client[]) merged.set(row.id, row);
     setClientResults(Array.from(merged.values()).slice(0, 10));
-  }, [salon]);
+  }, [salon, currentBranch]);
 
   async function createNewClient() {
-    if (!salon || !newClientName.trim()) { toast.error('Client name is required'); return; }
+    if (!salon || !currentBranch || !newClientName.trim()) { toast.error('Client name is required'); return; }
     if (!newClientPhone.trim()) { toast.error('Phone number is required'); return; }
     try {
       const { data, error } = await createClient({
+        branchId: currentBranch.id,
         name: newClientName.trim(),
         phone: newClientPhone?.trim() || null,
       });
@@ -304,11 +326,12 @@ function POSContent() {
   }
 
   async function applyPromo(code: string) {
-    if (!salon || !code) return;
+    if (!salon || !currentBranch || !code) return;
     const { data } = await supabase
       .from('promo_codes')
       .select('*')
       .eq('salon_id', salon.id)
+      .eq('branch_id', currentBranch.id)
       .eq('code', code)
       .eq('is_active', true)
       .single();
@@ -369,7 +392,7 @@ function POSContent() {
 
         // Update client stats
         if (selectedClient) {
-          const { error: statsErr } = await updateClientStats(selectedClient.id, {
+          const { error: statsErr } = await updateClientStats(selectedClient.id, currentBranch.id, {
             loyaltyPoints: selectedClient.loyalty_points - loyaltyPointsUsed + pointsEarned,
             totalVisits: selectedClient.total_visits + 1,
             totalSpent: selectedClient.total_spent + total,

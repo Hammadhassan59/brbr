@@ -9,9 +9,25 @@ import { join } from 'node:path';
 
 vi.mock('@/app/actions/auth', () => ({
   checkWriteAccess: vi.fn().mockResolvedValue({
-    session: { salonId: 'salon-B', staffId: 'staff-1', role: 'owner', branchId: 'branch-1', name: 'Test' },
+    session: {
+      salonId: 'salon-B',
+      staffId: 'staff-1',
+      role: 'owner',
+      branchId: 'branch-1',
+      primaryBranchId: 'branch-1',
+      branchIds: ['branch-1'],
+      permissions: { '*': true },
+      name: 'Test',
+    },
     error: null,
   }),
+}));
+
+vi.mock('@/lib/tenant-guard', () => ({
+  assertBranchOwned: vi.fn().mockResolvedValue(undefined),
+  assertBillOwned: vi.fn().mockResolvedValue({ branch_id: 'branch-1', salon_id: 'salon-B' }),
+  assertBranchMembership: vi.fn(),
+  tenantErrorMessage: () => null,
 }));
 
 // State shared between the mock and the assertions

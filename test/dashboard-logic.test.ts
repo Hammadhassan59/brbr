@@ -223,7 +223,7 @@ describe('computedEndDate', () => {
 describe('commission calculation', () => {
   it('calculates percentage commission', () => {
     const staff: Staff = {
-      id: '1', salon_id: 's', branch_id: 'b', name: 'A', phone: null,
+      id: '1', salon_id: 's', primary_branch_id: 'b', name: 'A', phone: null,
       email: null, auth_user_id: null,
       role: 'senior_stylist', photo_url: null, pin_code: '1234',
       base_salary: 20000, commission_type: 'percentage', commission_rate: 30,
@@ -234,7 +234,7 @@ describe('commission calculation', () => {
 
   it('calculates flat commission per service', () => {
     const staff: Staff = {
-      id: '1', salon_id: 's', branch_id: 'b', name: 'B', phone: null,
+      id: '1', salon_id: 's', primary_branch_id: 'b', name: 'B', phone: null,
       email: null, auth_user_id: null,
       role: 'junior_stylist', photo_url: null, pin_code: '1234',
       base_salary: 12000, commission_type: 'flat', commission_rate: 50,
@@ -249,7 +249,7 @@ describe('commission calculation', () => {
 
   it('handles zero revenue with percentage commission', () => {
     const staff: Staff = {
-      id: '1', salon_id: 's', branch_id: 'b', name: 'C', phone: null,
+      id: '1', salon_id: 's', primary_branch_id: 'b', name: 'C', phone: null,
       email: null, auth_user_id: null,
       role: 'senior_stylist', photo_url: null, pin_code: '1234',
       base_salary: 20000, commission_type: 'percentage', commission_rate: 30,
@@ -260,7 +260,7 @@ describe('commission calculation', () => {
 
   it('handles zero commission rate', () => {
     const staff: Staff = {
-      id: '1', salon_id: 's', branch_id: 'b', name: 'D', phone: null,
+      id: '1', salon_id: 's', primary_branch_id: 'b', name: 'D', phone: null,
       email: null, auth_user_id: null,
       role: 'receptionist', photo_url: null, pin_code: '1234',
       base_salary: 15000, commission_type: 'percentage', commission_rate: 0,

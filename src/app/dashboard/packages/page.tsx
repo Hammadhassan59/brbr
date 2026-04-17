@@ -2,9 +2,11 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Plus, Package, Tag, Award, Users, Gift } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAppStore } from '@/store/app-store';
+import { usePermission } from '@/lib/permissions';
 import { formatPKR } from '@/lib/utils/currency';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -30,8 +32,17 @@ interface PackageServiceEntry {
 }
 
 export default function PackagesPage() {
-  const { salon } = useAppStore();
+  const router = useRouter();
+  const { salon, currentBranch } = useAppStore();
+  const canManagePackages = usePermission('manage_packages');
   const [packages, setPackages] = useState<PkgType[]>([]);
+
+  useEffect(() => {
+    if (!canManagePackages) {
+      toast.error('You do not have permission to manage packages');
+      router.replace('/dashboard');
+    }
+  }, [canManagePackages, router]);
   const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<Filter>('all');
@@ -49,16 +60,16 @@ export default function PackagesPage() {
   const [saving, setSaving] = useState(false);
 
   const fetch = useCallback(async () => {
-    if (!salon) return;
+    if (!salon || !currentBranch) return;
     setLoading(true);
     const [pkgRes, svcRes] = await Promise.all([
-      supabase.from('packages').select('*').eq('salon_id', salon.id).order('name'),
-      supabase.from('services').select('*').eq('salon_id', salon.id).eq('is_active', true).order('sort_order'),
+      supabase.from('packages').select('*').eq('salon_id', salon.id).eq('branch_id', currentBranch.id).order('name'),
+      supabase.from('services').select('*').eq('salon_id', salon.id).eq('branch_id', currentBranch.id).eq('is_active', true).order('sort_order'),
     ]);
     if (pkgRes.data) setPackages(pkgRes.data as PkgType[]);
     if (svcRes.data) setServices(svcRes.data as Service[]);
     setLoading(false);
-  }, [salon]);
+  }, [salon, currentBranch]);
 
   useEffect(() => { fetch(); }, [fetch]);
 
@@ -103,17 +114,18 @@ export default function PackagesPage() {
   }
 
   async function savePackage() {
-    if (!salon || !formName.trim() || !formPrice) { toast.error('Name and price required'); return; }
+    if (!salon || !currentBranch || !formName.trim() || !formPrice) { toast.error('Name and price required'); return; }
     if (formServices.length === 0) { toast.error('Add at least one service'); return; }
     setSaving(true);
     try {
       const data = {
+        branchId: currentBranch.id,
         name: formName.trim(), description: formDesc || null,
         price: Number(formPrice), validityDays: Number(formValidity) || 30,
         isActive: formActive, services: JSON.parse(JSON.stringify(formServices)),
       };
       if (editPkg) {
-        const { error } = await updatePackage(editPkg.id, data);
+        const { error } = await updatePackage(editPkg.id, currentBranch.id, data);
         if (showActionError(error)) return;
         toast.success('Package updated');
       } else {

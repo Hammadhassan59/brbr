@@ -1,10 +1,15 @@
 'use server';
 
-import { checkWriteAccess, getPlanLimits } from './auth';
+import { checkWriteAccess, getPlanLimits, verifySession } from './auth';
 import { createServerClient } from '@/lib/supabase';
 import { salonUpdateSchema } from '@/lib/schemas';
-
-const SALON_WRITABLE_BY: ReadonlyArray<string> = ['owner', 'partner'];
+import {
+  assertBranchMembership,
+  assertBranchOwned,
+  hasPermission,
+  requirePermission,
+  tenantErrorMessage,
+} from '@/lib/tenant-guard';
 
 export async function updateSalon(data: unknown) {
   const writeCheck = await checkWriteAccess();
@@ -12,10 +17,13 @@ export async function updateSalon(data: unknown) {
   const session = writeCheck.session;
   const supabase = createServerClient();
 
-  // Only owners and partners can touch salon-wide settings. Staff/manager
-  // roles get read-only access via the settings UI.
-  if (!SALON_WRITABLE_BY.includes(session.role)) {
-    return { data: null, error: 'Only owners or partners can update salon settings' };
+  // Only callers with `manage_salon` can touch salon-wide settings. Owners
+  // and partners are lockout-safe (always permitted). Everyone else needs the
+  // permission bit set via role preset or staff override.
+  try {
+    requirePermission(session, 'manage_salon');
+  } catch {
+    return { data: null, error: 'You do not have permission to update salon settings' };
   }
 
   // Strict whitelist — drops any extra keys. Critical: id, owner_id,
@@ -57,6 +65,7 @@ export async function updateBranchWorkingHours(branchId: string, workingHours: R
 }
 
 export async function createService(data: {
+  branchId: string;
   name: string;
   category: string;
   durationMinutes?: number;
@@ -68,10 +77,19 @@ export async function createService(data: {
   const session = writeCheck.session;
   const supabase = createServerClient();
 
+  // Branch must belong to this salon and be in the session allow-list.
+  try {
+    await assertBranchOwned(data.branchId, session.salonId);
+    assertBranchMembership(session, data.branchId);
+  } catch (e) {
+    return { data: null, error: tenantErrorMessage(e) };
+  }
+
   const { data: result, error } = await supabase
     .from('services')
     .insert({
       salon_id: session.salonId,
+      branch_id: data.branchId,
       name: data.name.trim(),
       category: data.category,
       duration_minutes: data.durationMinutes || 30,
@@ -86,17 +104,24 @@ export async function createService(data: {
   return { data: result, error: null };
 }
 
-export async function updateService(id: string, data: Record<string, unknown>) {
+export async function updateService(id: string, branchId: string, data: Record<string, unknown>) {
   const writeCheck = await checkWriteAccess();
   if (writeCheck.error !== null) return { data: null, error: writeCheck.error };
   const session = writeCheck.session;
   const supabase = createServerClient();
+
+  try {
+    assertBranchMembership(session, branchId);
+  } catch (e) {
+    return { data: null, error: tenantErrorMessage(e) };
+  }
 
   const { data: result, error } = await supabase
     .from('services')
     .update(data)
     .eq('id', id)
     .eq('salon_id', session.salonId)
+    .eq('branch_id', branchId)
     .select()
     .single();
 
@@ -104,20 +129,66 @@ export async function updateService(id: string, data: Record<string, unknown>) {
   return { data: result, error: null };
 }
 
-export async function deleteService(id: string) {
+export async function deleteService(id: string, branchId: string) {
   const writeCheck = await checkWriteAccess();
   if (writeCheck.error !== null) return { error: writeCheck.error };
   const session = writeCheck.session;
   const supabase = createServerClient();
 
+  try {
+    assertBranchMembership(session, branchId);
+  } catch (e) {
+    return { error: tenantErrorMessage(e) };
+  }
+
   const { error } = await supabase
     .from('services')
     .delete()
     .eq('id', id)
-    .eq('salon_id', session.salonId);
+    .eq('salon_id', session.salonId)
+    .eq('branch_id', branchId);
 
   if (error) return { error: error.message };
   return { error: null };
+}
+
+/**
+ * List services for a specific branch. Pass `allBranches=true` (requires the
+ * `view_other_branches` permission) to skip the branch filter for cross-branch
+ * catalog views in reports.
+ */
+export async function getServicesForBranch(
+  branchId: string,
+  opts: { allBranches?: boolean } = {},
+) {
+  const session = await verifySession();
+  if (!session.salonId) return { data: null, error: 'No salon context' };
+  const supabase = createServerClient();
+
+  const allBranches = !!opts.allBranches;
+  if (allBranches) {
+    if (!hasPermission(session, 'view_other_branches')) {
+      return { data: null, error: 'Not allowed' };
+    }
+  } else {
+    try {
+      assertBranchMembership(session, branchId);
+    } catch (e) {
+      return { data: null, error: tenantErrorMessage(e) };
+    }
+  }
+
+  let q = supabase
+    .from('services')
+    .select('*')
+    .eq('salon_id', session.salonId)
+    .eq('is_active', true)
+    .order('sort_order');
+  if (!allBranches) q = q.eq('branch_id', branchId);
+
+  const { data, error } = await q;
+  if (error) return { data: null, error: error.message };
+  return { data: data ?? [], error: null };
 }
 
 const DEFAULT_WORKING_HOURS = {
@@ -134,7 +205,12 @@ export async function createBranch(data: { name: string; address?: string; phone
   const writeCheck = await checkWriteAccess();
   if (writeCheck.error !== null) return { data: null, error: writeCheck.error };
   const session = writeCheck.session;
-  if (session.role !== 'owner') return { data: null, error: 'Only the owner can add branches' };
+  // Adding a branch is a salon-wide change — gate on `manage_salon`.
+  try {
+    requirePermission(session, 'manage_salon');
+  } catch {
+    return { data: null, error: 'You do not have permission to add branches' };
+  }
   const supabase = createServerClient();
 
   // Enforce branch limit based on plan
@@ -248,6 +324,14 @@ export async function deleteBranch(branchId: string, reassignToBranchId?: string
   const writeCheck = await checkWriteAccess();
   if (writeCheck.error !== null) return { error: writeCheck.error };
   const session = writeCheck.session;
+  // Deleting a branch is catastrophic (wipes/relocates bills, staff, attendance,
+  // etc). Require `manage_salon` AND additionally constrain to owner — partners
+  // or any other role with `manage_salon` granted still can't nuke a branch.
+  try {
+    requirePermission(session, 'manage_salon');
+  } catch {
+    return { error: 'You do not have permission to delete branches' };
+  }
   if (session.role !== 'owner') return { error: 'Only the owner can delete branches' };
   const supabase = createServerClient();
 

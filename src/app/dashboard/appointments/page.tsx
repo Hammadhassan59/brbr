@@ -106,6 +106,15 @@ function AppointmentsContent() {
     }
 
     try {
+      // Staff members at this branch via staff_branches (migration 036 —
+      // staff are multi-branch now, so filtering by staff.branch_id alone
+      // misses stylists who work across branches).
+      const { data: memberRows } = await supabase
+        .from('staff_branches')
+        .select('staff_id')
+        .eq('branch_id', currentBranch.id);
+      const staffIds = (memberRows || []).map((r: { staff_id: string }) => r.staff_id);
+
       const [aptsRes, staffRes, branchRes] = await Promise.all([
         supabase
           .from('appointments')
@@ -113,13 +122,15 @@ function AppointmentsContent() {
           .eq('branch_id', currentBranch.id)
           .eq('appointment_date', date)
           .order('start_time'),
-        supabase
-          .from('staff')
-          .select('*')
-          .eq('branch_id', currentBranch.id)
-          .eq('is_active', true)
-          .in('role', ['senior_stylist', 'junior_stylist', 'owner', 'manager'])
-          .order('name'),
+        staffIds.length > 0
+          ? supabase
+              .from('staff')
+              .select('*')
+              .in('id', staffIds)
+              .eq('is_active', true)
+              .in('role', ['senior_stylist', 'junior_stylist', 'owner', 'manager'])
+              .order('name')
+          : Promise.resolve({ data: [] as Staff[] }),
         supabase
           .from('branches')
           .select('working_hours, prayer_blocks')

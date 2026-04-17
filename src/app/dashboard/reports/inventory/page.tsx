@@ -2,10 +2,12 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { ChevronRight, ChevronDown, Loader2, Pencil, Save, X, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { supabase } from '@/lib/supabase';
 import { useAppStore } from '@/store/app-store';
+import { usePermission } from '@/lib/permissions';
 import { formatPKR } from '@/lib/utils/currency';
 import { formatDateTime } from '@/lib/utils/dates';
 import { Button } from '@/components/ui/button';
@@ -29,7 +31,19 @@ const MOVE_LABELS: Record<string, { label: string; color: string }> = {
 };
 
 export default function InventoryReportPage() {
-  const { salon, currentBranch } = useAppStore();
+  const router = useRouter();
+  const { salon, currentBranch, memberBranches } = useAppStore();
+  const canViewReports = usePermission('view_reports');
+  const hasViewOtherBranches = usePermission('view_other_branches');
+  const canSeeAllBranches = memberBranches.length > 1 && hasViewOtherBranches;
+  const [allBranches, setAllBranches] = useState(false);
+
+  useEffect(() => {
+    if (!canViewReports) {
+      toast.error('You do not have permission to view reports');
+      router.replace('/dashboard');
+    }
+  }, [canViewReports, router]);
   const [loading, setLoading] = useState(true);
   const [reportLoading, setReportLoading] = useState(true);
 
@@ -69,12 +83,18 @@ export default function InventoryReportPage() {
   }, [salon, currentBranch, dateFrom, dateTo]);
 
   const fetchReport = useCallback(async () => {
-    if (!salon) return;
+    if (!salon || !currentBranch) return;
     setReportLoading(true);
+    // Migration 036 added backbar_actuals.branch_id so this report is
+    // branch-scoped. In "all branches" mode (gated by view_other_branches)
+    // the server-side helper aggregates across member branches and returns
+    // cross-branch expected totals; otherwise it scopes to currentBranch.
     const { data, error } = await getBackbarConsumptionReport({
       from: dateFrom,
       to: dateTo,
+      branchId: currentBranch.id,
       staffId: staffFilter || undefined,
+      allBranches: canSeeAllBranches && allBranches,
     });
     if (error) {
       toast.error(`Could not load backbar report: ${error}`);
@@ -83,7 +103,7 @@ export default function InventoryReportPage() {
       setReportRows(data?.rows ?? []);
     }
     setReportLoading(false);
-  }, [salon, dateFrom, dateTo, staffFilter]);
+  }, [salon, currentBranch, dateFrom, dateTo, staffFilter, allBranches, canSeeAllBranches]);
 
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { fetchData(); }, [fetchData]);
@@ -115,6 +135,17 @@ export default function InventoryReportPage() {
       <div className="bg-card border border-border rounded-lg p-4 flex flex-wrap items-center gap-3">
         <h2 className="font-heading text-xl font-bold">Inventory Report</h2>
         <div className="flex items-center gap-2 ml-auto flex-wrap">
+          {canSeeAllBranches && (
+            <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer">
+              <input
+                type="checkbox"
+                checked={allBranches}
+                onChange={(e) => setAllBranches(e.target.checked)}
+                className="w-3.5 h-3.5 accent-gold"
+              />
+              All branches
+            </label>
+          )}
           <Label className="text-xs">From</Label>
           <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="w-36 h-8" />
           <Label className="text-xs">To</Label>
@@ -150,14 +181,14 @@ export default function InventoryReportPage() {
           <CardTitle className="text-sm flex items-center gap-2">
             Backbar Consumption
             <span className="text-[10px] font-normal text-muted-foreground border border-border rounded px-1.5 py-0.5">
-              Salon-wide
+              {allBranches ? 'All branches' : (currentBranch?.name || 'Current branch')}
             </span>
           </CardTitle>
           <p className="text-xs text-muted-foreground">
             Expected product usage based on services performed in this window. Click a row to see which stylists
             consumed how much. Hit &quot;Audit&quot; on a row to enter your physical stocktake count and see the variance.
-            Stocktake counts are recorded per-salon (not per-branch) — if you need branch-level reconciliation, ask
-            for the migration that adds branch_id to backbar_actuals.
+            Stocktake counts are recorded per-branch since migration 036 — toggle &quot;All branches&quot; above
+            (if your role permits) to see the salon-wide roll-up.
           </p>
         </CardHeader>
         <CardContent className="px-0">
@@ -178,6 +209,7 @@ export default function InventoryReportPage() {
                   row={row}
                   periodFrom={dateFrom}
                   periodTo={dateTo}
+                  branchId={currentBranch?.id ?? ''}
                   onSaved={fetchReport}
                 />
               ))}
@@ -251,11 +283,13 @@ function BackbarRow({
   row,
   periodFrom,
   periodTo,
+  branchId,
   onSaved,
 }: {
   row: BackbarReportRow;
   periodFrom: string;
   periodTo: string;
+  branchId: string;
   onSaved: () => void;
 }) {
   const [expanded, setExpanded] = useState(false);
@@ -274,8 +308,13 @@ function BackbarRow({
       toast.error('Enter a valid non-negative number');
       return;
     }
+    if (!branchId) {
+      toast.error('No branch selected');
+      return;
+    }
     setSaving(true);
     const { error } = await recordBackbarActual({
+      branch_id: branchId,
       product_id: row.product_id,
       period_start: periodFrom,
       period_end: periodTo,

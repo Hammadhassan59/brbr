@@ -1,14 +1,19 @@
 'use server';
 
-import { checkWriteAccess, getPlanLimits } from './auth';
+import { checkWriteAccess, getPlanLimits, verifySession } from './auth';
 import { createServerClient } from '@/lib/supabase';
 import { staffUpdateSchema } from '@/lib/schemas';
-import { assertStaffOwned, assertBranchOwned, tenantErrorMessage } from '@/lib/tenant-guard';
-
-const ROLE_WRITABLE_BY: ReadonlyArray<string> = ['owner', 'partner', 'manager'];
+import {
+  assertStaffOwned,
+  assertBranchOwned,
+  assertBranchMembership,
+  hasPermission,
+  requirePermission,
+  tenantErrorMessage,
+} from '@/lib/tenant-guard';
 
 export async function createStaff(data: {
-  branchId: string;
+  branchIds: string[];
   name: string;
   email: string;
   password: string;
@@ -26,13 +31,23 @@ export async function createStaff(data: {
 
   if (!data.phone?.trim()) return { data: null, error: 'Phone is required' };
 
-  // Branch must belong to this salon — otherwise the staff row gets created
-  // pointing at someone else's branch.
+  const branchIds = Array.from(new Set(data.branchIds ?? []));
+  if (branchIds.length === 0) {
+    return { data: null, error: 'At least one branch is required' };
+  }
+
+  // Every branch must belong to this salon AND be in the caller's allow-list
+  // (so a manager in branch A can't sneak a staff row into branch B).
   try {
-    await assertBranchOwned(data.branchId, session.salonId);
+    for (const bId of branchIds) {
+      await assertBranchOwned(bId, session.salonId);
+      assertBranchMembership(session, bId);
+    }
   } catch (e) {
     return { data: null, error: tenantErrorMessage(e) };
   }
+
+  const primaryBranchId = branchIds[0];
 
   // Enforce staff limit based on plan
   const { data: salon } = await supabase
@@ -65,11 +80,13 @@ export async function createStaff(data: {
 
   if (authError) return { data: null, error: authError.message };
 
+  // Migration 036 renamed staff.branch_id -> staff.primary_branch_id. Stamp
+  // the new column; the first branch in the list is the primary.
   const { data: result, error } = await supabase
     .from('staff')
     .insert({
       salon_id: session.salonId,
-      branch_id: data.branchId,
+      primary_branch_id: primaryBranchId,
       name: data.name.trim(),
       email: data.email,
       auth_user_id: authUser.user.id,
@@ -84,6 +101,23 @@ export async function createStaff(data: {
     .single();
 
   if (error) return { data: null, error: error.message };
+
+  // Bulk-insert the multi-branch grants. The staff_branches row for the
+  // primary branch is redundant with primary_branch_id, but we insert it
+  // anyway so reads can use the join table uniformly.
+  const { error: branchLinkErr } = await supabase
+    .from('staff_branches')
+    .insert(branchIds.map((branchId) => ({
+      staff_id: (result as { id: string }).id,
+      branch_id: branchId,
+    })));
+
+  if (branchLinkErr) {
+    // Roll back the staff row so we don't leak an orphan that can't log in.
+    await supabase.from('staff').delete().eq('id', (result as { id: string }).id);
+    return { data: null, error: branchLinkErr.message };
+  }
+
   return { data: result, error: null };
 }
 
@@ -100,19 +134,30 @@ export async function updateStaff(id: string, data: unknown) {
   }
   const update: Record<string, unknown> = { ...parsed.data };
 
-  // Role changes require owner/partner/manager (session.role comes from the
-  // JWT, so it's trusted).
-  if ('role' in update && !ROLE_WRITABLE_BY.includes(session.role)) {
-    return { error: 'Only owners, partners, or managers can change staff roles' };
+  // Role changes require the `manage_staff` permission. Owners/partners are
+  // lockout-safe (always allowed); any other role needs the permission bit
+  // set in the resolved map on the JWT.
+  if ('role' in update) {
+    try {
+      requirePermission(session, 'manage_staff');
+    } catch {
+      return { error: 'You do not have permission to change staff roles' };
+    }
   }
 
-  // If branch is changing, it must belong to this salon.
+  // staffUpdateSchema still exposes `branch_id` which after migration 036
+  // maps to `primary_branch_id`. Rewrite if present, and verify ownership +
+  // membership.
   if (typeof update.branch_id === 'string') {
+    const target = update.branch_id as string;
     try {
-      await assertBranchOwned(update.branch_id, session.salonId);
+      await assertBranchOwned(target, session.salonId);
+      assertBranchMembership(session, target);
     } catch (e) {
       return { error: tenantErrorMessage(e) };
     }
+    update.primary_branch_id = target;
+    delete update.branch_id;
   }
 
   // Make absolutely sure the row being updated is ours — both via salon_id
@@ -132,6 +177,164 @@ export async function updateStaff(id: string, data: unknown) {
 
   if (error) return { error: error.message };
   return { error: null };
+}
+
+/**
+ * Replace the set of branches a staff member is assigned to. Owners/partners
+ * can grant any branch in the salon; other roles can only grant branches they
+ * themselves belong to (enforced by assertBranchMembership).
+ */
+export async function updateStaffBranches(staffId: string, branchIds: string[]) {
+  const writeCheck = await checkWriteAccess();
+  if (writeCheck.error !== null) return { error: writeCheck.error };
+  const session = writeCheck.session;
+  const supabase = createServerClient();
+
+  const targets = Array.from(new Set(branchIds ?? []));
+  if (targets.length === 0) {
+    return { error: 'At least one branch is required' };
+  }
+
+  try {
+    await assertStaffOwned(staffId, session.salonId);
+    for (const bId of targets) {
+      await assertBranchOwned(bId, session.salonId);
+      assertBranchMembership(session, bId);
+    }
+  } catch (e) {
+    return { error: tenantErrorMessage(e) };
+  }
+
+  // Diff current vs target and apply the delta so we don't disturb unchanged
+  // rows (keeps created_at stable for audit purposes).
+  const { data: current } = await supabase
+    .from('staff_branches')
+    .select('id, branch_id')
+    .eq('staff_id', staffId);
+
+  const currentSet = new Set(
+    (current ?? []).map((r: { branch_id: string }) => r.branch_id),
+  );
+  const targetSet = new Set(targets);
+
+  const toAdd = targets.filter((b) => !currentSet.has(b));
+  const toRemove = (current ?? [])
+    .filter((r: { branch_id: string }) => !targetSet.has(r.branch_id))
+    .map((r: { id: string }) => r.id);
+
+  if (toAdd.length > 0) {
+    const { error: addErr } = await supabase
+      .from('staff_branches')
+      .insert(toAdd.map((branch_id) => ({ staff_id: staffId, branch_id })));
+    if (addErr) return { error: addErr.message };
+  }
+
+  if (toRemove.length > 0) {
+    const { error: delErr } = await supabase
+      .from('staff_branches')
+      .delete()
+      .in('id', toRemove);
+    if (delErr) return { error: delErr.message };
+  }
+
+  // If the primary branch was removed from the set, point it at the first
+  // remaining target — otherwise the JWT signer would hand out a
+  // primaryBranchId the staff no longer belongs to.
+  const { data: staffRow } = await supabase
+    .from('staff')
+    .select('primary_branch_id')
+    .eq('id', staffId)
+    .maybeSingle();
+  const currentPrimary = (staffRow as { primary_branch_id: string | null } | null)?.primary_branch_id;
+  if (currentPrimary && !targetSet.has(currentPrimary)) {
+    const { error: repErr } = await supabase
+      .from('staff')
+      .update({ primary_branch_id: targets[0] })
+      .eq('id', staffId)
+      .eq('salon_id', session.salonId);
+    if (repErr) return { error: repErr.message };
+  }
+
+  return { error: null };
+}
+
+/**
+ * List staff assigned to a specific branch via staff_branches (with a fallback
+ * to primary_branch_id match, so rows created pre-staff_branches still show).
+ * Pass `allBranches=true` for a salon-wide list; requires the
+ * `view_other_branches` permission.
+ */
+export async function getStaffForBranch(
+  branchId: string,
+  opts: { allBranches?: boolean } = {},
+) {
+  const session = await verifySession();
+  if (!session.salonId) return { data: null, error: 'No salon context' };
+  const supabase = createServerClient();
+
+  const allBranches = !!opts.allBranches;
+  if (allBranches) {
+    if (!hasPermission(session, 'view_other_branches')) {
+      return { data: null, error: 'Not allowed' };
+    }
+    const { data, error } = await supabase
+      .from('staff')
+      .select('*')
+      .eq('salon_id', session.salonId)
+      .eq('is_active', true)
+      .order('name');
+    if (error) return { data: null, error: error.message };
+    return { data: data ?? [], error: null };
+  }
+
+  try {
+    assertBranchMembership(session, branchId);
+  } catch (e) {
+    return { data: null, error: tenantErrorMessage(e) };
+  }
+
+  // Two queries: grants from staff_branches and the legacy primary_branch_id
+  // path. Union-dedupe in-memory so staff assigned solely via the join table
+  // still appear alongside single-branch rows created pre-036.
+  const [{ data: joinRows, error: joinErr }, { data: primaryRows, error: primaryErr }] = await Promise.all([
+    supabase
+      .from('staff_branches')
+      .select('staff_id')
+      .eq('branch_id', branchId),
+    supabase
+      .from('staff')
+      .select('*')
+      .eq('salon_id', session.salonId)
+      .eq('primary_branch_id', branchId)
+      .eq('is_active', true),
+  ]);
+  if (joinErr) return { data: null, error: joinErr.message };
+  if (primaryErr) return { data: null, error: primaryErr.message };
+
+  const staffIds = Array.from(new Set(
+    (joinRows ?? []).map((r: { staff_id: string }) => r.staff_id),
+  ));
+  let fromJoin: Array<Record<string, unknown>> = [];
+  if (staffIds.length > 0) {
+    const { data, error } = await supabase
+      .from('staff')
+      .select('*')
+      .in('id', staffIds)
+      .eq('salon_id', session.salonId)
+      .eq('is_active', true);
+    if (error) return { data: null, error: error.message };
+    fromJoin = (data ?? []) as Array<Record<string, unknown>>;
+  }
+
+  const byId = new Map<string, Record<string, unknown>>();
+  for (const r of fromJoin) byId.set(r.id as string, r);
+  for (const r of (primaryRows ?? []) as Array<Record<string, unknown>>) {
+    byId.set(r.id as string, r);
+  }
+  const merged = Array.from(byId.values()).sort((a, b) =>
+    String(a.name ?? '').localeCompare(String(b.name ?? ''))
+  );
+  return { data: merged, error: null };
 }
 
 export async function upsertAttendance(data: {
@@ -155,6 +358,7 @@ export async function upsertAttendance(data: {
   try {
     await assertStaffOwned(data.staffId, session.salonId);
     await assertBranchOwned(data.branchId, session.salonId);
+    assertBranchMembership(session, data.branchId);
   } catch (e) {
     return { error: tenantErrorMessage(e) };
   }
@@ -177,6 +381,43 @@ export async function upsertAttendance(data: {
 
   if (error) return { error: error.message };
   return { error: null };
+}
+
+/**
+ * Lightweight staff list for the permissions editor. Returns only the
+ * columns the editor cares about (plus `permissions_override` so the UI can
+ * render the tri-state without a second fetch). Gated by `manage_permissions`
+ * so a staff member without edit rights can't silently dump the roster.
+ */
+export async function getStaffForPermissions() {
+  const session = await verifySession();
+  if (!session.salonId) return { data: null, error: 'No salon context' };
+  if (!hasPermission(session, 'manage_permissions')) {
+    return { data: null, error: 'Not allowed' };
+  }
+
+  const supabase = createServerClient();
+  const { data, error } = await supabase
+    .from('staff')
+    .select('id, name, role, photo_url, primary_branch_id, permissions_override, is_active')
+    .eq('salon_id', session.salonId)
+    .eq('is_active', true)
+    .order('role')
+    .order('name');
+
+  if (error) return { data: null, error: error.message };
+  return {
+    data: (data ?? []) as Array<{
+      id: string;
+      name: string;
+      role: string;
+      photo_url: string | null;
+      primary_branch_id: string | null;
+      permissions_override: Record<string, boolean> | null;
+      is_active: boolean;
+    }>,
+    error: null,
+  };
 }
 
 export async function recordAdvance(staffId: string, amount: number, reason?: string | null) {

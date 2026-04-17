@@ -4,6 +4,7 @@ import { checkWriteAccess } from './auth';
 import { createServerClient } from '@/lib/supabase';
 import {
   assertBillOwned,
+  assertBranchMembership,
   assertBranchOwned,
   assertStaffOwned,
   tenantErrorMessage,
@@ -57,6 +58,52 @@ export async function createBill(data: {
   if (writeCheck.error !== null) return { data: null, error: writeCheck.error };
   const session = writeCheck.session;
   const supabase = createServerClient();
+
+  // Session must be allowed to operate on the target branch.
+  try {
+    await assertBranchOwned(data.branchId, session.salonId);
+    assertBranchMembership(session, data.branchId);
+  } catch (e) {
+    return { data: null, error: tenantErrorMessage(e) };
+  }
+
+  // Client (if any) must live in this branch.
+  if (data.clientId) {
+    const { data: client } = await supabase
+      .from('clients')
+      .select('id, salon_id, branch_id')
+      .eq('id', data.clientId)
+      .maybeSingle();
+    if (!client) return { data: null, error: 'Invalid client' };
+    const c = client as { salon_id: string; branch_id: string | null };
+    if (c.salon_id !== session.salonId) return { data: null, error: 'Not allowed' };
+    if (c.branch_id && c.branch_id !== data.branchId) {
+      return { data: null, error: 'Client belongs to a different branch' };
+    }
+  }
+
+  // Staff (if any) must be in this branch — either via primary_branch_id or
+  // staff_branches. Receptionist ringing up on multi-branch gets both paths.
+  if (data.staffId) {
+    const { data: staff } = await supabase
+      .from('staff')
+      .select('id, salon_id, primary_branch_id')
+      .eq('id', data.staffId)
+      .maybeSingle();
+    if (!staff) return { data: null, error: 'Invalid staff' };
+    const s = staff as { salon_id: string; primary_branch_id: string | null };
+    if (s.salon_id !== session.salonId) return { data: null, error: 'Not allowed' };
+    if (s.primary_branch_id !== data.branchId) {
+      // Fall back to staff_branches membership check.
+      const { data: link } = await supabase
+        .from('staff_branches')
+        .select('id')
+        .eq('staff_id', data.staffId)
+        .eq('branch_id', data.branchId)
+        .maybeSingle();
+      if (!link) return { data: null, error: 'Staff not assigned to this branch' };
+    }
+  }
 
   // Retry up to 3 times on bill_number collision
   for (let attempt = 0; attempt < 3; attempt++) {
@@ -115,10 +162,32 @@ export async function createBillItems(billId: string, items: Array<{
   const supabase = createServerClient();
 
   // bill_items has no salon_id — verify the parent bill is ours first.
+  let billMeta: { branch_id: string | null; salon_id: string };
   try {
-    await assertBillOwned(billId, session.salonId);
+    billMeta = await assertBillOwned(billId, session.salonId);
   } catch (e) {
     return { error: tenantErrorMessage(e) };
+  }
+
+  // Every service_id referenced on the items must belong to the bill's branch
+  // — otherwise a caller could attach a service from branch B to a bill on
+  // branch A and corrupt per-branch reports.
+  const serviceIds = Array.from(new Set(
+    items.map((i) => i.serviceId).filter((x): x is string => !!x),
+  ));
+  if (serviceIds.length > 0 && billMeta.branch_id) {
+    const { data: svc, error: svcErr } = await supabase
+      .from('services')
+      .select('id, salon_id, branch_id')
+      .in('id', serviceIds);
+    if (svcErr) return { error: svcErr.message };
+    for (const s of (svc ?? []) as Array<{ id: string; salon_id: string; branch_id: string | null }>) {
+      if (s.salon_id !== session.salonId) return { error: 'Not allowed' };
+      if (s.branch_id && s.branch_id !== billMeta.branch_id) {
+        return { error: 'Service belongs to a different branch' };
+      }
+    }
+    if ((svc ?? []).length !== serviceIds.length) return { error: 'Invalid service' };
   }
 
   const { error } = await supabase
@@ -154,12 +223,21 @@ export async function recordTip(staffId: string, billId: string, amount: number)
     return { error: tenantErrorMessage(e) };
   }
 
-  // Staff member's home branch should match the bill's branch. If the staff
-  // is unassigned to a branch, fall back to same-salon check (already done
-  // above). A stylist from another branch receiving a tip on this branch's
-  // bill is suspicious, so reject.
-  if (staff.branch_id && bill.branch_id && staff.branch_id !== bill.branch_id) {
-    return { error: 'Staff member is not assigned to the branch this bill belongs to' };
+  // After migration 036 the staff row has `primary_branch_id`, but
+  // assertStaffOwned selects `branch_id` for back-compat and returns whatever
+  // the DB column name was at query time. If the staff's primary branch
+  // doesn't match, consult staff_branches so multi-branch stylists can still
+  // receive tips at a secondary branch.
+  if (bill.branch_id && staff.branch_id && staff.branch_id !== bill.branch_id) {
+    const { data: link } = await supabase
+      .from('staff_branches')
+      .select('id')
+      .eq('staff_id', staffId)
+      .eq('branch_id', bill.branch_id)
+      .maybeSingle();
+    if (!link) {
+      return { error: 'Staff member is not assigned to the branch this bill belongs to' };
+    }
   }
 
   const { error } = await supabase

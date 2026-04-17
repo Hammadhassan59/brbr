@@ -1,9 +1,11 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { Award, Users, TrendingDown } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAppStore } from '@/store/app-store';
+import { usePermission } from '@/lib/permissions';
 import { formatPKR } from '@/lib/utils/currency';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -16,8 +18,17 @@ import { saveLoyaltyRules } from '@/app/actions/packages';
 import type { LoyaltyRules, Client } from '@/types/database';
 
 export default function LoyaltyPage() {
-  const { salon } = useAppStore();
+  const router = useRouter();
+  const { salon, currentBranch } = useAppStore();
+  const canManagePackages = usePermission('manage_packages');
   const [rules, setRules] = useState<LoyaltyRules | null>(null);
+
+  useEffect(() => {
+    if (!canManagePackages) {
+      toast.error('You do not have permission to manage loyalty settings');
+      router.replace('/dashboard');
+    }
+  }, [canManagePackages, router]);
   const [topClients, setTopClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -27,11 +38,11 @@ export default function LoyaltyPage() {
   const [bdayMultiplier, setBdayMultiplier] = useState('2');
 
   const fetch = useCallback(async () => {
-    if (!salon) return;
+    if (!salon || !currentBranch) return;
     setLoading(true);
     const [rulesRes, clientsRes] = await Promise.all([
       supabase.from('loyalty_rules').select('*').eq('salon_id', salon.id).single(),
-      supabase.from('clients').select('*').eq('salon_id', salon.id).gt('loyalty_points', 0).order('loyalty_points', { ascending: false }).limit(10),
+      supabase.from('clients').select('*').eq('salon_id', salon.id).eq('branch_id', currentBranch.id).gt('loyalty_points', 0).order('loyalty_points', { ascending: false }).limit(10),
     ]);
     if (rulesRes.data) {
       const r = rulesRes.data as LoyaltyRules;
@@ -42,7 +53,7 @@ export default function LoyaltyPage() {
     }
     if (clientsRes.data) setTopClients(clientsRes.data as Client[]);
     setLoading(false);
-  }, [salon]);
+  }, [salon, currentBranch]);
 
   useEffect(() => { fetch(); }, [fetch]);
 

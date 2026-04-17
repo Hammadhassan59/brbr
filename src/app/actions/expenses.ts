@@ -2,23 +2,7 @@
 
 import { checkWriteAccess } from './auth';
 import { createServerClient } from '@/lib/supabase';
-import { assertBranchOwned, tenantErrorMessage } from '@/lib/tenant-guard';
-
-/**
- * Fetch the set of branch_ids belonging to the current salon. Used by
- * expense read/delete paths that need a salon_id filter — expenses has no
- * salon_id column, only branch_id, so we scope by "branch_id IN (...)".
- */
-async function getSalonBranchIds(
-  supabase: ReturnType<typeof createServerClient>,
-  salonId: string,
-): Promise<string[]> {
-  const { data } = await supabase
-    .from('branches')
-    .select('id')
-    .eq('salon_id', salonId);
-  return (data || []).map((b: { id: string }) => b.id);
-}
+import { assertBranchMembership, assertBranchOwned, tenantErrorMessage } from '@/lib/tenant-guard';
 
 export async function createExpense(data: {
   branchId: string;
@@ -33,16 +17,20 @@ export async function createExpense(data: {
   const session = writeCheck.session;
   const supabase = createServerClient();
 
-  // Branch must belong to this salon — expenses has no salon_id column.
+  // Branch must belong to this salon AND be in the session's allow-list.
   try {
     await assertBranchOwned(data.branchId, session.salonId);
+    assertBranchMembership(session, data.branchId);
   } catch (e) {
     return { error: tenantErrorMessage(e) };
   }
 
+  // expenses.salon_id is now populated (migration 036). Stamp it alongside
+  // branch_id so cross-branch reports can filter by salon cheaply.
   const { error } = await supabase
     .from('expenses')
     .insert({
+      salon_id: session.salonId,
       branch_id: data.branchId,
       category: data.category || null,
       amount: data.amount,
@@ -68,7 +56,9 @@ export async function createExpenses(items: Array<{
   const session = writeCheck.session;
   const supabase = createServerClient();
 
-  // Validate every branch in the batch belongs to this salon.
+  // Validate every branch in the batch belongs to this salon AND is in the
+  // session allow-list. The latter check is new in PR 2 — keeps a manager in
+  // branch A from batch-stamping expenses into branch B.
   const branchIds = Array.from(new Set(items.map((i) => i.branchId)));
   if (branchIds.length === 0) return { error: null };
   const { data: branches } = await supabase
@@ -79,11 +69,17 @@ export async function createExpenses(items: Array<{
   const mine = new Set((branches || []).map((b: { id: string }) => b.id));
   for (const id of branchIds) {
     if (!mine.has(id)) return { error: 'Not allowed' };
+    try {
+      assertBranchMembership(session, id);
+    } catch (e) {
+      return { error: tenantErrorMessage(e) };
+    }
   }
 
   const { error } = await supabase
     .from('expenses')
     .insert(items.map(i => ({
+      salon_id: session.salonId,
       branch_id: i.branchId,
       category: i.category,
       amount: i.amount,
@@ -96,7 +92,7 @@ export async function createExpenses(items: Array<{
   return { error: null };
 }
 
-export async function updateExpense(id: string, data: {
+export async function updateExpense(id: string, branchId: string, data: {
   category?: string | null;
   amount: number;
   description?: string | null;
@@ -106,10 +102,15 @@ export async function updateExpense(id: string, data: {
   const session = writeCheck.session;
   const supabase = createServerClient();
 
-  // expenses has no salon_id — scope via branch_id IN salon branches.
-  const branchIds = await getSalonBranchIds(supabase, session.salonId);
-  if (branchIds.length === 0) return { error: 'Not allowed' };
+  try {
+    assertBranchMembership(session, branchId);
+  } catch (e) {
+    return { error: tenantErrorMessage(e) };
+  }
 
+  // expenses now carries salon_id (migration 036). Filter on both so a
+  // caller can't mutate another tenant's row by guessing an id, and can't
+  // cross-branch edit without going through the per-branch path.
   const { error } = await supabase
     .from('expenses')
     .update({
@@ -118,26 +119,31 @@ export async function updateExpense(id: string, data: {
       description: data.description || null,
     })
     .eq('id', id)
-    .in('branch_id', branchIds);
+    .eq('salon_id', session.salonId)
+    .eq('branch_id', branchId);
 
   if (error) return { error: error.message };
   return { error: null };
 }
 
-export async function deleteExpense(id: string) {
+export async function deleteExpense(id: string, branchId: string) {
   const writeCheck = await checkWriteAccess();
   if (writeCheck.error !== null) return { error: writeCheck.error };
   const session = writeCheck.session;
   const supabase = createServerClient();
 
-  const branchIds = await getSalonBranchIds(supabase, session.salonId);
-  if (branchIds.length === 0) return { error: 'Not allowed' };
+  try {
+    assertBranchMembership(session, branchId);
+  } catch (e) {
+    return { error: tenantErrorMessage(e) };
+  }
 
   const { error } = await supabase
     .from('expenses')
     .delete()
     .eq('id', id)
-    .in('branch_id', branchIds);
+    .eq('salon_id', session.salonId)
+    .eq('branch_id', branchId);
 
   if (error) return { error: error.message };
   return { error: null };
@@ -164,6 +170,7 @@ export async function deleteSalaryExpenses(
   if (!branchId) return { error: 'Branch is required' };
   try {
     await assertBranchOwned(branchId, session.salonId);
+    assertBranchMembership(session, branchId);
   } catch (e) {
     return { error: tenantErrorMessage(e) };
   }
@@ -173,6 +180,7 @@ export async function deleteSalaryExpenses(
     .delete()
     .eq('category', 'salary')
     .eq('description', description)
+    .eq('salon_id', session.salonId)
     .eq('branch_id', branchId)
     .gte('date', startDate)
     .lte('date', endDate);
@@ -189,6 +197,7 @@ export async function updateCashDrawerExpenses(branchId: string, date: string, t
 
   try {
     await assertBranchOwned(branchId, session.salonId);
+    assertBranchMembership(session, branchId);
   } catch (e) {
     return { error: tenantErrorMessage(e) };
   }
