@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAppStore } from '@/store/app-store';
+import { supabase } from '@/lib/supabase';
 import { formatPKR } from '@/lib/utils/currency';
 import { formatPKDate } from '@/lib/utils/dates';
 import {
@@ -287,6 +288,19 @@ export default function AdminSalonDetailPage({
     const { data, error } = await impersonateSalon(salon.id);
     if (error || !data) {
       toast.error(error || 'Could not start impersonation');
+      return;
+    }
+    // Flip the browser's Supabase Auth session to the salon owner so
+    // RLS-gated client-side reads (clients, staff, products, …) resolve
+    // against the right auth.uid(). Without this, every salon-scoped
+    // select returns [] because get_user_salon_id() on the super admin
+    // matches neither salons.owner_id nor staff.auth_user_id.
+    const { error: otpErr } = await supabase.auth.verifyOtp({
+      type: 'magiclink',
+      token_hash: data.supabaseAuth.tokenHash,
+    });
+    if (otpErr) {
+      toast.error('Could not switch Supabase session — please log in as the owner instead');
       return;
     }
     // impersonateSalon() signed a new icut-token JWT with role=owner server-side.
