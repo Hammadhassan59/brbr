@@ -2,15 +2,15 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import {
   Store, Users, TrendingUp, DollarSign, AlertTriangle,
-  CheckCircle, Clock, Eye, Scissors, Loader2,
+  CheckCircle, Clock, LogIn, Scissors, Loader2,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAppStore } from '@/store/app-store';
+import { supabase } from '@/lib/supabase';
 import { formatPKRShort } from '@/lib/utils/currency';
-import { getAdminDashboardData, getAdminBranchForSalon } from '@/app/actions/admin';
+import { getAdminDashboardData, impersonateSalon } from '@/app/actions/admin';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -24,11 +24,20 @@ const TYPE_BADGE: Record<string, { label: string; cls: string }> = {
 };
 
 export default function AdminDashboard() {
-  const router = useRouter();
-  const { setSalon, setCurrentBranch, setCurrentStaff, setIsSuperAdmin } = useAppStore();
+  const {
+    setSalon,
+    setBranches: setStoreBranches,
+    setCurrentBranch,
+    setCurrentStaff,
+    setCurrentPartner,
+    setIsOwner,
+    setIsPartner,
+    setIsSuperAdmin,
+  } = useAppStore();
 
   const [salons, setSalons] = useState<Salon[]>([]);
   const [loading, setLoading] = useState(true);
+  const [impersonatingId, setImpersonatingId] = useState<string | null>(null);
   const [platformStats, setPlatformStats] = useState({
     totalSalons: 0,
     activeSalons: 0,
@@ -58,16 +67,36 @@ export default function AdminDashboard() {
     fetchData();
   }, []);
 
-  async function enterSalon(salon: Salon) {
-    setSalon(salon);
-    setCurrentStaff(null);
-    try {
-      const branch = await getAdminBranchForSalon(salon.id);
-      if (branch) setCurrentBranch(branch as Branch);
-    } catch {
-      // Branch will be loaded by dashboard
+  async function loginAsSalon(salon: Salon) {
+    setImpersonatingId(salon.id);
+    const { data, error } = await impersonateSalon(salon.id);
+    if (error || !data) {
+      toast.error(error || 'Could not start impersonation');
+      setImpersonatingId(null);
+      return;
     }
-    router.push('/dashboard');
+    // Flip the browser's Supabase Auth session to the salon owner so RLS-gated
+    // client-side reads resolve against the right auth.uid() — same pattern as
+    // /admin/salons/[id] "Enter Dashboard".
+    const { error: otpErr } = await supabase.auth.verifyOtp({
+      type: 'magiclink',
+      token_hash: data.supabaseAuth.tokenHash,
+    });
+    if (otpErr) {
+      toast.error('Could not switch Supabase session — please log in as the owner instead');
+      setImpersonatingId(null);
+      return;
+    }
+    // Mirror a normal owner login into Zustand so every {isOwner && ...} gate opens.
+    setSalon(data.salon as unknown as Salon);
+    setStoreBranches((data.branches as unknown) as Branch[]);
+    setCurrentBranch(data.mainBranch as unknown as Branch);
+    setIsOwner(true);
+    setIsPartner(false);
+    setIsSuperAdmin(false);
+    setCurrentStaff(null);
+    setCurrentPartner(null);
+    window.location.href = '/dashboard';
   }
 
   if (loading) {
@@ -165,9 +194,13 @@ export default function AdminDashboard() {
                       variant="ghost"
                       size="sm"
                       className="h-7 text-xs gap-1 shrink-0"
-                      onClick={() => enterSalon(salon)}
+                      disabled={impersonatingId === salon.id}
+                      onClick={() => loginAsSalon(salon)}
                     >
-                      <Eye className="w-3 h-3" /> View
+                      {impersonatingId === salon.id
+                        ? <Loader2 className="w-3 h-3 animate-spin" />
+                        : <LogIn className="w-3 h-3" />}
+                      Login as Salon
                     </Button>
                   </div>
                   <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[10px] text-muted-foreground">
@@ -237,9 +270,13 @@ export default function AdminDashboard() {
                             variant="ghost"
                             size="sm"
                             className="h-7 text-xs gap-1"
-                            onClick={() => enterSalon(salon)}
+                            disabled={impersonatingId === salon.id}
+                            onClick={() => loginAsSalon(salon)}
                           >
-                            <Eye className="w-3 h-3" /> View
+                            {impersonatingId === salon.id
+                              ? <Loader2 className="w-3 h-3 animate-spin" />
+                              : <LogIn className="w-3 h-3" />}
+                            Login as Salon
                           </Button>
                         </div>
                       </TableCell>
