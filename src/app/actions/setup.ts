@@ -309,20 +309,49 @@ export async function setupSalon(data: {
   const mainBranchName =
     data.branchName?.trim() || (data.city ? `${data.city} Branch` : 'Main Branch');
 
-  const { data: branch, error: branchErr } = await supabase
+  // Idempotent on retry: if this salon already has a main branch from a
+  // prior (failed) setup attempt, update it in place rather than inserting
+  // a duplicate. Without this, each retry stacks another "Main Branch" row.
+  const { data: existingMain } = await supabase
     .from('branches')
-    .insert({
-      salon_id: newSalon.id,
-      name: mainBranchName,
-      address: data.address,
-      phone: data.phone,
-      is_main: true,
-      working_hours: data.workingHours,
-    })
-    .select()
-    .single();
+    .select('*')
+    .eq('salon_id', newSalon.id)
+    .eq('is_main', true)
+    .order('created_at', { ascending: true })
+    .limit(1)
+    .maybeSingle();
 
-  if (branchErr) return { data: null, error: safeError(branchErr) };
+  let branch;
+  if (existingMain) {
+    const { data: updated, error: updErr } = await supabase
+      .from('branches')
+      .update({
+        name: mainBranchName,
+        address: data.address,
+        phone: data.phone,
+        working_hours: data.workingHours,
+      })
+      .eq('id', existingMain.id)
+      .select()
+      .single();
+    if (updErr) return { data: null, error: safeError(updErr) };
+    branch = updated;
+  } else {
+    const { data: inserted, error: branchErr } = await supabase
+      .from('branches')
+      .insert({
+        salon_id: newSalon.id,
+        name: mainBranchName,
+        address: data.address,
+        phone: data.phone,
+        is_main: true,
+        working_hours: data.workingHours,
+      })
+      .select()
+      .single();
+    if (branchErr) return { data: null, error: safeError(branchErr) };
+    branch = inserted;
+  }
 
   // Create services — per-branch since migration 036.
   if (data.services.length > 0) {
