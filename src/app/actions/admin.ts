@@ -35,25 +35,29 @@ export async function getAdminDashboardData() {
   // counts/revenue/cities shown on the overview tiles.
   const liveSalons = allSalons.filter((s) => !s.is_demo);
 
-  // Monthly revenue — exclude bills belonging to the demo salon. Two queries
-  // are simpler than a join here; the demo salon's id set is a single row.
-  const monthStart = new Date();
-  monthStart.setDate(1);
-  monthStart.setHours(0, 0, 0, 0);
-
-  let billQuery = supabase
-    .from('bills')
-    .select('total_amount, salon_id')
-    .gte('created_at', monthStart.toISOString());
-  if (demoSalonIdList.length > 0) {
-    billQuery = billQuery.not('salon_id', 'in', `(${demoSalonIdList.join(',')})`);
+  // Platform revenue = subscription MRR (what iCut earns from tenant plans),
+  // not the combined tenant GMV (what tenants bill their own customers).
+  // Mirrors the MRR calc in getAnalyticsData below.
+  const { data: plansSetting } = await supabase
+    .from('platform_settings')
+    .select('value')
+    .eq('key', 'plans')
+    .maybeSingle();
+  const planPrices: Record<string, number> = {};
+  if (plansSetting?.value) {
+    const plans = plansSetting.value as Record<string, { price?: number }>;
+    Object.entries(plans).forEach(([key, p]) => {
+      planPrices[key] = Number(p?.price) || 0;
+    });
   }
-  const { data: billData } = await billQuery;
-
-  const monthlyRevenue = billData
-    ? billData.reduce((sum: number, b: { total_amount: number }) => sum + (b.total_amount || 0), 0)
-    : 0;
-  const monthlyBills = billData ? billData.length : 0;
+  let monthlyRevenue = 0;
+  let activeSubscribers = 0;
+  liveSalons.forEach((s) => {
+    if (s.subscription_status === 'active' && s.subscription_plan && s.subscription_plan !== 'none') {
+      monthlyRevenue += planPrices[s.subscription_plan] ?? 0;
+      activeSubscribers += 1;
+    }
+  });
 
   // Top city — real tenants only.
   const cityCounts: Record<string, number> = {};
@@ -78,7 +82,7 @@ export async function getAdminDashboardData() {
       totalStaff: staffCount ?? 0,
       totalClients: clientCount ?? 0,
       monthlyRevenue,
-      monthlyBills,
+      activeSubscribers,
       trialSalons,
       paidSalons: activeSalons,
       churnedSalons: expiredSalons,

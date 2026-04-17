@@ -36,7 +36,7 @@ export default function AdminDashboard() {
     totalStaff: 0,
     totalClients: 0,
     monthlyRevenue: 0,
-    monthlyBills: 0,
+    activeSubscribers: 0,
     trialSalons: 0,
     paidSalons: 0,
     churnedSalons: 0,
@@ -84,7 +84,7 @@ export default function AdminDashboard() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {[
           { label: 'Total Salons', value: String(platformStats.totalSalons), sub: `${platformStats.activeSalons} active`, icon: Store, color: 'text-blue-600', bg: 'bg-blue-500/10' },
-          { label: 'Platform Revenue', value: formatPKRShort(platformStats.monthlyRevenue), sub: `${platformStats.monthlyBills} bills this month`, icon: DollarSign, color: 'text-green-600', bg: 'bg-green-500/10' },
+          { label: 'Platform Revenue', value: formatPKRShort(platformStats.monthlyRevenue), sub: `${platformStats.activeSubscribers} active ${platformStats.activeSubscribers === 1 ? 'subscriber' : 'subscribers'} · MRR`, icon: DollarSign, color: 'text-green-600', bg: 'bg-green-500/10' },
           { label: 'Total Clients', value: String(platformStats.totalClients), sub: 'Across all salons', icon: Users, color: 'text-purple-600', bg: 'bg-purple-500/10' },
           { label: 'Total Staff', value: String(platformStats.totalStaff), sub: `Top city: ${platformStats.topCity}`, icon: TrendingUp, color: 'text-amber-600', bg: 'bg-amber-500/10' },
         ].map((c) => (
