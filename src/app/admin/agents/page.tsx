@@ -125,55 +125,83 @@ export default function AgentsPage() {
           <p className="text-sm">No agents yet.</p>
         </div>
       ) : (
-        <div className="border rounded-lg overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-muted/50">
-              <tr className="text-left">
-                <th className="px-4 py-3">Code</th>
-                <th className="px-4 py-3">Name</th>
-                <th className="px-4 py-3">Phone</th>
-                <th className="px-4 py-3">City</th>
-                <th className="px-4 py-3">First-sale %</th>
-                <th className="px-4 py-3">Renewal %</th>
-                <th className="px-4 py-3">Status</th>
-                <th className="px-4 py-3" />
-              </tr>
-            </thead>
-            <tbody>
-              {agents.map(a => (
-                <tr key={a.id} className="border-t">
-                  <td className="px-4 py-3">
-                    <button
-                      onClick={() => {
-                        navigator.clipboard.writeText(a.code).then(() => toast.success(`${a.code} copied`));
-                      }}
-                      className="inline-flex items-center gap-1.5 font-mono font-semibold text-gold hover:underline"
-                      title="Click to copy"
-                    >
-                      {a.code}
-                      <Copy className="w-3 h-3 opacity-60" />
-                    </button>
-                  </td>
-                  <td className="px-4 py-3 font-medium">{a.name}</td>
-                  <td className="px-4 py-3">{a.phone || '—'}</td>
-                  <td className="px-4 py-3">{a.city || '—'}</td>
-                  <td className="px-4 py-3">{Number(a.first_sale_pct).toFixed(2)}</td>
-                  <td className="px-4 py-3">{Number(a.renewal_pct).toFixed(2)}</td>
-                  <td className="px-4 py-3">
-                    <span className={`text-xs px-2 py-0.5 rounded-full ${a.active ? 'bg-green-500/15 text-green-700' : 'bg-gray-500/15 text-gray-600'}`}>
-                      {a.active ? 'Active' : 'Inactive'}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <Link href={`/admin/agents/${a.id}`} className="text-gold hover:underline text-sm">
-                      Manage
-                    </Link>
-                  </td>
+        <>
+          {/* Desktop table */}
+          <div className="hidden md:block border rounded-lg overflow-hidden">
+            <table className="w-full text-sm">
+              <thead className="bg-muted/50">
+                <tr className="text-left">
+                  <th className="px-4 py-3">Code</th>
+                  <th className="px-4 py-3">Name</th>
+                  <th className="px-4 py-3">Phone</th>
+                  <th className="px-4 py-3">City</th>
+                  <th className="px-4 py-3">First-sale %</th>
+                  <th className="px-4 py-3">Renewal %</th>
+                  <th className="px-4 py-3">Status</th>
+                  <th className="px-4 py-3" />
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {agents.map(a => (
+                  <tr key={a.id} className="border-t">
+                    <td className="px-4 py-3">
+                      <button
+                        onClick={() => {
+                          navigator.clipboard.writeText(a.code).then(() => toast.success(`${a.code} copied`));
+                        }}
+                        className="inline-flex items-center gap-1.5 font-mono font-semibold text-gold hover:underline"
+                        title="Click to copy"
+                      >
+                        {a.code}
+                        <Copy className="w-3 h-3 opacity-60" />
+                      </button>
+                    </td>
+                    <td className="px-4 py-3 font-medium">{a.name}</td>
+                    <td className="px-4 py-3">{a.phone || '—'}</td>
+                    <td className="px-4 py-3">{a.city || '—'}</td>
+                    <td className="px-4 py-3">{Number(a.first_sale_pct).toFixed(2)}</td>
+                    <td className="px-4 py-3">{Number(a.renewal_pct).toFixed(2)}</td>
+                    <td className="px-4 py-3">
+                      <span className={`text-xs px-2 py-0.5 rounded-full ${a.active ? 'bg-green-500/15 text-green-700' : 'bg-gray-500/15 text-gray-600'}`}>
+                        {a.active ? 'Active' : 'Inactive'}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <Link href={`/admin/agents/${a.id}`} className="text-gold hover:underline text-sm">
+                        Manage
+                      </Link>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Mobile cards */}
+          <div className="md:hidden space-y-2">
+            {agents.map(a => (
+              <Link
+                key={a.id}
+                href={`/admin/agents/${a.id}`}
+                className="block border rounded-lg p-4 bg-white min-h-[44px] active:bg-muted/40 transition-colors"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 mb-0.5">
+                      <span className="font-mono font-semibold text-gold text-xs">{a.code}</span>
+                      <span className={`text-[10px] px-2 py-0.5 rounded-full ${a.active ? 'bg-green-500/15 text-green-700' : 'bg-gray-500/15 text-gray-600'}`}>
+                        {a.active ? 'Active' : 'Inactive'}
+                      </span>
+                    </div>
+                    <p className="font-medium text-sm truncate">{a.name}</p>
+                    <p className="text-[11px] text-muted-foreground mt-0.5">{a.city || '—'}</p>
+                  </div>
+                  <span className="text-gold text-sm shrink-0">Manage ›</span>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </>
       )}
 
       <NewAgentDialog open={open} onClose={() => setOpen(false)} onCreated={load} />

@@ -8,14 +8,15 @@ import React from 'react'
 // ═══════════════════════════════════════
 
 const MOCK_SALON = { id: 's1', name: 'Glamour Studio' }
+const MOCK_BRANCH = { id: 'b1', name: 'Main Branch' }
 
 vi.mock('@/components/providers/language-provider', () => ({
   useLanguage: () => ({ t: (k: string) => k, language: 'en' as const }),
 }))
 
 vi.mock('@/store/app-store', () => ({
-  useAppStore: (selector: (s: { salon: typeof MOCK_SALON }) => unknown) =>
-    selector({ salon: MOCK_SALON }),
+  useAppStore: (selector: (s: { salon: typeof MOCK_SALON; currentBranch: typeof MOCK_BRANCH }) => unknown) =>
+    selector({ salon: MOCK_SALON, currentBranch: MOCK_BRANCH }),
 }))
 
 // The sheet now fires two .ilike() queries (name + phone) in parallel instead
@@ -31,6 +32,13 @@ vi.mock('@/lib/supabase', () => ({
     from: () => ({
       select: () => ({
         eq: () => ({
+          // Post-branch-isolation: chain is .eq(salon_id).eq(branch_id).ilike().limit()
+          eq: () => ({
+            ilike: () => ({
+              limit: () => Promise.resolve({ data: MOCK_CLIENTS }),
+            }),
+          }),
+          // Legacy shape kept for any callers still using the single-eq chain.
           ilike: () => ({
             limit: () => Promise.resolve({ data: MOCK_CLIENTS }),
           }),

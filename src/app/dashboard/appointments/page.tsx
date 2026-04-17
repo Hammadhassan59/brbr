@@ -316,7 +316,7 @@ function AppointmentsContent() {
           <div className="flex items-center gap-2 sm:ml-auto flex-wrap">
             <Filter className="w-4 h-4 text-muted-foreground shrink-0" aria-hidden="true" />
             <select value={filterStaffId || 'all'} onChange={(e) => setFilterStaffId(e.target.value === 'all' ? null : e.target.value)}
-              aria-label="Filter by stylist" className="h-11 w-full sm:w-[180px] flex-1 sm:flex-none min-w-0 bg-secondary border border-border text-foreground rounded-md px-3 text-sm transition-all duration-150">
+              aria-label="Filter by stylist" className="h-11 w-auto sm:w-[180px] flex-1 sm:flex-none min-w-[140px] bg-secondary border border-border text-foreground rounded-md px-3 text-sm transition-all duration-150">
               <option value="all">All Stylists</option>
               {stylists.map((s) => (
                 <option key={s.id} value={s.id}>{s.name}</option>

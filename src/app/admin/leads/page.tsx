@@ -132,26 +132,36 @@ export default function AdminLeadsPage() {
           <p className="text-sm">No leads.</p>
         </div>
       ) : (
-        <div className="border rounded-lg overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-muted/50">
-              <tr className="text-left">
-                <th className="px-4 py-3">Salon</th>
-                <th className="px-4 py-3">Owner</th>
-                <th className="px-4 py-3">Phone</th>
-                <th className="px-4 py-3">City</th>
-                <th className="px-4 py-3">Status</th>
-                <th className="px-4 py-3">Agent</th>
-                <th className="px-4 py-3" />
-              </tr>
-            </thead>
-            <tbody>
-              {leads.map(l => (
-                <LeadRow key={l.id} lead={l} agents={agents} onReassigned={load} onDelete={() => removeLead(l)} />
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <>
+          {/* Desktop table */}
+          <div className="hidden md:block border rounded-lg overflow-hidden">
+            <table className="w-full text-sm">
+              <thead className="bg-muted/50">
+                <tr className="text-left">
+                  <th className="px-4 py-3">Salon</th>
+                  <th className="px-4 py-3">Owner</th>
+                  <th className="px-4 py-3">Phone</th>
+                  <th className="px-4 py-3">City</th>
+                  <th className="px-4 py-3">Status</th>
+                  <th className="px-4 py-3">Agent</th>
+                  <th className="px-4 py-3" />
+                </tr>
+              </thead>
+              <tbody>
+                {leads.map(l => (
+                  <LeadRow key={l.id} lead={l} agents={agents} onReassigned={load} onDelete={() => removeLead(l)} />
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Mobile cards */}
+          <div className="md:hidden space-y-2">
+            {leads.map(l => (
+              <LeadCard key={l.id} lead={l} agents={agents} onReassigned={load} onDelete={() => removeLead(l)} />
+            ))}
+          </div>
+        </>
       )}
 
       <NewLeadDialog open={open} onClose={() => setOpen(false)} agents={agents} onCreated={load} />
@@ -211,6 +221,68 @@ function LeadRow({ lead, agents, onReassigned, onDelete }: { lead: LeadWithAgent
         </div>
       </td>
     </tr>
+  );
+}
+
+function LeadCard({ lead, agents, onReassigned, onDelete }: { lead: LeadWithAgent; agents: SalesAgent[]; onReassigned: () => void; onDelete: () => void }) {
+  const [editing, setEditing] = useState(false);
+  const [value, setValue] = useState(lead.assigned_agent_id);
+
+  async function save() {
+    const { error } = await reassignLead(lead.id, value);
+    if (error) { toast.error(error); return; }
+    toast.success('Lead reassigned');
+    setEditing(false);
+    onReassigned();
+  }
+
+  return (
+    <div className="border rounded-lg p-4 bg-white">
+      <div className="flex items-start justify-between gap-3 mb-2">
+        <div className="min-w-0 flex-1">
+          <p className="font-medium text-sm truncate">{lead.salon_name}</p>
+          <p className="text-[11px] text-muted-foreground mt-0.5">{lead.city || '—'}</p>
+        </div>
+        <span className="text-xs px-2 py-0.5 rounded-full bg-muted shrink-0">{lead.status}</span>
+      </div>
+      <div className="space-y-1 text-xs text-muted-foreground">
+        {lead.phone ? (
+          <a href={`tel:${lead.phone}`} className="block text-gold min-h-[44px] flex items-center">
+            {lead.phone}
+          </a>
+        ) : null}
+        <div className="flex items-center gap-2">
+          <span className="shrink-0">Agent:</span>
+          {editing ? (
+            <select value={value} onChange={e => setValue(e.target.value)}
+              className="border rounded px-2 py-1 text-xs bg-white flex-1 min-w-0">
+              {agents.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+            </select>
+          ) : (
+            <span className="text-foreground">{lead.agent?.name || '—'}</span>
+          )}
+        </div>
+      </div>
+      <div className="flex items-center gap-2 mt-3 pt-3 border-t">
+        {editing ? (
+          <>
+            <button onClick={save} className="flex-1 min-h-[44px] text-gold text-sm font-medium border rounded-lg">Save</button>
+            <button onClick={() => setEditing(false)} className="flex-1 min-h-[44px] text-muted-foreground text-sm border rounded-lg">Cancel</button>
+          </>
+        ) : (
+          <>
+            <button onClick={() => setEditing(true)} className="flex-1 min-h-[44px] text-gold text-sm font-medium border rounded-lg">Reassign</button>
+            <button
+              onClick={onDelete}
+              className="min-h-[44px] min-w-[44px] flex items-center justify-center text-muted-foreground hover:text-red-600 border rounded-lg"
+              aria-label="Delete lead"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          </>
+        )}
+      </div>
+    </div>
   );
 }
 

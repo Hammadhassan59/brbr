@@ -51,7 +51,8 @@ export default function ExpensesPage() {
   const [income, setIncome] = useState(0);
   const [showAdd, setShowAdd] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [activeFilter, setActiveFilter] = useState<string>('today');
+  // Default 7-day window — a 1-day default makes the page look empty for salons that added expenses yesterday.
+  const [activeFilter, setActiveFilter] = useState<string>('7d');
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
 
   // Advances display

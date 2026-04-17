@@ -289,72 +289,128 @@ export default function AdminUsersPage() {
               {users.length === 0 ? 'No users yet. Staff will appear as salons add team members.' : 'No users match the current filters.'}
             </p>
           ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="pl-4">Name</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Role</TableHead>
-                    <TableHead>Salon</TableHead>
-                    <TableHead>Last Login</TableHead>
-                    <TableHead className="text-center">Status</TableHead>
-                    <TableHead className="pr-4 text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filtered.map((u, i) => (
-                    <TableRow key={`${u.id}-${i}`}>
-                      <TableCell className="pl-4 font-medium text-sm whitespace-nowrap">{u.name}</TableCell>
-                      <TableCell className="text-sm text-muted-foreground whitespace-nowrap">{u.email || '—'}</TableCell>
-                      <TableCell className="whitespace-nowrap">
-                        <Badge
-                          variant={u.type === 'owner' ? 'default' : 'secondary'}
-                          className={`text-[10px] ${u.type === 'owner' ? 'bg-gold text-black' : ''}`}
-                        >
-                          {u.role}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-sm whitespace-nowrap">{u.salon}</TableCell>
-                      <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
-                        {u.lastLogin ? formatPKDate(u.lastLogin) : '—'}
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <Badge variant="outline" className={`text-[10px] ${u.isActive ? 'text-green-600 border-green-500/25 bg-green-500/10' : 'text-amber-600 border-amber-500/25 bg-amber-500/10'}`}>
-                          {u.isActive ? 'Active' : 'Inactive'}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="pr-4 text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          {u.type !== 'owner' && (
-                            <button
-                              onClick={() => handleToggleActive(u)}
-                              disabled={actionLoading === `toggle-${u.id}`}
-                              className="text-[11px] px-2 py-1 border rounded font-medium disabled:opacity-50 hover:bg-muted transition-colors whitespace-nowrap"
-                            >
-                              {actionLoading === `toggle-${u.id}` ? (
-                                <Loader2 className="w-3 h-3 animate-spin" />
-                              ) : u.isActive ? 'Deactivate' : 'Activate'}
-                            </button>
-                          )}
-                          {u.email && (
-                            <button
-                              onClick={() => handleResetPassword(u)}
-                              disabled={actionLoading === `reset-${u.id}`}
-                              className="text-[11px] px-2 py-1 border rounded font-medium disabled:opacity-50 hover:bg-muted transition-colors whitespace-nowrap"
-                            >
-                              {actionLoading === `reset-${u.id}` ? (
-                                <Loader2 className="w-3 h-3 animate-spin" />
-                              ) : 'Reset PW'}
-                            </button>
-                          )}
-                        </div>
-                      </TableCell>
+            <>
+              {/* Desktop table */}
+              <div className="hidden md:block overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="pl-4">Name</TableHead>
+                      <TableHead>Email</TableHead>
+                      <TableHead>Role</TableHead>
+                      <TableHead>Salon</TableHead>
+                      <TableHead>Last Login</TableHead>
+                      <TableHead className="text-center">Status</TableHead>
+                      <TableHead className="pr-4 text-right">Actions</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+                  </TableHeader>
+                  <TableBody>
+                    {filtered.map((u, i) => (
+                      <TableRow key={`${u.id}-${i}`}>
+                        <TableCell className="pl-4 font-medium text-sm whitespace-nowrap">{u.name}</TableCell>
+                        <TableCell className="text-sm text-muted-foreground whitespace-nowrap">{u.email || '—'}</TableCell>
+                        <TableCell className="whitespace-nowrap">
+                          <Badge
+                            variant={u.type === 'owner' ? 'default' : 'secondary'}
+                            className={`text-[10px] ${u.type === 'owner' ? 'bg-gold text-black' : ''}`}
+                          >
+                            {u.role}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-sm whitespace-nowrap">{u.salon}</TableCell>
+                        <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
+                          {u.lastLogin ? formatPKDate(u.lastLogin) : '—'}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <Badge variant="outline" className={`text-[10px] ${u.isActive ? 'text-green-600 border-green-500/25 bg-green-500/10' : 'text-amber-600 border-amber-500/25 bg-amber-500/10'}`}>
+                            {u.isActive ? 'Active' : 'Inactive'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="pr-4 text-right">
+                          <div className="flex items-center justify-end gap-2">
+                            {u.type !== 'owner' && (
+                              <button
+                                onClick={() => handleToggleActive(u)}
+                                disabled={actionLoading === `toggle-${u.id}`}
+                                className="text-[11px] px-2 py-1 border rounded font-medium disabled:opacity-50 hover:bg-muted transition-colors whitespace-nowrap"
+                              >
+                                {actionLoading === `toggle-${u.id}` ? (
+                                  <Loader2 className="w-3 h-3 animate-spin" />
+                                ) : u.isActive ? 'Deactivate' : 'Activate'}
+                              </button>
+                            )}
+                            {u.email && (
+                              <button
+                                onClick={() => handleResetPassword(u)}
+                                disabled={actionLoading === `reset-${u.id}`}
+                                className="text-[11px] px-2 py-1 border rounded font-medium disabled:opacity-50 hover:bg-muted transition-colors whitespace-nowrap"
+                              >
+                                {actionLoading === `reset-${u.id}` ? (
+                                  <Loader2 className="w-3 h-3 animate-spin" />
+                                ) : 'Reset PW'}
+                              </button>
+                            )}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+
+              {/* Mobile cards */}
+              <div className="md:hidden space-y-2 px-4 pb-2">
+                {filtered.map((u, i) => (
+                  <div key={`${u.id}-${i}`} className="border rounded-lg p-4 bg-white">
+                    <div className="flex items-start justify-between gap-3 mb-2">
+                      <div className="min-w-0 flex-1">
+                        <p className="font-medium text-sm truncate">{u.name}</p>
+                        <p className="text-[11px] text-muted-foreground truncate">{u.email || '—'}</p>
+                      </div>
+                      <Badge variant="outline" className={`text-[10px] shrink-0 ${u.isActive ? 'text-green-600 border-green-500/25 bg-green-500/10' : 'text-amber-600 border-amber-500/25 bg-amber-500/10'}`}>
+                        {u.isActive ? 'Active' : 'Inactive'}
+                      </Badge>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2 mb-2">
+                      <Badge
+                        variant={u.type === 'owner' ? 'default' : 'secondary'}
+                        className={`text-[10px] ${u.type === 'owner' ? 'bg-gold text-black' : ''}`}
+                      >
+                        {u.role}
+                      </Badge>
+                      <span className="text-[11px] text-muted-foreground truncate">{u.salon}</span>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground mb-3">
+                      Last login: {u.lastLogin ? formatPKDate(u.lastLogin) : '—'}
+                    </p>
+                    <div className="flex items-center gap-2 pt-2 border-t">
+                      {u.type !== 'owner' && (
+                        <button
+                          onClick={() => handleToggleActive(u)}
+                          disabled={actionLoading === `toggle-${u.id}`}
+                          className="flex-1 min-h-[44px] text-xs px-3 border rounded-lg font-medium disabled:opacity-50 hover:bg-muted transition-colors"
+                        >
+                          {actionLoading === `toggle-${u.id}` ? (
+                            <Loader2 className="w-3 h-3 animate-spin mx-auto" />
+                          ) : u.isActive ? 'Deactivate' : 'Activate'}
+                        </button>
+                      )}
+                      {u.email && (
+                        <button
+                          onClick={() => handleResetPassword(u)}
+                          disabled={actionLoading === `reset-${u.id}`}
+                          className="flex-1 min-h-[44px] text-xs px-3 border rounded-lg font-medium disabled:opacity-50 hover:bg-muted transition-colors"
+                        >
+                          {actionLoading === `reset-${u.id}` ? (
+                            <Loader2 className="w-3 h-3 animate-spin mx-auto" />
+                          ) : 'Reset PW'}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
           )}
         </CardContent>
       </Card>

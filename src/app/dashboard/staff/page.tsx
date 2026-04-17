@@ -238,7 +238,46 @@ export default function StaffListPage() {
           ))}
         </div>
       ) : (
-        <div className="bg-card border border-border rounded-lg overflow-hidden">
+        <>
+          {/* Mobile fallback: 6-column list view is unreadable at 375px —
+              render the card grid even when the user's saved preference is 'list'. */}
+          <div className="grid grid-cols-1 gap-4 stagger-children md:hidden">
+            {filteredStaff.map((s) => (
+              <Link key={s.id} href={`/dashboard/staff/${s.id}`}>
+                <div className="animate-fade-up bg-card border border-border rounded-lg hover:shadow-lg hover:border-gold/40 hover:-translate-y-0.5 p-5 transition-all duration-200">
+                  <div className="flex items-center gap-4">
+                    <div className="w-14 h-14 rounded-full bg-accent text-foreground font-bold flex items-center justify-center text-xl shrink-0">
+                      {s.name.charAt(0)}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="text-base font-semibold truncate">{s.name}</span>
+                        <Badge variant="secondary" className={`text-[10px] ${ROLE_COLORS[s.role] || ''}`}>
+                          {s.role.replace('_', ' ')}
+                        </Badge>
+                      </div>
+                      <div className="flex items-center gap-2 mt-1.5">
+                        {getStatusBadge(s.todayAttendance)}
+                        <span className="text-xs text-muted-foreground">·</span>
+                        <span className="text-xs font-medium text-foreground/70">
+                          {s.role === 'owner' || s.role === 'manager' ? (
+                            `${s.role === 'owner' ? 'Owner' : 'Manager'} — full access`
+                          ) : s.role === 'receptionist' ? (
+                            'Front desk'
+                          ) : s.role === 'helper' ? (
+                            'Support staff'
+                          ) : (
+                            `${s.todayServices || 0} services · ${formatPKR(s.todayRevenue || 0)}`
+                          )}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        <div className="hidden md:block bg-card border border-border rounded-lg overflow-hidden">
           <Table>
             <TableHeader>
               <TableRow>
@@ -268,6 +307,7 @@ export default function StaffListPage() {
             </TableBody>
           </Table>
         </div>
+        </>
       )}
     </div>
   );

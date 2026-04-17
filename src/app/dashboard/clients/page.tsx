@@ -225,7 +225,20 @@ function ClientsContent() {
           ))}
         </div>
       ) : (
-        <div className="bg-card border border-border rounded-lg overflow-hidden">
+        <>
+          {/* Mobile fallback: the 7-column list view truncates at 375px, so
+              render cards even when the user's saved preference is 'list'. */}
+          <div className="grid grid-cols-1 gap-4 stagger-children md:hidden">
+            {sorted.map((client) => (
+              <ClientCard
+                key={client.id}
+                client={client}
+                selected={selectedIds.has(client.id)}
+                onSelect={toggleSelect}
+              />
+            ))}
+          </div>
+          <div className="hidden md:block bg-card border border-border rounded-lg overflow-hidden">
           <Table>
             <TableHeader>
               <TableRow>
@@ -260,7 +273,8 @@ function ClientsContent() {
               ))}
             </TableBody>
           </Table>
-        </div>
+          </div>
+        </>
       )}
 
       {!loading && sorted.length > 0 && (
