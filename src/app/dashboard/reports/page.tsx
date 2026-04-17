@@ -40,10 +40,14 @@ export default function ReportsPage() {
     const today = getTodayPKT();
 
     try {
-      const [billsRes, staffRes, productsRes, clientsRes, expensesRes, staffBillsRes] = await Promise.all([
+      const [billsRes, staffRes, productsRes, branchProductsRes, clientsRes, expensesRes, staffBillsRes] = await Promise.all([
         supabase.from('bills').select('total_amount, created_at, status').eq('branch_id', currentBranch.id).eq('status', 'paid'),
         supabase.from('staff').select('name, id').eq('branch_id', currentBranch.id).eq('is_active', true),
-        supabase.from('products').select('current_stock, low_stock_threshold').eq('salon_id', salon.id).eq('is_active', true),
+        // Products are per-branch post-037; the stock numbers live in
+        // branch_products. Both need the current branch so the low-stock
+        // count matches what the inventory page shows.
+        supabase.from('products').select('id').eq('salon_id', salon.id).eq('branch_id', currentBranch.id).eq('is_active', true),
+        supabase.from('branch_products').select('product_id, current_stock, low_stock_threshold').eq('branch_id', currentBranch.id),
         supabase.from('clients').select('udhaar_balance').eq('salon_id', salon.id),
         supabase.from('expenses').select('amount').eq('branch_id', currentBranch.id),
         supabase.from('bills').select('staff_id, total_amount').eq('branch_id', currentBranch.id).eq('status', 'paid'),
@@ -55,8 +59,15 @@ export default function ReportsPage() {
       const totalRevenue = bills.reduce((s, b) => s + b.total_amount, 0);
 
       const staffList = (staffRes.data || []) as { name: string; id: string }[];
-      const products = (productsRes.data || []) as { current_stock: number; low_stock_threshold: number }[];
-      const lowStock = products.filter(p => p.current_stock <= p.low_stock_threshold).length;
+      const products = (productsRes.data || []) as { id: string }[];
+      const bpMap = new Map<string, { current_stock: number; low_stock_threshold: number }>();
+      for (const r of (branchProductsRes.data || []) as Array<{ product_id: string; current_stock: number; low_stock_threshold: number }>) {
+        bpMap.set(r.product_id, { current_stock: r.current_stock, low_stock_threshold: r.low_stock_threshold });
+      }
+      const lowStock = products.filter((p) => {
+        const bp = bpMap.get(p.id);
+        return bp != null && bp.current_stock <= bp.low_stock_threshold;
+      }).length;
 
       const clients = (clientsRes.data || []) as { udhaar_balance: number }[];
       const udhaarTotal = clients.reduce((s, c) => s + (c.udhaar_balance || 0), 0);

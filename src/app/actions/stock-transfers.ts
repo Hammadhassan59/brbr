@@ -76,6 +76,43 @@ export async function transferStock(input: {
     return { data: null, error: tenantErrorMessage(e) };
   }
 
+  // Migration 037 pinned each product to a single branch. The product row
+  // we're transferring only lives in `fromBranchId`'s catalog — the
+  // destination branch has no row for this SKU unless a "Duplicate to
+  // branch" action has explicitly duplicated it. Until that action lands,
+  // we reject transfers whose destination branch doesn't carry the SKU.
+  //
+  // Implementation note: we detect "destination has this SKU" by looking
+  // for a matching branch_products row in toBranchId. Pre-037 the seed
+  // trigger created rows for every (branch, product) pair in the salon,
+  // so every branch had a row; post-037 the seed only creates a row for
+  // the product's own branch, so a missing row is a reliable signal.
+  const { data: prodRow, error: prodRowErr } = await supabase
+    .from('products')
+    .select('branch_id')
+    .eq('id', productId)
+    .eq('salon_id', session.salonId)
+    .maybeSingle();
+  if (prodRowErr) return { data: null, error: prodRowErr.message };
+  if (!prodRow) return { data: null, error: 'Not found' };
+  if ((prodRow as { branch_id: string }).branch_id !== fromBranchId) {
+    return { data: null, error: 'Product does not belong to source branch' };
+  }
+  const { data: destBP, error: destBPErr } = await supabase
+    .from('branch_products')
+    .select('id')
+    .eq('branch_id', toBranchId)
+    .eq('product_id', productId)
+    .maybeSingle();
+  if (destBPErr) return { data: null, error: destBPErr.message };
+  if (!destBP) {
+    return {
+      data: null,
+      error:
+        "Product doesn't exist in destination branch — use 'Duplicate to branch' first",
+    };
+  }
+
   // Read the source balance. The seed triggers guarantee a row exists for
   // every (branch, product) pair in the salon; a missing row here means
   // either the trigger failed (DB-level bug) or someone passed a product

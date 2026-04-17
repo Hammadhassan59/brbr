@@ -61,7 +61,12 @@ export default function TransfersPage() {
         // branch, since transfers are how owners see what moved in/out of
         // the branch they're operating today.
         listStockTransfers({ branchId: currentBranch.id, limit: 100 }),
-        supabase.from('products').select('*').eq('salon_id', salon.id).eq('is_active', true).order('name'),
+        // Migration 037: products are per-branch. The transfer picker only
+        // lists products that live in the source branch (fromBranchId); we
+        // default that to currentBranch on openForm(), so the initial fetch
+        // scopes there. When the user picks a different source branch, the
+        // separate stock-loading effect below refreshes the list.
+        supabase.from('products').select('*').eq('salon_id', salon.id).eq('branch_id', currentBranch.id).eq('is_active', true).order('name'),
       ]);
       if (txRes.data) setTransfers(txRes.data as StockTransfer[]);
       if (prodRes.data) setProducts(prodRes.data as Product[]);
@@ -74,26 +79,39 @@ export default function TransfersPage() {
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
 
-  // Load the from-branch's per-product stock when the dialog opens or the
-  // from-branch selection changes. Lets the UI show "available: N" and block
-  // over-transfers client-side before paying a server round-trip.
+  // Load the from-branch's per-product stock AND the from-branch's product
+  // catalog when the dialog opens or the from-branch selection changes.
+  // Migration 037 made products per-branch, so the catalog shown in the
+  // picker must match the source branch, not the caller's current branch.
+  // Stock goes into fromBranchStock so the UI can show "available: N" and
+  // block over-transfers client-side before paying a server round-trip.
   useEffect(() => {
-    if (!showForm || !fromBranchId) { setFromBranchStock(new Map()); return; }
+    if (!showForm || !fromBranchId || !salon) { setFromBranchStock(new Map()); return; }
     let cancelled = false;
     (async () => {
-      const { data } = await supabase
-        .from('branch_products')
-        .select('product_id,current_stock')
-        .eq('branch_id', fromBranchId);
+      const [stockRes, prodRes] = await Promise.all([
+        supabase
+          .from('branch_products')
+          .select('product_id,current_stock')
+          .eq('branch_id', fromBranchId),
+        supabase
+          .from('products')
+          .select('*')
+          .eq('salon_id', salon.id)
+          .eq('branch_id', fromBranchId)
+          .eq('is_active', true)
+          .order('name'),
+      ]);
       if (cancelled) return;
       const map = new Map<string, number>();
-      for (const row of (data || []) as Array<Pick<BranchProduct, 'product_id' | 'current_stock'>>) {
+      for (const row of (stockRes.data || []) as Array<Pick<BranchProduct, 'product_id' | 'current_stock'>>) {
         map.set(row.product_id, Number(row.current_stock) || 0);
       }
       setFromBranchStock(map);
+      if (prodRes.data) setProducts(prodRes.data as Product[]);
     })();
     return () => { cancelled = true; };
-  }, [showForm, fromBranchId]);
+  }, [showForm, fromBranchId, salon]);
 
   function openForm() {
     // Default from = currentBranch; to = any other branch (picked by user).

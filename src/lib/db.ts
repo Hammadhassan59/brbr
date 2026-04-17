@@ -575,11 +575,18 @@ export async function createTip(tip: TipInsert) {
 // Products & Inventory
 // ═══════════════════════════════════════
 
-export async function getProducts(salonId: string) {
+/**
+ * Migration 037 pinned products to a single branch — the catalog is
+ * per-branch now. Callers must pass the branch they care about. Kept as a
+ * narrow helper; most UI goes through `fetchProductsWithBranchStock` which
+ * also merges stock.
+ */
+export async function getProducts(salonId: string, branchId: string) {
   const { data, error } = await supabase
     .from('products')
     .select('*')
     .eq('salon_id', salonId)
+    .eq('branch_id', branchId)
     .eq('is_active', true)
     .order('name');
   if (error) throw error;
@@ -608,6 +615,7 @@ export async function fetchProductsWithBranchStock(
       .from('products')
       .select('*')
       .eq('salon_id', salonId)
+      .eq('branch_id', branchId)
       .eq('is_active', true)
       .order('name'),
     supabase
@@ -788,14 +796,19 @@ export async function validatePromoCode(salonId: string, code: string) {
 // Loyalty Rules
 // ═══════════════════════════════════════
 
-export async function getLoyaltyRules(salonId: string) {
+/**
+ * Migration 037 made loyalty configuration per-branch. Callers must pass
+ * the branch whose rules they want. Returns null if no row exists yet.
+ */
+export async function getLoyaltyRules(salonId: string, branchId: string) {
   const { data, error } = await supabase
     .from('loyalty_rules')
     .select('*')
     .eq('salon_id', salonId)
-    .single();
+    .eq('branch_id', branchId)
+    .maybeSingle();
   if (error) return null;
-  return data as LoyaltyRules;
+  return data as LoyaltyRules | null;
 }
 
 // ═══════════════════════════════════════

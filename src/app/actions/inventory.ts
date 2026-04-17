@@ -40,17 +40,18 @@ export async function createProduct(data: {
     return { data: null, error: tenantErrorMessage(e) };
   }
 
-  // Insert the catalog row. The `products_seed_branch_products` trigger
-  // auto-creates a branch_products row for every branch in this salon with
-  // 0 stock and the default threshold (5). We do NOT write the deprecated
-  // products.current_stock / low_stock_threshold tombstone columns — the
-  // threshold is set per-branch on branch_products below for the caller's
-  // current branch; other branches keep the default until their owner
-  // tunes them.
+  // Insert the catalog row. Migration 037 pinned each product to a single
+  // branch — the catalog is per-branch now. The seed trigger for
+  // branch_products still runs, but because the product only exists in
+  // `data.branchId`, only that branch's row gets auto-created with stock 0.
+  // We do NOT write the deprecated products.current_stock /
+  // low_stock_threshold tombstone columns — those are per-branch on
+  // branch_products.
   const { data: result, error } = await supabase
     .from('products')
     .insert({
       salon_id: session.salonId,
+      branch_id: data.branchId,
       name: data.name.trim(),
       brand: data.brand || null,
       category: data.category || null,
@@ -102,11 +103,17 @@ export async function createProduct(data: {
   return { data: result, error: null };
 }
 
-export async function updateProduct(id: string, data: unknown) {
+export async function updateProduct(id: string, branchId: string, data: unknown) {
   const writeCheck = await checkWriteAccess();
   if (writeCheck.error !== null) return { error: writeCheck.error };
   const session = writeCheck.session;
   const supabase = createServerClient();
+
+  try {
+    assertBranchMembership(session, branchId);
+  } catch (e) {
+    return { error: tenantErrorMessage(e) };
+  }
 
   const parsed = productUpdateSchema.safeParse(data);
   if (!parsed.success) {
@@ -124,7 +131,8 @@ export async function updateProduct(id: string, data: unknown) {
     .from('products')
     .update(parsed.data)
     .eq('id', id)
-    .eq('salon_id', session.salonId);
+    .eq('salon_id', session.salonId)
+    .eq('branch_id', branchId);
 
   if (error) return { error: error.message };
   return { error: null };
@@ -190,13 +198,30 @@ export async function adjustStock(productId: string, branchId: string, quantity:
 
   // Both the product and the branch must belong to this salon. The
   // branch_products row is keyed by (branch_id, product_id) and has no
-  // salon_id; these two parent-guard calls are the only isolation.
+  // salon_id; these two parent-guard calls are the only isolation. Migration
+  // 037 pinned products to a single branch, so we also verify the product
+  // actually belongs to the branch being adjusted.
   try {
     await assertProductOwned(productId, session.salonId);
     await assertBranchOwned(branchId, session.salonId);
     assertBranchMembership(session, branchId);
   } catch (e) {
     return { error: tenantErrorMessage(e) };
+  }
+
+  // Verify the product lives in this branch. Cross-branch adjustments
+  // must not write to a branch_products row the product doesn't logically
+  // own.
+  const { data: prodRow, error: prodErr } = await supabase
+    .from('products')
+    .select('branch_id')
+    .eq('id', productId)
+    .eq('salon_id', session.salonId)
+    .maybeSingle();
+  if (prodErr) return { error: prodErr.message };
+  if (!prodRow) return { error: 'Not found' };
+  if ((prodRow as { branch_id: string }).branch_id !== branchId) {
+    return { error: 'Not allowed' };
   }
 
   // Read per-branch stock from branch_products — products.current_stock is
@@ -319,12 +344,16 @@ export async function deductStockForBill(params: {
   // content_per_unit stays on `products` (catalog attribute), but current
   // stock now lives per-branch on `branch_products`. Two reads: one for the
   // packaging math, one for the per-branch balance we're about to decrement.
+  // Migration 037 scopes products to a single branch, so the catalog read
+  // now also filters by branch_id — a product from a different branch can't
+  // participate in this branch's deduction.
   const [{ data: catalog }, { data: bpRows }] = await Promise.all([
     supabase
       .from('products')
       .select('id, content_per_unit')
       .in('id', productIds)
-      .eq('salon_id', session.salonId),
+      .eq('salon_id', session.salonId)
+      .eq('branch_id', params.branchId),
     supabase
       .from('branch_products')
       .select('product_id, current_stock')

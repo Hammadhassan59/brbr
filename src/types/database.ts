@@ -274,6 +274,12 @@ export interface Tip {
 export interface Product {
   id: string;
   salon_id: string;
+  /**
+   * Migration 037 pins every product to exactly one branch — the catalog
+   * is now per-branch, not per-salon. Existing rows were backfilled to the
+   * salon's primary branch; new rows must stamp this at insert.
+   */
+  branch_id: string;
   name: string;
   brand: string | null;
   category: string | null;
@@ -394,6 +400,12 @@ export interface PromoCode {
 export interface LoyaltyRules {
   id: string;
   salon_id: string;
+  /**
+   * Migration 037 made loyalty configuration per-branch. The DB unique key
+   * moved from (salon_id) to (salon_id, branch_id); each branch owns its own
+   * points/redemption tuning.
+   */
+  branch_id: string;
   points_per_100_pkr: number;
   pkr_per_point_redemption: number;
   birthday_bonus_multiplier: number;

@@ -117,7 +117,9 @@ function POSContent() {
 
       const [svcRes, prodRes, branchProdRes, pkgRes, staffRes] = await Promise.all([
         supabase.from('services').select('*').eq('salon_id', salon!.id).eq('branch_id', currentBranch!.id).eq('is_active', true).order('sort_order'),
-        supabase.from('products').select('*').eq('salon_id', salon!.id).eq('is_active', true).order('name'),
+        // Products are per-branch after migration 037 — the POS only rings
+        // up products that belong to the branch the cashier is working in.
+        supabase.from('products').select('*').eq('salon_id', salon!.id).eq('branch_id', currentBranch!.id).eq('is_active', true).order('name'),
         // Per-branch inventory (migration 035). The salon-level
         // products.current_stock / .low_stock_threshold are tombstones —
         // always merge these in for display + checkout warnings.

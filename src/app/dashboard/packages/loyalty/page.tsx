@@ -40,8 +40,11 @@ export default function LoyaltyPage() {
   const fetch = useCallback(async () => {
     if (!salon || !currentBranch) return;
     setLoading(true);
+    // Migration 037 scopes loyalty_rules per-branch: (salon_id, branch_id)
+    // is the new unique. Use maybeSingle() so a branch without rules yet
+    // (common right after 037 ran) doesn't 404 the whole page.
     const [rulesRes, clientsRes] = await Promise.all([
-      supabase.from('loyalty_rules').select('*').eq('salon_id', salon.id).single(),
+      supabase.from('loyalty_rules').select('*').eq('salon_id', salon.id).eq('branch_id', currentBranch.id).maybeSingle(),
       supabase.from('clients').select('*').eq('salon_id', salon.id).eq('branch_id', currentBranch.id).gt('loyalty_points', 0).order('loyalty_points', { ascending: false }).limit(10),
     ]);
     if (rulesRes.data) {
@@ -50,6 +53,8 @@ export default function LoyaltyPage() {
       setPointsPer100(String(r.points_per_100_pkr));
       setPkrPerPoint(String(r.pkr_per_point_redemption));
       setBdayMultiplier(String(r.birthday_bonus_multiplier));
+    } else {
+      setRules(null);
     }
     if (clientsRes.data) setTopClients(clientsRes.data as Client[]);
     setLoading(false);
@@ -58,7 +63,7 @@ export default function LoyaltyPage() {
   useEffect(() => { fetch(); }, [fetch]);
 
   async function saveRules() {
-    if (!salon) return;
+    if (!salon || !currentBranch) return;
     setSaving(true);
     try {
       const data = {
@@ -66,7 +71,7 @@ export default function LoyaltyPage() {
         pkrPerPointRedemption: Number(pkrPerPoint) || 0.5,
         birthdayBonusMultiplier: Number(bdayMultiplier) || 2,
       };
-      const { error } = await saveLoyaltyRules(rules?.id ?? null, data);
+      const { error } = await saveLoyaltyRules(rules?.id ?? null, currentBranch.id, data);
       if (showActionError(error)) return;
       toast.success('Loyalty settings saved');
       fetch();
@@ -79,6 +84,11 @@ export default function LoyaltyPage() {
 
   const totalOutstanding = topClients.reduce((s, c) => s + c.loyalty_points, 0);
   const totalLiability = totalOutstanding * (Number(pkrPerPoint) || 0.5);
+
+  // Loyalty config is per-branch post-037 — without a branch selection we
+  // have nothing to read or save. The rest of the dashboard enforces this
+  // too; short-circuit here so the client calls don't fire unscoped.
+  if (!currentBranch) return null;
 
   return (
     <div className="space-y-4">

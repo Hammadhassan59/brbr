@@ -58,9 +58,15 @@ vi.mock('@/lib/supabase', () => ({
         return {
           select: (_c: string) => ({
             in: (_col: string, ids: string[]) => ({
-              eq: async (_col2: string, _val: string) => ({
-                data: db.products.filter((p) => ids.includes(p.id)),
-                error: null,
+              eq: (_col2: string, _val: string) => ({
+                // Migration 037 added a second .eq('branch_id', …) after the
+                // salon_id filter. The mock still returns rows filtered only
+                // by id — branch scoping is enforced by the caller, and the
+                // test fixture doesn't distinguish.
+                eq: async (_col3: string, _val2: string) => ({
+                  data: db.products.filter((p) => ids.includes(p.id)),
+                  error: null,
+                }),
               }),
             }),
           }),

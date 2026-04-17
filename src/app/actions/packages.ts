@@ -168,7 +168,7 @@ export async function updatePromo(id: string, branchId: string, data: unknown) {
   return { error: null };
 }
 
-export async function saveLoyaltyRules(existingId: string | null, data: {
+export async function saveLoyaltyRules(existingId: string | null, branchId: string, data: {
   pointsPer100Pkr: number;
   pkrPerPointRedemption: number;
   birthdayBonusMultiplier: number;
@@ -178,8 +178,15 @@ export async function saveLoyaltyRules(existingId: string | null, data: {
   const session = writeCheck.session;
   const supabase = createServerClient();
 
+  try {
+    assertBranchMembership(session, branchId);
+  } catch (e) {
+    return { error: tenantErrorMessage(e) };
+  }
+
   const row = {
     salon_id: session.salonId,
+    branch_id: branchId,
     points_per_100_pkr: data.pointsPer100Pkr,
     pkr_per_point_redemption: data.pkrPerPointRedemption,
     birthday_bonus_multiplier: data.birthdayBonusMultiplier,
@@ -196,12 +203,16 @@ export async function saveLoyaltyRules(existingId: string | null, data: {
       .from('loyalty_rules')
       .update(row)
       .eq('id', existingId)
-      .eq('salon_id', session.salonId);
+      .eq('salon_id', session.salonId)
+      .eq('branch_id', branchId);
     if (error) return { error: error.message };
   } else {
+    // Migration 037 swapped the unique constraint from (salon_id) to
+    // (salon_id, branch_id). Upsert on the new key so re-saving for the
+    // same branch updates rather than inserting a duplicate.
     const { error } = await supabase
       .from('loyalty_rules')
-      .insert(row);
+      .upsert(row, { onConflict: 'salon_id,branch_id' });
     if (error) return { error: error.message };
   }
 

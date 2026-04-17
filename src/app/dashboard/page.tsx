@@ -164,16 +164,32 @@ export default function DashboardPage() {
         );
       }
 
-      const { data: productsData } = await supabase
-        .from('products')
-        .select('current_stock, low_stock_threshold')
-        .eq('salon_id', salon.id)
-        .eq('is_active', true);
-      if (productsData) {
-        const low = productsData.filter(
-          (p: { current_stock: number; low_stock_threshold: number }) =>
-            p.current_stock <= p.low_stock_threshold
-        );
+      // Low-stock count uses real per-branch stock (migration 035) + the
+      // per-branch catalog (migration 037). We read active products in the
+      // current branch, join their branch_products row client-side, and
+      // compare. Products pinned to another branch can't show "low stock"
+      // on this dashboard.
+      const [{ data: productsData }, { data: branchProductsData }] = await Promise.all([
+        supabase
+          .from('products')
+          .select('id')
+          .eq('salon_id', salon.id)
+          .eq('branch_id', currentBranch.id)
+          .eq('is_active', true),
+        supabase
+          .from('branch_products')
+          .select('product_id, current_stock, low_stock_threshold')
+          .eq('branch_id', currentBranch.id),
+      ]);
+      if (productsData && branchProductsData) {
+        const bpMap = new Map<string, { current_stock: number; low_stock_threshold: number }>();
+        for (const r of branchProductsData as Array<{ product_id: string; current_stock: number; low_stock_threshold: number }>) {
+          bpMap.set(r.product_id, { current_stock: r.current_stock, low_stock_threshold: r.low_stock_threshold });
+        }
+        const low = (productsData as Array<{ id: string }>).filter((p) => {
+          const bp = bpMap.get(p.id);
+          return bp != null && bp.current_stock <= bp.low_stock_threshold;
+        });
         setLowStockCount(low.length);
       }
 

@@ -172,8 +172,10 @@ function ProductsContent() {
       let productId: string;
       if (editProduct) {
         // Catalog-only fields go through updateProduct (which strips stock +
-        // threshold per migration 035 — those are per-branch now).
-        const { error } = await updateProduct(editProduct.id, {
+        // threshold per migration 035 — those are per-branch now). Migration
+        // 037 pinned the catalog itself to a single branch, so we also pass
+        // branchId for the server-side membership + scope check.
+        const { error } = await updateProduct(editProduct.id, currentBranch.id, {
           name: formName.trim(), brand: formBrand || null, category: formCategory || null,
           inventory_type: formType, unit: formUnit,
           content_per_unit: Number(formContentPerUnit) || 1, content_unit: formContentUnit,
