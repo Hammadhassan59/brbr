@@ -27,6 +27,7 @@ function isPhoneLike(query: string): boolean {
 export function WhatsAppComposeSheet() {
   const { isOpen, options, close } = useWhatsAppCompose();
   const salon = useAppStore((s) => s.salon);
+  const currentBranch = useAppStore((s) => s.currentBranch);
 
   const [recipient, setRecipient] = useState<{ name: string; phone: string } | null>(null);
   const [selectedTemplate, setSelectedTemplate] = useState<TemplateKey>('custom');
@@ -57,7 +58,7 @@ export function WhatsAppComposeSheet() {
 
   // Debounced client search
   useEffect(() => {
-    if (!searchQuery || !salon?.id) {
+    if (!searchQuery || !salon?.id || !currentBranch) {
       setSearchResults([]);
       setShowResults(false);
       return;
@@ -68,8 +69,8 @@ export function WhatsAppComposeSheet() {
       const trimmed = searchQuery.trim().slice(0, 100);
       const pattern = `%${trimmed}%`;
       const [nameRes, phoneRes] = await Promise.all([
-        supabase.from('clients').select('id, name, phone, whatsapp').eq('salon_id', salon.id).ilike('name', pattern).limit(5),
-        supabase.from('clients').select('id, name, phone, whatsapp').eq('salon_id', salon.id).ilike('phone', pattern).limit(5),
+        supabase.from('clients').select('id, name, phone, whatsapp').eq('salon_id', salon.id).eq('branch_id', currentBranch.id).ilike('name', pattern).limit(5),
+        supabase.from('clients').select('id, name, phone, whatsapp').eq('salon_id', salon.id).eq('branch_id', currentBranch.id).ilike('phone', pattern).limit(5),
       ]);
       const merged = new Map<string, ClientResult>();
       for (const row of (nameRes.data || []) as ClientResult[]) merged.set(row.id, row);

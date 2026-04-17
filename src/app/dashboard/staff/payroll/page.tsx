@@ -93,9 +93,13 @@ export default function PayrollPage() {
       );
 
       // Check which staff already have a salary expense for this month
+      // (scoped to this salon + branch — without these filters, the query
+      // would leak across every salon in the DB).
       const { data: existingExpenses } = await supabase
         .from('expenses')
         .select('description')
+        .eq('salon_id', salon.id)
+        .eq('branch_id', currentBranch!.id)
         .eq('category', 'salary')
         .gte('date', startDate)
         .lte('date', endDate);

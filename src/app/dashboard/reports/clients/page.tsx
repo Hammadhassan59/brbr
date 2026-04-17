@@ -28,13 +28,14 @@ export default function ClientReportPage() {
   const [isBulkSending, setIsBulkSending] = useState(false);
   const [bulkSendIndex, setBulkSendIndex] = useState(0);
 
+  const { currentBranch } = useAppStore();
   const fetch = useCallback(async () => {
-    if (!salon) return;
+    if (!salon || !currentBranch) return;
     setLoading(true);
-    const { data } = await supabase.from('clients').select('*').eq('salon_id', salon.id).order('created_at', { ascending: false });
+    const { data } = await supabase.from('clients').select('*').eq('salon_id', salon.id).eq('branch_id', currentBranch.id).order('created_at', { ascending: false });
     if (data) setClients(data as Client[]);
     setLoading(false);
-  }, [salon]);
+  }, [salon, currentBranch]);
 
   useEffect(() => { fetch(); }, [fetch]);
 

@@ -82,6 +82,7 @@ export default function StaffListPage() {
         .from('bills')
         .select('staff_id, total_amount')
         .in('staff_id', ids)
+        .eq('branch_id', currentBranch!.id)
         .eq('status', 'paid')
         .gte('created_at', `${today}T00:00:00`)
         .lte('created_at', `${today}T23:59:59`);

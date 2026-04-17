@@ -32,7 +32,7 @@ export default function ClientProfilePage() {
   const params = useParams();
   const router = useRouter();
   const { open: openWhatsApp } = useWhatsAppCompose();
-  const { currentBranch } = useAppStore();
+  const { currentBranch, salon } = useAppStore();
   const clientId = params.id as string;
 
   const [client, setClient] = useState<Client | null>(null);
@@ -72,7 +72,7 @@ export default function ClientProfilePage() {
     setLoading(true);
     try {
       const [clientRes, billsRes, udhaarRes, pkgRes, statsRes] = await Promise.all([
-        supabase.from('clients').select('*').eq('id', clientId).single(),
+        supabase.from('clients').select('*').eq('id', clientId).eq('salon_id', salon?.id || '').eq('branch_id', currentBranch?.id || '').maybeSingle(),
         supabase
           .from('bills')
           .select('*, items:bill_items(*), staff:staff(name)')

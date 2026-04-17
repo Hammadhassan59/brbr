@@ -42,13 +42,14 @@ export default function ReportsPage() {
     try {
       const [billsRes, staffRes, productsRes, branchProductsRes, clientsRes, expensesRes, staffBillsRes] = await Promise.all([
         supabase.from('bills').select('total_amount, created_at, status').eq('branch_id', currentBranch.id).eq('status', 'paid'),
-        supabase.from('staff').select('name, id').eq('branch_id', currentBranch.id).eq('is_active', true),
+        // Staff at this branch via staff_branches join (supports multi-branch stylists).
+        supabase.from('staff').select('name, id, staff_branches!inner(branch_id)').eq('salon_id', salon.id).eq('staff_branches.branch_id', currentBranch.id).eq('is_active', true),
         // Products are per-branch post-037; the stock numbers live in
         // branch_products. Both need the current branch so the low-stock
         // count matches what the inventory page shows.
         supabase.from('products').select('id').eq('salon_id', salon.id).eq('branch_id', currentBranch.id).eq('is_active', true),
         supabase.from('branch_products').select('product_id, current_stock, low_stock_threshold').eq('branch_id', currentBranch.id),
-        supabase.from('clients').select('udhaar_balance').eq('salon_id', salon.id),
+        supabase.from('clients').select('udhaar_balance').eq('salon_id', salon.id).eq('branch_id', currentBranch.id),
         supabase.from('expenses').select('amount').eq('branch_id', currentBranch.id),
         supabase.from('bills').select('staff_id, total_amount').eq('branch_id', currentBranch.id).eq('status', 'paid'),
       ]);

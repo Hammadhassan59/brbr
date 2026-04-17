@@ -88,7 +88,9 @@ export default function DailyReportPage() {
           memberBranchIds.length
             ? supabase.from('bills').select('*, items:bill_items(*)').in('branch_id', memberBranchIds).gte('created_at', `${date}T00:00:00`).lte('created_at', `${date}T23:59:59`).order('created_at', { ascending: false })
             : Promise.resolve({ data: [], error: null }),
-          supabase.from('expenses').select('*').eq('salon_id', salon.id).eq('date', date).order('created_at', { ascending: false }),
+          memberBranchIds.length
+            ? supabase.from('expenses').select('*').eq('salon_id', salon.id).in('branch_id', memberBranchIds).eq('date', date).order('created_at', { ascending: false })
+            : Promise.resolve({ data: [], error: null }),
         ]);
         if (sumRes.data) setSummary(sumRes.data as DailySummary);
         if (billsRes.data) setBills(billsRes.data as (Bill & { items?: BillItem[] })[]);
