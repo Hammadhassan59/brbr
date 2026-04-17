@@ -126,15 +126,6 @@ export interface Staff {
   created_at: string;
 }
 
-export interface OnboardingStatus {
-  has_clients: boolean;
-  has_appointments: boolean;
-  has_sale: boolean;
-  has_payment_methods: boolean;
-  staff_logged_in: boolean;
-  onboarding_dismissed: boolean;
-}
-
 export interface Service {
   id: string;
   salon_id: string;

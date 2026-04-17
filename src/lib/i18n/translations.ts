@@ -98,15 +98,7 @@ export const translations = {
     yesterday: 'Yesterday',
 
     // Onboarding
-    gettingStarted: 'Getting Started',
-    complete: 'complete',
-    dismiss: 'Dismiss',
     allSet: "You're all set!",
-    addFirstClient: 'Add first client',
-    bookAppointment: 'Book appointment',
-    completeSale: 'Complete a sale',
-    paymentMethods: 'Payment methods',
-    inviteStaff: 'Invite staff',
 
     // Staff Welcome
     welcomeGreeting: 'Welcome, {name}!',
@@ -227,15 +219,7 @@ export const translations = {
     yesterday: 'کل',
 
     // Onboarding
-    gettingStarted: 'شروع کریں',
-    complete: 'مکمل',
-    dismiss: 'ہٹائیں',
     allSet: 'سب تیار ہے!',
-    addFirstClient: 'پہلا کلائنٹ شامل کریں',
-    bookAppointment: 'اپائنٹمنٹ بک کریں',
-    completeSale: 'سیل مکمل کریں',
-    paymentMethods: 'ادائیگی کے طریقے',
-    inviteStaff: 'سٹاف کو مدعو کریں',
 
     // Staff Welcome
     welcomeGreeting: '!خوش آمدید، {name}',

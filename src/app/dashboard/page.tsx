@@ -13,7 +13,6 @@ import { StaffPerformanceTable } from './components/staff-performance-table';
 import { AppointmentsFeed } from './components/appointments-feed';
 import { AlertsPanel, buildAlerts } from './components/alerts-panel';
 import { StylistDashboard } from './components/stylist-dashboard';
-import { OnboardingBanner } from './components/onboarding-banner';
 import { Store, ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { formatPKDate } from '@/lib/utils/dates';
@@ -541,10 +540,6 @@ export default function DashboardPage() {
           </Button>
         </div>
       </div>
-
-      {canManageSalon && salon && (
-        <OnboardingBanner salonId={salon.id} />
-      )}
 
       <KPICards
         summary={summary}
