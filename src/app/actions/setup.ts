@@ -324,11 +324,12 @@ export async function setupSalon(data: {
 
   if (branchErr) return { data: null, error: safeError(branchErr) };
 
-  // Create services
+  // Create services — per-branch since migration 036.
   if (data.services.length > 0) {
     const { error: svcErr } = await supabase.from('services').insert(
       data.services.map((s, i) => ({
         salon_id: newSalon.id,
+        branch_id: branch.id,
         name: s.name,
         category: s.category,
         base_price: s.price,
@@ -370,9 +371,12 @@ export async function setupSalon(data: {
 
     if (authErr) return { data: null, error: `Failed to create account for ${s.name}: ${safeError(authErr)}` };
 
-    const { error: staffErr } = await supabase.from('staff').insert({
+    // Migration 036 renamed staff.branch_id → primary_branch_id and added a
+    // staff_branches join table for multi-branch stylists. New staff start
+    // with membership in the main branch only; owners can extend later.
+    const { data: newStaff, error: staffErr } = await supabase.from('staff').insert({
       salon_id: newSalon.id,
-      branch_id: branch.id,
+      primary_branch_id: branch.id,
       name: s.name,
       email: s.email,
       phone: s.phone,
@@ -382,8 +386,14 @@ export async function setupSalon(data: {
       base_salary: s.baseSalary ?? 0,
       commission_type: s.commissionType && s.commissionType !== 'none' ? s.commissionType : null,
       commission_rate: s.commissionRate ?? 0,
-    });
+    }).select('id').single();
     if (staffErr) return { data: null, error: safeError(staffErr) };
+
+    const { error: linkErr } = await supabase.from('staff_branches').insert({
+      staff_id: newStaff.id,
+      branch_id: branch.id,
+    });
+    if (linkErr) return { data: null, error: safeError(linkErr) };
   }
 
   // Send welcome email — best-effort, failures don't block setup.
