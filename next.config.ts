@@ -4,6 +4,13 @@ const nextConfig: NextConfig = {
   output: "standalone",
   experimental: {
     viewTransition: true,
+    // Server Actions default to 1 MB, which rejects payment-screenshot
+    // uploads before the action's own 10 MB validation can run. Raise to
+    // match the app-level limit (see payment-requests.ts submitPaymentRequest
+    // and payment-submit-modal.tsx).
+    serverActions: {
+      bodySizeLimit: '10mb',
+    },
   },
   // pdfkit reads .afm font files at runtime via fs.readFileSync (Helvetica,
   // Courier, Times). Two layers of fix needed:
