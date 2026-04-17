@@ -4,6 +4,7 @@ import { Suspense, useEffect, useState, useCallback } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Search, Plus, Package as PackageIcon, Minus, X } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import { fetchProductsWithBranchStock, type ProductWithBranchStock } from '@/lib/db';
 import { useAppStore } from '@/store/app-store';
 import { formatPKR } from '@/lib/utils/currency';
 import { createProduct, updateProduct, syncProductServiceLinks, adjustStock } from '@/app/actions/inventory';
@@ -19,7 +20,7 @@ import { Switch } from '@/components/ui/switch';
 import toast from 'react-hot-toast';
 import { showActionError, handleSubscriptionError } from '@/components/paywall-dialog';
 import { EmptyState } from '@/components/empty-state';
-import type { Product, InventoryType, Service, ProductServiceLink } from '@/types/database';
+import type { InventoryType, Service, ProductServiceLink } from '@/types/database';
 
 type Tab = 'all' | 'backbar' | 'retail' | 'low';
 
@@ -37,7 +38,7 @@ function ProductsContent() {
   const searchParams = useSearchParams();
   const { salon, currentBranch } = useAppStore();
 
-  const [products, setProducts] = useState<Product[]>([]);
+  const [products, setProducts] = useState<ProductWithBranchStock[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [tab, setTab] = useState<Tab>((searchParams.get('tab') as Tab) || 'all');
@@ -45,7 +46,7 @@ function ProductsContent() {
 
   // Product form modal
   const [showForm, setShowForm] = useState(false);
-  const [editProduct, setEditProduct] = useState<Product | null>(null);
+  const [editProduct, setEditProduct] = useState<ProductWithBranchStock | null>(null);
   const [formName, setFormName] = useState('');
   const [formBrand, setFormBrand] = useState('');
   const [formCategory, setFormCategory] = useState('');
@@ -61,7 +62,7 @@ function ProductsContent() {
 
   // Stock adjustment modal
   const [showAdjust, setShowAdjust] = useState(false);
-  const [adjustProduct, setAdjustProduct] = useState<Product | null>(null);
+  const [adjustProduct, setAdjustProduct] = useState<ProductWithBranchStock | null>(null);
   const [adjustQty, setAdjustQty] = useState('');
   const [adjustReason, setAdjustReason] = useState('');
   const [savingAdjust, setSavingAdjust] = useState(false);
@@ -70,12 +71,18 @@ function ProductsContent() {
   const [services, setServices] = useState<Service[]>([]);
 
   const fetchProducts = useCallback(async () => {
-    if (!salon) return;
+    if (!salon || !currentBranch) return;
     setLoading(true);
-    const { data } = await supabase.from('products').select('*').eq('salon_id', salon.id).eq('is_active', true).order('name');
-    if (data) setProducts(data as Product[]);
-    setLoading(false);
-  }, [salon]);
+    try {
+      const rows = await fetchProductsWithBranchStock(salon.id, currentBranch.id);
+      setProducts(rows);
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to load products');
+    } finally {
+      setLoading(false);
+    }
+  }, [salon, currentBranch]);
 
   useEffect(() => { fetchProducts(); }, [fetchProducts]);
 
@@ -95,7 +102,7 @@ function ProductsContent() {
   const [formLinkSvcId, setFormLinkSvcId] = useState('');
   const [formLinkQty, setFormLinkQty] = useState('');
 
-  async function openForm(product?: Product) {
+  async function openForm(product?: ProductWithBranchStock) {
     // Load services for link picker
     if (salon && services.length === 0) {
       const { data } = await supabase.from('services').select('*').eq('salon_id', salon.id).eq('is_active', true).order('name');
@@ -146,7 +153,7 @@ function ProductsContent() {
   }
 
   async function saveProduct() {
-    if (!salon) return;
+    if (!salon || !currentBranch) return;
     if (!formName.trim()) { toast.error('Name required'); return; }
     if (Number(formPurchasePrice) > 0 && Number(formRetailPrice) > 0 && Number(formPurchasePrice) > Number(formRetailPrice)) {
       toast('Purchase price exceeds retail price — check your values');
@@ -155,18 +162,49 @@ function ProductsContent() {
     try {
       let productId: string;
       if (editProduct) {
+        // Catalog-only fields go through updateProduct (which strips stock +
+        // threshold per migration 035 — those are per-branch now).
         const { error } = await updateProduct(editProduct.id, {
           name: formName.trim(), brand: formBrand || null, category: formCategory || null,
           inventory_type: formType, unit: formUnit,
           content_per_unit: Number(formContentPerUnit) || 1, content_unit: formContentUnit,
           purchase_price: Number(formPurchasePrice) || 0,
-          retail_price: Number(formRetailPrice) || 0, current_stock: Number(formStock) || 0, low_stock_threshold: Number(formThreshold) || 5,
+          retail_price: Number(formRetailPrice) || 0,
         });
         if (showActionError(error)) return;
         productId = editProduct.id;
+
+        // Per-branch: if stock was changed, book the delta as an adjustment
+        // for the current branch. This keeps a full audit trail in
+        // stock_movements rather than silently clobbering the number.
+        const newStock = Number(formStock) || 0;
+        const delta = newStock - (editProduct.current_stock || 0);
+        if (delta !== 0) {
+          const { error: adjErr } = await adjustStock(
+            editProduct.id,
+            currentBranch.id,
+            delta,
+            'Edited in product form',
+          );
+          if (showActionError(adjErr)) return;
+        }
+
+        // Per-branch: if threshold changed, update branch_products directly.
+        // RLS allows salon members to update their own branch's rows.
+        const newThreshold = Number(formThreshold) || 5;
+        if (newThreshold !== (editProduct.low_stock_threshold || 5)) {
+          const { error: threshErr } = await supabase
+            .from('branch_products')
+            .update({ low_stock_threshold: newThreshold })
+            .eq('branch_id', currentBranch.id)
+            .eq('product_id', editProduct.id);
+          if (threshErr) { toast.error(threshErr.message); return; }
+        }
+
         toast.success('Product updated');
       } else {
         const { data: newProd, error } = await createProduct({
+          branchId: currentBranch.id,
           name: formName.trim(), brand: formBrand || null, category: formCategory || null,
           inventoryType: formType, unit: formUnit,
           contentPerUnit: Number(formContentPerUnit) || 1, contentUnit: formContentUnit,
@@ -210,13 +248,13 @@ function ProductsContent() {
     finally { setSavingAdjust(false); }
   }
 
-  function getStockBadge(p: Product) {
+  function getStockBadge(p: ProductWithBranchStock) {
     if (p.current_stock <= 0) return <Badge variant="destructive" className="text-[10px]">Out</Badge>;
     if (p.current_stock <= p.low_stock_threshold) return <Badge variant="outline" className="text-[10px] text-yellow-600 border-yellow-500/25 bg-yellow-500/10">Low</Badge>;
     return <Badge variant="outline" className="text-[10px] text-green-600 border-green-500/25 bg-green-500/10">OK</Badge>;
   }
 
-  const margin = (p: Product) => p.purchase_price > 0 && p.retail_price > 0 ? Math.round((p.retail_price - p.purchase_price) / p.purchase_price * 100) : 0;
+  const margin = (p: ProductWithBranchStock) => p.purchase_price > 0 && p.retail_price > 0 ? Math.round((p.retail_price - p.purchase_price) / p.purchase_price * 100) : 0;
 
   return (
     <div className="space-y-6">
@@ -355,8 +393,15 @@ function ProductsContent() {
               </div>}
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <div><Label className="text-xs">Current Stock</Label><Input type="number" value={formStock} onChange={(e) => setFormStock(e.target.value)} className="mt-1" inputMode="numeric" /></div>
-              <div><Label className="text-xs">Low Stock Threshold</Label><Input type="number" value={formThreshold} onChange={(e) => setFormThreshold(e.target.value)} className="mt-1" inputMode="numeric" /></div>
+              <div>
+                <Label className="text-xs">{editProduct ? 'Stock at ' : 'Opening Stock at '}{currentBranch?.name || 'this branch'}</Label>
+                <Input type="number" value={formStock} onChange={(e) => setFormStock(e.target.value)} className="mt-1" inputMode="numeric" />
+                {editProduct && <p className="text-[10px] text-muted-foreground mt-0.5">Changes are logged as an adjustment for this branch only.</p>}
+              </div>
+              <div>
+                <Label className="text-xs">Low Stock Threshold ({currentBranch?.name || 'this branch'})</Label>
+                <Input type="number" value={formThreshold} onChange={(e) => setFormThreshold(e.target.value)} className="mt-1" inputMode="numeric" />
+              </div>
             </div>
             {/* Service Usage — only for backbar */}
             {formType === 'backbar' && (
@@ -417,7 +462,7 @@ function ProductsContent() {
         <DialogContent className="max-w-sm max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>Adjust Stock — {adjustProduct?.name}</DialogTitle></DialogHeader>
           <div className="space-y-3">
-            <p className="text-sm">Current stock: <span className="font-bold">{adjustProduct?.current_stock} {adjustProduct?.unit}</span></p>
+            <p className="text-sm">Current stock at {currentBranch?.name || 'this branch'}: <span className="font-bold">{adjustProduct?.current_stock} {adjustProduct?.unit}</span></p>
             <div><Label className="text-xs">Quantity Change (+ or -)</Label><Input type="number" value={adjustQty} onChange={(e) => setAdjustQty(e.target.value)} placeholder="+10 or -5" className="mt-1" /></div>
             {adjustQty && <p className="text-xs text-muted-foreground">New stock: {(adjustProduct?.current_stock || 0) + Number(adjustQty)}</p>}
             <div><Label className="text-xs">Reason *</Label><Textarea value={adjustReason} onChange={(e) => setAdjustReason(e.target.value)} placeholder="e.g. Damaged, Recount, Wastage" rows={2} className="mt-1" /></div>

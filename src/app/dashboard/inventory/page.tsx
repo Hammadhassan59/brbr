@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { Package, AlertTriangle, ShoppingBag, Beaker, ArrowRight } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import { fetchProductsWithBranchStock, type ProductWithBranchStock } from '@/lib/db';
 import { useAppStore } from '@/store/app-store';
 import { formatPKR } from '@/lib/utils/currency';
 import { formatDateTime } from '@/lib/utils/dates';
@@ -11,31 +12,34 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 // Layout provides shared tab navigation
-import type { Product, StockMovement } from '@/types/database';
+import type { StockMovement } from '@/types/database';
 
 export default function InventoryDashboardPage() {
-  const { salon } = useAppStore();
-  const [products, setProducts] = useState<Product[]>([]);
+  const { salon, currentBranch } = useAppStore();
+  const [products, setProducts] = useState<ProductWithBranchStock[]>([]);
   const [movements, setMovements] = useState<(StockMovement & { product_name?: string })[]>([]);
   const [loading, setLoading] = useState(true);
 
   const fetch = useCallback(async () => {
-    if (!salon) return;
+    if (!salon || !currentBranch) return;
     setLoading(true);
     try {
-      const [prodRes, movRes] = await Promise.all([
-        supabase.from('products').select('*').eq('salon_id', salon.id).eq('is_active', true).order('name'),
+      const [prods, movRes] = await Promise.all([
+        fetchProductsWithBranchStock(salon.id, currentBranch.id),
         // stock_movements has no salon_id column — inner-join products and filter
         // by product.salon_id so we never surface another tenant's movements.
+        // Note: movements are branch-tagged via `branch_id` on the row itself,
+        // but we intentionally show recent activity across the whole salon here
+        // so owners can see cross-branch activity at a glance.
         supabase.from('stock_movements').select('*, product:products!inner(name, salon_id)').eq('product.salon_id', salon.id).order('created_at', { ascending: false }).limit(10),
       ]);
-      if (prodRes.data) setProducts(prodRes.data as Product[]);
+      setProducts(prods);
       if (movRes.data) setMovements(movRes.data.map((m: Record<string, unknown>) => ({
         ...m, product_name: (m.product as { name: string } | null)?.name,
       })) as (StockMovement & { product_name?: string })[]);
     } catch (err) { console.error(err); }
     finally { setLoading(false); }
-  }, [salon]);
+  }, [salon, currentBranch]);
 
   useEffect(() => { fetch(); }, [fetch]);
 

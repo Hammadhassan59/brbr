@@ -11,6 +11,7 @@ import {
 } from '@/lib/tenant-guard';
 
 export async function createProduct(data: {
+  branchId: string;
   name: string;
   brand?: string | null;
   category?: string | null;
@@ -28,6 +29,20 @@ export async function createProduct(data: {
   const session = writeCheck.session;
   const supabase = createServerClient();
 
+  // Branch must belong to this salon — opening stock will be written to it.
+  try {
+    await assertBranchOwned(data.branchId, session.salonId);
+  } catch (e) {
+    return { data: null, error: tenantErrorMessage(e) };
+  }
+
+  // Insert the catalog row. The `products_seed_branch_products` trigger
+  // auto-creates a branch_products row for every branch in this salon with
+  // 0 stock and the default threshold (5). We do NOT write the deprecated
+  // products.current_stock / low_stock_threshold tombstone columns — the
+  // threshold is set per-branch on branch_products below for the caller's
+  // current branch; other branches keep the default until their owner
+  // tunes them.
   const { data: result, error } = await supabase
     .from('products')
     .insert({
@@ -41,13 +56,45 @@ export async function createProduct(data: {
       content_unit: data.contentUnit,
       purchase_price: data.purchasePrice || 0,
       retail_price: data.retailPrice || 0,
-      current_stock: data.currentStock || 0,
-      low_stock_threshold: data.lowStockThreshold || 5,
     })
     .select()
     .single();
 
   if (error) return { data: null, error: error.message };
+  if (!result) return { data: null, error: 'Product insert returned no row' };
+
+  // Opening stock + threshold: applied to the CALLER's current branch only.
+  // The seed trigger has already inserted a 0-stock, default-threshold row
+  // for (branchId, result.id); we update it here.
+  const opening = Number(data.currentStock) || 0;
+  const thresholdProvided = typeof data.lowStockThreshold === 'number';
+  if (opening > 0 || thresholdProvided) {
+    const patch: { current_stock?: number; low_stock_threshold?: number } = {};
+    if (opening > 0) patch.current_stock = opening;
+    if (thresholdProvided) patch.low_stock_threshold = data.lowStockThreshold!;
+
+    const { error: stockErr } = await supabase
+      .from('branch_products')
+      .update(patch)
+      .eq('branch_id', data.branchId)
+      .eq('product_id', result.id);
+    if (stockErr) return { data: result, error: stockErr.message };
+
+    // Audit trail for the opening stock (no row needed for a threshold-only
+    // change — that's config, not a movement).
+    if (opening > 0) {
+      await supabase
+        .from('stock_movements')
+        .insert({
+          product_id: result.id,
+          branch_id: data.branchId,
+          movement_type: 'adjustment',
+          quantity: opening,
+          notes: 'Opening stock',
+        });
+    }
+  }
+
   return { data: result, error: null };
 }
 
@@ -137,7 +184,9 @@ export async function adjustStock(productId: string, branchId: string, quantity:
   const session = writeCheck.session;
   const supabase = createServerClient();
 
-  // Both the product and the branch must belong to this salon.
+  // Both the product and the branch must belong to this salon. The
+  // branch_products row is keyed by (branch_id, product_id) and has no
+  // salon_id; these two parent-guard calls are the only isolation.
   try {
     await assertProductOwned(productId, session.salonId);
     await assertBranchOwned(branchId, session.salonId);
@@ -145,23 +194,30 @@ export async function adjustStock(productId: string, branchId: string, quantity:
     return { error: tenantErrorMessage(e) };
   }
 
-  // Get current stock (already verified ours above)
-  const { data: product } = await supabase
-    .from('products')
+  // Read per-branch stock from branch_products — products.current_stock is
+  // a deprecated tombstone after migration 035.
+  const { data: bp, error: bpErr } = await supabase
+    .from('branch_products')
     .select('current_stock')
-    .eq('id', productId)
-    .eq('salon_id', session.salonId)
-    .single();
+    .eq('branch_id', branchId)
+    .eq('product_id', productId)
+    .maybeSingle();
 
-  if (!product) return { error: 'Product not found' };
+  if (bpErr) return { error: bpErr.message };
+  if (!bp) {
+    // The seed triggers guarantee a row exists for every (branch, product)
+    // pair in the salon. Missing here means a genuinely unknown combination.
+    return { error: 'Branch inventory row not found' };
+  }
 
-  const newStock = Math.max(0, product.current_stock + quantity);
+  const current = Number(bp.current_stock) || 0;
+  const newStock = Math.max(0, current + quantity);
 
   const { error: updateErr } = await supabase
-    .from('products')
+    .from('branch_products')
     .update({ current_stock: newStock })
-    .eq('id', productId)
-    .eq('salon_id', session.salonId);
+    .eq('branch_id', branchId)
+    .eq('product_id', productId);
 
   if (updateErr) return { error: updateErr.message };
 
@@ -192,9 +248,17 @@ export async function deductStockForBill(params: {
   billId: string;
   items: Array<{ type: 'service' | 'product'; serviceId: string | null; productId: string | null; quantity: number; name: string }>;
 }) {
-  const { error: writeError } = await checkWriteAccess();
-  if (writeError) return { error: writeError };
+  const writeCheck = await checkWriteAccess();
+  if (writeCheck.error !== null) return { error: writeCheck.error };
+  const session = writeCheck.session;
   const supabase = createServerClient();
+
+  // Branch must belong to this salon — stock is deducted at this branch.
+  try {
+    await assertBranchOwned(params.branchId, session.salonId);
+  } catch (e) {
+    return { error: tenantErrorMessage(e) };
+  }
 
   // Aggregate deductions per product. Track packaging units (bottles sold
   // directly) and content units (ml/g used on back-bar services) separately,
@@ -244,32 +308,60 @@ export async function deductStockForBill(params: {
   // Apply deductions. Convert content units to fractional bottles using
   // content_per_unit so a 300ml bottle used 30ml only drops stock by 0.1.
   const productIds = Array.from(deductions.keys());
-  const { data: products } = await supabase
-    .from('products')
-    .select('id, current_stock, content_per_unit')
-    .in('id', productIds);
 
-  const stockMap: Record<string, { current: number; perUnit: number }> = {};
-  (products ?? []).forEach((p: { id: string; current_stock: number; content_per_unit: number }) => {
-    stockMap[p.id] = {
-      current: Number(p.current_stock) || 0,
-      perUnit: Number(p.content_per_unit) || 1,
-    };
+  // content_per_unit stays on `products` (catalog attribute), but current
+  // stock now lives per-branch on `branch_products`. Two reads: one for the
+  // packaging math, one for the per-branch balance we're about to decrement.
+  const [{ data: catalog }, { data: bpRows }] = await Promise.all([
+    supabase
+      .from('products')
+      .select('id, content_per_unit')
+      .in('id', productIds)
+      .eq('salon_id', session.salonId),
+    supabase
+      .from('branch_products')
+      .select('product_id, current_stock')
+      .eq('branch_id', params.branchId)
+      .in('product_id', productIds),
+  ]);
+
+  const perUnitById: Record<string, number> = {};
+  (catalog ?? []).forEach((p: { id: string; content_per_unit: number }) => {
+    perUnitById[p.id] = Number(p.content_per_unit) || 1;
+  });
+
+  const stockByProduct: Record<string, number> = {};
+  (bpRows ?? []).forEach((r: { product_id: string; current_stock: number }) => {
+    stockByProduct[r.product_id] = Number(r.current_stock) || 0;
   });
 
   const movements: Array<{ product_id: string; branch_id: string; movement_type: string; quantity: number; notes: string }> = [];
   for (const [productId, d] of deductions) {
-    const info = stockMap[productId];
-    if (!info) continue;
-    const bottlesFromContent = info.perUnit > 0 ? d.content / info.perUnit : 0;
+    const perUnit = perUnitById[productId];
+    if (!perUnit) continue;
+    const bottlesFromContent = perUnit > 0 ? d.content / perUnit : 0;
     const totalBottleDeduct = d.bottles + bottlesFromContent;
     if (totalBottleDeduct <= 0) continue;
-    const newStock = Math.max(0, info.current - totalBottleDeduct);
-    await supabase.from('products').update({ current_stock: newStock }).eq('id', productId);
+    // If the branch_products row somehow wasn't seeded (shouldn't happen —
+    // trigger covers it), skip this product rather than fabricating stock.
+    if (!(productId in stockByProduct)) continue;
+
+    const current = stockByProduct[productId];
+    const newStock = Math.max(0, current - totalBottleDeduct);
+    await supabase
+      .from('branch_products')
+      .update({ current_stock: newStock })
+      .eq('branch_id', params.branchId)
+      .eq('product_id', productId);
+
+    // Back-bar usage on a service uses 'backbar_use'; direct retail sale
+    // uses 'sale'. When both happen on the same bill for the same product
+    // (rare), we classify by which dominated.
+    const movementType = d.bottles > 0 ? 'sale' : 'backbar_use';
     movements.push({
       product_id: productId,
       branch_id: params.branchId,
-      movement_type: 'sale',
+      movement_type: movementType,
       quantity: -totalBottleDeduct,
       notes: `Bill ${params.billId}`,
     });

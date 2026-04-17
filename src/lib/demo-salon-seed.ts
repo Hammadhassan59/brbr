@@ -63,7 +63,50 @@ export interface DemoSalonSeed {
   udhaarPayments: Array<Record<string, unknown>>;
   advances: Array<Record<string, unknown>>;
   stockMovements: Array<Record<string, unknown>>;
+  /**
+   * Per-product stock plan. The caller resolves branches at apply time and
+   * UPSERTs one `branch_products` row per (branch, product) pair:
+   *   main branch → `mainStock`
+   *   secondary branches → `mainStock * secondaryRatio` (floored, min 1)
+   *
+   * Both values are whole units. `lowStockThreshold` is applied uniformly
+   * across branches so the low-stock UI is meaningful on day-one demos.
+   */
+  branchStockPlan: Array<{
+    productId: string;
+    mainStock: number;
+    secondaryRatio: number;
+    lowStockThreshold: number;
+  }>;
 }
+
+// Per-product stock plan for the demo salon. Main-branch values are
+// intentionally the same as the catalog seed in migration 032 so the demo
+// looks identical at tick #1 whether or not the backfill already ran. The
+// `secondaryRatio` gives smaller branches a plausible, not-empty stock
+// without making transfer demos pointless.
+const DEMO_STOCK_PLAN: Array<{
+  productId: string;
+  mainStock: number;
+  secondaryRatio: number;
+  lowStockThreshold: number;
+}> = [
+  { productId: DEMO_PRODUCT_IDS.shampoo,     mainStock: 24, secondaryRatio: 0.40, lowStockThreshold: 5  },
+  { productId: DEMO_PRODUCT_IDS.conditioner, mainStock: 18, secondaryRatio: 0.40, lowStockThreshold: 5  },
+  { productId: DEMO_PRODUCT_IDS.wax,         mainStock: 30, secondaryRatio: 0.40, lowStockThreshold: 6  },
+  { productId: DEMO_PRODUCT_IDS.gel,         mainStock: 25, secondaryRatio: 0.40, lowStockThreshold: 5  },
+  { productId: DEMO_PRODUCT_IDS.razors,      mainStock: 40, secondaryRatio: 0.50, lowStockThreshold: 10 },
+  { productId: DEMO_PRODUCT_IDS.hairColor,   mainStock: 12, secondaryRatio: 0.35, lowStockThreshold: 3  },
+  { productId: DEMO_PRODUCT_IDS.bleach,      mainStock: 20, secondaryRatio: 0.35, lowStockThreshold: 4  },
+  { productId: DEMO_PRODUCT_IDS.faceWash,    mainStock: 22, secondaryRatio: 0.40, lowStockThreshold: 5  },
+  { productId: DEMO_PRODUCT_IDS.lotion,      mainStock: 14, secondaryRatio: 0.35, lowStockThreshold: 4  },
+  { productId: DEMO_PRODUCT_IDS.hairOil,     mainStock: 28, secondaryRatio: 0.45, lowStockThreshold: 6  },
+  { productId: DEMO_PRODUCT_IDS.beardOil,    mainStock: 16, secondaryRatio: 0.35, lowStockThreshold: 4  },
+  { productId: DEMO_PRODUCT_IDS.foam,        mainStock: 15, secondaryRatio: 0.40, lowStockThreshold: 4  },
+  { productId: DEMO_PRODUCT_IDS.aftershave,  mainStock: 12, secondaryRatio: 0.30, lowStockThreshold: 3  },
+  { productId: DEMO_PRODUCT_IDS.towels,      mainStock: 50, secondaryRatio: 0.50, lowStockThreshold: 10 },
+  { productId: DEMO_PRODUCT_IDS.talc,        mainStock: 18, secondaryRatio: 0.35, lowStockThreshold: 4  },
+];
 
 // Service price table — kept in sync with migration 032 inserts.
 const SERVICE_PRICES: Record<string, { name: string; price: number; duration: number }> = {
@@ -464,5 +507,45 @@ export function getDemoSalonSeed(): DemoSalonSeed {
     udhaarPayments,
     advances,
     stockMovements,
+    branchStockPlan: DEMO_STOCK_PLAN,
   };
+}
+
+/**
+ * Expand the static `branchStockPlan` across the demo salon's actual branches
+ * (queried at apply time). Main branch — the one seeded in migration 032, or
+ * `is_main=true` in general — gets `mainStock`; every other branch gets
+ * `max(1, floor(mainStock * secondaryRatio))`. The intent is that a demo
+ * viewer sees plausible stock on every branch they toggle to.
+ *
+ * Returns rows ready for UPSERT into `branch_products` keyed by
+ * (branch_id, product_id).
+ */
+export function buildDemoBranchProductRows(
+  branches: Array<{ id: string; is_main?: boolean | null }>,
+  plan: DemoSalonSeed['branchStockPlan'] = DEMO_STOCK_PLAN,
+): Array<{ branch_id: string; product_id: string; current_stock: number; low_stock_threshold: number }> {
+  if (branches.length === 0) return [];
+
+  // Deterministic main-branch resolution: explicit is_main=true wins; fall
+  // back to the seeded DEMO_BRANCH_ID; finally to the first branch.
+  const mainBranch =
+    branches.find((b) => b.is_main === true) ??
+    branches.find((b) => b.id === DEMO_BRANCH_ID) ??
+    branches[0];
+
+  const rows: Array<{ branch_id: string; product_id: string; current_stock: number; low_stock_threshold: number }> = [];
+  for (const branch of branches) {
+    const isMain = branch.id === mainBranch.id;
+    for (const p of plan) {
+      const stock = isMain ? p.mainStock : Math.max(1, Math.floor(p.mainStock * p.secondaryRatio));
+      rows.push({
+        branch_id: branch.id,
+        product_id: p.productId,
+        current_stock: stock,
+        low_stock_threshold: p.lowStockThreshold,
+      });
+    }
+  }
+  return rows;
 }

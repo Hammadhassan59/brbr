@@ -13,6 +13,7 @@ import type {
   Advance, AdvanceInsert,
   Tip, TipInsert,
   Product, ProductInsert,
+  BranchProduct,
   StockMovement, StockMovementInsert,
   Supplier, SupplierInsert,
   PurchaseOrder, PurchaseOrderInsert,
@@ -30,6 +31,22 @@ import type {
   AppointmentWithDetails,
   BillWithDetails,
 } from '@/types/database';
+
+/**
+ * A Product row plus the per-branch stock fields from `branch_products`
+ * for the caller's current branch. Shape is a strict superset of Product so
+ * existing UI that reads `p.current_stock` / `p.low_stock_threshold` keeps
+ * working — the values are now branch-scoped, not salon-wide.
+ *
+ * `branch_product_id` is the primary key of the branch_products row, useful
+ * when the caller needs to write back (e.g. updating thresholds).
+ */
+export interface ProductWithBranchStock extends Omit<Product, 'current_stock' | 'low_stock_threshold'> {
+  current_stock: number;
+  low_stock_threshold: number;
+  /** Primary key of the branch_products row, or undefined if no row exists yet. */
+  branch_product_id?: string;
+}
 
 // ═══════════════════════════════════════
 // Salons
@@ -569,15 +586,59 @@ export async function getProducts(salonId: string) {
   return data as Product[];
 }
 
-export async function getLowStockProducts(salonId: string) {
-  const { data, error } = await supabase
-    .from('products')
-    .select('*')
-    .eq('salon_id', salonId)
-    .eq('is_active', true);
-  if (error) throw error;
-  // Filter client-side since Supabase doesn't support column-to-column comparison easily
-  return (data as Product[]).filter(p => p.current_stock <= p.low_stock_threshold);
+/**
+ * Fetches all active products for a salon and merges in the current branch's
+ * stock + threshold from `branch_products` (migration 035).
+ *
+ * Returns the SAME shape the UI has always expected — `current_stock` and
+ * `low_stock_threshold` fields are present on each row — but the values are
+ * branch-scoped rather than salon-wide. Products without a branch_products
+ * row yet fall back to 0 stock and threshold 5.
+ *
+ * Two parallel queries + client-side Map merge is intentional: it's simpler
+ * than a server-side JOIN view, and the UI pages are all client components
+ * sharing the same supabase client.
+ */
+export async function fetchProductsWithBranchStock(
+  salonId: string,
+  branchId: string,
+): Promise<ProductWithBranchStock[]> {
+  const [productsRes, bpRes] = await Promise.all([
+    supabase
+      .from('products')
+      .select('*')
+      .eq('salon_id', salonId)
+      .eq('is_active', true)
+      .order('name'),
+    supabase
+      .from('branch_products')
+      .select('*')
+      .eq('branch_id', branchId),
+  ]);
+  if (productsRes.error) throw productsRes.error;
+  if (bpRes.error) throw bpRes.error;
+
+  const bpByProduct = new Map<string, BranchProduct>(
+    (bpRes.data as BranchProduct[]).map((bp) => [bp.product_id, bp]),
+  );
+
+  return (productsRes.data as Product[]).map((p) => {
+    const bp = bpByProduct.get(p.id);
+    return {
+      ...p,
+      current_stock: bp?.current_stock ?? 0,
+      low_stock_threshold: bp?.low_stock_threshold ?? 5,
+      branch_product_id: bp?.id,
+    } as ProductWithBranchStock;
+  });
+}
+
+/**
+ * Low-stock subset of {@link fetchProductsWithBranchStock}. Branch-scoped.
+ */
+export async function getLowStockProducts(salonId: string, branchId: string) {
+  const all = await fetchProductsWithBranchStock(salonId, branchId);
+  return all.filter((p) => p.current_stock <= p.low_stock_threshold);
 }
 
 export async function createProduct(product: ProductInsert) {

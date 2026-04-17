@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { timingSafeEqual } from 'node:crypto';
 import { createServerClient } from '@/lib/supabase';
 import { getDemoSeed } from '@/lib/demo-agent-seed';
-import { getDemoSalonSeed } from '@/lib/demo-salon-seed';
+import { getDemoSalonSeed, buildDemoBranchProductRows } from '@/lib/demo-salon-seed';
 import { DEMO_SALON_ID, DEMO_BRANCH_ID } from '@/lib/demo-salon-constants';
 
 // Constant-time comparison so the secret can't be recovered by measuring
@@ -56,6 +56,9 @@ async function resetDemoSalon(
     if (productIds.length) {
       await supabase.from('stock_movements').delete().in('product_id', productIds);
     }
+    // Per-branch transfers (migration 035). Scoped by salon_id so we don't
+    // touch any other tenant's transfers even if IDs overlap.
+    await supabase.from('stock_transfers').delete().eq('salon_id', DEMO_SALON_ID);
 
     // ── Reseed ────────────────────────────────────────────────────────
     const seed = getDemoSalonSeed();
@@ -70,6 +73,24 @@ async function resetDemoSalon(
     if (seed.udhaarPayments.length) await supabase.from('udhaar_payments').insert(seed.udhaarPayments);
     if (seed.advances.length) await supabase.from('advances').insert(seed.advances);
     if (seed.stockMovements.length) await supabase.from('stock_movements').insert(seed.stockMovements);
+
+    // Per-branch stock (migration 035). branch_products rows are auto-seeded
+    // at zero by the DB trigger on product insert; on every demo tick we
+    // UPSERT realistic stock back into them so sales/transfers that happen
+    // between ticks don't drift the demo toward empty shelves. Queries live
+    // branches so this scales past the single seeded main branch.
+    const { data: demoBranches } = await supabase
+      .from('branches')
+      .select('id, is_main')
+      .eq('salon_id', DEMO_SALON_ID);
+    const branchProductRows = buildDemoBranchProductRows(
+      (demoBranches || []) as Array<{ id: string; is_main: boolean | null }>,
+    );
+    if (branchProductRows.length) {
+      await supabase
+        .from('branch_products')
+        .upsert(branchProductRows, { onConflict: 'branch_id,product_id' });
+    }
 
     return { ok: true };
   } catch (err) {

@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { Suspense } from 'react';
 import { usePathname, useSearchParams } from 'next/navigation';
-import { Package, Truck, Users, LayoutDashboard, Beaker } from 'lucide-react';
+import { Package, Truck, Users, LayoutDashboard, Beaker, ArrowLeftRight } from 'lucide-react';
 
 type TabDef = {
   href: string;
@@ -17,6 +17,7 @@ const TABS: TabDef[] = [
   { href: '/dashboard/inventory', label: 'Overview', icon: LayoutDashboard, exact: true },
   { href: '/dashboard/inventory/products', label: 'Products', icon: Package },
   { href: '/dashboard/inventory/products?tab=backbar', label: 'Back Bar', icon: Beaker, matchQuery: { key: 'tab', value: 'backbar' } },
+  { href: '/dashboard/inventory/transfers', label: 'Transfers', icon: ArrowLeftRight },
   { href: '/dashboard/inventory/orders', label: 'Orders', icon: Truck },
   { href: '/dashboard/inventory/suppliers', label: 'Suppliers', icon: Users },
 ];

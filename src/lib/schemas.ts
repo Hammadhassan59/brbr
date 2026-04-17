@@ -62,8 +62,12 @@ export type ClientUpdate = z.infer<typeof clientUpdateSchema>;
 
 // Products
 // Actual columns: name, brand, category, unit, content_per_unit,
-// content_unit, inventory_type, purchase_price, retail_price, current_stock,
-// low_stock_threshold, is_active. No sku/reorder_level/notes in schema.
+// content_unit, inventory_type, purchase_price, retail_price,
+// is_active. current_stock and low_stock_threshold moved to branch_products
+// in migration 035 — those columns are deprecated tombstones on `products`
+// and are NOT editable through this catalog-update path. To change stock,
+// callers must go through adjustStock (per-branch). To change the threshold,
+// callers must update branch_products directly (per-branch).
 export const productUpdateSchema = z
   .object({
     name: z.string().trim().min(1).optional(),
@@ -75,8 +79,6 @@ export const productUpdateSchema = z
     inventory_type: z.enum(['backbar', 'retail']).optional(),
     purchase_price: z.number().nonnegative().optional(),
     retail_price: z.number().nonnegative().optional(),
-    current_stock: z.number().optional(),
-    low_stock_threshold: z.number().nonnegative().optional(),
     is_active: z.boolean().optional(),
   })
   .strip();

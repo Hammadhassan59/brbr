@@ -283,10 +283,22 @@ export interface Product {
   inventory_type: InventoryType;
   purchase_price: number;
   retail_price: number;
+  /** @deprecated Moved to branch_products.current_stock in migration 035. Do not read. */
   current_stock: number;
+  /** @deprecated Moved to branch_products.low_stock_threshold in migration 035. Do not read. */
   low_stock_threshold: number;
   is_active: boolean;
   created_at: string;
+}
+
+export interface BranchProduct {
+  id: string;
+  branch_id: string;
+  product_id: string;
+  current_stock: number;
+  low_stock_threshold: number;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface ProductServiceLink {
@@ -305,6 +317,18 @@ export interface StockMovement {
   reference_id: string | null;
   notes: string | null;
   created_by: string | null;
+  created_at: string;
+}
+
+export interface StockTransfer {
+  id: string;
+  salon_id: string;
+  from_branch_id: string;
+  to_branch_id: string;
+  product_id: string;
+  quantity: number;
+  notes: string | null;
+  transferred_by: string | null;
   created_at: string;
 }
 

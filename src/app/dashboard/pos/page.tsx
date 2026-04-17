@@ -20,7 +20,7 @@ import { PaymentPanel, type SplitPaymentEntry } from './components/payment-panel
 import { CheckoutConfirmation } from './components/checkout-confirmation';
 import { getCheckoutBlockReason } from './components/checkout-gate';
 import toast from 'react-hot-toast';
-import type { Client, Staff, Service, Product, PaymentMethod, AppointmentWithDetails, Package as PkgType } from '@/types/database';
+import type { Client, Staff, Service, Product, PaymentMethod, AppointmentWithDetails, Package as PkgType, BranchProduct } from '@/types/database';
 
 export default function POSPage() {
   return (
@@ -96,14 +96,35 @@ function POSContent() {
   useEffect(() => {
     if (!salon || !currentBranch) return;
     async function load() {
-      const [svcRes, prodRes, pkgRes, staffRes] = await Promise.all([
+      const [svcRes, prodRes, branchProdRes, pkgRes, staffRes] = await Promise.all([
         supabase.from('services').select('*').eq('salon_id', salon!.id).eq('is_active', true).order('sort_order'),
         supabase.from('products').select('*').eq('salon_id', salon!.id).eq('is_active', true).order('name'),
+        // Per-branch inventory (migration 035). The salon-level
+        // products.current_stock / .low_stock_threshold are tombstones —
+        // always merge these in for display + checkout warnings.
+        supabase.from('branch_products').select('product_id,current_stock,low_stock_threshold').eq('branch_id', currentBranch!.id),
         supabase.from('packages').select('*').eq('salon_id', salon!.id).eq('is_active', true).order('name'),
         supabase.from('staff').select('*').eq('branch_id', currentBranch!.id).eq('is_active', true).in('role', ['senior_stylist', 'junior_stylist']).order('name'),
       ]);
       if (svcRes.data) setServices(svcRes.data as Service[]);
-      if (prodRes.data) setProducts(prodRes.data as Product[]);
+      if (prodRes.data) {
+        const bpMap = new Map<string, Pick<BranchProduct, 'current_stock' | 'low_stock_threshold'>>();
+        for (const row of (branchProdRes.data || []) as Array<Pick<BranchProduct, 'product_id' | 'current_stock' | 'low_stock_threshold'>>) {
+          bpMap.set(row.product_id, { current_stock: row.current_stock, low_stock_threshold: row.low_stock_threshold });
+        }
+        // Overwrite the deprecated salon-level stock fields on each Product
+        // with the branch-specific values so downstream UI (BillBuilder,
+        // low-stock warnings) just works.
+        const merged = (prodRes.data as Product[]).map((p) => {
+          const bp = bpMap.get(p.id);
+          return {
+            ...p,
+            current_stock: bp ? Number(bp.current_stock) : 0,
+            low_stock_threshold: bp ? Number(bp.low_stock_threshold) : 0,
+          };
+        });
+        setProducts(merged);
+      }
       if (pkgRes.data) setPackages(pkgRes.data as PkgType[]);
       if (staffRes.data) setStylists(staffRes.data as Staff[]);
       setLoading(false);

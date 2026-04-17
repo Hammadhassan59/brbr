@@ -16,6 +16,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { getBackbarConsumptionReport, recordBackbarActual, type BackbarReportRow } from '@/app/actions/inventory';
+import { fetchProductsWithBranchStock, type ProductWithBranchStock } from '@/lib/db';
 import type { StockMovement, Product, Staff } from '@/types/database';
 
 const MOVE_LABELS: Record<string, { label: string; color: string }> = {
@@ -28,7 +29,7 @@ const MOVE_LABELS: Record<string, { label: string; color: string }> = {
 };
 
 export default function InventoryReportPage() {
-  const { salon } = useAppStore();
+  const { salon, currentBranch } = useAppStore();
   const [loading, setLoading] = useState(true);
   const [reportLoading, setReportLoading] = useState(true);
 
@@ -36,32 +37,36 @@ export default function InventoryReportPage() {
   const [dateTo, setDateTo] = useState(new Date().toISOString().slice(0, 10));
   const [staffFilter, setStaffFilter] = useState('');
 
+  // Movements are filtered by the current branch so the log + retail-sales
+  // roll-up matches the branch-scoped stock valuation above. Owners can
+  // still switch branches from the header to see other branches.
   const [movements, setMovements] = useState<(StockMovement & { product?: Product })[]>([]);
-  const [products, setProducts] = useState<Product[]>([]);
+  const [products, setProducts] = useState<ProductWithBranchStock[]>([]);
   const [movementLimit, setMovementLimit] = useState(50);
   const [staffOptions, setStaffOptions] = useState<Staff[]>([]);
   const [reportRows, setReportRows] = useState<BackbarReportRow[]>([]);
 
   const fetchData = useCallback(async () => {
-    if (!salon) return;
+    if (!salon || !currentBranch) return;
     setLoading(true);
-    const [movRes, prodRes, staffRes] = await Promise.all([
+    const [movRes, prods, staffRes] = await Promise.all([
       supabase
         .from('stock_movements')
         .select('*, product:products!inner(*, salon_id)')
         .eq('product.salon_id', salon.id)
+        .eq('branch_id', currentBranch.id)
         .gte('created_at', `${dateFrom}T00:00:00`)
         .lte('created_at', `${dateTo}T23:59:59`)
         .order('created_at', { ascending: false })
         .limit(200),
-      supabase.from('products').select('*').eq('salon_id', salon.id).eq('is_active', true),
+      fetchProductsWithBranchStock(salon.id, currentBranch.id),
       supabase.from('staff').select('*').eq('salon_id', salon.id).eq('is_active', true).order('name'),
     ]);
     if (movRes.data) setMovements(movRes.data as (StockMovement & { product?: Product })[]);
-    if (prodRes.data) setProducts(prodRes.data as Product[]);
+    setProducts(prods);
     if (staffRes.data) setStaffOptions(staffRes.data as Staff[]);
     setLoading(false);
-  }, [salon, dateFrom, dateTo]);
+  }, [salon, currentBranch, dateFrom, dateTo]);
 
   const fetchReport = useCallback(async () => {
     if (!salon) return;
@@ -130,7 +135,9 @@ export default function InventoryReportPage() {
 
       <Card className="border-border">
         <CardContent className="p-4 text-center">
-          <p className="text-xs text-muted-foreground uppercase tracking-wider">Current Stock Valuation</p>
+          <p className="text-xs text-muted-foreground uppercase tracking-wider">
+            Current Stock Valuation{currentBranch ? ` — ${currentBranch.name}` : ''}
+          </p>
           <p className="text-3xl font-heading font-bold">{formatPKR(totalStockValue)}</p>
         </CardContent>
       </Card>
