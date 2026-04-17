@@ -482,7 +482,7 @@ export default function AdminPaymentsPage() {
         open={previewLoading || !!previewUrl}
         onOpenChange={(o) => { if (!o) { setPreviewUrl(null); setPreviewLoading(false); } }}
       >
-        <DialogContent className="max-w-3xl">
+        <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Payment Screenshot</DialogTitle>
           </DialogHeader>

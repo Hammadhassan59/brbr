@@ -77,14 +77,14 @@ export default function InventoryDashboardPage() {
           { label: 'Backbar Value', value: formatPKR(backbarValue), icon: Beaker, color: 'text-muted-foreground', bg: 'bg-secondary', urgent: false },
         ].map((c) => (
           <Card key={c.label} className={`border-border ${c.urgent ? 'border-amber-500/25 bg-amber-500/5' : ''}`}>
-            <CardContent className="p-4">
+            <CardContent className="p-3 sm:p-5">
               {loading ? <div className="h-12 bg-muted rounded-lg animate-pulse" /> : (
                 <>
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-xs text-muted-foreground">{c.label}</span>
                     <c.icon className="w-4 h-4 text-foreground" />
                   </div>
-                  <p className={`text-xl font-heading font-bold ${c.urgent ? 'text-amber-600' : ''}`}>{c.value}</p>
+                  <p className={`text-lg sm:text-xl font-heading font-bold ${c.urgent ? 'text-amber-600' : ''}`}>{c.value}</p>
                 </>
               )}
             </CardContent>

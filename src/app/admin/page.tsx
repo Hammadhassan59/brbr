@@ -110,7 +110,7 @@ export default function AdminDashboard() {
   return (
     <div className="space-y-6">
       {/* Platform KPIs */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         {[
           { label: 'Total Salons', value: String(platformStats.totalSalons), sub: `${platformStats.activeSalons} active`, icon: Store, color: 'text-blue-600', bg: 'bg-blue-500/10' },
           { label: 'Platform Revenue', value: formatPKRShort(platformStats.monthlyRevenue), sub: `${platformStats.activeSubscribers} active ${platformStats.activeSubscribers === 1 ? 'subscriber' : 'subscribers'} · MRR`, icon: DollarSign, color: 'text-green-600', bg: 'bg-green-500/10' },
@@ -133,7 +133,7 @@ export default function AdminDashboard() {
       </div>
 
       {/* Subscription overview */}
-      <div className="grid grid-cols-3 gap-2 sm:gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
         <Card className="border-green-500/20 bg-green-500/10">
           <CardContent className="p-4 text-center">
             <CheckCircle className="w-5 h-5 text-green-600 mx-auto mb-1" />

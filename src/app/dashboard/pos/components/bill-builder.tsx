@@ -95,16 +95,19 @@ export function BillBuilder({
   return (
     <div className="flex h-full gap-0 relative">
       <div className="flex-1 flex flex-col min-w-0 bg-background md:border-r border-border">
-        <div className="px-3 pt-2 pb-1 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
-          <div className="flex gap-1 min-w-max">
-            {SERVICE_TABS.map((t) => (
-              <button key={t.value} onClick={() => setSvcCategory(t.value)}
-                className={`text-[11px] px-2.5 py-1.5 font-medium rounded-md transition-all duration-150 shrink-0 ${
-                  svcCategory === t.value ? 'bg-foreground text-white' : 'text-muted-foreground hover:text-foreground'
-                }`}
-              >{t.label}</button>
-            ))}
+        <div className="relative">
+          <div className="px-3 pt-2 pb-1 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
+            <div className="flex gap-1 min-w-max">
+              {SERVICE_TABS.map((t) => (
+                <button key={t.value} onClick={() => setSvcCategory(t.value)}
+                  className={`text-[11px] px-2.5 py-1.5 font-medium rounded-md transition-all duration-150 shrink-0 ${
+                    svcCategory === t.value ? 'bg-foreground text-white' : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >{t.label}</button>
+              ))}
+            </div>
           </div>
+          <div className="pointer-events-none absolute top-0 right-0 h-full w-8 bg-gradient-to-l from-background to-transparent md:hidden" />
         </div>
 
         <div className="px-3 pb-2">
@@ -119,7 +122,13 @@ export function BillBuilder({
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-3 pb-2" style={{ scrollbarWidth: 'none' }}>
+        <div
+          className="flex-1 overflow-y-auto overscroll-contain px-3 pb-2"
+          style={{
+            scrollbarWidth: 'none',
+            paddingBottom: 'calc(env(safe-area-inset-bottom) + 1rem)',
+          }}
+        >
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-2 pb-40 md:pb-0">
             {filteredServices.map((svc) => (
               <button

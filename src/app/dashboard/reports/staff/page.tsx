@@ -178,7 +178,7 @@ export default function StaffReportPage() {
           <Card className="border-border">
             <CardHeader className="pb-2"><CardTitle className="text-sm">Attendance</CardTitle></CardHeader>
             <CardContent>
-              <div className="grid grid-cols-4 gap-3 text-center">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-center">
                 {[
                   { label: 'Present', value: attendance.present, color: 'text-green-600' },
                   { label: 'Absent', value: attendance.absent, color: 'text-red-600' },

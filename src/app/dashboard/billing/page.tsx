@@ -203,9 +203,9 @@ export default function BillingPage() {
               No payments yet. Submit one to activate your subscription.
             </div>
           ) : (
-            <div className="overflow-x-auto">
+            <div className="overflow-auto max-h-[60vh]">
               <Table>
-                <TableHeader>
+                <TableHeader className="sticky top-0 bg-background z-10">
                   <TableRow>
                     <TableHead className="pl-4">Date</TableHead>
                     <TableHead>Plan</TableHead>

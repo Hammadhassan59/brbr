@@ -46,36 +46,64 @@ export default function AdminCommissionsPage() {
           <p className="text-sm">No commissions.</p>
         </div>
       ) : (
-        <div className="border rounded-lg overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-muted/50">
-              <tr className="text-left">
-                <th className="px-4 py-3">Date</th>
-                <th className="px-4 py-3">Agent</th>
-                <th className="px-4 py-3">Salon</th>
-                <th className="px-4 py-3">Kind</th>
-                <th className="px-4 py-3">Base</th>
-                <th className="px-4 py-3">%</th>
-                <th className="px-4 py-3">Amount</th>
-                <th className="px-4 py-3">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map(r => (
-                <tr key={r.id} className="border-t">
-                  <td className="px-4 py-3">{new Date(r.created_at).toLocaleDateString('en-PK', { day: 'numeric', month: 'short' })}</td>
-                  <td className="px-4 py-3 font-medium">{r.agent?.name || '—'}</td>
-                  <td className="px-4 py-3">{r.salon?.name || '—'}</td>
-                  <td className="px-4 py-3">{r.kind === 'first_sale' ? 'First sale' : 'Renewal'}</td>
-                  <td className="px-4 py-3">Rs {Number(r.base_amount).toFixed(0)}</td>
-                  <td className="px-4 py-3">{Number(r.pct).toFixed(2)}</td>
-                  <td className="px-4 py-3 font-medium">Rs {Number(r.amount).toFixed(2)}</td>
-                  <td className="px-4 py-3"><span className="text-xs px-2 py-0.5 rounded-full bg-muted">{r.status}</span></td>
+        <>
+          {/* Desktop table */}
+          <div className="hidden md:block border rounded-lg overflow-hidden">
+            <table className="w-full text-sm">
+              <thead className="bg-muted/50">
+                <tr className="text-left">
+                  <th className="px-4 py-3">Date</th>
+                  <th className="px-4 py-3">Agent</th>
+                  <th className="px-4 py-3">Salon</th>
+                  <th className="px-4 py-3">Kind</th>
+                  <th className="px-4 py-3">Base</th>
+                  <th className="px-4 py-3">%</th>
+                  <th className="px-4 py-3">Amount</th>
+                  <th className="px-4 py-3">Status</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {rows.map(r => (
+                  <tr key={r.id} className="border-t">
+                    <td className="px-4 py-3">{new Date(r.created_at).toLocaleDateString('en-PK', { day: 'numeric', month: 'short' })}</td>
+                    <td className="px-4 py-3 font-medium">{r.agent?.name || '—'}</td>
+                    <td className="px-4 py-3">{r.salon?.name || '—'}</td>
+                    <td className="px-4 py-3">{r.kind === 'first_sale' ? 'First sale' : 'Renewal'}</td>
+                    <td className="px-4 py-3">Rs {Number(r.base_amount).toFixed(0)}</td>
+                    <td className="px-4 py-3">{Number(r.pct).toFixed(2)}</td>
+                    <td className="px-4 py-3 font-medium">Rs {Number(r.amount).toFixed(2)}</td>
+                    <td className="px-4 py-3"><span className="text-xs px-2 py-0.5 rounded-full bg-muted">{r.status}</span></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Mobile cards */}
+          <div className="md:hidden space-y-2">
+            {rows.map(r => (
+              <div key={r.id} className="border rounded-lg p-4 bg-white">
+                <div className="flex items-start justify-between gap-3 mb-2">
+                  <div className="min-w-0 flex-1">
+                    <p className="font-medium text-sm truncate">{r.salon?.name || '—'}</p>
+                    <p className="text-[11px] text-muted-foreground mt-0.5">
+                      {new Date(r.created_at).toLocaleDateString('en-PK', { day: 'numeric', month: 'short' })}
+                      {' · '}
+                      {r.agent?.name || '—'}
+                    </p>
+                  </div>
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-muted shrink-0">{r.status}</span>
+                </div>
+                <div className="flex items-center justify-between pt-2 border-t">
+                  <span className="text-[11px] text-muted-foreground">
+                    {r.kind === 'first_sale' ? 'First sale' : 'Renewal'} · {Number(r.pct).toFixed(2)}%
+                  </span>
+                  <span className="font-semibold text-sm">Rs {Number(r.amount).toFixed(2)}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
       )}
     </div>
   );

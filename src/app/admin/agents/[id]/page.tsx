@@ -237,7 +237,7 @@ function ReportsTab({ agentId }: { agentId: string }) {
         </p>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         <KPI icon={TrendingUp} label="Earned (period)" value={formatPKR(report.commissions.earned_total)} sub={`${formatPKR(report.commissions.paid_total)} paid out`} />
         <KPI icon={Wallet} label="Available now" value={formatPKR(report.commissions.available_total)} sub="Approved, not yet paid" />
         <KPI icon={Store} label="Salons sold" value={String(report.salons_sold.total)} sub={`${report.salons_sold.active} active`} />
