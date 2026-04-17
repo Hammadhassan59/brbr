@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useState, useCallback } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { Search, Plus, Package as PackageIcon, Minus, X } from 'lucide-react';
+import { Search, Plus, Package as PackageIcon, Minus, X, Check } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { fetchProductsWithBranchStock, type ProductWithBranchStock } from '@/lib/db';
 import { useAppStore } from '@/store/app-store';
@@ -418,16 +418,17 @@ function ProductsContent() {
             {formType === 'backbar' && (
               <div className="pt-3 border-t space-y-3">
                 <div>
-                  <Label className="text-xs font-semibold">Service Usage</Label>
+                  <Label className="text-xs font-semibold">Service Usage {formLinks.length > 0 && <span className="text-muted-foreground font-normal">— {formLinks.length} added</span>}</Label>
                   <p className="text-[10px] text-muted-foreground">Which services use this product and how much {formContentUnit || 'content'} per client?</p>
                 </div>
 
                 {formLinks.length > 0 && (
                   <div className="space-y-1.5">
                     {formLinks.map((link) => (
-                      <div key={link.serviceId} className="flex items-center gap-2 p-2 bg-secondary/50 rounded-md text-sm">
+                      <div key={link.serviceId} className="flex items-center gap-2 p-2 bg-green-500/10 border border-green-500/30 rounded-md text-sm">
+                        <Check className="w-3.5 h-3.5 text-green-600 shrink-0" />
                         <div className="flex-1 min-w-0">
-                          <span className="truncate">{link.serviceName}</span>
+                          <span className="truncate font-medium">{link.serviceName}</span>
                           {Number(formContentPerUnit) > 1 && (
                             <p className="text-[10px] text-muted-foreground">1 {formUnit} = {Math.floor(Number(formContentPerUnit) / link.qtyPerUse)} clients</p>
                           )}
@@ -441,22 +442,30 @@ function ProductsContent() {
                   </div>
                 )}
 
-                <div className="flex gap-2 items-end">
-                  <div className="flex-1">
-                    <select value={formLinkSvcId} onChange={(e) => setFormLinkSvcId(e.target.value)} className="w-full h-9 rounded-md border bg-background px-3 text-sm">
-                      <option value="">Select service...</option>
-                      {services.filter(s => !formLinks.some(l => l.serviceId === s.id)).map(s => (
-                        <option key={s.id} value={s.id}>{s.name}</option>
-                      ))}
-                    </select>
+                {services.length === 0 ? (
+                  <div className="p-3 rounded-md border border-amber-500/30 bg-amber-500/10 text-xs">
+                    <p className="font-medium text-amber-700 dark:text-amber-600">No services in this branch yet</p>
+                    <p className="text-muted-foreground mt-0.5">Add services in <a href="/dashboard/settings" className="underline">Settings → Services</a> first, then come back to link them.</p>
                   </div>
-                  <div className="w-24">
-                    <Input type="number" value={formLinkQty} onChange={(e) => setFormLinkQty(e.target.value)} placeholder={formContentUnit} className="h-9" step="0.1" inputMode="decimal" />
+                ) : (
+                  <div className="flex gap-2 items-end">
+                    <div className="flex-1">
+                      <select value={formLinkSvcId} onChange={(e) => setFormLinkSvcId(e.target.value)} className="w-full h-9 rounded-md border bg-background px-3 text-sm">
+                        <option value="">Select service...</option>
+                        {services.filter(s => !formLinks.some(l => l.serviceId === s.id)).map(s => (
+                          <option key={s.id} value={s.id}>{s.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="w-24">
+                      <Input type="number" value={formLinkQty} onChange={(e) => setFormLinkQty(e.target.value)} placeholder={formContentUnit} className="h-9" step="0.1" inputMode="decimal" />
+                    </div>
+                    <Button variant="outline" size="sm" onClick={addFormLink} disabled={!formLinkSvcId || !formLinkQty} className="h-9 gap-1">
+                      <Check className="w-4 h-4" />
+                      <span className="hidden sm:inline text-xs">Add</span>
+                    </Button>
                   </div>
-                  <Button variant="outline" size="sm" onClick={addFormLink} disabled={!formLinkSvcId || !formLinkQty} className="h-9">
-                    <Plus className="w-4 h-4" />
-                  </Button>
-                </div>
+                )}
               </div>
             )}
 
