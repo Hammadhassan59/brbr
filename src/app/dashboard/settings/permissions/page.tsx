@@ -57,6 +57,7 @@ type EditorMode =
 export default function PermissionsPage() {
   const canManage = usePermission('manage_permissions');
   const salon = useAppStore((s) => s.salon);
+  const currentBranch = useAppStore((s) => s.currentBranch);
   const memberBranches = useAppStore((s) => s.memberBranches);
 
   if (!canManage) {
@@ -98,10 +99,10 @@ function PermissionsEditor({
   const [mode, setMode] = useState<EditorMode>({ kind: 'none' });
 
   const refresh = useCallback(async () => {
-    if (!salonId) return;
+    if (!salonId || !currentBranch) return;
     setLoading(true);
     const [staffRes, presetsRes] = await Promise.all([
-      getStaffForPermissions(),
+      getStaffForPermissions(currentBranch.id),
       listRolePresets(salonId),
     ]);
     if (showActionError(staffRes.error)) {
@@ -119,7 +120,7 @@ function PermissionsEditor({
     }
     setPresets(presetMap);
     setLoading(false);
-  }, [salonId]);
+  }, [salonId, currentBranch]);
 
   useEffect(() => {
     refresh();

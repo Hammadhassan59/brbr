@@ -389,7 +389,7 @@ export async function upsertAttendance(data: {
  * render the tri-state without a second fetch). Gated by `manage_permissions`
  * so a staff member without edit rights can't silently dump the roster.
  */
-export async function getStaffForPermissions() {
+export async function getStaffForPermissions(branchId?: string) {
   const session = await verifySession();
   if (!session.salonId) return { data: null, error: 'No salon context' };
   if (!hasPermission(session, 'manage_permissions')) {
@@ -397,6 +397,34 @@ export async function getStaffForPermissions() {
   }
 
   const supabase = createServerClient();
+
+  // Scope to staff assigned to the current branch via staff_branches. A
+  // multi-branch stylist appears in every branch view they're a member of;
+  // single-branch staff only show up in their own. Permissions_override
+  // still lives on the staff row (one set per person, not per branch).
+  if (branchId) {
+    assertBranchMembership(session, branchId);
+    const { data: memberRows } = await supabase
+      .from('staff_branches')
+      .select('staff_id')
+      .eq('branch_id', branchId);
+    const ids = (memberRows || []).map((r: { staff_id: string }) => r.staff_id);
+    if (ids.length === 0) {
+      return { data: [] as StaffRowForPermissions[], error: null };
+    }
+    const { data, error } = await supabase
+      .from('staff')
+      .select('id, name, role, photo_url, primary_branch_id, permissions_override, is_active')
+      .eq('salon_id', session.salonId)
+      .eq('is_active', true)
+      .in('id', ids)
+      .order('role')
+      .order('name');
+    if (error) return { data: null, error: error.message };
+    return { data: (data ?? []) as StaffRowForPermissions[], error: null };
+  }
+
+  // Fallback: no branchId passed — return salon-wide (legacy callers).
   const { data, error } = await supabase
     .from('staff')
     .select('id, name, role, photo_url, primary_branch_id, permissions_override, is_active')
@@ -406,19 +434,18 @@ export async function getStaffForPermissions() {
     .order('name');
 
   if (error) return { data: null, error: error.message };
-  return {
-    data: (data ?? []) as Array<{
-      id: string;
-      name: string;
-      role: string;
-      photo_url: string | null;
-      primary_branch_id: string | null;
-      permissions_override: Record<string, boolean> | null;
-      is_active: boolean;
-    }>,
-    error: null,
-  };
+  return { data: (data ?? []) as StaffRowForPermissions[], error: null };
 }
+
+type StaffRowForPermissions = {
+  id: string;
+  name: string;
+  role: string;
+  photo_url: string | null;
+  primary_branch_id: string | null;
+  permissions_override: Record<string, boolean> | null;
+  is_active: boolean;
+};
 
 export async function recordAdvance(staffId: string, amount: number, reason?: string | null) {
   const writeCheck = await checkWriteAccess();
