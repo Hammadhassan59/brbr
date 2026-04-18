@@ -23,6 +23,7 @@ ARG NEXT_PUBLIC_SUPABASE_ANON_KEY
 ARG NEXT_PUBLIC_APP_URL
 ARG NEXT_PUBLIC_APP_NAME
 ARG NEXT_PUBLIC_DEMO_MODE
+ARG NEXT_PUBLIC_MAPBOX_TOKEN
 
 # NEXT_SERVER_ACTIONS_ENCRYPTION_KEY is a server-only secret used by Next to
 # encrypt Server Action payloads. It must NOT land in build ARGs (visible in

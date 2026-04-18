@@ -9,6 +9,7 @@ services:
         NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL}
         NEXT_PUBLIC_APP_NAME: ${NEXT_PUBLIC_APP_NAME}
         NEXT_PUBLIC_DEMO_MODE: ${NEXT_PUBLIC_DEMO_MODE}
+        NEXT_PUBLIC_MAPBOX_TOKEN: ${NEXT_PUBLIC_MAPBOX_TOKEN}
       # NEXT_SERVER_ACTIONS_ENCRYPTION_KEY is wired in via BuildKit secret so it
       # never lands in image layers / `docker history`. The Dockerfile consumes
       # it inside the `RUN --mount=type=secret,id=nextsa_key` build step.
