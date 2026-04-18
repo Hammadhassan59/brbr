@@ -164,7 +164,30 @@ export async function registerConsumer(
       },
     });
 
-    if (error) return { data: null, error: safeError(error) };
+    if (error) {
+      // Surface known auth errors verbatim — they're actionable UX, not
+      // schema leaks. `safeError` is a catch-all for unknown errors.
+      const msg = error.message || '';
+      if (/already registered|already exists|user already/i.test(msg)) {
+        return {
+          data: null,
+          error: 'An account with this email already exists. Try signing in, or use a different email.',
+        };
+      }
+      if (/password/i.test(msg) && /short|weak|characters/i.test(msg)) {
+        return {
+          data: null,
+          error: 'Password is too weak. Use at least 10 characters including letters and numbers.',
+        };
+      }
+      if (/rate|too many/i.test(msg)) {
+        return {
+          data: null,
+          error: 'Too many signup attempts — please wait a minute and try again.',
+        };
+      }
+      return { data: null, error: safeError(error) };
+    }
     if (!data.user) return { data: null, error: 'Signup failed — no user returned' };
 
     // Insert the companion `consumers` row via service-role so it lands even
