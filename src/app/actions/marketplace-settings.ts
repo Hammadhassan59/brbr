@@ -1,7 +1,7 @@
 'use server';
 
 import { z } from 'zod';
-import { revalidateTag } from 'next/cache';
+import { updateTag } from 'next/cache';
 import { checkWriteAccess, verifySession } from './auth';
 import { createServerClient } from '@/lib/supabase';
 import {
@@ -281,8 +281,8 @@ export async function updateMarketplaceListing(data: unknown) {
 
   // Invalidate directory + profile caches so the salon appears / disappears
   // on icut.pk immediately instead of waiting for the 6-hour ISR window.
-  revalidateTag(MARKETPLACE_BRANCHES_TAG);
-  revalidateTag(branchTag(branchId));
+  updateTag(MARKETPLACE_BRANCHES_TAG);
+  updateTag(branchTag(branchId));
 
   return { data: result, error: null };
 }
@@ -346,8 +346,8 @@ export async function updateHomeServiceSettings(data: unknown) {
 
   // Invalidate directory + profile caches so the salon appears / disappears
   // on icut.pk immediately instead of waiting for the 6-hour ISR window.
-  revalidateTag(MARKETPLACE_BRANCHES_TAG);
-  revalidateTag(branchTag(branchId));
+  updateTag(MARKETPLACE_BRANCHES_TAG);
+  updateTag(branchTag(branchId));
 
   return { data: result, error: null };
 }
@@ -466,8 +466,8 @@ export async function uploadBranchPhoto(
     return { data: null, error: updErr.message };
   }
 
-  revalidateTag(MARKETPLACE_BRANCHES_TAG);
-  revalidateTag(branchTag(branchId));
+  updateTag(MARKETPLACE_BRANCHES_TAG);
+  updateTag(branchTag(branchId));
   return { data: photo, error: null };
 }
 
@@ -533,7 +533,7 @@ export async function deleteBranchPhoto(input: unknown) {
     .remove([path])
     .catch(() => {});
 
-  revalidateTag(MARKETPLACE_BRANCHES_TAG);
-  revalidateTag(branchTag(branchId));
+  updateTag(MARKETPLACE_BRANCHES_TAG);
+  updateTag(branchTag(branchId));
   return { error: null };
 }
