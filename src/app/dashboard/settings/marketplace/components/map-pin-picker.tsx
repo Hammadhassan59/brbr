@@ -140,6 +140,33 @@ export function MapPinPicker({
         });
 
         setLoading(false);
+
+        // Auto-pin to user's current location if they haven't set one yet.
+        // Browser prompts for permission; on allow we fly there and drop
+        // the pin. On deny/error we stay on the default view (Pakistan or
+        // city-hint). Silent — no user-facing error because it's optional.
+        if (
+          lat == null &&
+          lng == null &&
+          !disabled &&
+          typeof navigator !== 'undefined' &&
+          navigator.geolocation
+        ) {
+          navigator.geolocation.getCurrentPosition(
+            (pos) => {
+              if (cancelled) return;
+              const userLat = pos.coords.latitude;
+              const userLng = pos.coords.longitude;
+              marker.setLngLat([userLng, userLat]);
+              map.flyTo({ center: [userLng, userLat], zoom: 15, duration: 1000 });
+              onChange(userLat, userLng);
+            },
+            () => {
+              // Permission denied or timeout — leave the default view.
+            },
+            { timeout: 8000, maximumAge: 60_000, enableHighAccuracy: false },
+          );
+        }
       } catch (e) {
         if (cancelled) return;
         setErr(
