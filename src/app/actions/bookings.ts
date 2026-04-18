@@ -410,14 +410,14 @@ export async function createBooking(input: {
     //    be active. For home mode we additionally require `available_at_home`.
     const { data: serviceRows, error: svcErr } = await supabase
       .from('services')
-      .select('id, salon_id, name, price, available_at_home, is_active')
+      .select('id, salon_id, name, base_price, available_at_home, is_active')
       .in('id', v.serviceIds);
     if (svcErr) return fail(safeError(svcErr));
     const services = (serviceRows ?? []) as Array<{
       id: string;
       salon_id: string;
       name: string;
-      price: number;
+      base_price: number;
       available_at_home: boolean | null;
       is_active: boolean | null;
     }>;
@@ -451,7 +451,7 @@ export async function createBooking(input: {
       services.map((s) => ({
         service_id: s.id,
         service_name: s.name,
-        salon_base_price: Number(s.price),
+        salon_base_price: Number(s.base_price),
       })),
       v.mode,
     );
