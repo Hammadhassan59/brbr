@@ -158,7 +158,7 @@ export function MapPinPicker({
               const userLat = pos.coords.latitude;
               const userLng = pos.coords.longitude;
               marker.setLngLat([userLng, userLat]);
-              map.flyTo({ center: [userLng, userLat], zoom: 15, duration: 1000 });
+              map.flyTo({ center: [userLng, userLat], zoom: 15 });
               onChange(userLat, userLng);
             },
             () => {
