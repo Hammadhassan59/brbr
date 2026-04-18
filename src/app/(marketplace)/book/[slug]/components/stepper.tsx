@@ -23,7 +23,7 @@ export function Stepper({ current, mode, onJump }: Props) {
       ? [
           { n: 1, label: 'Address' },
           { n: 2, label: 'Services' },
-          { n: 3, label: 'Time' },
+          // Home bookings are real-time — no slot step.
           { n: 4, label: 'Review' },
         ]
       : [

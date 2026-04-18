@@ -142,9 +142,11 @@ export function StepReview({
                 When
               </p>
               <p className="text-[14px] font-semibold text-[#1A1A1A]">
-                {formatSlot(slotStart)}
+                {mode === 'at_home' ? 'As soon as possible' : formatSlot(slotStart)}
               </p>
-              <p className="text-[12px] text-[#888]">{branch.name}</p>
+              <p className="text-[12px] text-[#888]">
+                {mode === 'at_home' ? 'Salon confirms in real time' : branch.name}
+              </p>
             </div>
           </div>
         </div>
@@ -262,7 +264,11 @@ export function StepReview({
           <Button
             type="button"
             onClick={onSubmit}
-            disabled={submitting || selected.length === 0 || !slotStart}
+            disabled={
+              submitting ||
+              selected.length === 0 ||
+              (mode !== 'at_home' && !slotStart)
+            }
             className="h-11 bg-[#1A1A1A] px-6 text-[14px] font-bold text-white hover:bg-[#1A1A1A]/90 disabled:bg-[#BBB]"
             data-testid="review-submit"
           >

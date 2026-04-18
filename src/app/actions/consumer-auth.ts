@@ -146,29 +146,25 @@ export async function registerConsumer(
   if (!rl.ok) return { data: null, error: rl.error ?? 'Too many signups, please try again later.' };
 
   const { name, email, password, phone } = parsed.data;
-  const origin = await resolveOrigin();
-  const nextPath = typeof input.next === 'string' && input.next.startsWith('/') ? input.next : '';
-  const redirectTo = `${origin}/verify-email${nextPath ? `?next=${encodeURIComponent(nextPath)}` : ''}`;
 
   try {
-    const supabase = await consumerSupabase();
-
-    const { data, error } = await supabase.auth.signUp({
+    // Create the auth.users row via admin API with email_confirm: true so the
+    // account is immediately usable — no verification email, no waiting room.
+    // Product decision (2026-04-18): consumer onboarding should be
+    // frictionless; no sensitive data lives on a fresh account. Email
+    // ownership is proven later if/when the consumer requests an email
+    // change (which goes through the Supabase magic-link flow, unchanged).
+    const service = createServiceClient();
+    const { data: adminData, error: adminErr } = await service.auth.admin.createUser({
       email,
       password,
-      options: {
-        emailRedirectTo: redirectTo,
-        // Stash name+phone on the auth user's metadata too — useful if the
-        // consumers-row insert fails (see below) and we need to reconstruct.
-        data: { name, phone },
-      },
+      email_confirm: true,
+      user_metadata: { name, phone },
     });
 
-    if (error) {
-      // Surface known auth errors verbatim — they're actionable UX, not
-      // schema leaks. `safeError` is a catch-all for unknown errors.
-      const msg = error.message || '';
-      if (/already registered|already exists|user already/i.test(msg)) {
+    if (adminErr) {
+      const msg = adminErr.message || '';
+      if (/already registered|already exists|user already|duplicate/i.test(msg)) {
         return {
           data: null,
           error: 'An account with this email already exists. Try signing in, or use a different email.',
@@ -180,46 +176,33 @@ export async function registerConsumer(
           error: 'Password is too weak. Use at least 10 characters including letters and numbers.',
         };
       }
-      if (/rate|too many/i.test(msg)) {
-        return {
-          data: null,
-          error: 'Too many signup attempts — please wait a minute and try again.',
-        };
-      }
-      return { data: null, error: safeError(error) };
+      return { data: null, error: safeError(adminErr) };
     }
-    if (!data.user) return { data: null, error: 'Signup failed — no user returned' };
 
-    // Insert the companion `consumers` row via service-role so it lands even
-    // though the user hasn't verified their email yet (they have no session
-    // from the anon client's perspective until verification completes). We
-    // upsert on the primary key so a retry from the same user (e.g. after a
-    // browser refresh on signup) doesn't fail with a unique-violation.
-    //
-    // ASSUMPTION: consumers.id is the Supabase auth.users.id (per migration
-    // 041's `id uuid PRIMARY KEY` with no DEFAULT). If the migration switches
-    // to a separate surrogate id, change the `.upsert({ id, ... })` below.
-    const service = createServiceClient();
+    const user = adminData?.user;
+    if (!user) return { data: null, error: 'Signup failed — no user returned' };
+
+    // Companion consumers-profile row. Upsert keeps retry safe.
     const { error: insertErr } = await service.from('consumers').upsert(
-      {
-        id: data.user.id,
-        name,
-        phone,
-      },
+      { id: user.id, name, phone },
       { onConflict: 'id' },
     );
     if (insertErr) {
-      // Don't unwind the auth.users row — Supabase only sends the verification
-      // email as a side-effect of signUp, and retrying would hit the per-email
-      // cooldown. Log and surface so ops can reconcile. The resend action can
-      // be used by the user to re-send the link if needed.
       return { data: null, error: safeError(insertErr) };
     }
 
-    // `data.session` is null when email-confirmation is enabled. We report it
-    // as "needs verification" so the UI can render the check-your-inbox copy.
+    // Now sign the user in through the anon client to set the auth cookie
+    // so the next request is authenticated. Failure here is non-fatal —
+    // the account exists; user can always /sign-in manually.
+    try {
+      const consumer = await consumerSupabase();
+      await consumer.auth.signInWithPassword({ email, password });
+    } catch {
+      // swallow — see above
+    }
+
     return {
-      data: { userId: data.user.id, needsVerification: !data.session },
+      data: { userId: user.id, needsVerification: false },
       error: null,
     };
   } catch (err) {

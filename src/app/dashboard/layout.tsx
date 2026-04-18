@@ -84,6 +84,32 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   useEffect(() => { setIsHydrated(true); }, []);
 
+  // Marketplace presence heartbeat. Keeps the salon visible in the consumer
+  // directory while a dashboard session is active. Directory filters on
+  // `last_active_at > now() - 3 min`; we ping every 60 s. On unmount we
+  // explicitly clear presence so log-out / tab-close immediately removes
+  // the salon from /barbers etc. Fire-and-forget — failures don't block
+  // the dashboard.
+  useEffect(() => {
+    if (!isHydrated) return;
+    let cancelled = false;
+    const ping = () => {
+      if (cancelled) return;
+      import('@/app/actions/marketplace-presence')
+        .then((m) => m.heartbeatMarketplacePresence())
+        .catch(() => {});
+    };
+    ping();
+    const handle = setInterval(ping, 60_000);
+    return () => {
+      cancelled = true;
+      clearInterval(handle);
+      import('@/app/actions/marketplace-presence')
+        .then((m) => m.clearMarketplacePresence())
+        .catch(() => {});
+    };
+  }, [isHydrated]);
+
   // Demo-mode banner state. The JWT isDemo flag lives server-side; surface it
   // to the client via getSessionInfo() on mount. This is the only client-side
   // signal for demo mode — Zustand doesn't persist it (JWT is the source of
@@ -185,7 +211,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   // Redirect to login if no session
   const hasSession = !!(salon || currentStaff || currentPartner || isSuperAdmin);
   if (!hasSession && typeof window !== 'undefined') {
-    // eslint-disable-next-line react-hooks/immutability
+     
     window.location.href = '/login?redirect=' + encodeURIComponent(pathname);
     return null;
   }

@@ -350,14 +350,18 @@ async function fetchListedBranches(args: {
       cities ( slug ),
       salons!inner (
         marketplace_payable_blocked_at,
-        marketplace_admin_blocked_at
+        marketplace_admin_blocked_at,
+        last_active_at
       )
     `,
     )
     .eq('listed_on_marketplace', true)
     .is('marketplace_admin_blocked_at', null)
     .is('salons.marketplace_payable_blocked_at', null)
-    .is('salons.marketplace_admin_blocked_at', null);
+    .is('salons.marketplace_admin_blocked_at', null)
+    // Online gate: only surface salons whose dashboard has heartbeat'd in
+    // the last 3 minutes. Foodpanda-restaurant model.
+    .gte('salons.last_active_at', new Date(Date.now() - 3 * 60_000).toISOString());
 
   if (args.mode === 'at_home') {
     q = q.eq('offers_home_service', true);
@@ -649,7 +653,8 @@ export async function getBranchBySlug(
             id,
             name,
             marketplace_payable_blocked_at,
-            marketplace_admin_blocked_at
+            marketplace_admin_blocked_at,
+            last_active_at
           )
         `,
         )
@@ -658,6 +663,7 @@ export async function getBranchBySlug(
         .is('marketplace_admin_blocked_at', null)
         .is('salons.marketplace_payable_blocked_at', null)
         .is('salons.marketplace_admin_blocked_at', null)
+        .gte('salons.last_active_at', new Date(Date.now() - 3 * 60_000).toISOString())
         .maybeSingle();
 
       if (error || !branchRow) return null;
@@ -1010,7 +1016,8 @@ export async function getListedBranchesForServiceInCity(
           cities!inner ( slug ),
           salons!inner (
             marketplace_payable_blocked_at,
-            marketplace_admin_blocked_at
+            marketplace_admin_blocked_at,
+            last_active_at
           ),
           services!inner (
             id,
@@ -1024,6 +1031,7 @@ export async function getListedBranchesForServiceInCity(
         .is('marketplace_admin_blocked_at', null)
         .is('salons.marketplace_payable_blocked_at', null)
         .is('salons.marketplace_admin_blocked_at', null)
+        .gte('salons.last_active_at', new Date(Date.now() - 3 * 60_000).toISOString())
         .eq('cities.slug', citySlug)
         .eq('services.is_active', true)
         .in('services.category', service.matches_categories);

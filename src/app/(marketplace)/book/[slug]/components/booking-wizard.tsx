@@ -135,6 +135,9 @@ function clampStep(n: number, mode: MarketplaceMode): 1 | 2 | 3 | 4 {
   const min = firstStepForMode(mode);
   if (n < min) return min;
   if (n > 4) return 4;
+  // Home bookings are real-time (no slot step). Bump step 3 to 4 so
+  // deep-links / history navigation don't drop you onto an unreachable slot.
+  if (mode === 'at_home' && n === 3) return 4;
   if (n === 1 || n === 2 || n === 3 || n === 4) return n;
   return min;
 }
@@ -209,7 +212,16 @@ export function BookingWizard({
       setStep(2);
       return;
     }
-    if (!state.slotStart || !state.slotEnd) {
+    // Home bookings are real-time (no slot step) — stamp slot as "now +1 hr".
+    // At-salon requires the owner to have picked a slot on step 3.
+    let slotStart = state.slotStart;
+    let slotEnd = state.slotEnd;
+    if (mode === 'at_home') {
+      const now = new Date();
+      slotStart = now.toISOString();
+      slotEnd = new Date(now.getTime() + 60 * 60_000).toISOString();
+    }
+    if (!slotStart || !slotEnd) {
       toast.error('Pick a time slot');
       setStep(3);
       return;
@@ -225,8 +237,8 @@ export function BookingWizard({
       const payload = {
         branchId: branch.id,
         serviceIds: state.selectedServiceIds,
-        slotStart: state.slotStart,
-        slotEnd: state.slotEnd,
+        slotStart,
+        slotEnd,
         mode: (mode === 'at_home' ? 'home' : 'in_salon') as 'home' | 'in_salon',
         notes: state.notes.trim() ? state.notes.trim() : undefined,
         ...(mode === 'at_home' && state.address
@@ -296,10 +308,10 @@ export function BookingWizard({
               dispatch({ type: 'TOGGLE_SERVICE', serviceId })
             }
             onBack={mode === 'at_home' ? () => setStep(1) : undefined}
-            onContinue={() => setStep(3)}
+            onContinue={() => setStep(mode === 'at_home' ? 4 : 3)}
           />
         )}
-        {state.step === 3 && (
+        {state.step === 3 && mode === 'at_salon' && (
           <StepSlot
             workingHours={branch.working_hours}
             services={branch.services}
@@ -324,7 +336,7 @@ export function BookingWizard({
             address={state.address}
             notes={state.notes}
             onNotesChange={(notes) => dispatch({ type: 'SET_NOTES', notes })}
-            onBack={() => setStep(3)}
+            onBack={() => setStep(mode === 'at_home' ? 2 : 3)}
             onSubmit={handleSubmit}
             submitting={state.submitting}
             consumer={consumer}
