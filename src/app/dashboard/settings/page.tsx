@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
-import { Plus, X, Scissors, Sparkles, Users, MapPin, Pencil, Trash2, Copy, CreditCard, Check, Lock, ChevronRight, ShieldCheck } from 'lucide-react';
+import { Plus, X, Scissors, Sparkles, Users, MapPin, Pencil, Trash2, Copy, CreditCard, Check, Lock, ChevronRight, ShieldCheck, Store } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { usePermission } from '@/lib/permissions';
 import { updateSalon, updateBranchWorkingHours, createService, updateService, deleteService, createBranch, updateBranch, deleteBranch } from '@/app/actions/settings';
@@ -269,6 +269,27 @@ export default function SettingsPage() {
             <p className="text-sm font-semibold">Permissions</p>
             <p className="text-xs text-muted-foreground">
               Edit role defaults and per-staff access
+            </p>
+          </div>
+          <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-gold shrink-0" />
+        </Link>
+      )}
+
+      {/* iCut Marketplace opt-in — lives on its own page because it needs
+          the photo uploader + map pin + publish-requirements checklist UI.
+          Gated by `manage_salon`; owners/partners always see it. */}
+      {canManage && (
+        <Link
+          href="/dashboard/settings/marketplace"
+          className="flex items-center gap-3 bg-card border border-border rounded-lg p-4 hover:border-gold/40 transition-all duration-150 group"
+        >
+          <div className="w-9 h-9 bg-gold/10 flex items-center justify-center shrink-0">
+            <Store className="w-5 h-5 text-gold" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold">iCut Marketplace</p>
+            <p className="text-xs text-muted-foreground">
+              List your salon on icut.pk — accept at-salon and home-service bookings from consumers
             </p>
           </div>
           <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-gold shrink-0" />
