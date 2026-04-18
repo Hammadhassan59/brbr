@@ -6,7 +6,7 @@ import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard, Store, Users, BarChart3, Settings,
   Shield, LogOut, Scissors, CreditCard,
-  UserCog, Target, Wallet, Receipt, User, Menu, X,
+  UserCog, Target, Wallet, Receipt, User, Menu, X, AlertTriangle,
 } from 'lucide-react';
 import { getPendingPaymentCount } from '@/app/actions/payment-requests';
 import { useAppStore } from '@/store/app-store';
@@ -26,6 +26,9 @@ const NAV_ITEMS = [
   { href: '/admin/team', icon: Shield, label: 'Admin Team' },
   { href: '/admin/analytics', icon: BarChart3, label: 'Analytics' },
   { href: '/admin/settings', icon: Settings, label: 'Platform Settings' },
+  { href: '/admin/marketplace/settings', icon: Store, label: 'Marketplace Gates' },
+  { href: '/admin/marketplace/flagged', icon: AlertTriangle, label: 'Flagged' },
+  { href: '/admin/marketplace/settlements', icon: Wallet, label: 'Settlements' },
   { href: '/admin/profile', icon: User, label: 'My Profile' },
 ];
 

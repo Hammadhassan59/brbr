@@ -99,3 +99,14 @@ export const PercentSchema = z
   .finite('Percent must be finite')
   .min(0, 'Percent must be 0 or greater')
   .max(100, 'Percent must be 100 or less');
+
+/**
+ * Salon gender classification — mirrors the `salon_gender_type` Postgres enum
+ * from migration 041 (`'men' | 'women' | 'mixed'`). The marketplace launches
+ * men-only; women/mixed salons are gated off the consumer directory by the
+ * superadmin `marketplace_women_enabled` platform flag, but the column on
+ * `branches.gender_type` still has to be truthful so flipping the flag later
+ * is a one-switch change.
+ */
+export const GenderTypeSchema = z.enum(['men', 'women', 'mixed']);
+

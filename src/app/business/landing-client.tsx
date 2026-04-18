@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useState, useEffect, useRef } from 'react';
 import { Scissors, ChevronDown, Check, Lock, Zap, Smartphone, Ticket, Coffee } from 'lucide-react';
 import PublicLayout from '@/components/public-layout';
-import { DashboardHeroPreview } from './components/dashboard-hero-preview';
+import { DashboardHeroPreview } from '@/app/components/dashboard-hero-preview';
 
 // ── Scroll reveal ──
 // Uses CSS-only animation. Content is always visible in HTML (no JS dependency).
@@ -18,10 +18,12 @@ function Reveal({ children, className = '' }: { children: React.ReactNode; class
     if (!el) return;
     // If element is already in viewport on mount, skip animation entirely
     const rect = el.getBoundingClientRect();
-    if (rect.top < window.innerHeight) { setVisible(true); return; }
+    if (rect.top < window.innerHeight) { queueMicrotask(() => setVisible(true)); return; }
     // Element is below the fold — set up scroll animation
-    setAnimate(true);
-    setVisible(false);
+    queueMicrotask(() => {
+      setAnimate(true);
+      setVisible(false);
+    });
     const obs = new IntersectionObserver(([e]) => { if (e.isIntersecting) { setVisible(true); obs.disconnect(); } }, { threshold: 0.12 });
     obs.observe(el);
     return () => obs.disconnect();

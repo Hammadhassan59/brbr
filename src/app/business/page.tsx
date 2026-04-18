@@ -1,4 +1,4 @@
-import { getPublicPlatformConfig } from './actions/admin-settings';
+import { getPublicPlatformConfig } from '../actions/admin-settings';
 import LandingClient, { type DisplayPlan } from './landing-client';
 
 // Admin can change plan prices / marketing copy at any time via /admin/settings.

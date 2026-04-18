@@ -12,7 +12,7 @@ import {
   LayoutDashboard, CalendarDays, Users, Receipt, UserCog,
   Package, BarChart3, Settings, LogOut,
   Scissors, Bell, Plus, Menu, X, ChevronDown, Gift, Check, Wallet,
-  AlertTriangle, CreditCard, UserX, Search, Building2,
+  AlertTriangle, CreditCard, UserX, Search, Building2, Inbox,
 } from 'lucide-react';
 import { useLanguage } from '@/components/providers/language-provider';
 import { useAppStore } from '@/store/app-store';
@@ -29,11 +29,19 @@ interface NavItem {
   labelKey: 'dashboard' | 'appointments' | 'clients' | 'pos' | 'staff' | 'inventory' | 'expenses' | 'reports' | 'settings' | 'packages' | 'billing';
   access: StaffRoleAccess[];
   ownerOnly?: boolean;
+  /** Override-label for items that don't yet have a translation key. */
+  rawLabel?: string;
 }
 
 const ALL_NAV_ITEMS: NavItem[] = [
   { href: '/dashboard', icon: LayoutDashboard, labelKey: 'dashboard', access: ['full', 'front_desk', 'stylist', 'minimal'] },
   { href: '/dashboard/appointments', icon: CalendarDays, labelKey: 'appointments', access: ['full', 'front_desk', 'stylist'] },
+  // Marketplace → Incoming Bookings — iCut consumer-side booking requests.
+  // Labelled with rawLabel because the i18n dictionary doesn't have a
+  // marketplace key yet; the existing translation machinery only has the
+  // keys listed in `labelKey` above. Owner-only in line with the
+  // `manage_salon` permission gate enforced on the page.
+  { href: '/dashboard/marketplace-bookings', icon: Inbox, labelKey: 'dashboard', rawLabel: 'Incoming Bookings', access: ['full'], ownerOnly: true },
   { href: '/dashboard/clients', icon: Users, labelKey: 'clients', access: ['full', 'front_desk'] },
   { href: '/dashboard/pos', icon: Receipt, labelKey: 'pos', access: ['full', 'front_desk'] },
   { href: '/dashboard/staff', icon: UserCog, labelKey: 'staff', access: ['full'] },
@@ -321,7 +329,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 }`}
               >
                 <item.icon className="w-5 h-5 shrink-0" />
-                <span>{t(item.labelKey)}</span>
+                <span>{item.rawLabel ?? t(item.labelKey)}</span>
               </Link>
             );
           })}

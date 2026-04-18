@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
+    "seed:marketplace-pilots": "tsx scripts/seed-marketplace-pilots.ts",
     "prepare": "husky"
   },
   "dependencies": {
@@ -23,6 +24,7 @@
     "date-fns": "^4.1.0",
     "jose": "^6.2.2",
     "lucide-react": "^1.0.1",
+    "mapbox-gl": "^3.7.0",
     "next": "16.2.3",
     "pdfkit": "^0.18.0",
     "react": "19.2.4",
