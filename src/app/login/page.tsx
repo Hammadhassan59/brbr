@@ -329,11 +329,26 @@ export default function LoginPage() {
       if (!data.user) throw new Error('Signup failed. Please try again.');
 
       // Supabase user-enumeration protection: when email confirmations are
-      // required AND the email is already registered, signUp returns a fake
-      // user row with identities=[] and no session. Surface that as a clear
-      // error instead of silently flipping to the OTP screen.
+      // required AND the email already exists, signUp returns a fake user row
+      // with identities=[] and no session. The row might belong to either
+      // (a) a fully-confirmed user — really "already registered"
+      // (b) an UNCONFIRMED user who gave up mid-verify on a prior attempt
+      //
+      // We can't tell which from the signUp response, so we call resend:
+      // GoTrue resends the confirmation code for unconfirmed users and
+      // errors ('User already registered'/'email_exists') for confirmed
+      // ones. That lets abandoned signups resume seamlessly instead of
+      // getting stuck behind a misleading "already registered" toast.
       if (Array.isArray(data.user.identities) && data.user.identities.length === 0) {
-        toast.error('This email is already registered. Try signing in instead — or use a different email.');
+        const { error: resendErr } = await supabase.auth.resend({ type: 'signup', email });
+        if (resendErr) {
+          toast.error(friendlyAuthError(resendErr.message));
+          return;
+        }
+        setAuthMode('verify');
+        setOtpCode('');
+        setResendCooldown(30);
+        toast.success(`We sent a 6-digit code to ${email}`);
         return;
       }
 
