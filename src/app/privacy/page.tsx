@@ -1,17 +1,15 @@
-import { Metadata } from 'next';
-import PublicLayout from '@/components/public-layout';
+'use client';
 
-export const metadata: Metadata = {
-  title: 'Privacy Policy — iCut',
-  description: 'How iCut collects, stores, and protects your salon data.',
-};
+import PublicLayout from '@/components/public-layout';
+import { useLanguage } from '@/components/providers/language-provider';
 
 export default function PrivacyPage() {
+  const { t } = useLanguage();
   return (
     <PublicLayout>
       <div className="max-w-3xl mx-auto px-5 py-16 md:py-24">
-        <h1 className="text-3xl font-bold text-[#1A1A1A] mb-2">Privacy Policy</h1>
-        <p className="text-sm text-[#1A1A1A]/40 mb-12">Last updated: April 20, 2026</p>
+        <h1 className="text-3xl font-bold text-[#1A1A1A] mb-2">{t('privacyTitle')}</h1>
+        <p className="text-sm text-[#1A1A1A]/40 mb-12">{t('lastUpdated')}: April 20, 2026</p>
 
         <div className="space-y-8 text-sm text-[#1A1A1A]/70 leading-relaxed">
 

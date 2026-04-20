@@ -252,6 +252,78 @@ export const translations = {
     businessHours: 'Business Hours',
     businessHoursValue: 'Monday — Saturday, 10am — 7pm PKT',
 
+    // About page
+    aboutKicker: 'ABOUT ICUT',
+    aboutHeroTitle: 'Built for Pakistani salons, by people who understand your business',
+    aboutHeroSub: 'Every salon owner in Pakistan runs their business on WhatsApp, a calculator, and a notebook. We built iCut to replace all three.',
+    aboutWhyWeBuilt: 'Why we built this',
+    aboutPara1: 'Pakistani salon owners are some of the hardest-working entrepreneurs in the country. A typical day involves tracking walk-ins by hand, calculating staff commissions on a calculator, managing udhaar in a notebook, and answering booking requests on WhatsApp at midnight. The tools available were either too expensive, too complicated, or built for a completely different market.',
+    aboutPara2: 'We built iCut from the ground up for the way Pakistani salons actually work — phone number login with a staff PIN instead of email and password, JazzCash and EasyPaisa built in from day one, Jummah prayer blocks in the appointment calendar, and udhaar tracking for loyal clients who pay at the end of the month. No complex setup. No lengthy onboarding. A new staff member can be trained in under five minutes.',
+    aboutPara3: 'iCut is made by Inparlor Technologies Pvt Ltd. We are a small team focused on one thing: making salon owners\u2019 lives a little easier, one appointment at a time.',
+    aboutTeam: 'The Team',
+    aboutTeamDesc: 'iCut is built by a small team at Inparlor Technologies Pvt Ltd. We talk to salon owners every week and ship what they actually need.',
+
+    // Privacy / Terms page titles
+    privacyTitle: 'Privacy Policy',
+    termsTitle: 'Terms of Service',
+
+    // Public nav (header)
+    navAbout: 'About',
+    navContact: 'Contact',
+    navPricing: 'Pricing',
+    navLogin: 'Log in',
+
+    // Setup wizard extras (buttons + hints)
+    setupStepOf: 'Step {n} of 7',
+    exitSetup: 'Exit setup? Your progress will be lost.',
+    contactPhone: 'Contact Phone',
+    whatsappNumber: 'WhatsApp Number',
+    loadingLabel: 'Loading',
+
+    // POS extras
+    openDashboardLabel: 'Open Dashboard',
+    clientLabel: 'Client',
+    addAnotherBranch: 'Add another branch',
+
+    // Dashboard common toasts
+    copied: 'Copied',
+    emailCopied: 'Email copied',
+
+    // Paywall
+    paywallTitle: 'Your subscription is pending',
+    paywallSub: 'Submit a payment to activate the dashboard. An admin will approve it within a few hours.',
+    submitPayment: 'Submit payment',
+
+    // Generic "new" actions
+    newLabel: 'New',
+    addLabel: 'Add',
+
+    // Landing extras
+    whyIcut: 'Why iCut',
+    howItWorks: 'How it works',
+    howStep1Title: 'Create your salon in 5 minutes',
+    howStep1Desc: 'Add your branches, services, staff and products. Done before your first tea of the day.',
+    howStep2Title: 'Run the day from the POS',
+    howStep2Desc: 'Walk-ins, bookings, cash, JazzCash, card — one checkout screen.',
+    howStep3Title: 'Close with confidence',
+    howStep3Desc: 'Cash drawer reconciles. Reports ready for tomorrow morning. Nothing forgotten.',
+    ctaReady: 'Ready to run your salon on iCut?',
+    ctaSub: 'Start free. No credit card. 14 days of full access.',
+    orWhatsApp: 'or WhatsApp',
+
+    // Public layout nav + footer
+    navWhatItDoes: 'What It Does',
+    navHowItWorks: 'How It Works',
+    navPlans: 'Plans',
+    navQuestions: 'Questions',
+    startFree: 'Start Free',
+    footerTagline: "Pakistan's Smart Salon System — bookings, billing, staff commission, udhaar, and JazzCash. All in one place.",
+    footerProduct: 'Product',
+    footerCompany: 'Company',
+    footerLegal: 'Legal',
+    footerFeatures: 'Features',
+    refundPolicy: 'Refund Policy',
+
     // Privacy/Terms shared
     lastUpdated: 'Last updated',
     questionsHeading: 'Questions?',
@@ -529,6 +601,78 @@ export const translations = {
     contactEmailDesc: 'باضابطہ درخواستیں، ڈیٹا سوالات اور بلنگ تنازعات۔ ایک کاروباری دن میں جواب',
     businessHours: 'کاروباری اوقات',
     businessHoursValue: 'پیر — ہفتہ، صبح 10 سے شام 7 بجے PKT',
+
+    // About page
+    aboutKicker: 'iCut کے بارے میں',
+    aboutHeroTitle: 'پاکستانی سیلونز کے لیے، ان لوگوں کی طرف سے جو آپ کے کاروبار کو سمجھتے ہیں',
+    aboutHeroSub: 'پاکستان کا ہر سیلون مالک اپنا کاروبار واٹس ایپ، کیلکولیٹر اور نوٹ بک پر چلاتا ہے۔ ہم نے iCut بنایا تاکہ تینوں کی جگہ لے لے۔',
+    aboutWhyWeBuilt: 'ہم نے یہ کیوں بنایا',
+    aboutPara1: 'پاکستانی سیلون مالکان ملک کے سب سے محنتی کاروباری لوگوں میں سے ہیں۔ ایک عام دن میں واک انز کا ہاتھ سے حساب، کیلکولیٹر پر کمیشن، نوٹ بک میں ادھار اور رات 12 بجے واٹس ایپ پر بکنگ کے جوابات شامل ہیں۔ دستیاب ٹولز یا تو بہت مہنگے تھے، یا بہت پیچیدہ، یا بالکل مختلف مارکیٹ کے لیے بنے تھے۔',
+    aboutPara2: 'ہم نے iCut کو زمین سے اوپر تک پاکستانی سیلونز کے اصل طریقہ کار کے مطابق بنایا — ای میل پاسورڈ کے بجائے فون نمبر اور سٹاف پِن کے ساتھ لاگ اِن، پہلے دن سے جاز کیش اور ایزی پیسا، کیلنڈر میں جمعہ کے نماز بلاک، اور ادھار ٹریکنگ۔ کوئی پیچیدہ سیٹ اپ نہیں۔ کوئی طویل آن بورڈنگ نہیں۔ نیا سٹاف پانچ منٹ میں تربیت پا سکتا ہے۔',
+    aboutPara3: 'iCut Inparlor Technologies Pvt Ltd نے بنایا ہے۔ ہم ایک چھوٹی ٹیم ہیں جو ایک ہی چیز پر توجہ دیتی ہے: سیلون مالکان کی زندگی تھوڑی آسان بنانا، ایک اپائنٹمنٹ ایک وقت میں۔',
+    aboutTeam: 'ٹیم',
+    aboutTeamDesc: 'iCut Inparlor Technologies Pvt Ltd کی ایک چھوٹی ٹیم نے بنایا ہے۔ ہم ہر ہفتے سیلون مالکان سے بات کرتے ہیں اور وہی بناتے ہیں جو انہیں واقعی چاہیے۔',
+
+    // Privacy / Terms page titles
+    privacyTitle: 'پرائیویسی پالیسی',
+    termsTitle: 'شرائط و ضوابط',
+
+    // Public nav (header)
+    navAbout: 'ہمارے بارے میں',
+    navContact: 'رابطہ',
+    navPricing: 'قیمت',
+    navLogin: 'لاگ ان',
+
+    // Setup wizard extras
+    setupStepOf: 'مرحلہ {n} از 7',
+    exitSetup: 'سیٹ اپ سے نکلیں؟ آپ کی پیش رفت ضائع ہو جائے گی۔',
+    contactPhone: 'رابطہ فون',
+    whatsappNumber: 'واٹس ایپ نمبر',
+    loadingLabel: 'لوڈ',
+
+    // POS extras
+    openDashboardLabel: 'ڈیش بورڈ کھولیں',
+    clientLabel: 'کلائنٹ',
+    addAnotherBranch: 'ایک اور برانچ شامل کریں',
+
+    // Dashboard common toasts
+    copied: 'کاپی ہو گیا',
+    emailCopied: 'ای میل کاپی ہو گئی',
+
+    // Paywall
+    paywallTitle: 'آپ کی سبسکرپشن زیرِ التوا ہے',
+    paywallSub: 'ڈیش بورڈ کو فعال کرنے کے لیے ادائیگی جمع کروائیں۔ ایڈمن چند گھنٹوں میں منظوری دے گا۔',
+    submitPayment: 'ادائیگی جمع کروائیں',
+
+    // Generic "new" actions
+    newLabel: 'نیا',
+    addLabel: 'شامل کریں',
+
+    // Landing extras
+    whyIcut: 'iCut کیوں',
+    howItWorks: 'یہ کیسے کام کرتا ہے',
+    howStep1Title: '5 منٹ میں اپنا سیلون بنائیں',
+    howStep1Desc: 'اپنی برانچیں، خدمات، سٹاف اور پروڈکٹس شامل کریں۔ پہلی چائے سے پہلے مکمل۔',
+    howStep2Title: 'POS سے پورا دن چلائیں',
+    howStep2Desc: 'واک اِن، بکنگز، کیش، جاز کیش، کارڈ — ایک ہی چیک آؤٹ سکرین۔',
+    howStep3Title: 'اعتماد سے دن ختم کریں',
+    howStep3Desc: 'کیش ڈراور صاف۔ کل کی صبح کے لیے رپورٹس تیار۔ کچھ بھی نہیں بھولا۔',
+    ctaReady: 'اپنا سیلون iCut پر چلانے کے لیے تیار ہیں؟',
+    ctaSub: 'مفت شروع کریں۔ کوئی کریڈٹ کارڈ نہیں۔ 14 دن مکمل رسائی۔',
+    orWhatsApp: 'یا واٹس ایپ',
+
+    // Public layout nav + footer
+    navWhatItDoes: 'یہ کیا کرتا ہے',
+    navHowItWorks: 'کیسے کام کرتا ہے',
+    navPlans: 'پلانز',
+    navQuestions: 'سوالات',
+    startFree: 'مفت شروع کریں',
+    footerTagline: 'پاکستان کا سمارٹ سیلون سسٹم — بکنگز، بلنگ، سٹاف کمیشن، ادھار اور جاز کیش۔ سب ایک جگہ۔',
+    footerProduct: 'پروڈکٹ',
+    footerCompany: 'کمپنی',
+    footerLegal: 'قانونی',
+    footerFeatures: 'خصوصیات',
+    refundPolicy: 'ریفنڈ پالیسی',
 
     // Privacy/Terms shared
     lastUpdated: 'آخری بار اپڈیٹ',

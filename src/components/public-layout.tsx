@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import { Scissors, Menu, X } from 'lucide-react';
+import { useLanguage } from '@/components/providers/language-provider';
 
 interface PublicLayoutProps {
   children: React.ReactNode;
@@ -11,17 +12,18 @@ interface PublicLayoutProps {
 
 export default function PublicLayout({ children, showHomeNav = false }: PublicLayoutProps) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const { t, language, setLanguage } = useLanguage();
 
   const navLinks = showHomeNav
     ? [
-        { href: '#features', label: 'What It Does' },
-        { href: '#how', label: 'How It Works' },
-        { href: '#pricing', label: 'Plans' },
-        { href: '#faq', label: 'Questions' },
+        { href: '#features', label: t('navWhatItDoes') },
+        { href: '#how', label: t('navHowItWorks') },
+        { href: '#pricing', label: t('navPlans') },
+        { href: '#faq', label: t('navQuestions') },
       ]
     : [
-        { href: '/about', label: 'About' },
-        { href: '/contact', label: 'Contact' },
+        { href: '/about', label: t('navAbout') },
+        { href: '/contact', label: t('navContact') },
       ];
 
   return (
@@ -58,13 +60,21 @@ export default function PublicLayout({ children, showHomeNav = false }: PublicLa
             {menuOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
           </button>
 
+          {/* Language toggle */}
+          <button
+            onClick={() => setLanguage(language === 'en' ? 'ur' : 'en')}
+            className="text-[12px] text-[#6B7280] hover:bg-black/[0.04] transition-colors px-3 py-2 mr-1 rounded-full shrink-0 hidden sm:inline-flex"
+            aria-label="Switch language"
+          >
+            {language === 'en' ? 'اردو' : 'EN'}
+          </button>
           {/* CTA */}
           <Link
             href="/login"
             className="bg-[#1A1A1A] text-white text-[13px] font-semibold rounded-full hover:bg-[#333] transition-all shrink-0 inline-flex items-center"
             style={{ padding: '10px 20px' }}
           >
-            Start Free
+            {t('startFree')}
           </Link>
         </div>
 
@@ -102,36 +112,36 @@ export default function PublicLayout({ children, showHomeNav = false }: PublicLa
                 <span className="font-heading font-extrabold text-base text-white tracking-tight">iCut</span>
               </div>
               <p className="text-xs text-white/45 leading-relaxed">
-                Pakistan&apos;s Smart Salon System — bookings, billing, staff commission, udhaar, and JazzCash. All in one place.
+                {t('footerTagline')}
               </p>
             </div>
 
             {/* Product */}
             <div>
-              <h4 className="text-[11px] font-bold text-white/50 tracking-[0.15em] uppercase mb-4">Product</h4>
+              <h4 className="text-[11px] font-bold text-white/50 tracking-[0.15em] uppercase mb-4">{t('footerProduct')}</h4>
               <ul className="space-y-0.5">
-                <li><Link href="/#features" className="text-[13px] text-white/50 hover:text-white transition-colors block py-2">Features</Link></li>
-                <li><Link href="/#pricing" className="text-[13px] text-white/50 hover:text-white transition-colors block py-2">Pricing</Link></li>
-                <li><Link href="/login" className="text-[13px] text-white/50 hover:text-white transition-colors block py-2">Login</Link></li>
+                <li><Link href="/#features" className="text-[13px] text-white/50 hover:text-white transition-colors block py-2">{t('footerFeatures')}</Link></li>
+                <li><Link href="/#pricing" className="text-[13px] text-white/50 hover:text-white transition-colors block py-2">{t('navPricing')}</Link></li>
+                <li><Link href="/login" className="text-[13px] text-white/50 hover:text-white transition-colors block py-2">{t('login')}</Link></li>
               </ul>
             </div>
 
             {/* Company */}
             <div>
-              <h4 className="text-[11px] font-bold text-white/50 tracking-[0.15em] uppercase mb-4">Company</h4>
+              <h4 className="text-[11px] font-bold text-white/50 tracking-[0.15em] uppercase mb-4">{t('footerCompany')}</h4>
               <ul className="space-y-0.5">
-                <li><Link href="/about" className="text-[13px] text-white/50 hover:text-white transition-colors block py-2">About</Link></li>
-                <li><Link href="/contact" className="text-[13px] text-white/50 hover:text-white transition-colors block py-2">Contact</Link></li>
+                <li><Link href="/about" className="text-[13px] text-white/50 hover:text-white transition-colors block py-2">{t('navAbout')}</Link></li>
+                <li><Link href="/contact" className="text-[13px] text-white/50 hover:text-white transition-colors block py-2">{t('navContact')}</Link></li>
               </ul>
             </div>
 
             {/* Legal */}
             <div>
-              <h4 className="text-[11px] font-bold text-white/50 tracking-[0.15em] uppercase mb-4">Legal</h4>
+              <h4 className="text-[11px] font-bold text-white/50 tracking-[0.15em] uppercase mb-4">{t('footerLegal')}</h4>
               <ul className="space-y-0.5">
-                <li><Link href="/privacy" className="text-[13px] text-white/50 hover:text-white transition-colors block py-2">Privacy Policy</Link></li>
-                <li><Link href="/terms" className="text-[13px] text-white/50 hover:text-white transition-colors block py-2">Terms of Service</Link></li>
-                <li><Link href="/refund" className="text-[13px] text-white/50 hover:text-white transition-colors block py-2">Refund Policy</Link></li>
+                <li><Link href="/privacy" className="text-[13px] text-white/50 hover:text-white transition-colors block py-2">{t('privacyPolicy')}</Link></li>
+                <li><Link href="/terms" className="text-[13px] text-white/50 hover:text-white transition-colors block py-2">{t('termsOfService')}</Link></li>
+                <li><Link href="/refund" className="text-[13px] text-white/50 hover:text-white transition-colors block py-2">{t('refundPolicy')}</Link></li>
               </ul>
             </div>
           </div>
