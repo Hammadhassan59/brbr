@@ -12,7 +12,7 @@ import {
   LayoutDashboard, CalendarDays, Users, Receipt, UserCog,
   Package, BarChart3, Settings, LogOut,
   Scissors, Bell, Plus, Menu, X, ChevronDown, Gift, Check, Wallet,
-  AlertTriangle, CreditCard, UserX, Search, Building2,
+  AlertTriangle, CreditCard, UserX, Building2,
 } from 'lucide-react';
 import { useLanguage } from '@/components/providers/language-provider';
 import { useAppStore } from '@/store/app-store';
@@ -350,17 +350,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <button onClick={() => setSidebarOpen(true)} className="lg:hidden touch-target p-2 -ml-2 rounded-lg hover:bg-accent transition-colors text-foreground" aria-label="Open menu">
             <Menu className="w-5 h-5" />
           </button>
-
-          {/* Search bar */}
-          <div className="hidden sm:flex items-center gap-2 bg-muted rounded-lg px-3 h-10 w-72 focus-within:w-80 border border-border transition-all duration-300">
-            <Search className="w-4 h-4 text-muted-foreground shrink-0" aria-hidden="true" />
-            <input
-              type="text"
-              placeholder="Search..."
-              aria-label="Search"
-              className="bg-transparent text-sm text-foreground placeholder:text-muted-foreground outline-none w-full"
-            />
-          </div>
 
           <div className="ml-auto flex items-center gap-3">
             {roleAccess === 'full' && (
