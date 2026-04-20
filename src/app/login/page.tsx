@@ -273,8 +273,8 @@ export default function LoginPage() {
     e.preventDefault();
     const pwErr = getPasswordError(password);
     if (pwErr) { toast.error(pwErr); return; }
-    if (password !== confirmPassword) { toast.error('Passwords do not match'); return; }
-    if (!agreedToTerms) { toast.error('Please accept the Terms of Service and Privacy Policy'); return; }
+    if (password !== confirmPassword) { toast.error(t('passwordsDontMatch')); return; }
+    if (!agreedToTerms) { toast.error(t('mustAcceptTerms')); return; }
     setLoading(true);
     try {
       const { data, error } = await supabase.auth.signUp({ email, password });
@@ -426,13 +426,13 @@ export default function LoginPage() {
                 <div className="w-12 h-12 mx-auto rounded-full bg-gold/15 flex items-center justify-center mb-3">
                   <Scissors className="w-6 h-6 text-gold" />
                 </div>
-                <h2 className="font-heading text-2xl font-bold tracking-tight">Check your email</h2>
+                <h2 className="font-heading text-2xl font-bold tracking-tight">{t('checkYourEmail')}</h2>
                 <p className="text-sm text-muted-foreground mt-1">
-                  We sent a 6-digit code to <span className="font-medium text-foreground">{email}</span>
+                  {t('verifyEmailDescription')} <span className="font-medium text-foreground">{email}</span>
                 </p>
               </div>
               <div>
-                <Label htmlFor="otp">Verification code</Label>
+                <Label htmlFor="otp">{t('verificationCode')}</Label>
                 <Input
                   id="otp"
                   type="text"
@@ -447,10 +447,10 @@ export default function LoginPage() {
                   autoFocus
                   className="mt-1.5 border-border bg-white text-center text-2xl tracking-[0.4em] font-mono"
                 />
-                <p className="text-xs text-muted-foreground mt-1">The code expires in 10 minutes.</p>
+                <p className="text-xs text-muted-foreground mt-1">{t('codeExpiresIn10')}</p>
               </div>
               <Button type="submit" className="w-full bg-gold hover:bg-gold/90 text-black border border-gold" disabled={loading || otpCode.length !== 6}>
-                {loading ? 'Verifying…' : 'Verify & continue'}
+                {loading ? t('verifying') : t('verifyAndContinue')}
               </Button>
               <div className="flex items-center justify-between text-sm">
                 <button
@@ -459,14 +459,14 @@ export default function LoginPage() {
                   disabled={resendCooldown > 0}
                   className="text-gold hover:underline font-medium disabled:text-muted-foreground disabled:hover:no-underline disabled:cursor-not-allowed"
                 >
-                  {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : 'Resend code'}
+                  {resendCooldown > 0 ? t('resendInSeconds').replace('{n}', String(resendCooldown)) : t('resendCode')}
                 </button>
                 <button
                   type="button"
                   onClick={() => { setAuthMode('signup'); setOtpCode(''); setResendCooldown(0); }}
                   className="text-muted-foreground hover:underline"
                 >
-                  Use different email
+                  {t('useDifferentEmail')}
                 </button>
               </div>
             </form>
@@ -493,7 +493,7 @@ export default function LoginPage() {
                     className="text-xs text-gold hover:underline"
                     onClick={async () => {
                       if (!email.trim()) {
-                        toast.error('Enter your email first');
+                        toast.error(t('enterEmailFirst'));
                         return;
                       }
                       try {
@@ -502,9 +502,9 @@ export default function LoginPage() {
                           redirectTo: `${origin}/reset-password`,
                         });
                         if (error) throw error;
-                        toast.success('Password reset email sent — check your inbox');
+                        toast.success(t('passwordResetSent'));
                       } catch (err: unknown) {
-                        toast.error(err instanceof Error ? err.message : 'Failed to send reset email');
+                        toast.error(err instanceof Error ? err.message : t('somethingWentWrong'));
                       }
                     }}
                   >
@@ -526,21 +526,21 @@ export default function LoginPage() {
                   type="button"
                   onClick={() => setShowPassword((v) => !v)}
                   className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-muted-foreground hover:text-foreground"
-                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  aria-label={showPassword ? t('hidePassword') : t('showPassword')}
                   tabIndex={-1}
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
               {authMode === 'signup' && (
-                <p className="text-xs text-muted-foreground mt-1">Min 8 characters, with an uppercase letter, a number, and a special character.</p>
+                <p className="text-xs text-muted-foreground mt-1">{t('pwHint')}</p>
               )}
             </div>
 
             {authMode === 'signup' && (
               <>
                 <div>
-                  <Label htmlFor="confirm-password">Confirm password</Label>
+                  <Label htmlFor="confirm-password">{t('confirmPassword')}</Label>
                   <div className="relative mt-1.5">
                     <Input
                       id="confirm-password"
@@ -553,7 +553,7 @@ export default function LoginPage() {
                     />
                   </div>
                   {confirmPassword.length > 0 && password !== confirmPassword && (
-                    <p className="text-xs text-destructive mt-1">Passwords don&apos;t match</p>
+                    <p className="text-xs text-destructive mt-1">{t('passwordsDontMatch')}</p>
                   )}
                 </div>
 
@@ -566,10 +566,10 @@ export default function LoginPage() {
                     className="mt-0.5 w-4 h-4 accent-gold shrink-0"
                   />
                   <span className="text-muted-foreground leading-snug">
-                    I agree to the{' '}
-                    <a href="/terms" target="_blank" rel="noopener noreferrer" className="text-gold hover:underline">Terms of Service</a>
-                    {' '}and{' '}
-                    <a href="/privacy" target="_blank" rel="noopener noreferrer" className="text-gold hover:underline">Privacy Policy</a>.
+                    {t('agreeToTermsAnd')}{' '}
+                    <a href="/terms" target="_blank" rel="noopener noreferrer" className="text-gold hover:underline">{t('termsOfService')}</a>
+                    {' '}{t('and')}{' '}
+                    <a href="/privacy" target="_blank" rel="noopener noreferrer" className="text-gold hover:underline">{t('privacyPolicy')}</a>.
                   </span>
                 </label>
               </>
@@ -580,13 +580,13 @@ export default function LoginPage() {
               className="w-full bg-gold hover:bg-gold/90 text-black border border-gold"
               disabled={loading || (authMode === 'signup' && (!agreedToTerms || password !== confirmPassword))}
             >
-              {loading ? t('loading') : authMode === 'login' ? t('login') : 'Create Account'}
+              {loading ? t('loading') : authMode === 'login' ? t('login') : t('createAccount')}
             </Button>
             <p className="text-center text-sm text-muted-foreground">
               {authMode === 'login' ? (
-                <>New here? <button type="button" onClick={() => setAuthMode('signup')} className="text-gold hover:underline font-medium">Create an account</button></>
+                <>{t('newHere')} <button type="button" onClick={() => setAuthMode('signup')} className="text-gold hover:underline font-medium">{t('createAnAccount')}</button></>
               ) : (
-                <>Already have an account? <button type="button" onClick={() => setAuthMode('login')} className="text-gold hover:underline font-medium">Log in</button></>
+                <>{t('alreadyHaveAccount')} <button type="button" onClick={() => setAuthMode('login')} className="text-gold hover:underline font-medium">{t('logIn')}</button></>
               )}
             </p>
           </form>

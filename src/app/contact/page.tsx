@@ -1,20 +1,18 @@
-import { Metadata } from 'next';
+'use client';
+
 import { MessageCircle, Mail, Clock } from 'lucide-react';
 import PublicLayout from '@/components/public-layout';
-
-export const metadata: Metadata = {
-  title: 'Contact — iCut',
-  description: 'Get in touch with iCut support via WhatsApp or email.',
-};
+import { useLanguage } from '@/components/providers/language-provider';
 
 export default function ContactPage() {
+  const { t } = useLanguage();
   return (
     <PublicLayout>
       <div className="max-w-2xl mx-auto px-5 py-16 md:py-24">
         <div className="mb-12">
-          <h1 className="text-3xl font-bold text-[#1A1A1A] mb-3">Get in Touch</h1>
+          <h1 className="text-3xl font-bold text-[#1A1A1A] mb-3">{t('contactTitle')}</h1>
           <p className="text-sm text-[#1A1A1A]/60 leading-relaxed">
-            We usually reply within a few hours during business hours.
+            {t('contactSub')}
           </p>
         </div>
 
@@ -33,7 +31,7 @@ export default function ContactPage() {
             <div>
               <p className="text-sm font-bold text-[#1A1A1A] mb-0.5">+92 300 9402802</p>
               <p className="text-xs text-[#1A1A1A]/50 leading-relaxed">
-                Quick help, billing questions, and setup assistance. Reply within a few hours during business hours.
+                {t('contactWhatsAppDesc')}
               </p>
             </div>
           </a>
@@ -49,7 +47,7 @@ export default function ContactPage() {
             <div>
               <p className="text-sm font-bold text-[#1A1A1A] mb-0.5">contact@icut.pk</p>
               <p className="text-xs text-[#1A1A1A]/50 leading-relaxed">
-                Formal requests, data questions, and billing disputes. We respond within one business day.
+                {t('contactEmailDesc')}
               </p>
             </div>
           </a>
@@ -60,9 +58,9 @@ export default function ContactPage() {
               <Clock className="w-5 h-5 text-[#1A1A1A]/40" />
             </div>
             <div>
-              <p className="text-sm font-bold text-[#1A1A1A] mb-0.5">Business Hours</p>
+              <p className="text-sm font-bold text-[#1A1A1A] mb-0.5">{t('businessHours')}</p>
               <p className="text-xs text-[#1A1A1A]/50 leading-relaxed">
-                Monday &mdash; Saturday, 10am &mdash; 7pm PKT
+                {t('businessHoursValue')}
               </p>
             </div>
           </div>
