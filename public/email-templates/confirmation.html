@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Confirm your iCut account</title>
+</head>
+<body style="margin:0;padding:0;background:#f5f5f4;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#1a1a1a;">
+  <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#f5f5f4;padding:40px 16px;">
+    <tr>
+      <td align="center">
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="480" style="max-width:480px;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.08);">
+
+          <tr>
+            <td style="padding:32px 32px 8px 32px;text-align:center;">
+              <div style="font-family:Georgia,'Times New Roman',serif;font-size:28px;font-weight:700;letter-spacing:-0.5px;color:#1a1a1a;">iCut</div>
+              <div style="font-size:11px;letter-spacing:2px;text-transform:uppercase;color:#b8972b;margin-top:4px;">Salon Management</div>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="padding:16px 32px 8px 32px;text-align:center;">
+              <h1 style="margin:16px 0 8px 0;font-size:20px;font-weight:600;color:#1a1a1a;">Confirm your email</h1>
+              <p style="margin:0;color:#666;font-size:14px;line-height:1.5;">
+                Enter the code below on the iCut sign-up screen to finish creating your account.
+              </p>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="padding:24px 32px;text-align:center;">
+              <div style="display:inline-block;background:#faf7ec;border:1px solid #e8dfbd;border-radius:10px;padding:20px 32px;">
+                <div style="font-family:'SFMono-Regular',Menlo,Monaco,Consolas,monospace;font-size:36px;font-weight:700;letter-spacing:10px;color:#1a1a1a;">{{ .Token }}</div>
+              </div>
+              <p style="margin:12px 0 0 0;color:#888;font-size:12px;">This code expires in 10 minutes.</p>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="padding:0 32px 24px 32px;">
+              <div style="height:1px;background:#eee;margin:8px 0 20px 0;"></div>
+              <p style="margin:0 0 8px 0;color:#666;font-size:13px;line-height:1.5;">
+                Didn't request this? You can safely ignore this email. Someone may have entered your address by mistake.
+              </p>
+              <p style="margin:16px 0 0 0;color:#999;font-size:12px;line-height:1.5;">
+                Prefer a link instead? <a href="{{ .ConfirmationURL }}" style="color:#b8972b;text-decoration:underline;">Tap here to confirm</a>.
+              </p>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="padding:16px 32px 24px 32px;background:#fafaf9;text-align:center;">
+              <p style="margin:0;color:#999;font-size:11px;">
+                iCut Pakistan · icut.pk
+              </p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

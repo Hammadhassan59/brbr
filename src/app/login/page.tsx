@@ -1,7 +1,7 @@
 'use client';
 
-import { Suspense, useState, useEffect } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useState, useEffect, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import { Scissors } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { supabase } from '@/lib/supabase';
@@ -31,7 +31,7 @@ const IS_DEV = process.env.NODE_ENV === 'development';
 // — they were non-HttpOnly and any XSS could forge "icut-role=super_admin".
 // signSession (server action) is the only session writer.
 
-type AuthMode = 'login' | 'signup';
+type AuthMode = 'login' | 'signup' | 'verify';
 
 function friendlyAuthError(raw: string): string {
   const msg = raw || '';
@@ -47,22 +47,14 @@ function friendlyAuthError(raw: string): string {
   if (/rate.?limit|too many/i.test(msg)) {
     return 'Too many attempts. Please wait a minute and try again.';
   }
-  return msg || 'Signup failed. Please try again.';
+  if (/invalid.*token|expired|otp.*expired|otp.*invalid|token.*not.*found/i.test(msg)) {
+    return 'That code is invalid or expired. Check your email for the latest code, or tap Resend.';
+  }
+  return msg || 'Something went wrong. Please try again.';
 }
 
 export default function LoginPage() {
-  // useSearchParams forces dynamic rendering; wrap in Suspense so the
-  // rest of /login can still be statically shell-rendered.
-  return (
-    <Suspense fallback={<div className="h-screen flex items-center justify-center bg-background"><div className="w-8 h-8 border-2 border-gold border-t-transparent rounded-full animate-spin" /></div>}>
-      <LoginPageInner />
-    </Suspense>
-  );
-}
-
-function LoginPageInner() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const { t, language, setLanguage } = useLanguage();
   const { setSalon, setBranches, setCurrentBranch, setCurrentStaff, setCurrentPartner, setIsOwner, setIsPartner } = useAppStore();
 
@@ -70,6 +62,33 @@ function LoginPageInner() {
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+
+  // OTP email verification state (used when authMode === 'verify').
+  const [otpCode, setOtpCode] = useState('');
+  const [resendCooldown, setResendCooldown] = useState(0);
+  const cooldownTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Tick down the resend cooldown once per second. Cleared on unmount.
+  useEffect(() => {
+    if (resendCooldown <= 0) {
+      if (cooldownTimerRef.current) {
+        clearInterval(cooldownTimerRef.current);
+        cooldownTimerRef.current = null;
+      }
+      return;
+    }
+    if (!cooldownTimerRef.current) {
+      cooldownTimerRef.current = setInterval(() => {
+        setResendCooldown((s) => Math.max(0, s - 1));
+      }, 1000);
+    }
+    return () => {
+      if (cooldownTimerRef.current) {
+        clearInterval(cooldownTimerRef.current);
+        cooldownTimerRef.current = null;
+      }
+    };
+  }, [resendCooldown]);
 
   // Redirect already-authenticated users to their dashboard. The iCut JWT is
   // HttpOnly so the client can't read it directly; we ask the server via
@@ -305,28 +324,22 @@ function LoginPageInner() {
     if (pwErr) { toast.error(pwErr); return; }
     setLoading(true);
     try {
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          emailRedirectTo: `${window.location.origin}/login?verified=1`,
-        },
-      });
+      const { data, error } = await supabase.auth.signUp({ email, password });
       if (error) throw error;
       if (!data.user) throw new Error('Signup failed. Please try again.');
 
-      // Supabase user-enumeration protection: when confirmations are enabled
-      // and the email is already registered, signUp returns a fake user row
-      // with identities=[] and no session. Surface that as a clear error.
+      // Supabase user-enumeration protection: when email confirmations are
+      // required AND the email is already registered, signUp returns a fake
+      // user row with identities=[] and no session. Surface that as a clear
+      // error instead of silently flipping to the OTP screen.
       if (Array.isArray(data.user.identities) && data.user.identities.length === 0) {
         toast.error('This email is already registered. Try signing in instead — or use a different email.');
         return;
       }
 
-      // Auto-confirmed: JWT signSession runs server-side and sets the HttpOnly
-      // icut-token cookie. Hard navigation follows so the proxy sees the
-      // Set-Cookie on the next /setup request. Only happens when GoTrue has
-      // GOTRUE_MAILER_AUTOCONFIRM=true (legacy path).
+      // Legacy path: if GoTrue still has GOTRUE_MAILER_AUTOCONFIRM=true, it
+      // returns a session immediately. Mint the iCut JWT and forward to
+      // /setup. This branch becomes dead once AUTOCONFIRM is flipped off.
       if (data.session) {
         setIsOwner(true);
         await signSession({
@@ -341,7 +354,12 @@ function LoginPageInner() {
         return;
       }
 
-      toast.success('Check your email to verify your account — the link will bring you back here to continue setup.');
+      // Normal path (confirmations required): flip to the OTP code-entry
+      // screen. GoTrue has already sent a 6-digit code via Resend SMTP.
+      setAuthMode('verify');
+      setOtpCode('');
+      setResendCooldown(30);
+      toast.success(`We sent a 6-digit code to ${email}`);
     } catch (err: unknown) {
       const raw = err instanceof Error ? err.message : '';
       toast.error(friendlyAuthError(raw));
@@ -350,39 +368,54 @@ function LoginPageInner() {
     }
   }
 
-  // Post-verification return: Supabase redirects here with ?verified=1 after
-  // the user clicks the email link. At that point the Supabase session is
-  // live but the HttpOnly icut-token cookie hasn't been minted. Mint it now
-  // and forward to /setup so the owner flows straight into onboarding.
-  useEffect(() => {
-    if (searchParams.get('verified') !== '1') return;
-    let cancelled = false;
-    (async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (cancelled) return;
-      if (!session?.user) {
-        toast.error('Verification link expired. Please log in with your email and password.');
-        router.replace('/login');
-        return;
+  async function handleVerify(e: React.FormEvent) {
+    e.preventDefault();
+    const code = otpCode.trim();
+    if (!/^\d{6}$/.test(code)) {
+      toast.error('Enter the 6-digit code from your email.');
+      return;
+    }
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.auth.verifyOtp({
+        email,
+        token: code,
+        type: 'signup',
+      });
+      if (error) throw error;
+      if (!data.session || !data.user) {
+        throw new Error('Verification did not return a session. Please try again.');
       }
-      try {
-        setIsOwner(true);
-        await signSession({
-          salonId: '',
-          staffId: session.user.id,
-          role: 'owner',
-          branchId: '',
-          name: session.user.email || '',
-        });
-        toast.success('Email verified! Continuing to setup...');
-        window.location.href = '/setup';
-      } catch {
-        toast.error('Could not complete sign-in. Please log in with your password.');
-        router.replace('/login');
-      }
-    })();
-    return () => { cancelled = true; };
-  }, [searchParams, router, setIsOwner]);
+      setIsOwner(true);
+      await signSession({
+        salonId: '',
+        staffId: data.user.id,
+        role: 'owner',
+        branchId: '',
+        name: data.user.email || email,
+      });
+      toast.success('Email verified!');
+      window.location.href = '/setup';
+    } catch (err: unknown) {
+      const raw = err instanceof Error ? err.message : '';
+      toast.error(friendlyAuthError(raw));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleResend() {
+    if (resendCooldown > 0) return;
+    try {
+      const { error } = await supabase.auth.resend({ type: 'signup', email });
+      if (error) throw error;
+      setResendCooldown(30);
+      toast.success('Sent a new code. Check your inbox.');
+    } catch (err: unknown) {
+      const raw = err instanceof Error ? err.message : '';
+      toast.error(friendlyAuthError(raw));
+    }
+  }
 
   // --- Demo helpers (dev only) ---
 
@@ -474,6 +507,57 @@ function LoginPageInner() {
         </div>
 
         <div className="w-full max-w-md">
+          {authMode === 'verify' ? (
+            <form onSubmit={handleVerify} className="space-y-5 animate-fade-up">
+              <div className="text-center mb-2">
+                <div className="w-12 h-12 mx-auto rounded-full bg-gold/15 flex items-center justify-center mb-3">
+                  <Scissors className="w-6 h-6 text-gold" />
+                </div>
+                <h2 className="font-heading text-2xl font-bold tracking-tight">Check your email</h2>
+                <p className="text-sm text-muted-foreground mt-1">
+                  We sent a 6-digit code to <span className="font-medium text-foreground">{email}</span>
+                </p>
+              </div>
+              <div>
+                <Label htmlFor="otp">Verification code</Label>
+                <Input
+                  id="otp"
+                  type="text"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  maxLength={6}
+                  pattern="\d{6}"
+                  value={otpCode}
+                  onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                  placeholder="123456"
+                  required
+                  autoFocus
+                  className="mt-1.5 border-border bg-white text-center text-2xl tracking-[0.4em] font-mono"
+                />
+                <p className="text-xs text-muted-foreground mt-1">The code expires in 10 minutes.</p>
+              </div>
+              <Button type="submit" className="w-full bg-gold hover:bg-gold/90 text-black border border-gold" disabled={loading || otpCode.length !== 6}>
+                {loading ? 'Verifying…' : 'Verify & continue'}
+              </Button>
+              <div className="flex items-center justify-between text-sm">
+                <button
+                  type="button"
+                  onClick={handleResend}
+                  disabled={resendCooldown > 0}
+                  className="text-gold hover:underline font-medium disabled:text-muted-foreground disabled:hover:no-underline disabled:cursor-not-allowed"
+                >
+                  {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : 'Resend code'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setAuthMode('signup'); setOtpCode(''); setResendCooldown(0); }}
+                  className="text-muted-foreground hover:underline"
+                >
+                  Use different email
+                </button>
+              </div>
+            </form>
+          ) : (
           <form onSubmit={authMode === 'login' ? handleLogin : handleSignup} className="space-y-4 animate-fade-up">
             <div>
               <Label htmlFor="email">{t('email')}</Label>
@@ -539,6 +623,7 @@ function LoginPageInner() {
               )}
             </p>
           </form>
+          )}
 
           {/* Demo Accounts — development only */}
           {IS_DEV && <div className="mt-8 pt-6 border-t border-dashed">
