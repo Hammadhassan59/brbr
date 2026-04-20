@@ -16,11 +16,22 @@ export async function getAdminDashboardData() {
   if (salonErr) throw salonErr;
 
   const allSalons = salons || [];
+  const liveSalonIds = allSalons.map((s) => s.id);
 
-  const [{ count: staffCount }, { count: clientCount }] = await Promise.all([
-    supabase.from('staff').select('*', { count: 'exact', head: true }),
-    supabase.from('clients').select('*', { count: 'exact', head: true }),
-  ]);
+  // Only count staff/clients whose salon_id points at a salon that still
+  // exists. If FK cascades get bypassed (e.g. session_replication_role =
+  // replica during a bulk wipe) orphan rows can survive; without this
+  // filter they\u2019d inflate the KPI tiles on the admin dashboard.
+  let staffCount = 0;
+  let clientCount = 0;
+  if (liveSalonIds.length > 0) {
+    const [staffRes, clientRes] = await Promise.all([
+      supabase.from('staff').select('*', { count: 'exact', head: true }).in('salon_id', liveSalonIds),
+      supabase.from('clients').select('*', { count: 'exact', head: true }).in('salon_id', liveSalonIds),
+    ]);
+    staffCount = staffRes.count ?? 0;
+    clientCount = clientRes.count ?? 0;
+  }
   const liveSalons = allSalons;
 
   // Platform revenue = subscription MRR (what iCut earns from tenant plans),
