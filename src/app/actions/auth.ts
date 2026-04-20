@@ -493,14 +493,14 @@ export async function getDashboardBootstrap(): Promise<{
 }
 
 /**
- * Lightweight read for the agent layout to know whether to show the demo
- * banner. Returns null if not signed in as an agent.
+ * Lightweight read for the agent layout to confirm the caller is signed in
+ * as a sales agent. Returns null if not.
  */
-export async function getAgentSessionInfo(): Promise<{ isDemo: boolean } | null> {
+export async function getAgentSessionInfo(): Promise<{ agentId: string | null } | null> {
   try {
     const session = await verifySession();
     if (session.role !== 'sales_agent') return null;
-    return { isDemo: !!session.isDemo };
+    return { agentId: session.agentId ?? null };
   } catch {
     return null;
   }
@@ -613,44 +613,6 @@ export async function getPlanLimits(plan: string): Promise<PlanLimits> {
   }
 
   return DEFAULT_PLAN_LIMITS[plan] || DEFAULT_PLAN_LIMITS.basic;
-}
-
-/**
- * Exit demo mode: re-sign the JWT as a plain sales_agent using the agentId
- * carried by the current demo session, so the agent lands back on their
- * own /agent/leads surface. No DB writes — just a token swap.
- *
- * Known limitation: if the demo agent had a Supabase Auth session attached
- * to a different user in the browser (we don't create one, but the login
- * flow does via supabase.auth.signInWithPassword), that session persists
- * across this call. Same pattern as exitImpersonation — client can call
- * supabase.auth.signOut() separately if needed.
- */
-export async function exitDemoMode(): Promise<{ success: boolean; error: string | null }> {
-  try {
-    const session = await verifySession();
-    if (!session.isDemo) {
-      return { success: false, error: 'Not currently in demo mode' };
-    }
-    if (!session.agentId) {
-      return { success: false, error: 'Demo session has no agent id' };
-    }
-    await signSession({
-      salonId: '',
-      staffId: session.staffId,
-      role: 'sales_agent',
-      primaryBranchId: '',
-      branchId: '',
-      branchIds: [],
-      permissions: { '*': true },
-      name: session.name.replace(/ \(demo\)$/, ''),
-      agentId: session.agentId,
-      isDemo: false,
-    });
-    return { success: true, error: null };
-  } catch (e) {
-    return { success: false, error: e instanceof Error ? e.message : 'Failed to exit demo' };
-  }
 }
 
 export async function destroySession() {

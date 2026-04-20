@@ -75,7 +75,7 @@ describe('sales-agents server actions', () => {
       email: 'ali@example.com',
       name: 'Ali',
       phone: '0300', city: 'LHR',
-      firstSalePct: 20, renewalPct: 5, demoPassword: 'DemoPass1!',
+      firstSalePct: 20, renewalPct: 5,
     });
     expect(res.error).toBeNull();
     expect(adminCreateUser).toHaveBeenCalled();
@@ -86,14 +86,14 @@ describe('sales-agents server actions', () => {
     mockVerifySession.mockResolvedValue({ role: 'owner', salonId: 's', staffId: 'x', branchId: '', name: '' });
     const { createSalesAgent } = await import('../src/app/actions/sales-agents');
     await expect(createSalesAgent({
-      email: 'a@b.c', name: 'X', phone: '0300', city: null, firstSalePct: 0, renewalPct: 0, demoPassword: 'DemoPass1!',
+      email: 'a@b.c', name: 'X', phone: '0300', city: null, firstSalePct: 0, renewalPct: 0,
     })).rejects.toThrow('Unauthorized');
   });
 
   it('createSalesAgent rejects invalid pct', async () => {
     const { createSalesAgent } = await import('../src/app/actions/sales-agents');
     const res = await createSalesAgent({
-      email: 'a@b.c', name: 'X', phone: '0300', city: null, firstSalePct: 200, renewalPct: 5, demoPassword: 'DemoPass1!',
+      email: 'a@b.c', name: 'X', phone: '0300', city: null, firstSalePct: 200, renewalPct: 5,
     });
     expect(res.error).toMatch(/between 0 and 100/i);
   });

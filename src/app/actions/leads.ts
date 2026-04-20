@@ -12,23 +12,6 @@ async function requireSalesAgent() {
   return s;
 }
 
-/**
- * Throws if the agent_id refers to a demo identity. Demo agents must NOT
- * create real salons or real payment_requests — those would survive the
- * 10-minute reset cron and pollute the production tenant set.
- */
-async function rejectIfDemo(agentId: string): Promise<void> {
-  const supabase = createServerClient();
-  const { data } = await supabase
-    .from('sales_agents')
-    .select('is_demo')
-    .eq('id', agentId)
-    .maybeSingle();
-  if (data?.is_demo) {
-    throw new Error('DEMO_BLOCKED');
-  }
-}
-
 export interface CreateLeadInput {
   salon_name: string;
   owner_name: string | null;
@@ -284,11 +267,6 @@ export async function recordCollection(input: {
   notes?: string | null;
 }): Promise<{ data: { paymentRequestId: string } | null; error: string | null }> {
   const session = await requireSalesAgent();
-  try {
-    await rejectIfDemo(session.agentId!);
-  } catch {
-    return { data: null, error: "Demo accounts can't record real collections." };
-  }
   if (!input.salonId) return { data: null, error: 'Salon required' };
   if (!['basic', 'growth', 'pro'].includes(input.plan)) return { data: null, error: 'Invalid plan' };
   if (!Number.isFinite(input.amount) || input.amount <= 0) return { data: null, error: 'Invalid amount' };
@@ -481,11 +459,6 @@ export async function convertLeadToSalon(
   input: ConvertInput,
 ): Promise<{ data: { salonId: string; paymentRequestId: string } | null; error: string | null }> {
   const session = await requireSalesAgent();
-  try {
-    await rejectIfDemo(session.agentId!);
-  } catch {
-    return { data: null, error: "Demo accounts can't onboard real salons. Switch to your real agent login." };
-  }
   if (!input.ownerEmail?.trim()) return { data: null, error: 'Owner email required' };
   if (!['basic','growth','pro'].includes(input.plan)) return { data: null, error: 'Invalid plan' };
   if (!Number.isFinite(input.amount) || input.amount <= 0) return { data: null, error: 'Invalid amount' };

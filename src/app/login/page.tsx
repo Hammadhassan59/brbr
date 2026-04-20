@@ -14,17 +14,7 @@ import { Label } from '@/components/ui/label';
 import { signSession, resolveUserRole, isSuperAdminEmail, resolveAdminRole, getSessionInfo } from '@/app/actions/auth';
 import { getPasswordError } from '@/lib/schemas/common';
 import { isAdminRole } from '@/lib/admin-roles';
-import {
-  DEMO_SALON, DEMO_BRANCH, DEMO_STAFF_OWNER, DEMO_STAFF_STYLIST, DEMO_STAFF_RECEPTIONIST,
-  DEMO_SALON_GENTS, DEMO_BRANCH_GENTS, DEMO_BRANCH_GENTS_2,
-  DEMO_GENTS_OWNER, DEMO_GENTS_BARBER_SENIOR, DEMO_GENTS_BARBER_JUNIOR, DEMO_GENTS_HELPER,
-  DEMO_STAFF_SUPERADMIN,
-  DEMO_PARTNER_ROYAL,
-} from '@/lib/demo-data';
-import { DEMO_SALON_ID, DEMO_BRANCH_ID } from '@/lib/demo-salon-constants';
-import type { Salon, Branch, Staff, SalonPartner } from '@/types/database';
-
-const IS_DEV = process.env.NODE_ENV === 'development';
+import type { Branch } from '@/types/database';
 
 // The proxy now verifies the HttpOnly icut-token JWT for session + role +
 // subscription state. We no longer write icut-session / icut-role client-side
@@ -166,47 +156,6 @@ export default function LoginPage() {
       }
 
       if (result.type === 'sales_agent' && result.agent) {
-        // Demo agent path: land them in the shared demo salon as a synthetic
-        // owner so they can showcase the full product. Real demo data lives
-        // in DB (seeded by migration 032 + reset cron), so we don't have to
-        // pre-populate Zustand from Supabase queries — just mirror the owner
-        // shape with the demo salon id and let the dashboard layout's
-        // getDashboardBootstrap() fetch fill in the rest.
-        if (result.agent.is_demo) {
-          const { setIsSalesAgent, setAgentId, setIsSuperAdmin } = useAppStore.getState();
-          setIsSuperAdmin(false);
-          setIsSalesAgent(false);
-          setAgentId(null);
-          setIsPartner(false);
-          setCurrentStaff(null);
-          setCurrentPartner(null);
-          // Minimal client-side placeholder; the real salon row is loaded from
-          // the server on /dashboard mount. Shape matches `Salon` closely
-          // enough for the layout's optional chains.
-          setSalon({
-            id: DEMO_SALON_ID,
-            name: 'Demo Salon',
-            subscription_status: 'active',
-          } as unknown as Salon);
-          setBranches([]);
-          setCurrentBranch(null);
-          setIsOwner(true);
-          // branchIds + permissions resolved by signSession from the DB
-          // (owner => all branches, permissions => { "*": true }).
-          await signSession({
-            salonId: DEMO_SALON_ID,
-            staffId: data.user.id,
-            role: 'owner',
-            primaryBranchId: DEMO_BRANCH_ID,
-            name: `${result.agent.name} (demo)`,
-            isDemo: true,
-            agentId: result.agent.id,
-          });
-          router.push('/dashboard');
-          return;
-        }
-
-        // Real sales agent — lands on /agent/leads.
         const { setIsSalesAgent, setAgentId, setIsSuperAdmin } = useAppStore.getState();
         setIsSuperAdmin(false);
         setIsOwner(false);
@@ -432,60 +381,6 @@ export default function LoginPage() {
     }
   }
 
-  // --- Demo helpers (dev only) ---
-
-  async function demoLoginSuperAdmin() {
-    if (!IS_DEV) return;
-    const { setIsSuperAdmin } = useAppStore.getState();
-    setIsSuperAdmin(true);
-    setIsOwner(false);
-    setCurrentStaff(DEMO_STAFF_SUPERADMIN);
-    setSalon(null);
-    setBranches([]);
-    setCurrentBranch(null);
-    setCurrentPartner(null);
-    setIsPartner(false);
-    await signSession({ salonId: 'super-admin', staffId: DEMO_STAFF_SUPERADMIN.id, role: 'super_admin', branchId: '', name: 'Super Admin' });
-    toast.success('Super Admin mode activated');
-    router.push('/admin');
-  }
-
-  async function demoLoginAs(salonData: Salon, branchData: Branch, staffData: Staff, allBranches?: Branch[]) {
-    if (!IS_DEV) return;
-    const { setIsSuperAdmin } = useAppStore.getState();
-    setIsSuperAdmin(false);
-    const isDemoOwner = staffData.role === 'owner';
-    setIsOwner(isDemoOwner);
-    setSalon(salonData);
-    setBranches(allBranches || [branchData]);
-    setCurrentBranch(branchData);
-    setCurrentStaff(staffData);
-    setCurrentPartner(null);
-    setIsPartner(false);
-    await signSession({ salonId: salonData.id, staffId: staffData.id, role: staffData.role, branchId: branchData.id, name: staffData.name });
-    toast.success(`Logged in as ${staffData.name} (${staffData.role.replace('_', ' ')}) — ${salonData.name}`);
-    router.push('/dashboard');
-  }
-
-  async function demoLoginAsPartner(salonData: Salon, partnerData: SalonPartner, allBranches: Branch[]) {
-    if (!IS_DEV) return;
-    const { setIsSuperAdmin } = useAppStore.getState();
-    setIsSuperAdmin(false);
-    setIsOwner(false);
-    setSalon(salonData);
-    setBranches(allBranches);
-    const mainBranch = allBranches.find((b) => b.is_main) || allBranches[0];
-    setCurrentBranch(mainBranch);
-    setCurrentStaff(null);
-    setCurrentPartner(partnerData);
-    setIsPartner(true);
-    await signSession({ salonId: salonData.id, staffId: partnerData.id, role: 'partner', branchId: mainBranch?.id || '', name: partnerData.name });
-    toast.success(`Logged in as ${partnerData.name} (Owner) — ${salonData.name}`);
-    router.push('/dashboard');
-  }
-
-  const royalBranches = [DEMO_BRANCH_GENTS, DEMO_BRANCH_GENTS_2];
-
   return (
     <div className="min-h-screen flex">
       <DataNotice />
@@ -639,97 +534,6 @@ export default function LoginPage() {
             </p>
           </form>
           )}
-
-          {/* Demo Accounts — development only */}
-          {IS_DEV && <div className="mt-8 pt-6 border-t border-dashed">
-            <p className="text-xs text-muted-foreground text-center mb-3">Quick Demo Access (no Supabase required)</p>
-            <div className="space-y-5">
-
-              {/* Super Admin */}
-              <div>
-                <p className="text-[10px] font-semibold text-red-500 uppercase tracking-wider mb-1.5">Platform Admin</p>
-                <button onClick={demoLoginSuperAdmin} className="w-full flex items-center gap-3 p-3 rounded-lg border-2 border-red-400/40 bg-red-500/10 hover:bg-red-500/15 transition-all text-left">
-                  <div className="w-10 h-10 rounded-full bg-red-500/15 text-red-600 font-bold flex items-center justify-center shrink-0 text-xs">SA</div>
-                  <div className="flex-1">
-                    <p className="text-sm font-semibold">iCut Super Admin</p>
-                    <p className="text-[10px] text-muted-foreground">Platform panel: all salons, all users, analytics, platform settings</p>
-                  </div>
-                  <span className="text-[10px] bg-red-500/15 text-red-600 px-2 py-0.5 rounded-full font-medium">Super</span>
-                </button>
-              </div>
-
-              {/* Royal Barbers — all roles share one salon so data is visible across roles */}
-              <div>
-                <p className="text-[10px] font-semibold text-blue-500 uppercase tracking-wider mb-1.5">Royal Barbers — Islamabad (2 branches)</p>
-                <div className="space-y-1.5">
-                  <button onClick={() => demoLoginAs(DEMO_SALON_GENTS, DEMO_BRANCH_GENTS, DEMO_GENTS_OWNER, royalBranches)} className="w-full flex items-center gap-3 p-2.5 rounded-lg border-2 border-gold/30 bg-gold/5 hover:bg-gold/10 transition-all text-left">
-                    <div className="w-9 h-9 rounded-full bg-gold/20 text-gold font-bold flex items-center justify-center shrink-0 text-xs">AR</div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold">Ahmed Raza</p>
-                      <p className="text-[10px] text-muted-foreground">Owner — Full access, multi-branch</p>
-                    </div>
-                    <span className="text-[10px] bg-gold/20 text-gold px-2 py-0.5 rounded-full font-medium shrink-0">Owner</span>
-                  </button>
-                  <button onClick={() => demoLoginAsPartner(DEMO_SALON_GENTS, DEMO_PARTNER_ROYAL, royalBranches)} className="w-full flex items-center gap-3 p-2.5 rounded-lg border-2 border-gold/30 bg-gold/5 hover:bg-gold/10 transition-all text-left">
-                    <div className="w-9 h-9 rounded-full bg-gold/20 text-gold font-bold flex items-center justify-center shrink-0 text-xs">IM</div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold">Imran Malik</p>
-                      <p className="text-[10px] text-muted-foreground">Co-Owner — Full access</p>
-                    </div>
-                    <span className="text-[10px] bg-gold/20 text-gold px-2 py-0.5 rounded-full font-medium shrink-0">Owner</span>
-                  </button>
-                  <button onClick={() => demoLoginAs(DEMO_SALON_GENTS, DEMO_BRANCH_GENTS, DEMO_STAFF_OWNER, royalBranches)} className="w-full flex items-center gap-3 p-2.5 rounded-lg border-2 border-gold/30 bg-gold/5 hover:bg-gold/10 transition-all text-left">
-                    <div className="w-9 h-9 rounded-full bg-gold/20 text-gold font-bold flex items-center justify-center shrink-0 text-xs">FK</div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold">Fatima Khan</p>
-                      <p className="text-[10px] text-muted-foreground">Manager — Full access</p>
-                    </div>
-                    <span className="text-[10px] bg-gold/20 text-gold px-2 py-0.5 rounded-full font-medium shrink-0">Manager</span>
-                  </button>
-                  <button onClick={() => demoLoginAs(DEMO_SALON_GENTS, DEMO_BRANCH_GENTS, DEMO_STAFF_STYLIST, royalBranches)} className="w-full flex items-center gap-3 p-2.5 rounded-lg border hover:border-purple-500/25 hover:bg-purple-500/10 transition-all text-left">
-                    <div className="w-9 h-9 rounded-full bg-purple-500/15 text-purple-600 font-bold flex items-center justify-center shrink-0 text-xs">SA</div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold">Sadia Ahmed</p>
-                      <p className="text-[10px] text-muted-foreground">Senior Stylist — Appointments only</p>
-                    </div>
-                    <span className="text-[10px] bg-purple-500/15 text-purple-600 px-2 py-0.5 rounded-full font-medium shrink-0">Stylist</span>
-                  </button>
-                  <button onClick={() => demoLoginAs(DEMO_SALON_GENTS, DEMO_BRANCH_GENTS, DEMO_STAFF_RECEPTIONIST, royalBranches)} className="w-full flex items-center gap-3 p-2.5 rounded-lg border hover:border-teal-500/25 hover:bg-teal-500/10 transition-all text-left">
-                    <div className="w-9 h-9 rounded-full bg-teal-500/15 text-teal-600 font-bold flex items-center justify-center shrink-0 text-xs">ZB</div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold">Zainab Bibi</p>
-                      <p className="text-[10px] text-muted-foreground">Receptionist — Appointments, clients, POS</p>
-                    </div>
-                    <span className="text-[10px] bg-teal-500/15 text-teal-600 px-2 py-0.5 rounded-full font-medium shrink-0">Reception</span>
-                  </button>
-                  <button onClick={() => demoLoginAs(DEMO_SALON_GENTS, DEMO_BRANCH_GENTS, DEMO_GENTS_BARBER_SENIOR, royalBranches)} className="w-full flex items-center gap-3 p-2.5 rounded-lg border hover:border-purple-500/25 hover:bg-purple-500/10 transition-all text-left">
-                    <div className="w-9 h-9 rounded-full bg-purple-500/15 text-purple-600 font-bold flex items-center justify-center shrink-0 text-xs">UG</div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold">Usman Ghani</p>
-                      <p className="text-[10px] text-muted-foreground">Senior Barber</p>
-                    </div>
-                    <span className="text-[10px] bg-purple-500/15 text-purple-600 px-2 py-0.5 rounded-full font-medium shrink-0">Sr. Barber</span>
-                  </button>
-                  <button onClick={() => demoLoginAs(DEMO_SALON_GENTS, DEMO_BRANCH_GENTS, DEMO_GENTS_BARBER_JUNIOR, royalBranches)} className="w-full flex items-center gap-3 p-2.5 rounded-lg border hover:border-indigo-500/25 hover:bg-indigo-500/10 transition-all text-left">
-                    <div className="w-9 h-9 rounded-full bg-indigo-500/15 text-indigo-600 font-bold flex items-center justify-center shrink-0 text-xs">BS</div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold">Bilal Saeed</p>
-                      <p className="text-[10px] text-muted-foreground">Junior Barber</p>
-                    </div>
-                    <span className="text-[10px] bg-indigo-500/15 text-indigo-600 px-2 py-0.5 rounded-full font-medium shrink-0">Jr. Barber</span>
-                  </button>
-                  <button onClick={() => demoLoginAs(DEMO_SALON_GENTS, DEMO_BRANCH_GENTS, DEMO_GENTS_HELPER, royalBranches)} className="w-full flex items-center gap-3 p-2.5 rounded-lg border hover:border-gray-500/25 hover:bg-gray-500/5 transition-all text-left">
-                    <div className="w-9 h-9 rounded-full bg-gray-500/10 text-gray-500 font-bold flex items-center justify-center shrink-0 text-xs">HA</div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold">Hamza Ali</p>
-                      <p className="text-[10px] text-muted-foreground">Helper — Dashboard only</p>
-                    </div>
-                    <span className="text-[10px] bg-gray-500/10 text-gray-500 px-2 py-0.5 rounded-full font-medium shrink-0">Helper</span>
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>}
         </div>
       </div>
     </div>

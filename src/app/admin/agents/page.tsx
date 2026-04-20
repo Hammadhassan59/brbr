@@ -218,10 +218,10 @@ function genDemoPassword(): string {
 
 function NewAgentDialog({ open, onClose, onCreated }: { open: boolean; onClose: () => void; onCreated: () => void }) {
   const [form, setForm] = useState({
-    email: '', name: '', phone: '', city: '', firstSalePct: '20', renewalPct: '5', demoPassword: '',
+    email: '', name: '', phone: '', city: '', firstSalePct: '20', renewalPct: '5',
   });
   const [submitting, setSubmitting] = useState(false);
-  const [createdInfo, setCreatedInfo] = useState<{ code: string; demoEmail: string; demoPassword: string } | null>(null);
+  const [createdInfo, setCreatedInfo] = useState<{ code: string } | null>(null);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -231,11 +231,6 @@ function NewAgentDialog({ open, onClose, onCreated }: { open: boolean; onClose: 
       toast.error('Phone is required');
       return;
     }
-    if (form.demoPassword.length < 8) {
-      setSubmitting(false);
-      toast.error('Demo password must be at least 8 characters');
-      return;
-    }
     const { data, error } = await createSalesAgent({
       email: form.email.trim().toLowerCase(),
       name: form.name.trim(),
@@ -243,17 +238,16 @@ function NewAgentDialog({ open, onClose, onCreated }: { open: boolean; onClose: 
       city: form.city.trim() || null,
       firstSalePct: Number(form.firstSalePct),
       renewalPct: Number(form.renewalPct),
-      demoPassword: form.demoPassword,
     });
     setSubmitting(false);
     if (error || !data) { toast.error(error || 'Create failed'); return; }
-    toast.success('Agent created — share the demo creds with them');
-    setCreatedInfo({ code: data.code, demoEmail: data.demoEmail, demoPassword: form.demoPassword });
+    toast.success('Agent created — password-reset email sent');
+    setCreatedInfo({ code: data.code });
     onCreated();
   }
 
   function close() {
-    setForm({ email: '', name: '', phone: '', city: '', firstSalePct: '20', renewalPct: '5', demoPassword: '' });
+    setForm({ email: '', name: '', phone: '', city: '', firstSalePct: '20', renewalPct: '5' });
     setCreatedInfo(null);
     onClose();
   }
@@ -269,25 +263,10 @@ function NewAgentDialog({ open, onClose, onCreated }: { open: boolean; onClose: 
                 <p className="text-xs uppercase tracking-wider text-muted-foreground">Agent code</p>
                 <p className="font-mono text-xl font-bold mt-1">{createdInfo.code}</p>
               </div>
-              <div>
-                <p className="text-xs uppercase tracking-wider text-muted-foreground">Demo email</p>
-                <p className="font-mono text-sm break-all mt-1">{createdInfo.demoEmail}</p>
-              </div>
-              <div>
-                <p className="text-xs uppercase tracking-wider text-muted-foreground">Demo password</p>
-                <p className="font-mono text-sm break-all mt-1">{createdInfo.demoPassword}</p>
-              </div>
               <p className="text-xs text-muted-foreground">
-                Share these with the agent. They use the demo creds to show prospects what the platform looks like — data resets every 10 minutes.
+                Agent created. A password-reset email has been sent so they can set their login.
               </p>
             </div>
-            <Button
-              variant="outline"
-              onClick={() => navigator.clipboard.writeText(`Email: ${createdInfo.demoEmail}\nPassword: ${createdInfo.demoPassword}`).then(() => toast.success('Copied'))}
-              className="w-full"
-            >
-              Copy demo creds
-            </Button>
             <Button onClick={close} className="w-full">Done</Button>
           </div>
         ) : (
@@ -327,25 +306,6 @@ function NewAgentDialog({ open, onClose, onCreated }: { open: boolean; onClose: 
                   value={form.renewalPct}
                   onChange={e => setForm({ ...form, renewalPct: e.target.value })} />
               </div>
-            </div>
-            <div>
-              <Label htmlFor="demo">Demo password * <span className="text-muted-foreground font-normal">(8+ chars)</span></Label>
-              <div className="flex gap-2 mt-1">
-                <Input
-                  id="demo"
-                  type="text"
-                  required
-                  value={form.demoPassword}
-                  onChange={e => setForm({ ...form, demoPassword: e.target.value })}
-                  className="font-mono"
-                />
-                <Button type="button" variant="outline" onClick={() => setForm({ ...form, demoPassword: genDemoPassword() })}>
-                  Auto
-                </Button>
-              </div>
-              <p className="text-[11px] text-muted-foreground mt-1">
-                Used by this agent to log in to a demo dataset for showing prospects. Independent from their real password.
-              </p>
             </div>
             <div className="flex justify-end gap-2">
               <Button type="button" variant="outline" onClick={close}>Cancel</Button>

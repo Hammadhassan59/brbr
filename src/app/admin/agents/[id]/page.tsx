@@ -3,9 +3,9 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
-import { Copy, KeyRound, TrendingUp, Wallet, Store, Banknote, Loader2 } from 'lucide-react';
+import { Copy, TrendingUp, Wallet, Store, Banknote, Loader2 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend } from 'recharts';
-import { getSalesAgent, updateAgentRates, setAgentActive, updateAgentProfile, getDemoCredentials, setDemoPassword } from '@/app/actions/sales-agents';
+import { getSalesAgent, updateAgentRates, setAgentActive, updateAgentProfile } from '@/app/actions/sales-agents';
 import { getAgentReport, type AgentReport } from '@/app/actions/agent-commissions';
 import type { SalesAgent } from '@/types/sales';
 import { Button } from '@/components/ui/button';
@@ -23,10 +23,6 @@ export default function AgentDetailPage() {
   const [agent, setAgent] = useState<SalesAgent | null>(null);
   const [form, setForm] = useState({ name: '', phone: '', city: '', firstSalePct: '0', renewalPct: '0' });
   const [saving, setSaving] = useState(false);
-  const [demoEmail, setDemoEmail] = useState<string | null>(null);
-  const [showResetDemo, setShowResetDemo] = useState(false);
-  const [newDemoPwd, setNewDemoPwd] = useState('');
-  const [resettingDemo, setResettingDemo] = useState(false);
 
   async function load() {
     const { data } = await getSalesAgent(params.id);
@@ -39,19 +35,6 @@ export default function AgentDetailPage() {
       firstSalePct: String(data.first_sale_pct),
       renewalPct: String(data.renewal_pct),
     });
-    const { data: demo } = await getDemoCredentials(params.id);
-    setDemoEmail(demo?.email ?? null);
-  }
-
-  async function resetDemo() {
-    if (newDemoPwd.length < 8) { toast.error('Password must be at least 8 characters'); return; }
-    setResettingDemo(true);
-    const { error } = await setDemoPassword(params.id, newDemoPwd);
-    setResettingDemo(false);
-    if (error) { toast.error(error); return; }
-    toast.success('Demo password updated');
-    setShowResetDemo(false);
-    setNewDemoPwd('');
   }
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { load(); }, [params.id]);
@@ -74,10 +57,10 @@ export default function AgentDetailPage() {
 
   async function toggleActive() {
     if (!agent) return;
-    if (agent.active && !confirm('Deactivate this agent? They will no longer be able to log in (demo login is also blocked). Their leads, commissions, and payouts stay intact.')) return;
+    if (agent.active && !confirm('Deactivate this agent? They will no longer be able to log in. Their leads, commissions, and payouts stay intact.')) return;
     const { error } = await setAgentActive(agent.id, !agent.active);
     if (error) { toast.error(error); return; }
-    toast.success(agent.active ? 'Agent + demo deactivated' : 'Agent + demo reactivated');
+    toast.success(agent.active ? 'Agent deactivated' : 'Agent reactivated');
     load();
   }
 
@@ -111,47 +94,6 @@ export default function AgentDetailPage() {
                 <Copy className="w-4 h-4 mr-1.5" /> Copy
               </Button>
             </div>
-
-            {demoEmail && (
-              <div className="border rounded-lg p-4 space-y-3">
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <p className="text-xs uppercase tracking-wider text-muted-foreground">Demo login</p>
-                    <p className="font-mono text-sm break-all mt-1">{demoEmail}</p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Demo data resets every 10 minutes. Deactivating this agent also blocks the demo login.
-                    </p>
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => navigator.clipboard.writeText(demoEmail).then(() => toast.success('Email copied'))}
-                  >
-                    <Copy className="w-4 h-4 mr-1.5" /> Copy email
-                  </Button>
-                </div>
-                {showResetDemo ? (
-                  <div className="flex items-end gap-2">
-                    <div className="flex-1">
-                      <Label className="text-xs">New demo password (8+ chars)</Label>
-                      <Input
-                        type="text"
-                        value={newDemoPwd}
-                        onChange={(e) => setNewDemoPwd(e.target.value)}
-                        className="font-mono mt-1"
-                        placeholder="Enter new password"
-                      />
-                    </div>
-                    <Button onClick={resetDemo} disabled={resettingDemo}>{resettingDemo ? 'Saving…' : 'Save'}</Button>
-                    <Button variant="outline" onClick={() => { setShowResetDemo(false); setNewDemoPwd(''); }}>Cancel</Button>
-                  </div>
-                ) : (
-                  <Button variant="outline" size="sm" onClick={() => setShowResetDemo(true)}>
-                    <KeyRound className="w-4 h-4 mr-1.5" /> Reset demo password
-                  </Button>
-                )}
-              </div>
-            )}
 
             <div className="space-y-4 border rounded-lg p-5">
               <h3 className="font-medium">Profile</h3>

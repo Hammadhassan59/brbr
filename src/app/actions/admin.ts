@@ -16,24 +16,12 @@ export async function getAdminDashboardData() {
   if (salonErr) throw salonErr;
 
   const allSalons = salons || [];
-  const demoSalonIdList = allSalons.filter((s) => s.is_demo).map((s) => s.id);
 
-  // Staff/client counts exclude the demo salon's catalog so the admin
-  // dashboard doesn't inflate "all tenants" numbers with demo fixtures.
-  let staffCountQuery = supabase.from('staff').select('*', { count: 'exact', head: true });
-  let clientCountQuery = supabase.from('clients').select('*', { count: 'exact', head: true });
-  if (demoSalonIdList.length > 0) {
-    staffCountQuery = staffCountQuery.not('salon_id', 'in', `(${demoSalonIdList.join(',')})`);
-    clientCountQuery = clientCountQuery.not('salon_id', 'in', `(${demoSalonIdList.join(',')})`);
-  }
   const [{ count: staffCount }, { count: clientCount }] = await Promise.all([
-    staffCountQuery,
-    clientCountQuery,
+    supabase.from('staff').select('*', { count: 'exact', head: true }),
+    supabase.from('clients').select('*', { count: 'exact', head: true }),
   ]);
-  // Real tenants only — the demo salon stays in the returned list (visible as
-  // a badged row on /admin/salons) but must not contribute to the rollup
-  // counts/revenue/cities shown on the overview tiles.
-  const liveSalons = allSalons.filter((s) => !s.is_demo);
+  const liveSalons = allSalons;
 
   // Platform revenue = subscription MRR (what iCut earns from tenant plans),
   // not the combined tenant GMV (what tenants bill their own customers).
@@ -73,7 +61,6 @@ export async function getAdminDashboardData() {
   const pendingSetup = liveSalons.filter((s) => !s.setup_complete).length;
 
   return {
-    // Still return all salons (including demo) so the list UI can render + flag.
     salons: allSalons,
     stats: {
       totalSalons: liveSalons.length,
@@ -159,12 +146,9 @@ export async function getAdminAnalytics() {
   await requireAdminRole(['super_admin', 'technical_support']);
   const supabase = createServerClient();
 
-  // Analytics dashboards are "real-tenant only" — exclude the demo salon so
-  // its synthetic revenue/city doesn't skew the MRR chart or distribution.
   const { data: salonsData } = await supabase
     .from('salons')
     .select('*')
-    .eq('is_demo', false)
     .order('created_at', { ascending: false });
 
   const salons = salonsData || [];
@@ -177,29 +161,16 @@ export async function getAdminAnalytics() {
   });
   const cityDist = Object.entries(cityCounts).map(([name, value]) => ({ name, value }));
 
-  // Bills for last 6 months — exclude demo salon's bills too. Pull the demo
-  // salon's id in parallel and filter post-hoc; cheaper than a join for a
-  // single-row exclusion.
   const sixMonthsAgo = new Date();
   sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
   sixMonthsAgo.setDate(1);
   sixMonthsAgo.setHours(0, 0, 0, 0);
 
-  const { data: demoSalonRows } = await supabase
-    .from('salons')
-    .select('id')
-    .eq('is_demo', true);
-  const demoSalonIds = (demoSalonRows || []).map((r: { id: string }) => r.id);
-
-  let billsQuery = supabase
+  const { data: billsData } = await supabase
     .from('bills')
     .select('total_amount, salon_id, created_at')
     .gte('created_at', sixMonthsAgo.toISOString())
     .order('created_at', { ascending: true });
-  if (demoSalonIds.length > 0) {
-    billsQuery = billsQuery.not('salon_id', 'in', `(${demoSalonIds.join(',')})`);
-  }
-  const { data: billsData } = await billsQuery;
 
   // Build salon name map
   const salonNameMap: Record<string, string> = {};

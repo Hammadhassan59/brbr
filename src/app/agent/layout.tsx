@@ -26,13 +26,6 @@ export default function AgentLayout({ children }: { children: React.ReactNode })
   const { isSalesAgent, reset } = useAppStore();
   const [isHydrated, setIsHydrated] = useState(false);
   const [authChecked, setAuthChecked] = useState(false);
-  const [isDemo, setIsDemo] = useState(false);
-
-  useEffect(() => {
-    getAgentSessionInfo().then((info) => {
-      if (info?.isDemo) setIsDemo(true);
-    });
-  }, []);
 
   // Wait for Zustand persist to rehydrate before the auth check — otherwise
   // the initial `isSalesAgent: false` state triggers a flash redirect.
@@ -55,7 +48,7 @@ export default function AgentLayout({ children }: { children: React.ReactNode })
     getAgentSessionInfo().then((info) => {
       if (cancelled) return;
       if (info) {
-        // eslint-disable-next-line react-hooks/set-state-in-effect
+         
         setAuthChecked(true);
       } else {
         router.push('/login');
@@ -124,14 +117,8 @@ export default function AgentLayout({ children }: { children: React.ReactNode })
 
       {/* Content */}
       <div className="flex-1 flex flex-col min-w-0">
-        {isDemo && (
-          <div className="bg-amber-500 text-black px-4 py-2 flex items-center gap-2 text-sm font-medium">
-            <AlertTriangle className="w-4 h-4 shrink-0" />
-            <span><strong>Demo mode</strong> — this dataset resets every 10 minutes. Anything you create here will not persist.</span>
-          </div>
-        )}
         <header className="sticky top-0 z-30 bg-card border-b px-6 h-14 flex items-center">
-          <h1 className="font-heading text-lg font-semibold">Sales Agent {isDemo && <span className="text-amber-600 text-xs ml-2">(DEMO)</span>}</h1>
+          <h1 className="font-heading text-lg font-semibold">Sales Agent</h1>
         </header>
         <main className="flex-1 overflow-y-auto p-4 md:p-6 pb-24 md:pb-6">
           <ErrorBoundary>
