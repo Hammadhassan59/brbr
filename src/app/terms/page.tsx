@@ -11,7 +11,7 @@ export default function TermsPage() {
     <PublicLayout>
       <div className="max-w-3xl mx-auto px-5 py-16 md:py-24">
         <h1 className="text-3xl font-bold text-[#1A1A1A] mb-2">Terms of Service</h1>
-        <p className="text-sm text-[#1A1A1A]/40 mb-12">Last updated: April 6, 2026</p>
+        <p className="text-sm text-[#1A1A1A]/40 mb-12">Last updated: April 20, 2026</p>
 
         <div className="space-y-8 text-sm text-[#1A1A1A]/70 leading-relaxed">
 
@@ -95,6 +95,16 @@ export default function TermsPage() {
             <h2 className="text-base font-bold text-[#1A1A1A] mb-3">Changes to These Terms</h2>
             <p>
               We may update these terms from time to time. When we do, we will notify you by email and/or an in-app notice. Continued use of iCut after the effective date means you accept the updated terms.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-base font-bold text-[#1A1A1A] mb-3">Contact</h2>
+            <p>
+              For any question about these terms, email{' '}
+              <a href="mailto:contact@icut.pk" className="text-gold hover:underline">contact@icut.pk</a>{' '}
+              or WhatsApp{' '}
+              <a href="tel:+923009402802" className="text-gold hover:underline">0300 9402802</a>.
             </p>
           </section>
 

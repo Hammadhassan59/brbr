@@ -11,7 +11,7 @@ export default function PrivacyPage() {
     <PublicLayout>
       <div className="max-w-3xl mx-auto px-5 py-16 md:py-24">
         <h1 className="text-3xl font-bold text-[#1A1A1A] mb-2">Privacy Policy</h1>
-        <p className="text-sm text-[#1A1A1A]/40 mb-12">Last updated: April 6, 2026</p>
+        <p className="text-sm text-[#1A1A1A]/40 mb-12">Last updated: April 20, 2026</p>
 
         <div className="space-y-8 text-sm text-[#1A1A1A]/70 leading-relaxed">
 
@@ -75,10 +75,10 @@ export default function PrivacyPage() {
             <h2 className="text-base font-bold text-[#1A1A1A] mb-3">Questions?</h2>
             <p>
               If you have any questions about this policy or your data, email us at{' '}
-              <a href="mailto:support@icut.pk" className="text-gold hover:underline">
-                support@icut.pk
-              </a>
-              . We will respond within 3 business days.
+              <a href="mailto:contact@icut.pk" className="text-gold hover:underline">
+                contact@icut.pk
+              </a>{' '}
+              or WhatsApp <a href="tel:+923009402802" className="text-gold hover:underline">0300 9402802</a>. We will respond within 3 business days.
             </p>
           </section>
 
