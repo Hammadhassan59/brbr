@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { Scissors } from 'lucide-react';
+import { Scissors, Eye, EyeOff } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { supabase } from '@/lib/supabase';
 import { useLanguage } from '@/components/providers/language-provider';
@@ -51,6 +51,9 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
 
   // OTP email verification state (used when authMode === 'verify').
   const [otpCode, setOtpCode] = useState('');
@@ -270,6 +273,8 @@ export default function LoginPage() {
     e.preventDefault();
     const pwErr = getPasswordError(password);
     if (pwErr) { toast.error(pwErr); return; }
+    if (password !== confirmPassword) { toast.error('Passwords do not match'); return; }
+    if (!agreedToTerms) { toast.error('Please accept the Terms of Service and Privacy Policy'); return; }
     setLoading(true);
     try {
       const { data, error } = await supabase.auth.signUp({ email, password });
@@ -507,20 +512,74 @@ export default function LoginPage() {
                   </button>
                 )}
               </div>
-              <Input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                minLength={authMode === 'signup' ? 8 : 6}
-                className="mt-1.5 border-border bg-white"
-              />
+              <div className="relative mt-1.5">
+                <Input
+                  id="password"
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  minLength={authMode === 'signup' ? 8 : 6}
+                  className="border-border bg-white pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((v) => !v)}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-muted-foreground hover:text-foreground"
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  tabIndex={-1}
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
               {authMode === 'signup' && (
                 <p className="text-xs text-muted-foreground mt-1">Min 8 characters, with an uppercase letter, a number, and a special character.</p>
               )}
             </div>
-            <Button type="submit" className="w-full bg-gold hover:bg-gold/90 text-black border border-gold" disabled={loading}>
+
+            {authMode === 'signup' && (
+              <>
+                <div>
+                  <Label htmlFor="confirm-password">Confirm password</Label>
+                  <div className="relative mt-1.5">
+                    <Input
+                      id="confirm-password"
+                      type={showPassword ? 'text' : 'password'}
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      required
+                      minLength={8}
+                      className="border-border bg-white pr-10"
+                    />
+                  </div>
+                  {confirmPassword.length > 0 && password !== confirmPassword && (
+                    <p className="text-xs text-destructive mt-1">Passwords don&apos;t match</p>
+                  )}
+                </div>
+
+                <label className="flex items-start gap-2 text-sm cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={agreedToTerms}
+                    onChange={(e) => setAgreedToTerms(e.target.checked)}
+                    required
+                    className="mt-0.5 w-4 h-4 accent-gold shrink-0"
+                  />
+                  <span className="text-muted-foreground leading-snug">
+                    I agree to the{' '}
+                    <a href="/terms" target="_blank" rel="noopener noreferrer" className="text-gold hover:underline">Terms of Service</a>
+                    {' '}and{' '}
+                    <a href="/privacy" target="_blank" rel="noopener noreferrer" className="text-gold hover:underline">Privacy Policy</a>.
+                  </span>
+                </label>
+              </>
+            )}
+
+            <Button
+              type="submit"
+              className="w-full bg-gold hover:bg-gold/90 text-black border border-gold"
+              disabled={loading || (authMode === 'signup' && (!agreedToTerms || password !== confirmPassword))}
+            >
               {loading ? t('loading') : authMode === 'login' ? t('login') : 'Create Account'}
             </Button>
             <p className="text-center text-sm text-muted-foreground">
