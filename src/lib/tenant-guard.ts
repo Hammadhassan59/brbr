@@ -204,19 +204,31 @@ export async function assertStaffOwned(
   branchId?: string,
 ): Promise<{ id: string; salon_id: string; branch_id: string | null }> {
   const supabase = createServerClient();
+  // Migration 036 renamed staff.branch_id -> staff.primary_branch_id.
+  // We still return the legacy `branch_id` field name so existing callers
+  // (recordTip etc.) keep working; the underlying column is primary_branch_id.
   const { data, error } = await supabase
     .from('staff')
-    .select('id, salon_id, branch_id')
+    .select('id, salon_id, primary_branch_id')
     .eq('id', staffId)
     .maybeSingle();
   if (error) throw new Error(error.message);
   if (!data) throw new Error('NOT_FOUND');
-  const row = data as { id: string; salon_id: string; branch_id: string | null };
-  if (row.salon_id !== salonId) throw new Error('FORBIDDEN');
-  if (branchId !== undefined && row.branch_id !== branchId) {
-    throw new Error('FORBIDDEN');
+  const raw = data as { id: string; salon_id: string; primary_branch_id: string | null };
+  if (raw.salon_id !== salonId) throw new Error('FORBIDDEN');
+  // If a specific branch was passed, accept either the primary branch OR
+  // any branch the staff has been granted through staff_branches. This
+  // matches what createBill and recordTip already do inline.
+  if (branchId !== undefined && raw.primary_branch_id !== branchId) {
+    const { data: link } = await supabase
+      .from('staff_branches')
+      .select('id')
+      .eq('staff_id', staffId)
+      .eq('branch_id', branchId)
+      .maybeSingle();
+    if (!link) throw new Error('FORBIDDEN');
   }
-  return row;
+  return { id: raw.id, salon_id: raw.salon_id, branch_id: raw.primary_branch_id };
 }
 
 /**
