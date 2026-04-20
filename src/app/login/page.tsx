@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { Suspense, useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Scissors } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -51,6 +51,16 @@ function friendlyAuthError(raw: string): string {
 }
 
 export default function LoginPage() {
+  // useSearchParams forces dynamic rendering; wrap in Suspense so the
+  // rest of /login can still be statically shell-rendered.
+  return (
+    <Suspense fallback={<div className="h-screen flex items-center justify-center bg-background"><div className="w-8 h-8 border-2 border-gold border-t-transparent rounded-full animate-spin" /></div>}>
+      <LoginPageInner />
+    </Suspense>
+  );
+}
+
+function LoginPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { t, language, setLanguage } = useLanguage();
