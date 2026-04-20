@@ -189,6 +189,125 @@ export function paymentDeniedEmail(params: {
   return wrapEmailHtml(body, preview);
 }
 
+export interface LowStockProduct {
+  name: string;
+  stock: number;
+  threshold: number;
+}
+export interface LowStockBranch {
+  branchName: string;
+  products: LowStockProduct[];
+}
+
+/**
+ * Owner-facing: daily summary of products below reorder threshold,
+ * grouped by branch. Sent once per salon per day when at least one
+ * product is under threshold.
+ */
+export function lowStockAlertEmail(params: {
+  salonName: string;
+  dashboardUrl: string;
+  branches: LowStockBranch[];
+  totalCount: number;
+}): string {
+  const { salonName, dashboardUrl, branches, totalCount } = params;
+  const preview = `${totalCount} product${totalCount === 1 ? '' : 's'} below stock threshold at ${salonName}.`;
+
+  const branchBlocks = branches.map((b) => {
+    const rows = b.products.map((p) => `
+      <tr>
+        <td style="padding:8px 12px;border-bottom:1px solid #EEE;font-family:Inter,-apple-system,BlinkMacSystemFont,Arial,sans-serif;font-size:14px;color:#1A1A1A;">${escapeHtml(p.name)}</td>
+        <td style="padding:8px 12px;border-bottom:1px solid #EEE;font-family:Inter,-apple-system,BlinkMacSystemFont,Arial,sans-serif;font-size:14px;color:#D32F2F;text-align:right;font-weight:600;">${p.stock}</td>
+        <td style="padding:8px 12px;border-bottom:1px solid #EEE;font-family:Inter,-apple-system,BlinkMacSystemFont,Arial,sans-serif;font-size:14px;color:#888;text-align:right;">${p.threshold}</td>
+      </tr>`).join('');
+    return `
+      <h3 style="margin:20px 0 8px 0;font-family:Inter,-apple-system,BlinkMacSystemFont,Arial,sans-serif;font-size:15px;font-weight:600;color:#1A1A1A;">${escapeHtml(b.branchName)}</h3>
+      <table style="border-collapse:collapse;width:100%;border:1px solid #EEE;border-radius:6px;overflow:hidden;">
+        <thead>
+          <tr style="background:#FAFAFA;">
+            <th style="padding:8px 12px;text-align:left;font-family:Inter,-apple-system,BlinkMacSystemFont,Arial,sans-serif;font-size:12px;font-weight:600;color:#666;text-transform:uppercase;letter-spacing:0.5px;">Product</th>
+            <th style="padding:8px 12px;text-align:right;font-family:Inter,-apple-system,BlinkMacSystemFont,Arial,sans-serif;font-size:12px;font-weight:600;color:#666;text-transform:uppercase;letter-spacing:0.5px;">Stock</th>
+            <th style="padding:8px 12px;text-align:right;font-family:Inter,-apple-system,BlinkMacSystemFont,Arial,sans-serif;font-size:12px;font-weight:600;color:#666;text-transform:uppercase;letter-spacing:0.5px;">Threshold</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>`;
+  }).join('');
+
+  const body = `
+    <h1 style="margin:0 0 12px 0;font-family:Inter,-apple-system,BlinkMacSystemFont,Arial,sans-serif;font-size:22px;font-weight:bold;color:#1A1A1A;">Low stock alert</h1>
+    <p style="margin:0 0 4px 0;font-family:Inter,-apple-system,BlinkMacSystemFont,Arial,sans-serif;font-size:15px;color:#1A1A1A;line-height:1.6;"><strong>${escapeHtml(salonName)}</strong> has <strong>${totalCount}</strong> product${totalCount === 1 ? '' : 's'} below the reorder threshold.</p>
+    <p style="margin:0 0 20px 0;font-family:Inter,-apple-system,BlinkMacSystemFont,Arial,sans-serif;font-size:14px;color:#666;line-height:1.6;">Reorder now so you don\u2019t run out during peak hours.</p>
+    ${branchBlocks}
+    <div style="margin-top:24px;">${emailButton('Open Inventory', dashboardUrl)}</div>
+    <p style="margin:24px 0 0 0;font-family:Inter,-apple-system,BlinkMacSystemFont,Arial,sans-serif;font-size:13px;color:#999;">This alert is scheduled to run once per day. Turn it off in Settings \u2192 Email.</p>
+  `;
+  return wrapEmailHtml(body, preview);
+}
+
+export interface UdhaarClient {
+  name: string;
+  phone: string | null;
+  balance: number;
+  oldestDays: number;      // days since oldest outstanding bill
+}
+
+/**
+ * Owner-facing weekly summary of clients carrying udhaar (credit).
+ * Flags clients whose oldest outstanding bill is \u226528 days (~2 days before
+ * typical 30-day terms) so the owner can follow up by phone/WhatsApp.
+ */
+export function udhaarOwnerSummaryEmail(params: {
+  salonName: string;
+  dashboardUrl: string;
+  clients: UdhaarClient[];
+  totalBalance: number;
+}): string {
+  const { salonName, dashboardUrl, clients, totalBalance } = params;
+  const preview = `${clients.length} client${clients.length === 1 ? '' : 's'} owe Rs ${totalBalance.toLocaleString('en-PK')} \u2014 ${clients.filter((c) => c.oldestDays >= 28).length} due soon.`;
+
+  const rows = clients.map((c) => {
+    const dueSoon = c.oldestDays >= 28;
+    const flag = dueSoon ? `<span style="display:inline-block;background:#FFF3E0;color:#E65100;font-size:11px;font-weight:600;padding:2px 8px;border-radius:4px;margin-left:6px;">Due in ${Math.max(0, 30 - c.oldestDays)}d</span>` : '';
+    return `
+      <tr>
+        <td style="padding:8px 12px;border-bottom:1px solid #EEE;font-family:Inter,-apple-system,BlinkMacSystemFont,Arial,sans-serif;font-size:14px;color:#1A1A1A;">${escapeHtml(c.name)}${flag}</td>
+        <td style="padding:8px 12px;border-bottom:1px solid #EEE;font-family:Inter,-apple-system,BlinkMacSystemFont,Arial,sans-serif;font-size:13px;color:#666;">${escapeHtml(c.phone ?? '\u2014')}</td>
+        <td style="padding:8px 12px;border-bottom:1px solid #EEE;font-family:Inter,-apple-system,BlinkMacSystemFont,Arial,sans-serif;font-size:14px;color:#1A1A1A;text-align:right;font-weight:600;">Rs ${c.balance.toLocaleString('en-PK')}</td>
+        <td style="padding:8px 12px;border-bottom:1px solid #EEE;font-family:Inter,-apple-system,BlinkMacSystemFont,Arial,sans-serif;font-size:12px;color:#888;text-align:right;">${c.oldestDays}d</td>
+      </tr>`;
+  }).join('');
+
+  const body = `
+    <h1 style="margin:0 0 12px 0;font-family:Inter,-apple-system,BlinkMacSystemFont,Arial,sans-serif;font-size:22px;font-weight:bold;color:#1A1A1A;">Udhaar summary</h1>
+    <p style="margin:0 0 4px 0;font-family:Inter,-apple-system,BlinkMacSystemFont,Arial,sans-serif;font-size:15px;color:#1A1A1A;line-height:1.6;"><strong>${escapeHtml(salonName)}</strong> has <strong>${clients.length}</strong> client${clients.length === 1 ? '' : 's'} with outstanding udhaar totalling <strong>Rs ${totalBalance.toLocaleString('en-PK')}</strong>.</p>
+    <p style="margin:0 0 20px 0;font-family:Inter,-apple-system,BlinkMacSystemFont,Arial,sans-serif;font-size:14px;color:#666;line-height:1.6;">Clients flagged in orange are approaching their typical 30-day payment window \u2014 follow up now.</p>
+    <table style="border-collapse:collapse;width:100%;border:1px solid #EEE;border-radius:6px;overflow:hidden;">
+      <thead>
+        <tr style="background:#FAFAFA;">
+          <th style="padding:8px 12px;text-align:left;font-family:Inter,-apple-system,BlinkMacSystemFont,Arial,sans-serif;font-size:12px;font-weight:600;color:#666;text-transform:uppercase;letter-spacing:0.5px;">Client</th>
+          <th style="padding:8px 12px;text-align:left;font-family:Inter,-apple-system,BlinkMacSystemFont,Arial,sans-serif;font-size:12px;font-weight:600;color:#666;text-transform:uppercase;letter-spacing:0.5px;">Phone</th>
+          <th style="padding:8px 12px;text-align:right;font-family:Inter,-apple-system,BlinkMacSystemFont,Arial,sans-serif;font-size:12px;font-weight:600;color:#666;text-transform:uppercase;letter-spacing:0.5px;">Balance</th>
+          <th style="padding:8px 12px;text-align:right;font-family:Inter,-apple-system,BlinkMacSystemFont,Arial,sans-serif;font-size:12px;font-weight:600;color:#666;text-transform:uppercase;letter-spacing:0.5px;">Oldest</th>
+        </tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>
+    <div style="margin-top:24px;">${emailButton('Open Clients', dashboardUrl)}</div>
+    <p style="margin:24px 0 0 0;font-family:Inter,-apple-system,BlinkMacSystemFont,Arial,sans-serif;font-size:13px;color:#999;">This weekly summary can be turned off in Settings \u2192 Email.</p>
+  `;
+  return wrapEmailHtml(body, preview);
+}
+
+function escapeHtml(s: string): string {
+  return s.replace(/[&<>"']/g, (c) => (
+    c === '&' ? '&amp;' :
+    c === '<' ? '&lt;' :
+    c === '>' ? '&gt;' :
+    c === '"' ? '&quot;' : '&#39;'
+  ));
+}
+
 export function udhaarReminderEmail(clientName: string, salonName: string, amount: string): string {
   const previewText = `Payment reminder from ${salonName} — Rs ${amount} outstanding.`;
   const body = `
