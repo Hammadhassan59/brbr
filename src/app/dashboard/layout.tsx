@@ -329,10 +329,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <span>{t('settings')}</span>
           </Link>
           <button
-            onClick={() => {
-              // destroySession clears icut-token (HttpOnly JWT) + legacy gate cookies.
+            onClick={async () => {
+              // Await destroySession BEFORE navigating so the Set-Cookie
+              // response that clears icut-token is processed by the browser
+              // before /login reads the session. Without the await we race:
+              // /login boots, sees a still-valid JWT, and auto-redirects
+              // owners to /setup or /dashboard (which then bounces back).
               useAppStore.getState().reset();
-              destroySession().catch(() => {});
+              try { await destroySession(); } catch { /* ignore — cookies may already be gone */ }
               window.location.href = '/login';
             }}
             className="flex items-center gap-3 px-3 py-3 rounded-lg text-sm text-slate-400 hover:bg-sidebar-accent hover:text-slate-200 transition-all duration-200 w-full"
@@ -419,10 +423,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   <span>{t('settings')}</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem
-                  onClick={() => {
-                    // destroySession clears icut-token JWT + legacy gate cookies.
+                  onClick={async () => {
+                    // Await destroySession — see comment on the sidebar logout button.
                     useAppStore.getState().reset();
-                    destroySession().catch(() => {});
+                    try { await destroySession(); } catch { /* ignore */ }
                     window.location.href = '/login';
                   }}
                   className="flex items-center gap-3 p-3 cursor-pointer text-red-600"

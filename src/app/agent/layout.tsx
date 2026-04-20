@@ -65,10 +65,11 @@ export default function AgentLayout({ children }: { children: React.ReactNode })
     );
   }
 
-  function handleLogout() {
-    // destroySession clears the HttpOnly icut-token JWT and legacy gate cookies.
+  async function handleLogout() {
+    // Await destroySession BEFORE navigating — see comment on the dashboard
+    // logout handler for the race condition this prevents.
     reset();
-    destroySession().catch(() => {});
+    try { await destroySession(); } catch { /* ignore */ }
     window.location.href = '/login';
   }
 

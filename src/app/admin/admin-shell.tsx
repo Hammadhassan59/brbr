@@ -52,10 +52,12 @@ export function AdminShell({ adminRole, children }: { adminRole: AdminRole; chil
     setSidebarOpen(false);
   }, [pathname]);
 
-  function handleLogout() {
-    // destroySession clears the HttpOnly icut-token JWT and any legacy gate cookies.
+  async function handleLogout() {
+    // Await destroySession BEFORE navigating so the Set-Cookie response
+    // that clears icut-token reaches the browser. Without the await we
+    // race: /login boots with a still-valid JWT and auto-redirects.
     reset();
-    destroySession().catch(() => {});
+    try { await destroySession(); } catch { /* ignore */ }
     window.location.href = '/login';
   }
 
