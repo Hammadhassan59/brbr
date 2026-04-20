@@ -118,12 +118,12 @@ export function CheckoutConfirmation({
   return (
     <>
       <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-        <DialogContent className="max-w-md bg-card border-border">
-          <DialogHeader>
+        <DialogContent className="max-w-md bg-card border-border max-h-[90vh] overflow-y-auto flex flex-col">
+          <DialogHeader className="shrink-0">
             <DialogTitle className="font-heading text-center">Checkout Summary</DialogTitle>
           </DialogHeader>
 
-          <div className="space-y-3">
+          <div className="space-y-3 overflow-y-auto flex-1 min-h-0 pr-1">
             <div className="text-center text-sm">
               <p>Bill # <span className="font-mono font-medium">{billNumber}</span></p>
               <p className="text-muted-foreground">{clientName || 'Walk-in Guest'}</p>

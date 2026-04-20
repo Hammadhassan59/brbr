@@ -524,6 +524,9 @@ function POSContent() {
           <Button variant="ghost" size="sm" onClick={() => router.push('/dashboard')} className="transition-all duration-150">
             <ArrowLeft className="w-4 h-4" />
           </Button>
+          <Button variant="ghost" size="sm" onClick={() => router.push('/dashboard/pos/bills')} className="text-xs transition-all duration-150" title="Past bills">
+            Bills
+          </Button>
 
           {selectedClient ? (
             <div className="flex items-center gap-2 flex-1 min-w-0">

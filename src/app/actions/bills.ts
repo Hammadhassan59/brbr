@@ -1,6 +1,6 @@
 'use server';
 
-import { checkWriteAccess } from './auth';
+import { checkWriteAccess, verifySession } from './auth';
 import { createServerClient } from '@/lib/supabase';
 import {
   assertBillOwned,
@@ -329,4 +329,105 @@ export async function rollbackBill(billId: string) {
   }
 
   return { error: null };
+}
+
+// ────────────────────────────────────────────────────────────────────────
+// Bill history — list + single-row fetch for the Bills page (regenerate,
+// reprint, WhatsApp, download). Branch-scoped via session.branchIds so a
+// manager in Branch A can never read bills from Branch B.
+// ────────────────────────────────────────────────────────────────────────
+
+export interface BillItemRow {
+  id: string;
+  name: string;
+  quantity: number;
+  unit_price: number;
+  total_price: number;
+  item_type: 'service' | 'product' | null;
+}
+
+export interface BillRow {
+  id: string;
+  bill_number: string;
+  created_at: string;
+  subtotal: number;
+  discount_amount: number;
+  tax_amount: number;
+  tip_amount: number;
+  total_amount: number;
+  paid_amount: number;
+  payment_method: string | null;
+  status: string;
+  loyalty_points_earned: number;
+  loyalty_points_used: number;
+  udhaar_added: number;
+  client: { id: string; name: string | null; phone: string | null } | null;
+  staff: { id: string; name: string | null } | null;
+  branch: { id: string; name: string | null } | null;
+  items: BillItemRow[];
+}
+
+const BILL_SELECT = `
+  id, bill_number, created_at,
+  subtotal, discount_amount, tax_amount, tip_amount, total_amount, paid_amount,
+  payment_method, status,
+  loyalty_points_earned, loyalty_points_used, udhaar_added,
+  client:clients (id, name, phone),
+  staff:staff (id, name),
+  branch:branches (id, name),
+  items:bill_items (id, name, quantity, unit_price, total_price, item_type)
+` as const;
+
+export async function listBills(input: {
+  branchId?: string;
+  limit?: number;
+  offset?: number;
+  search?: string;
+  fromDate?: string;
+  toDate?: string;
+}): Promise<{ data: BillRow[]; error: string | null; total: number }> {
+  const session = await verifySession();
+  const supabase = createServerClient();
+
+  const limit = Math.min(Math.max(input.limit ?? 50, 1), 200);
+  const offset = Math.max(input.offset ?? 0, 0);
+
+  let q = supabase
+    .from('bills')
+    .select(BILL_SELECT, { count: 'exact' })
+    .eq('salon_id', session.salonId)
+    .order('created_at', { ascending: false })
+    .range(offset, offset + limit - 1);
+
+  if (input.branchId) {
+    q = q.eq('branch_id', input.branchId);
+  } else if (session.branchIds && session.branchIds.length > 0) {
+    q = q.in('branch_id', session.branchIds);
+  }
+  if (input.search && input.search.trim()) {
+    q = q.ilike('bill_number', `%${input.search.trim()}%`);
+  }
+  if (input.fromDate) q = q.gte('created_at', `${input.fromDate}T00:00:00`);
+  if (input.toDate) q = q.lte('created_at', `${input.toDate}T23:59:59`);
+
+  const { data, error, count } = await q;
+  if (error) return { data: [], error: error.message, total: 0 };
+  return {
+    data: (data || []) as unknown as BillRow[],
+    error: null,
+    total: count ?? 0,
+  };
+}
+
+export async function getBillById(id: string): Promise<{ data: BillRow | null; error: string | null }> {
+  const session = await verifySession();
+  const supabase = createServerClient();
+  const { data, error } = await supabase
+    .from('bills')
+    .select(BILL_SELECT)
+    .eq('salon_id', session.salonId)
+    .eq('id', id)
+    .maybeSingle();
+  if (error) return { data: null, error: error.message };
+  return { data: (data as unknown as BillRow) ?? null, error: null };
 }
