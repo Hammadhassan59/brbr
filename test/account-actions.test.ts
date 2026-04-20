@@ -142,35 +142,35 @@ describe('account actions — getAccountEmail', () => {
 describe('account actions — changeAccountPassword', () => {
   it('updates password when current is correct', async () => {
     const { changeAccountPassword } = await import('../src/app/actions/account');
-    const res = await changeAccountPassword({ currentPassword: 'oldpass', newPassword: 'newpass123!' });
+    const res = await changeAccountPassword({ currentPassword: 'oldpass', newPassword: 'Newpass123!' });
     expect(res.error).toBeNull();
-    expect(adminUpdateUserById).toHaveBeenCalledWith('auth-user-1', { password: 'newpass123!' });
+    expect(adminUpdateUserById).toHaveBeenCalledWith('auth-user-1', { password: 'Newpass123!' });
   });
 
   it('rejects when current password is wrong', async () => {
     anonSignIn = vi.fn().mockResolvedValue({ data: null, error: { message: 'Invalid credentials' } });
     const { changeAccountPassword } = await import('../src/app/actions/account');
-    const res = await changeAccountPassword({ currentPassword: 'wrong', newPassword: 'newpass123!' });
+    const res = await changeAccountPassword({ currentPassword: 'wrong', newPassword: 'Newpass123!' });
     expect(res.error).toMatch(/incorrect/i);
     expect(adminUpdateUserById).not.toHaveBeenCalled();
   });
 
-  it('rejects passwords shorter than 10 chars', async () => {
+  it('rejects passwords shorter than 8 chars', async () => {
     const { changeAccountPassword } = await import('../src/app/actions/account');
     const res = await changeAccountPassword({ currentPassword: 'oldpass', newPassword: '123' });
-    expect(res.error).toMatch(/10 characters/);
+    expect(res.error).toMatch(/8 characters/);
     expect(anonSignIn).not.toHaveBeenCalled();
   });
 
   it('rejects when new password matches current', async () => {
     const { changeAccountPassword } = await import('../src/app/actions/account');
-    const res = await changeAccountPassword({ currentPassword: 'samepass123!', newPassword: 'samepass123!' });
+    const res = await changeAccountPassword({ currentPassword: 'Samepass123!', newPassword: 'Samepass123!' });
     expect(res.error).toMatch(/differ/i);
   });
 
   it('rejects when current password missing', async () => {
     const { changeAccountPassword } = await import('../src/app/actions/account');
-    const res = await changeAccountPassword({ currentPassword: '', newPassword: 'newpass123!' });
+    const res = await changeAccountPassword({ currentPassword: '', newPassword: 'Newpass123!' });
     expect(res.error).toMatch(/current password/i);
   });
 });

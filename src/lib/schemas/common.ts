@@ -20,21 +20,40 @@ import { z } from 'zod';
 /**
  * Password rules for iCut accounts.
  *
- * - Minimum length 10 (bumped from 6 in 2026-04; see account.ts TODO).
+ * - Minimum length 8.
+ * - Must contain at least one uppercase letter, one digit, one special char.
  * - Must contain at least one non-whitespace character (no all-whitespace).
  * - No max length — let the hasher handle it.
  *
+ * Keep in sync with GoTrue env on the self-hosted Supabase:
+ *   GOTRUE_PASSWORD_MIN_LENGTH=8
+ *   GOTRUE_PASSWORD_REQUIRED_CHARACTERS=abcdefghijklmnopqrstuvwxyz:ABCDEFGHIJKLMNOPQRSTUVWXYZ:0123456789:!@#$%^&*()_-=+[]{}|;:,.<>?/~`
+ *
  * TODO(HIBP): integrate Have-I-Been-Pwned k-anonymity check
- * (https://haveibeenpwned.com/API/v3#PwnedPasswords) before saving. Hash the
- * password with SHA-1, send the first 5 hex chars, reject if the suffix
- * appears in the response. Keep the fetch timeout tight (~500ms) and fail
- * open on network errors — never lock a user out because the HIBP API is
- * down.
+ * (https://haveibeenpwned.com/API/v3#PwnedPasswords) before saving.
  */
 export const PasswordSchema = z
   .string()
-  .min(10, 'Password must be at least 10 characters')
+  .min(8, 'Password must be at least 8 characters')
+  .regex(/[A-Z]/, 'Password must include at least one uppercase letter')
+  .regex(/\d/, 'Password must include at least one number')
+  .regex(/[^A-Za-z0-9]/, 'Password must include at least one special character')
   .refine((s) => /\S/.test(s), 'Password cannot be only whitespace');
+
+/**
+ * Returns the first password-policy error message, or null if the password
+ * passes all rules. Callers (client forms + server actions) use this instead
+ * of redeclaring the rules inline — keeps policy drift out of the codebase.
+ */
+export function getPasswordError(pwd: string | null | undefined): string | null {
+  const s = pwd ?? '';
+  if (s.length < 8) return 'Password must be at least 8 characters';
+  if (!/[A-Z]/.test(s)) return 'Password must include at least one uppercase letter';
+  if (!/\d/.test(s)) return 'Password must include at least one number';
+  if (!/[^A-Za-z0-9]/.test(s)) return 'Password must include at least one special character';
+  if (!/\S/.test(s)) return 'Password cannot be only whitespace';
+  return null;
+}
 
 /**
  * Email address. Lowercased and trimmed so downstream comparisons (rate

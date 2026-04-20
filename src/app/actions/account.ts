@@ -11,7 +11,7 @@ import { safeError } from '@/lib/action-error';
 
 type ActionResult<T> = { data: T; error: null } | { data: null; error: string };
 
-const MIN_PASSWORD_LENGTH = 10;
+const MIN_PASSWORD_LENGTH = 8;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export type AccountRole = 'owner' | 'partner' | 'staff' | 'super_admin' | 'sales_agent';

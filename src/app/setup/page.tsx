@@ -6,6 +6,7 @@ import { Scissors, ChevronRight, ChevronLeft, Check, Plus, X, Sparkles, Users } 
 import toast from 'react-hot-toast';
 import { supabase } from '@/lib/supabase';
 import { setupSalon, checkEmailAvailable, lookupAgentByCode } from '@/app/actions/setup';
+import { getPasswordError } from '@/lib/schemas/common';
 import { useLanguage } from '@/components/providers/language-provider';
 import { useAppStore } from '@/store/app-store';
 import { Button } from '@/components/ui/button';
@@ -135,8 +136,8 @@ export default function SetupPage() {
 
   // Derived
   const selectedServices = services.filter((s) => s.selected);
-  const validStaff = staffList.filter((s) => s.name && s.email && s.phone.trim() && s.password.length >= 6 && s.password === s.confirmPassword);
-  const validPartners = partners.filter((p) => p.name && p.email && p.phone.trim() && p.password.length >= 6 && p.password === p.confirmPassword);
+  const validStaff = staffList.filter((s) => s.name && s.email && s.phone.trim() && !getPasswordError(s.password) && s.password === s.confirmPassword);
+  const validPartners = partners.filter((p) => p.name && p.email && p.phone.trim() && !getPasswordError(p.password) && p.password === p.confirmPassword);
 
   // ─── Email availability warnings ───
   // Keyed by lowercase email; true = taken. Surfaced inline below the input.
@@ -580,7 +581,10 @@ export default function SetupPage() {
                     <div className="grid grid-cols-2 gap-3">
                       <div>
                         <Label>Password *</Label>
-                        <Input type="password" value={partner.password} onChange={(e) => updatePartner(i, 'password', e.target.value)} minLength={10} placeholder="Min 10 characters" className="mt-1" />
+                        <Input type="password" value={partner.password} onChange={(e) => updatePartner(i, 'password', e.target.value)} minLength={8} placeholder="Min 8 chars" className="mt-1" />
+                        {partner.password && getPasswordError(partner.password) && (
+                          <p className="text-xs text-destructive mt-1">{getPasswordError(partner.password)}</p>
+                        )}
                       </div>
                       <div>
                         <Label>Confirm Password *</Label>
@@ -760,10 +764,13 @@ export default function SetupPage() {
                       type="password"
                       value={staff.password}
                       onChange={(e) => updateStaff(i, 'password', e.target.value)}
-                      minLength={10}
-                      placeholder="Min 10 characters"
+                      minLength={8}
+                      placeholder="Min 8 chars"
                       className="mt-1"
                     />
+                    {staff.password && getPasswordError(staff.password) && (
+                      <p className="text-xs text-destructive mt-1">{getPasswordError(staff.password)}</p>
+                    )}
                   </div>
                   <div>
                     <Label>Confirm Password *</Label>

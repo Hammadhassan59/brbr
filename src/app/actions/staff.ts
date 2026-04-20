@@ -15,8 +15,8 @@ import {
 export async function createStaff(data: {
   branchIds: string[];
   name: string;
-  email: string;
-  password: string;
+  email?: string;
+  password?: string;
   phone: string;
   role: string;
   joinDate?: string;
@@ -30,6 +30,12 @@ export async function createStaff(data: {
   const supabase = createServerClient();
 
   if (!data.phone?.trim()) return { data: null, error: 'Phone is required' };
+
+  const emailProvided = !!data.email?.trim();
+  const passwordProvided = !!data.password?.trim();
+  if (emailProvided !== passwordProvided) {
+    return { data: null, error: 'Provide both email and password, or leave both blank for staff who won\u2019t log in' };
+  }
 
   const branchIds = Array.from(new Set(data.branchIds ?? []));
   if (branchIds.length === 0) {
@@ -71,14 +77,26 @@ export async function createStaff(data: {
     }
   }
 
-  // Create Supabase Auth account for the staff member
-  const { data: authUser, error: authError } = await supabase.auth.admin.createUser({
-    email: data.email,
-    password: data.password,
-    email_confirm: true,
-  });
-
-  if (authError) return { data: null, error: authError.message };
+  // Only create a Supabase Auth account when the owner supplied credentials.
+  // Staff left without email + password are "resource" rows (stylist name on
+  // appointments) who can't log in — staff.email and staff.auth_user_id are
+  // both nullable, so this is a supported state.
+  let authUserId: string | null = null;
+  if (emailProvided && passwordProvided) {
+    const { data: authUser, error: authError } = await supabase.auth.admin.createUser({
+      email: data.email!.trim(),
+      password: data.password!,
+      email_confirm: true,
+    });
+    if (authError) {
+      const msg = authError.message || '';
+      if (/already.*registered|already exists/i.test(msg)) {
+        return { data: null, error: 'This email is already registered. Use a different email, or leave email blank for a no-login staff member.' };
+      }
+      return { data: null, error: msg };
+    }
+    authUserId = authUser.user.id;
+  }
 
   // Migration 036 renamed staff.branch_id -> staff.primary_branch_id. Stamp
   // the new column; the first branch in the list is the primary.
@@ -88,8 +106,8 @@ export async function createStaff(data: {
       salon_id: session.salonId,
       primary_branch_id: primaryBranchId,
       name: data.name.trim(),
-      email: data.email,
-      auth_user_id: authUser.user.id,
+      email: emailProvided ? data.email!.trim() : null,
+      auth_user_id: authUserId,
       phone: data.phone.trim(),
       role: data.role,
       join_date: data.joinDate,

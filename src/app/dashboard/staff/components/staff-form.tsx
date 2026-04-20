@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { useAppStore } from '@/store/app-store';
 import { createStaff, updateStaff, updateStaffBranches } from '@/app/actions/staff';
+import { getPasswordError } from '@/lib/schemas/common';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -73,11 +74,23 @@ export function StaffForm({ staff, onSaved }: StaffFormProps) {
     if (!salon || !currentBranch) return;
     if (!name.trim()) { toast.error('Name is required'); return; }
     if (!phone.trim()) { toast.error('Phone is required'); return; }
-    if (!isEditing && !email.trim()) { toast.error('Email is required'); return; }
-    if (!isEditing && password.length < 10) { toast.error('Password must be at least 10 characters'); return; }
-    if (!isEditing && password !== confirmPassword) { toast.error('Passwords do not match'); return; }
-    if (isEditing && password && password.length < 10) { toast.error('Password must be at least 10 characters'); return; }
-    if (isEditing && password && password !== confirmPassword) { toast.error('Passwords do not match'); return; }
+    // Email + password are optional for create — but if one is provided, both
+    // must be. Staff with no credentials are "resource" rows that can't log in.
+    if (!isEditing) {
+      const hasEmail = !!email.trim();
+      const hasPassword = password.length > 0;
+      if (hasEmail !== hasPassword) { toast.error('Provide both email and password, or leave both blank'); return; }
+      if (hasPassword) {
+        const pwErr = getPasswordError(password);
+        if (pwErr) { toast.error(pwErr); return; }
+        if (password !== confirmPassword) { toast.error('Passwords do not match'); return; }
+      }
+    }
+    if (isEditing && password) {
+      const pwErr = getPasswordError(password);
+      if (pwErr) { toast.error(pwErr); return; }
+      if (password !== confirmPassword) { toast.error('Passwords do not match'); return; }
+    }
 
     setSaving(true);
     try {
@@ -144,15 +157,17 @@ export function StaffForm({ staff, onSaved }: StaffFormProps) {
             <Input value={name} onChange={(e) => setName(e.target.value)} className="mt-1" />
           </div>
           <div>
-            <Label>Email *</Label>
+            <Label>{isEditing ? 'Email' : 'Email (optional)'}</Label>
             <Input type="email" inputMode="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="staff@example.com" className="mt-1" disabled={isEditing} />
+            {!isEditing && <p className="text-xs text-muted-foreground mt-1">Leave blank if this staff won&apos;t log in to the dashboard</p>}
           </div>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <Label>{isEditing ? 'New Password (leave blank to keep)' : 'Password *'}</Label>
-            <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} minLength={10} className="mt-1" />
+            <Label>{isEditing ? 'New Password (leave blank to keep)' : 'Password (optional)'}</Label>
+            <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} minLength={8} className="mt-1" />
+            {password && <p className="text-xs text-muted-foreground mt-1">Min 8 characters, with an uppercase letter, a number, and a special character.</p>}
           </div>
           <div>
             <Label>Confirm Password</Label>

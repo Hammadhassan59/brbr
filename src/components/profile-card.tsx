@@ -12,6 +12,7 @@ import {
   changeAccountEmail,
   changeAccountPassword,
 } from '@/app/actions/account';
+import { getPasswordError } from '@/lib/schemas/common';
 
 type Profile = Awaited<ReturnType<typeof getAccountProfile>>['data'];
 
@@ -97,7 +98,8 @@ export function ProfileCard() {
   async function submitPassword(e: React.FormEvent) {
     e.preventDefault();
     if (!currentPassword) { toast.error('Enter your current password'); return; }
-    if (newPassword.length < 10) { toast.error('New password must be at least 10 characters'); return; }
+    const pwErr = getPasswordError(newPassword);
+    if (pwErr) { toast.error(pwErr); return; }
     if (newPassword !== confirmPassword) { toast.error('Passwords do not match'); return; }
     setPwSaving(true);
     try {

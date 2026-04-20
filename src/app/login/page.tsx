@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Scissors } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { supabase } from '@/lib/supabase';
@@ -12,6 +12,7 @@ import { DataNotice } from '@/components/data-notice';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { signSession, resolveUserRole, isSuperAdminEmail, resolveAdminRole, getSessionInfo } from '@/app/actions/auth';
+import { getPasswordError } from '@/lib/schemas/common';
 import { isAdminRole } from '@/lib/admin-roles';
 import {
   DEMO_SALON, DEMO_BRANCH, DEMO_STAFF_OWNER, DEMO_STAFF_STYLIST, DEMO_STAFF_RECEPTIONIST,
@@ -32,8 +33,26 @@ const IS_DEV = process.env.NODE_ENV === 'development';
 
 type AuthMode = 'login' | 'signup';
 
+function friendlyAuthError(raw: string): string {
+  const msg = raw || '';
+  if (/already.*registered|already.*exists|already.*been registered/i.test(msg)) {
+    return 'This email is already registered. Try signing in instead — or use a different email.';
+  }
+  if (/password.*at least|password.*short|password.*weak|password.*required|password.*must contain/i.test(msg)) {
+    return 'Password must be at least 8 characters and include an uppercase letter, a number, and a special character.';
+  }
+  if (/invalid.*email|valid.*email|email.*format/i.test(msg)) {
+    return 'Please enter a valid email address.';
+  }
+  if (/rate.?limit|too many/i.test(msg)) {
+    return 'Too many attempts. Please wait a minute and try again.';
+  }
+  return msg || 'Signup failed. Please try again.';
+}
+
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { t, language, setLanguage } = useLanguage();
   const { setSalon, setBranches, setCurrentBranch, setCurrentStaff, setCurrentPartner, setIsOwner, setIsPartner } = useAppStore();
 
@@ -60,9 +79,15 @@ export default function LoginPage() {
         if (persistedRoles) store.reset();
         return;
       }
+      // Owners/partners without a salonId never finished setup — send them
+      // to /setup, not /dashboard. Without this, /dashboard's layout sees an
+      // empty Zustand store, bounces to /login, and the loop starts here
+      // because /login immediately redirects back to /dashboard.
+      const needsSetup = (info.role === 'owner' || info.role === 'partner') && !info.salonId;
       router.replace(
         info.role === 'super_admin' || info.role === 'technical_support' || info.role === 'customer_support' || info.role === 'leads_team' ? '/admin' :
         info.role === 'sales_agent' ? '/agent/leads' :
+        needsSetup ? '/setup' :
         '/dashboard',
       );
     })();
@@ -266,15 +291,32 @@ export default function LoginPage() {
 
   async function handleSignup(e: React.FormEvent) {
     e.preventDefault();
+    const pwErr = getPasswordError(password);
+    if (pwErr) { toast.error(pwErr); return; }
     setLoading(true);
     try {
-      const { data, error } = await supabase.auth.signUp({ email, password });
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/login?verified=1`,
+        },
+      });
       if (error) throw error;
       if (!data.user) throw new Error('Signup failed. Please try again.');
 
+      // Supabase user-enumeration protection: when confirmations are enabled
+      // and the email is already registered, signUp returns a fake user row
+      // with identities=[] and no session. Surface that as a clear error.
+      if (Array.isArray(data.user.identities) && data.user.identities.length === 0) {
+        toast.error('This email is already registered. Try signing in instead — or use a different email.');
+        return;
+      }
+
       // Auto-confirmed: JWT signSession runs server-side and sets the HttpOnly
       // icut-token cookie. Hard navigation follows so the proxy sees the
-      // Set-Cookie on the next /setup request.
+      // Set-Cookie on the next /setup request. Only happens when GoTrue has
+      // GOTRUE_MAILER_AUTOCONFIRM=true (legacy path).
       if (data.session) {
         setIsOwner(true);
         await signSession({
@@ -289,14 +331,48 @@ export default function LoginPage() {
         return;
       }
 
-      toast.success('Check your email to verify your account');
+      toast.success('Check your email to verify your account — the link will bring you back here to continue setup.');
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Signup failed';
-      toast.error(message);
+      const raw = err instanceof Error ? err.message : '';
+      toast.error(friendlyAuthError(raw));
     } finally {
       setLoading(false);
     }
   }
+
+  // Post-verification return: Supabase redirects here with ?verified=1 after
+  // the user clicks the email link. At that point the Supabase session is
+  // live but the HttpOnly icut-token cookie hasn't been minted. Mint it now
+  // and forward to /setup so the owner flows straight into onboarding.
+  useEffect(() => {
+    if (searchParams.get('verified') !== '1') return;
+    let cancelled = false;
+    (async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (cancelled) return;
+      if (!session?.user) {
+        toast.error('Verification link expired. Please log in with your email and password.');
+        router.replace('/login');
+        return;
+      }
+      try {
+        setIsOwner(true);
+        await signSession({
+          salonId: '',
+          staffId: session.user.id,
+          role: 'owner',
+          branchId: '',
+          name: session.user.email || '',
+        });
+        toast.success('Email verified! Continuing to setup...');
+        window.location.href = '/setup';
+      } catch {
+        toast.error('Could not complete sign-in. Please log in with your password.');
+        router.replace('/login');
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [searchParams, router, setIsOwner]);
 
   // --- Demo helpers (dev only) ---
 
@@ -435,9 +511,12 @@ export default function LoginPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                minLength={authMode === 'signup' ? 10 : 6}
+                minLength={authMode === 'signup' ? 8 : 6}
                 className="mt-1.5 border-border bg-white"
               />
+              {authMode === 'signup' && (
+                <p className="text-xs text-muted-foreground mt-1">Min 8 characters, with an uppercase letter, a number, and a special character.</p>
+              )}
             </div>
             <Button type="submit" className="w-full bg-gold hover:bg-gold/90 text-black border border-gold" disabled={loading}>
               {loading ? t('loading') : authMode === 'login' ? t('login') : 'Create Account'}

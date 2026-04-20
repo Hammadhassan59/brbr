@@ -10,6 +10,7 @@ import { useAppStore } from '@/store/app-store';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { getPasswordError } from '@/lib/schemas/common';
 
 export default function ResetPasswordPage() {
   const router = useRouter();
@@ -39,10 +40,8 @@ export default function ResetPasswordPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (password.length < 10) {
-      toast.error('Password must be at least 10 characters');
-      return;
-    }
+    const pwErr = getPasswordError(password);
+    if (pwErr) { toast.error(pwErr); return; }
     if (password !== confirm) {
       toast.error('Passwords do not match');
       return;
@@ -115,17 +114,18 @@ export default function ResetPasswordPage() {
                 type="password"
                 value={confirm}
                 onChange={(e) => setConfirm(e.target.value)}
-                minLength={10}
+                minLength={8}
                 required
                 className="mt-1.5"
               />
+              <p className="text-xs text-muted-foreground mt-1">Min 8 characters, with an uppercase letter, a number, and a special character.</p>
               {password && confirm && password !== confirm && (
                 <p className="text-xs text-destructive mt-1">Passwords do not match</p>
               )}
             </div>
             <Button
               type="submit"
-              disabled={saving || password.length < 10 || password !== confirm}
+              disabled={saving || !!getPasswordError(password) || password !== confirm}
               className="w-full bg-gold hover:bg-gold/90 text-black font-bold"
             >
               {saving ? 'Updating…' : 'Update password'}

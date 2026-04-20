@@ -174,11 +174,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     );
   }
 
-  // Redirect to login if no session
+  // Redirect to login if no session. Zustand is the client's picture of who
+  // the user is; the JWT (verified by the proxy) is the source of truth. If
+  // the store is empty but we got through the proxy, the user has a valid
+  // JWT — most likely an owner whose setup never finished, so send them to
+  // /setup to complete it. /login is the wrong destination: the login page
+  // auto-redirects valid sessions right back here and we end up in a loop.
   const hasSession = !!(salon || currentStaff || currentPartner || isSuperAdmin);
   if (!hasSession && typeof window !== 'undefined') {
     // eslint-disable-next-line react-hooks/immutability
-    window.location.href = '/login?redirect=' + encodeURIComponent(pathname);
+    window.location.href = '/setup';
     return null;
   }
 

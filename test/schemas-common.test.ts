@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   PasswordSchema,
+  getPasswordError,
   EmailSchema,
   PhoneSchema,
   UUIDSchema,
@@ -10,21 +11,60 @@ import {
 } from '../src/lib/schemas/common';
 
 describe('PasswordSchema', () => {
-  it('rejects passwords shorter than 10', () => {
-    expect(PasswordSchema.safeParse('short1').success).toBe(false);
-    expect(PasswordSchema.safeParse('nine-char').success).toBe(false);
+  it('rejects passwords shorter than 8', () => {
+    expect(PasswordSchema.safeParse('Ab1!').success).toBe(false);
+    expect(PasswordSchema.safeParse('Ab1!567').success).toBe(false);
   });
 
-  it('accepts a 10-char password', () => {
-    expect(PasswordSchema.safeParse('abcdefghij').success).toBe(true);
+  it('accepts an 8-char password with all required classes', () => {
+    expect(PasswordSchema.safeParse('Passw0rd!').success).toBe(true);
   });
 
-  it('rejects whitespace-only passwords even at 10 chars', () => {
+  it('rejects whitespace-only passwords', () => {
     expect(PasswordSchema.safeParse('          ').success).toBe(false);
   });
 
+  it('rejects passwords missing an uppercase letter', () => {
+    expect(PasswordSchema.safeParse('passw0rd!').success).toBe(false);
+  });
+
+  it('rejects passwords missing a number', () => {
+    expect(PasswordSchema.safeParse('Password!').success).toBe(false);
+  });
+
+  it('rejects passwords missing a special character', () => {
+    expect(PasswordSchema.safeParse('Password1').success).toBe(false);
+  });
+
   it('accepts long mixed passwords', () => {
-    expect(PasswordSchema.safeParse('CorrectHorseBatteryStaple!').success).toBe(true);
+    expect(PasswordSchema.safeParse('CorrectHorseBatteryStaple1!').success).toBe(true);
+  });
+});
+
+describe('getPasswordError', () => {
+  it('returns null for valid passwords', () => {
+    expect(getPasswordError('Passw0rd!')).toBeNull();
+  });
+
+  it('returns a length error for short passwords', () => {
+    expect(getPasswordError('Ab1!')).toMatch(/at least 8/);
+  });
+
+  it('returns a uppercase error when missing', () => {
+    expect(getPasswordError('passw0rd!')).toMatch(/uppercase/);
+  });
+
+  it('returns a number error when missing', () => {
+    expect(getPasswordError('Password!')).toMatch(/number/);
+  });
+
+  it('returns a special-char error when missing', () => {
+    expect(getPasswordError('Password1')).toMatch(/special/);
+  });
+
+  it('handles null / undefined without throwing', () => {
+    expect(getPasswordError(null)).toMatch(/at least 8/);
+    expect(getPasswordError(undefined)).toMatch(/at least 8/);
   });
 });
 
