@@ -9,7 +9,6 @@ import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { formatPKR } from '@/lib/utils/currency';
 import type { PaymentMethod } from '@/types/database';
-import type { Staff } from '@/types/database';
 import { getCheckoutBlockReason, describeBlockReason } from './checkout-gate';
 
 export interface SplitPaymentEntry {
@@ -23,7 +22,6 @@ interface PaymentPanelProps {
   clientUdhaarLimit: number;
   hasClient: boolean;
   hasStylist: boolean;
-  stylists: Staff[];
   selectedPaymentMethod: PaymentMethod | null;
   onSelectMethod: (method: PaymentMethod) => void;
   cashReceived: number;
@@ -36,8 +34,6 @@ interface PaymentPanelProps {
   onSplitPaymentsChange: (entries: SplitPaymentEntry[]) => void;
   tipAmount: number;
   onTipChange: (amount: number) => void;
-  tipStaffId: string;
-  onTipStaffChange: (id: string) => void;
   onCheckout: () => void;
   saving: boolean;
 }
@@ -52,11 +48,11 @@ const PAYMENT_METHODS: { method: PaymentMethod; label: string; icon: typeof Bank
 ];
 
 export function PaymentPanel({
-  total, clientUdhaarBalance, clientUdhaarLimit, hasClient, hasStylist, stylists,
+  total, clientUdhaarBalance, clientUdhaarLimit, hasClient, hasStylist,
   selectedPaymentMethod, onSelectMethod, cashReceived, onCashReceived,
   reference, onReferenceChange,
   isSplit, onSplitToggle, splitPayments, onSplitPaymentsChange,
-  tipAmount, onTipChange, tipStaffId, onTipStaffChange,
+  tipAmount, onTipChange,
   onCheckout, saving,
 }: PaymentPanelProps) {
   const [showTip, setShowTip] = useState(false);
@@ -274,16 +270,9 @@ export function PaymentPanel({
               ))}
             </div>
           </div>
-          {stylists.length > 0 && (
-            <div>
-              <Label className="text-xs">Assign tip to</Label>
-              <select value={tipStaffId} onChange={(e) => { if (e.target.value) onTipStaffChange(e.target.value); }}
-                className="h-8 text-xs mt-1 w-full border border-border bg-background rounded-md px-2">
-                <option value="">Select stylist</option>
-                {stylists.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-              </select>
-            </div>
-          )}
+          <p className="text-[11px] text-muted-foreground">
+            Tip is recorded for the selected stylist on this bill.
+          </p>
         </div>
       )}
 

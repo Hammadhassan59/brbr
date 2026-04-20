@@ -82,7 +82,6 @@ function POSContent() {
   const [isSplit, setIsSplit] = useState(false);
   const [splitPayments, setSplitPayments] = useState<SplitPaymentEntry[]>([]);
   const [tipAmount, setTipAmount] = useState(0);
-  const [tipStaffId, setTipStaffId] = useState('');
 
   // Checkout
   const [showCheckout, setShowCheckout] = useState(false);
@@ -177,7 +176,7 @@ function POSContent() {
       const apt = data as AppointmentWithDetails;
 
       if (apt.client) setSelectedClient(apt.client);
-      if (apt.staff_id) { setSelectedStaffId(apt.staff_id); setTipStaffId(apt.staff_id); }
+      if (apt.staff_id) setSelectedStaffId(apt.staff_id);
 
       if (apt.services && apt.services.length > 0) {
         setItems(apt.services.map((s) => ({
@@ -419,9 +418,9 @@ function POSContent() {
           if (statsErr) throw new Error(statsErr);
         }
 
-        // Record tip
-        if (tipAmount > 0 && tipStaffId) {
-          const { error: tipErr } = await recordTip(tipStaffId, bill.id, tipAmount);
+        // Record tip — always attributed to the stylist selected on the bill.
+        if (tipAmount > 0 && selectedStaffId) {
+          const { error: tipErr } = await recordTip(selectedStaffId, bill.id, tipAmount);
           if (tipErr) throw new Error(tipErr);
         }
 
@@ -604,7 +603,7 @@ function POSContent() {
             </div>
           )}
 
-          <select value={selectedStaffId} onChange={(e) => { const v = e.target.value; if (v) { setSelectedStaffId(v); if (!tipStaffId) setTipStaffId(v); } }}
+          <select value={selectedStaffId} onChange={(e) => { const v = e.target.value; if (v) setSelectedStaffId(v); }}
             className="h-10 sm:h-8 text-sm sm:text-xs w-full sm:w-[140px] order-last sm:order-none border border-border bg-background rounded-md px-2 basis-full sm:basis-auto">
               <option value="">Stylist</option>
               {stylists.map((s) => (
@@ -651,7 +650,6 @@ function POSContent() {
           clientUdhaarLimit={selectedClient?.udhaar_limit || 5000}
           hasClient={!!selectedClient}
           hasStylist={!!selectedStaffId}
-          stylists={stylists}
           selectedPaymentMethod={paymentMethod}
           onSelectMethod={setPaymentMethod}
           cashReceived={cashReceived}
@@ -664,8 +662,6 @@ function POSContent() {
           onSplitPaymentsChange={setSplitPayments}
           tipAmount={tipAmount}
           onTipChange={setTipAmount}
-          tipStaffId={tipStaffId}
-          onTipStaffChange={setTipStaffId}
           onCheckout={() => setShowCheckout(true)}
           saving={saving}
         />
@@ -699,8 +695,7 @@ function POSContent() {
               clientUdhaarLimit={selectedClient?.udhaar_limit || 5000}
               hasClient={!!selectedClient}
               hasStylist={!!selectedStaffId}
-              stylists={stylists}
-              selectedPaymentMethod={paymentMethod}
+                  selectedPaymentMethod={paymentMethod}
               onSelectMethod={setPaymentMethod}
               cashReceived={cashReceived}
               onCashReceived={setCashReceived}
@@ -712,8 +707,6 @@ function POSContent() {
               onSplitPaymentsChange={setSplitPayments}
               tipAmount={tipAmount}
               onTipChange={setTipAmount}
-              tipStaffId={tipStaffId}
-              onTipStaffChange={setTipStaffId}
               onCheckout={() => { setShowMobilePayment(false); setShowCheckout(true); }}
               saving={saving}
             />
