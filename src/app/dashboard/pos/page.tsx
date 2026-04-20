@@ -211,6 +211,20 @@ function POSContent() {
     setClientResults(Array.from(merged.values()).slice(0, 10));
   }, [salon, currentBranch]);
 
+  function openNewClientForm(prefill: string) {
+    const phoneLike = /\d/.test(prefill);
+    setShowNewClient(true);
+    if (phoneLike) {
+      setNewClientPhone(prefill);
+      setNewClientName('');
+    } else {
+      setNewClientName(prefill);
+      setNewClientPhone('');
+    }
+    setClientSearch('');
+    setClientResults([]);
+  }
+
   async function createNewClient() {
     if (!salon || !currentBranch || !newClientName.trim()) { toast.error('Client name is required'); return; }
     if (!newClientPhone.trim()) { toast.error('Phone number is required'); return; }
@@ -564,14 +578,24 @@ function POSContent() {
                       </button>
                     ))}
                     {clientResults.length === 0 && (
-                      <p className="px-3 py-2 text-xs text-muted-foreground">
-                        No matches. Use &quot;New Client&quot; for walk-ins (name + phone required).
-                      </p>
+                      <button
+                        onClick={() => openNewClientForm(clientSearch)}
+                        className="w-full text-left px-3 py-2 hover:bg-secondary text-xs transition-all duration-150 flex items-center gap-1.5"
+                      >
+                        <UserPlus className="w-3.5 h-3.5 text-gold shrink-0" />
+                        <span className="text-muted-foreground">
+                          {/\d/.test(clientSearch) ? (
+                            <>Add new client with phone <span className="text-foreground font-medium">{clientSearch}</span></>
+                          ) : (
+                            <>Add <span className="text-foreground font-medium">&quot;{clientSearch}&quot;</span> as new client</>
+                          )}
+                        </span>
+                      </button>
                     )}
                   </div>
                 )}
               </div>
-              <Button size="sm" className="h-9 md:h-8 text-xs shrink-0 bg-gold hover:bg-gold/90 text-black border border-gold font-semibold px-3 sm:px-4 transition-all duration-150" onClick={() => { setShowNewClient(true); setNewClientName(clientSearch); setClientSearch(''); setClientResults([]); }}>
+              <Button size="sm" className="h-9 md:h-8 text-xs shrink-0 bg-gold hover:bg-gold/90 text-black border border-gold font-semibold px-3 sm:px-4 transition-all duration-150" onClick={() => openNewClientForm(clientSearch)}>
                 <UserPlus className="w-4 h-4 sm:mr-1.5" /> <span className="hidden sm:inline">New Client</span>
               </Button>
             </div>
