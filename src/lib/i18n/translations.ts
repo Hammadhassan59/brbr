@@ -324,6 +324,21 @@ export const translations = {
     footerFeatures: 'Features',
     refundPolicy: 'Refund Policy',
 
+    // Landing page (hero + CTAs)
+    heroLine1: 'Run your salon',
+    heroLine2From: 'from',
+    heroLine2App: 'one app.',
+    heroSub: 'Stop losing money to forgotten appointments and handwritten bills.',
+    getStarted: 'Get Started',
+    seeWhatItDoes: 'See what it does',
+    trustLine: 'Trusted by salon owners across 6 cities',
+    whatItDoesKicker: 'What it does',
+    whatItDoesTitle: 'Everything your salon needs',
+    whatItDoesSub: 'No more spreadsheets, calculators, or chat groups.',
+    faqTitle: 'Questions you might have',
+    faqSub: 'Short answers to what owners ask us most.',
+    iNeedCustomPlan: 'I need a custom plan',
+
     // Privacy/Terms shared
     lastUpdated: 'Last updated',
     questionsHeading: 'Questions?',
@@ -673,6 +688,21 @@ export const translations = {
     footerLegal: 'قانونی',
     footerFeatures: 'خصوصیات',
     refundPolicy: 'ریفنڈ پالیسی',
+
+    // Landing page (hero + CTAs)
+    heroLine1: 'اپنا سیلون چلائیں',
+    heroLine2From: 'سے',
+    heroLine2App: 'ایک ہی ایپ',
+    heroSub: 'بھولی ہوئی اپائنٹمنٹس اور ہاتھ سے لکھے بلز پر پیسہ ضائع کرنا بند کریں۔',
+    getStarted: 'شروع کریں',
+    seeWhatItDoes: 'دیکھیں یہ کیا کرتا ہے',
+    trustLine: 'پاکستان کے 6 شہروں کے سیلون مالکان کا اعتماد',
+    whatItDoesKicker: 'یہ کیا کرتا ہے',
+    whatItDoesTitle: 'آپ کے سیلون کو جو چاہیے، سب',
+    whatItDoesSub: 'مزید کوئی سپریڈ شیٹ، کیلکولیٹر یا چیٹ گروپ نہیں۔',
+    faqTitle: 'آپ کے ممکنہ سوالات',
+    faqSub: 'مالکان اکثر جو سوالات پوچھتے ہیں، ان کے مختصر جوابات۔',
+    iNeedCustomPlan: 'مجھے ایک کسٹم پلان چاہیے',
 
     // Privacy/Terms shared
     lastUpdated: 'آخری بار اپڈیٹ',

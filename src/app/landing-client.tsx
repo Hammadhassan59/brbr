@@ -5,6 +5,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Scissors, ChevronDown, Check, Lock, Zap, Smartphone, Ticket, Coffee } from 'lucide-react';
 import PublicLayout from '@/components/public-layout';
 import { DashboardHeroPreview } from './components/dashboard-hero-preview';
+import { useLanguage } from '@/components/providers/language-provider';
 
 // ── Scroll reveal ──
 // Uses CSS-only animation. Content is always visible in HTML (no JS dependency).
@@ -18,9 +19,12 @@ function Reveal({ children, className = '' }: { children: React.ReactNode; class
     if (!el) return;
     // If element is already in viewport on mount, skip animation entirely
     const rect = el.getBoundingClientRect();
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (rect.top < window.innerHeight) { setVisible(true); return; }
     // Element is below the fold — set up scroll animation
+     
     setAnimate(true);
+     
     setVisible(false);
     const obs = new IntersectionObserver(([e]) => { if (e.isIntersecting) { setVisible(true); obs.disconnect(); } }, { threshold: 0.12 });
     obs.observe(el);
@@ -74,6 +78,7 @@ interface LandingClientProps {
 }
 
 export default function LandingClient({ initialPlans, supportWhatsApp }: LandingClientProps) {
+  const { t } = useLanguage();
   const [openFaq, setOpenFaq] = useState<number | null>(null);
   // Plans come in from the server component — already populated at first paint,
   // no flicker. No client-side refetch needed; Next.js re-runs the server
@@ -84,7 +89,7 @@ export default function LandingClient({ initialPlans, supportWhatsApp }: Landing
   // generic tel-free link if the admin hasn't configured a number yet.
   const customPlanWhatsApp = (() => {
     const digits = supportWhatsApp.replace(/\D/g, '');
-    const text = encodeURIComponent('I need a custom plan');
+    const text = encodeURIComponent(t('iNeedCustomPlan'));
     return digits ? `https://wa.me/${digits}?text=${text}` : `https://wa.me/?text=${text}`;
   })();
 
@@ -98,24 +103,24 @@ export default function LandingClient({ initialPlans, supportWhatsApp }: Landing
           {/* Text block — exact spacing */}
           <div className="text-center max-w-2xl mx-auto" style={{ marginBottom: '20px' }}>
             <h1 className="animate-fade-up font-heading text-[2.75rem] md:text-[3.5rem] font-black text-[#1A1A1A]" style={{ lineHeight: 1.08, letterSpacing: '-0.03em', animationDelay: '0.05s' }}>
-              Run your salon<br />from <span className="text-gold">one app.</span>
+              {t('heroLine1')}<br />{t('heroLine2From')} <span className="text-gold">{t('heroLine2App')}</span>
             </h1>
             <p className="animate-fade-up text-[15px] text-[#6B7280] leading-relaxed max-w-lg mx-auto" style={{ animationDelay: '0.1s', marginTop: '16px', marginBottom: '24px' }}>
-              Stop losing money to forgotten appointments and handwritten bills.
+              {t('heroSub')}
             </p>
             <div className="animate-fade-up flex flex-wrap gap-4 justify-center items-center" style={{ animationDelay: '0.15s' }}>
               <Link href="/login" className="bg-[#1A1A1A] text-white px-8 py-3.5 text-[15px] font-bold hover:shadow-lg hover:shadow-black/20 hover:-translate-y-0.5 transition-all inline-flex items-center touch-target shadow-md shadow-black/10" style={{ borderRadius: Ri }}>
-                Get Started
+                {t('getStarted')}
               </Link>
               <a href="#features" className="text-[#6B7280] text-[13px] font-medium hover:text-[#1A1A1A] transition-colors inline-flex items-center gap-1.5">
-                See what it does <span className="text-[12px]">&rarr;</span>
+                {t('seeWhatItDoes')} <span className="text-[12px]">&rarr;</span>
               </a>
             </div>
           </div>
 
           {/* Trust strip — social proof at point of decision */}
           <p className="animate-fade-up text-center text-[13px] text-[#6B7280] font-medium tracking-wide" style={{ animationDelay: '0.18s', marginBottom: '28px' }}>
-            Trusted by salon owners across 6 cities
+            {t('trustLine')}
           </p>
 
           {/* Dashboard mockup — THE hero visual, clipped at bottom */}
@@ -162,9 +167,9 @@ export default function LandingClient({ initialPlans, supportWhatsApp }: Landing
       <section id="features" className="py-14 md:py-20" style={{ background: '#FAFAF8' }}>
         <div className="max-w-5xl mx-auto px-5">
           <Reveal className="text-center mb-12">
-            <p className="text-[11px] font-bold text-gold uppercase tracking-[1.5px] mb-3">What it does</p>
-            <h2 className="font-heading text-3xl md:text-[2.5rem] font-black text-[#1A1A1A] tracking-tight mb-3">Everything your salon needs</h2>
-            <p className="text-[15px] text-[#888] max-w-md mx-auto">No more spreadsheets, calculators, or chat groups.</p>
+            <p className="text-[11px] font-bold text-gold uppercase tracking-[1.5px] mb-3">{t('whatItDoesKicker')}</p>
+            <h2 className="font-heading text-3xl md:text-[2.5rem] font-black text-[#1A1A1A] tracking-tight mb-3">{t('whatItDoesTitle')}</h2>
+            <p className="text-[15px] text-[#888] max-w-md mx-auto">{t('whatItDoesSub')}</p>
           </Reveal>
 
           {/* Row 1: Appointments (hero feature, full width, dark) */}
@@ -545,7 +550,7 @@ export default function LandingClient({ initialPlans, supportWhatsApp }: Landing
       <section id="faq" className="py-20 md:py-28 bg-white">
         <div className="max-w-2xl mx-auto px-5">
           <Reveal className="text-center mb-10">
-            <p className="text-[11px] font-bold text-gold uppercase tracking-[1.5px] mb-3">Questions</p>
+            <p className="text-[11px] font-bold text-gold uppercase tracking-[1.5px] mb-3">{t('navQuestions')}</p>
           </Reveal>
 
           <Reveal>
