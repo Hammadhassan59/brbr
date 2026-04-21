@@ -2,21 +2,24 @@
 
 import { Suspense, useEffect, useState, useCallback } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { ArrowLeft, Search, UserPlus, X } from 'lucide-react';
+import { ArrowLeft, Search, UserPlus, UserRound, Save, FolderOpen, Trash2, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { supabase } from '@/lib/supabase';
 import { createClient, updateClientStats } from '@/app/actions/clients';
 import { createBill, createBillItems, recordTip, updateCashDrawer, updatePromoCodeUsage, rollbackBill } from '@/app/actions/bills';
+import { saveDraft, listDrafts, loadDraft, deleteDraft, type BillDraft, type DraftState } from '@/app/actions/bill-drafts';
 import { deductStockForBill } from '@/app/actions/inventory';
 import { updateAppointmentStatus } from '@/app/actions/appointments';
 import { showActionError, handleSubscriptionError } from '@/components/paywall-dialog';
 import { useAppStore } from '@/store/app-store';
 import { usePermission } from '@/lib/permissions';
 import { formatPKR } from '@/lib/utils/currency';
+import { formatPKDate } from '@/lib/utils/dates';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { BillBuilder, type BillLineItem } from './components/bill-builder';
 import { PaymentPanel, type SplitPaymentEntry } from './components/payment-panel';
 import { CheckoutConfirmation } from './components/checkout-confirmation';
@@ -59,6 +62,16 @@ function POSContent() {
   const [showNewClient, setShowNewClient] = useState(false);
   const [newClientName, setNewClientName] = useState('');
   const [newClientPhone, setNewClientPhone] = useState('');
+  // Walk-in: skip the client requirement entirely — the receipt prints with
+  // "Walk-in Guest" in place of a client name and no client record is
+  // touched. selectedClient stays null; hasClient gate passes because of
+  // isWalkIn.
+  const [isWalkIn, setIsWalkIn] = useState(false);
+
+  // Drafts (park/retrieve)
+  const [drafts, setDrafts] = useState<BillDraft[]>([]);
+  const [draftsOpen, setDraftsOpen] = useState(false);
+  const [loadedDraftId, setLoadedDraftId] = useState<string | null>(null);
 
   // Stylist selection
   const [selectedStaffId, setSelectedStaffId] = useState('');
@@ -267,7 +280,7 @@ function POSContent() {
             total,
             tipAmount,
             hasStylist: !!selectedStaffId,
-            hasClient: !!selectedClient,
+            hasClient: !!selectedClient || isWalkIn,
             selectedPaymentMethod: paymentMethod,
             cashReceived,
             isSplit,
@@ -281,7 +294,7 @@ function POSContent() {
     }
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [total, paymentMethod, router, selectedStaffId, selectedClient, cashReceived, isSplit, splitPayments, saving, tipAmount]);
+  }, [total, paymentMethod, router, selectedStaffId, selectedClient, isWalkIn, cashReceived, isSplit, splitPayments, saving, tipAmount]);
 
   // Add service to bill
   function addService(svc: Service) {
@@ -360,6 +373,109 @@ function POSContent() {
     const disc = data.discount_type === 'flat' ? data.discount_value : subtotal * data.discount_value / 100;
     setPromoDiscount(disc);
     toast.success(`Promo applied: -${formatPKR(disc)}`);
+  }
+
+  // ─── Drafts ───
+
+  const refreshDrafts = useCallback(async () => {
+    if (!currentBranch) return;
+    const { data } = await listDrafts(currentBranch.id);
+    setDrafts(data);
+  }, [currentBranch]);
+
+  useEffect(() => { refreshDrafts(); }, [refreshDrafts]);
+
+  function resetCart() {
+    setItems([]);
+    setSelectedClient(null);
+    setIsWalkIn(false);
+    setSelectedStaffId('');
+    setDiscountType(null);
+    setDiscountValue(0);
+    setPromoCode('');
+    setPromoDiscount(0);
+    setLoyaltyPointsUsed(0);
+    setPaymentMethod(null);
+    setCashReceived(0);
+    setReference('');
+    setIsSplit(false);
+    setSplitPayments([]);
+    setTipAmount(0);
+    setAppointmentId(null);
+    setLoadedDraftId(null);
+  }
+
+  async function handleSaveDraft() {
+    if (!currentBranch || items.length === 0) return;
+    const label = selectedClient?.name ?? (isWalkIn ? 'Walk-in' : 'Untitled');
+    const state: DraftState = {
+      items: items as unknown[],
+      selectedClientId: selectedClient?.id ?? null,
+      selectedStaffId: selectedStaffId || null,
+      appointmentId,
+      isWalkIn,
+      discountType,
+      discountValue,
+      promoCode,
+      promoDiscount,
+      loyaltyPointsUsed,
+      tipAmount,
+    };
+    const { error } = await saveDraft({ branchId: currentBranch.id, label, state });
+    if (error) { toast.error(error); return; }
+    toast.success(`Draft saved — ${label}`);
+    // If we were resuming a draft, delete the older copy now that we've
+    // re-saved the (possibly modified) state.
+    if (loadedDraftId) {
+      try { await deleteDraft(loadedDraftId); } catch { /* best-effort */ }
+    }
+    resetCart();
+    refreshDrafts();
+  }
+
+  async function openDraftsList() {
+    await refreshDrafts();
+    setDraftsOpen(true);
+  }
+
+  async function handleLoadDraft(draft: BillDraft) {
+    // Warn if the current cart has unsaved items.
+    if (items.length > 0 && !confirm('Loading this draft will discard your current cart. Continue?')) return;
+    const { data, error } = await loadDraft(draft.id);
+    if (error || !data) { toast.error(error || 'Could not load draft'); return; }
+    const s = data.state;
+    setItems(s.items as BillLineItem[]);
+    setSelectedStaffId(s.selectedStaffId ?? '');
+    setAppointmentId(s.appointmentId ?? null);
+    setIsWalkIn(!!s.isWalkIn);
+    setDiscountType(s.discountType ?? null);
+    setDiscountValue(s.discountValue ?? 0);
+    setPromoCode(s.promoCode ?? '');
+    setPromoDiscount(s.promoDiscount ?? 0);
+    setLoyaltyPointsUsed(s.loyaltyPointsUsed ?? 0);
+    setTipAmount(s.tipAmount ?? 0);
+    // Re-hydrate the client from the persisted id (in case name/udhaar changed since).
+    if (s.selectedClientId) {
+      const { data: client } = await supabase
+        .from('clients')
+        .select('*')
+        .eq('id', s.selectedClientId)
+        .maybeSingle();
+      if (client) setSelectedClient(client as Client);
+    } else {
+      setSelectedClient(null);
+    }
+    setLoadedDraftId(draft.id);
+    setDraftsOpen(false);
+    toast.success(`Draft "${draft.label ?? 'Untitled'}" loaded`);
+  }
+
+  async function handleDeleteDraft(draftId: string) {
+    if (!confirm('Delete this draft?')) return;
+    const { error } = await deleteDraft(draftId);
+    if (error) { toast.error(error); return; }
+    toast.success('Draft deleted');
+    refreshDrafts();
   }
 
   async function handleConfirm() {
@@ -479,22 +595,14 @@ function POSContent() {
       setBillNumber(bill.bill_number);
       setShowCheckout(false);
 
-      // Reset
-      setItems([]);
-      setSelectedClient(null);
-      setSelectedStaffId('');
-      setDiscountType(null);
-      setDiscountValue(0);
-      setPromoCode('');
-      setPromoDiscount(0);
-      setLoyaltyPointsUsed(0);
-      setPaymentMethod(null);
-      setCashReceived(0);
-      setReference('');
-      setIsSplit(false);
-      setSplitPayments([]);
-      setTipAmount(0);
-      setAppointmentId(null);
+      // If this bill was resumed from a draft, consume the draft row now
+      // that it has settled as a real sale.
+      if (loadedDraftId) {
+        try { await deleteDraft(loadedDraftId); } catch { /* best-effort */ }
+        refreshDrafts();
+      }
+
+      resetCart();
     } catch (err: unknown) {
       if (handleSubscriptionError(err)) return;
       toast.error(err instanceof Error ? err.message : 'Checkout failed');
@@ -526,6 +634,30 @@ function POSContent() {
           <Button variant="ghost" size="sm" onClick={() => router.push('/dashboard/pos/bills')} className="text-xs transition-all duration-150" title="Past bills">
             Bills
           </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleSaveDraft}
+            className="text-xs transition-all duration-150"
+            disabled={items.length === 0}
+            title="Park this cart so another customer can be rung up"
+          >
+            <Save className="w-3.5 h-3.5 sm:mr-1" /> <span className="hidden sm:inline">Save draft</span>
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={openDraftsList}
+            className="text-xs transition-all duration-150 relative"
+            title="Resume a parked cart"
+          >
+            <FolderOpen className="w-3.5 h-3.5 sm:mr-1" /> <span className="hidden sm:inline">Drafts</span>
+            {drafts.length > 0 && (
+              <span className="ml-1 inline-flex items-center justify-center min-w-[18px] h-[18px] text-[10px] font-bold bg-gold/20 text-gold rounded-full px-1">
+                {drafts.length}
+              </span>
+            )}
+          </Button>
 
           {selectedClient ? (
             <div className="flex items-center gap-2 flex-1 min-w-0">
@@ -535,6 +667,17 @@ function POSContent() {
               <span className="text-sm font-medium truncate">{selectedClient.name}</span>
               {selectedClient.is_vip && <Badge variant="outline" className="text-[10px] text-gold border-gold">VIP</Badge>}
               <Button variant="ghost" size="icon" className="h-6 w-6 transition-all duration-150" onClick={() => setSelectedClient(null)}>
+                <X className="w-3 h-3" />
+              </Button>
+            </div>
+          ) : isWalkIn ? (
+            <div className="flex items-center gap-2 flex-1 min-w-0">
+              <div className="w-7 h-7 rounded-lg bg-muted text-foreground text-xs font-bold flex items-center justify-center shrink-0">
+                <UserRound className="w-3.5 h-3.5" />
+              </div>
+              <span className="text-sm font-medium truncate">Walk-in Guest</span>
+              <Badge variant="outline" className="text-[10px] text-muted-foreground">No record kept</Badge>
+              <Button variant="ghost" size="icon" className="h-6 w-6 transition-all duration-150" onClick={() => setIsWalkIn(false)}>
                 <X className="w-3 h-3" />
               </Button>
             </div>
@@ -600,6 +743,15 @@ function POSContent() {
               <Button size="sm" className="h-9 md:h-8 text-xs shrink-0 bg-gold hover:bg-gold/90 text-black border border-gold font-semibold px-3 sm:px-4 transition-all duration-150" onClick={() => openNewClientForm(clientSearch)}>
                 <UserPlus className="w-4 h-4 sm:mr-1.5" /> <span className="hidden sm:inline">New Client</span>
               </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-9 md:h-8 text-xs shrink-0 px-3 sm:px-4 transition-all duration-150"
+                onClick={() => { setIsWalkIn(true); setSelectedClient(null); setClientSearch(''); setClientResults([]); }}
+                title="Skip client selection for a walk-in customer"
+              >
+                <UserRound className="w-4 h-4 sm:mr-1.5" /> <span className="hidden sm:inline">Walk-in</span>
+              </Button>
             </div>
           )}
 
@@ -648,7 +800,7 @@ function POSContent() {
           total={total}
           clientUdhaarBalance={selectedClient?.udhaar_balance || 0}
           clientUdhaarLimit={selectedClient?.udhaar_limit || 5000}
-          hasClient={!!selectedClient}
+          hasClient={!!selectedClient || isWalkIn}
           hasStylist={!!selectedStaffId}
           selectedPaymentMethod={paymentMethod}
           onSelectMethod={setPaymentMethod}
@@ -693,7 +845,7 @@ function POSContent() {
               total={total}
               clientUdhaarBalance={selectedClient?.udhaar_balance || 0}
               clientUdhaarLimit={selectedClient?.udhaar_limit || 5000}
-              hasClient={!!selectedClient}
+              hasClient={!!selectedClient || isWalkIn}
               hasStylist={!!selectedStaffId}
                   selectedPaymentMethod={paymentMethod}
               onSelectMethod={setPaymentMethod}
@@ -725,6 +877,47 @@ function POSContent() {
         </button>
       )}
       </>)}
+
+      <Dialog open={draftsOpen} onOpenChange={setDraftsOpen}>
+        <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
+          <DialogHeader><DialogTitle>Saved drafts ({drafts.length})</DialogTitle></DialogHeader>
+          {drafts.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-8">
+              No parked bills. Use <b>Save draft</b> on the header to park a cart.
+            </p>
+          ) : (
+            <div className="space-y-2">
+              {drafts.map((d) => {
+                const itemCount = Array.isArray(d.state?.items) ? d.state.items.length : 0;
+                const total = (d.state?.items as { totalPrice?: number }[] | undefined ?? [])
+                  .reduce((s, i) => s + (Number(i.totalPrice) || 0), 0);
+                return (
+                  <div key={d.id} className="flex items-center justify-between gap-3 p-3 border rounded-lg hover:bg-muted/30">
+                    <button
+                      onClick={() => handleLoadDraft(d)}
+                      className="text-left flex-1 min-w-0"
+                    >
+                      <p className="text-sm font-medium truncate">{d.label || 'Untitled'}</p>
+                      <p className="text-[11px] text-muted-foreground">
+                        {itemCount} item{itemCount === 1 ? '' : 's'} · {formatPKR(total)} · {formatPKDate(d.created_at)}
+                      </p>
+                    </button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 shrink-0"
+                      onClick={(e) => { e.stopPropagation(); handleDeleteDraft(d.id); }}
+                      title="Delete draft"
+                    >
+                      <Trash2 className="w-3.5 h-3.5 text-muted-foreground" />
+                    </Button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       <CheckoutConfirmation
         open={showCheckout}
