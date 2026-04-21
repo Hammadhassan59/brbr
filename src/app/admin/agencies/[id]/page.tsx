@@ -165,6 +165,8 @@ function ProfileTab({ agency, onChanged }: { agency: Agency; onChanged: () => vo
     phone: agency.phone ?? '',
     email: agency.email ?? '',
     city: agency.city ?? '',
+    nic_number: agency.nic_number ?? '',
+    address: agency.address ?? '',
     first_sale_pct: String(agency.first_sale_pct),
     renewal_pct: String(agency.renewal_pct),
     deposit_amount: String(agency.deposit_amount),
@@ -181,6 +183,8 @@ function ProfileTab({ agency, onChanged }: { agency: Agency; onChanged: () => vo
       phone: form.phone.trim() || null,
       email: form.email.trim() || null,
       city: form.city.trim() || null,
+      nic_number: form.nic_number.trim() || null,
+      address: form.address.trim() || null,
       first_sale_pct: Number(form.first_sale_pct),
       renewal_pct: Number(form.renewal_pct),
       deposit_amount: Number(form.deposit_amount),
@@ -201,6 +205,10 @@ function ProfileTab({ agency, onChanged }: { agency: Agency; onChanged: () => vo
       <div className="grid grid-cols-2 gap-3">
         <div><Label>Email</Label><Input value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></div>
         <div><Label>City</Label><Input value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} /></div>
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div><Label>NIC / CNIC number</Label><Input value={form.nic_number} onChange={(e) => setForm({ ...form, nic_number: e.target.value })} placeholder="XXXXX-XXXXXXX-X" /></div>
+        <div><Label>Complete address</Label><Input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} placeholder="Street, area, city, postal code" /></div>
       </div>
       <h3 className="font-medium pt-2">Commission rates (platform → agency)</h3>
       <div className="grid grid-cols-2 gap-3">

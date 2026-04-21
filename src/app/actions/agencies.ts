@@ -2,6 +2,7 @@
 
 import { createServerClient } from '@/lib/supabase';
 import { requireAdminRole } from './auth';
+import { sendEmail } from '@/lib/email-sender';
 import type {
   Agency,
   AgencyStatus,
@@ -152,22 +153,28 @@ export interface CreateAgencyInput {
   phone: string | null;
   email: string | null;
   city: string | null;
+  nicNumber: string | null;
+  address: string | null;
   firstSalePct: number;
   renewalPct: number;
   depositAmount: number;
   liabilityThreshold: number;
   terms: string | null;
+  // When provided, an agency_admins + auth.users row is created and a
+  // welcome email is sent so the agency owner can set their own password.
+  adminEmail?: string | null;
+  adminName?: string | null;
 }
 
 export async function createAgency(
   input: CreateAgencyInput,
-): Promise<{ data: Agency | null; error: string | null }> {
+): Promise<{ data: Agency | null; error: string | null; adminEmailSent: boolean }> {
   await requireAdminRole(['super_admin']);
-  if (!input.name?.trim()) return { data: null, error: 'Name is required' };
-  if (input.firstSalePct < 0 || input.firstSalePct > 100) return { data: null, error: 'First-sale % out of range' };
-  if (input.renewalPct < 0 || input.renewalPct > 100) return { data: null, error: 'Renewal % out of range' };
-  if (input.depositAmount < 0) return { data: null, error: 'Deposit must be >= 0' };
-  if (input.liabilityThreshold < 0) return { data: null, error: 'Liability threshold must be >= 0' };
+  if (!input.name?.trim()) return { data: null, error: 'Name is required', adminEmailSent: false };
+  if (input.firstSalePct < 0 || input.firstSalePct > 100) return { data: null, error: 'First-sale % out of range', adminEmailSent: false };
+  if (input.renewalPct < 0 || input.renewalPct > 100) return { data: null, error: 'Renewal % out of range', adminEmailSent: false };
+  if (input.depositAmount < 0) return { data: null, error: 'Deposit must be >= 0', adminEmailSent: false };
+  if (input.liabilityThreshold < 0) return { data: null, error: 'Liability threshold must be >= 0', adminEmailSent: false };
 
   const supabase = createServerClient();
   const { data, error } = await supabase
@@ -178,6 +185,8 @@ export async function createAgency(
       phone: input.phone,
       email: input.email,
       city: input.city,
+      nic_number: input.nicNumber,
+      address: input.address,
       first_sale_pct: input.firstSalePct,
       renewal_pct: input.renewalPct,
       deposit_amount: input.depositAmount,
@@ -186,14 +195,91 @@ export async function createAgency(
     })
     .select()
     .single();
-  if (error) return { data: null, error: error.message };
-  return { data: data as Agency, error: null };
+  if (error) return { data: null, error: error.message, adminEmailSent: false };
+
+  const agency = data as Agency;
+  let adminEmailSent = false;
+  const adminEmail = (input.adminEmail ?? input.email ?? '').trim().toLowerCase();
+  const adminName = (input.adminName ?? input.contactName ?? input.name ?? '').trim();
+  if (adminEmail && adminName) {
+    const result = await provisionAgencyAdmin(agency.id, { email: adminEmail, name: adminName, phone: input.phone });
+    adminEmailSent = result.emailSent;
+  }
+
+  return { data: agency, error: null, adminEmailSent };
+}
+
+/**
+ * Creates the Supabase auth user + agency_admins row for a new agency and
+ * sends the welcome email with a password-reset link. Internal helper —
+ * callers (createAgency, approveAgencyRequest) already checked authorization.
+ * Idempotent: if the auth user already exists we reuse it and just ensure
+ * the agency_admins row is in place.
+ */
+export async function provisionAgencyAdmin(
+  agencyId: string,
+  input: { email: string; name: string; phone: string | null },
+): Promise<{ emailSent: boolean; error: string | null }> {
+  const supabase = createServerClient();
+  const email = input.email.trim().toLowerCase();
+
+  // 1. Find or create the auth user.
+  let userId: string | null = null;
+  const { data: authCreate } = await supabase.auth.admin.createUser({
+    email,
+    password: crypto.randomUUID() + 'A1!',
+    email_confirm: true,
+  });
+  if (authCreate?.user) {
+    userId = authCreate.user.id;
+  } else {
+    // Likely already exists — look it up.
+    const { data: listed } = await supabase.auth.admin.listUsers({ page: 1, perPage: 200 });
+    userId = listed?.users.find((u) => u.email?.toLowerCase() === email)?.id ?? null;
+  }
+  if (!userId) return { emailSent: false, error: 'Could not resolve auth user' };
+
+  // 2. Upsert the agency_admins row.
+  await supabase.from('agency_admins').insert({
+    agency_id: agencyId,
+    user_id: userId,
+    name: input.name,
+    phone: input.phone,
+    email,
+  });
+
+  // 3. Send welcome email with recovery link.
+  try {
+    const origin = process.env.NEXT_PUBLIC_APP_URL || 'https://icut.pk';
+    const { data: linkData } = await supabase.auth.admin.generateLink({
+      type: 'recovery',
+      email,
+      options: { redirectTo: `${origin}/reset-password` },
+    });
+    const link = linkData?.properties?.action_link;
+    if (link) {
+      await sendEmail(
+        email,
+        'Welcome to iCut — your agency account is ready',
+        `<p>Hi ${input.name},</p>
+         <p>Your agency has been onboarded on iCut. Set your password here to access your dashboard:</p>
+         <p><a href="${link}">Set password</a></p>
+         <p>Then log in at ${origin}/login. Your agency dashboard will show your sales agents, leads, commissions, and the money you collect from tenants.</p>
+         <p>Questions? Reply to this email.</p>
+         <p>— The iCut team</p>`,
+      );
+      return { emailSent: true, error: null };
+    }
+  } catch {
+    // Non-fatal — super_admin can retry the invite.
+  }
+  return { emailSent: false, error: null };
 }
 
 export async function updateAgency(
   id: string,
   fields: Partial<Pick<Agency,
-    'name' | 'contact_name' | 'phone' | 'email' | 'city' |
+    'name' | 'contact_name' | 'phone' | 'email' | 'city' | 'nic_number' | 'address' |
     'first_sale_pct' | 'renewal_pct' | 'deposit_amount' | 'liability_threshold' | 'terms'
   >>,
 ): Promise<{ error: string | null }> {

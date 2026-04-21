@@ -96,6 +96,8 @@ export interface Agency {
   phone: string | null;
   email: string | null;
   city: string | null;
+  nic_number: string | null;
+  address: string | null;
   first_sale_pct: number;
   renewal_pct: number;
   deposit_amount: number;
@@ -104,6 +106,27 @@ export interface Agency {
   status: AgencyStatus;
   created_at: string;
   deactivated_at: string | null;
+}
+
+export type AgencyRequestStatus = 'pending' | 'approved' | 'rejected';
+
+export interface AgencyRequest {
+  id: string;
+  name: string;
+  contact_name: string;
+  phone: string;
+  email: string;
+  nic_number: string | null;
+  city: string | null;
+  address: string | null;
+  notes: string | null;
+  status: AgencyRequestStatus;
+  reviewed_by: string | null;
+  reviewed_at: string | null;
+  review_notes: string | null;
+  created_agency_id: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface AgencyAdmin {

@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
-import { Plus, Building2, Loader2 } from 'lucide-react';
+import { Plus, Building2, Loader2, Inbox } from 'lucide-react';
 import { listAgencies, createAgency } from '@/app/actions/agencies';
 import type { Agency, AgencyStatus } from '@/types/sales';
 import { Button } from '@/components/ui/button';
@@ -45,9 +45,16 @@ export default function AgenciesPage() {
             Partner organizations that onboard tenants on the platform&apos;s behalf. Each agency posts a refundable security deposit and is paid commission at agency-level rates.
           </p>
         </div>
-        <Button onClick={() => setOpen(true)}>
-          <Plus className="w-4 h-4 mr-1" /> New agency
-        </Button>
+        <div className="flex gap-2">
+          <Link href="/admin/agencies/requests">
+            <Button variant="outline">
+              <Inbox className="w-4 h-4 mr-1" /> Signup requests
+            </Button>
+          </Link>
+          <Button onClick={() => setOpen(true)}>
+            <Plus className="w-4 h-4 mr-1" /> New agency
+          </Button>
+        </div>
       </div>
 
       {loading ? (
@@ -124,39 +131,44 @@ export default function AgenciesPage() {
 }
 
 function NewAgencyDialog({ open, onClose, onCreated }: { open: boolean; onClose: () => void; onCreated: () => void }) {
-  const [form, setForm] = useState({
+  const emptyForm = {
     name: '', contactName: '', phone: '', email: '', city: '',
+    nicNumber: '', address: '',
     firstSalePct: '15', renewalPct: '7',
     depositAmount: '0', liabilityThreshold: '0',
     terms: '',
-  });
+    adminEmail: '', adminName: '',
+    sendWelcome: true,
+  };
+  const [form, setForm] = useState(emptyForm);
   const [submitting, setSubmitting] = useState(false);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!form.name.trim()) { toast.error('Name required'); return; }
     setSubmitting(true);
-    const { error } = await createAgency({
+    const adminEmail = form.sendWelcome ? (form.adminEmail.trim() || form.email.trim()) : '';
+    const adminName = form.sendWelcome ? (form.adminName.trim() || form.contactName.trim() || form.name.trim()) : '';
+    const { error, adminEmailSent } = await createAgency({
       name: form.name.trim(),
       contactName: form.contactName.trim() || null,
       phone: form.phone.trim() || null,
       email: form.email.trim() || null,
       city: form.city.trim() || null,
+      nicNumber: form.nicNumber.trim() || null,
+      address: form.address.trim() || null,
       firstSalePct: Number(form.firstSalePct),
       renewalPct: Number(form.renewalPct),
       depositAmount: Number(form.depositAmount),
       liabilityThreshold: Number(form.liabilityThreshold),
       terms: form.terms.trim() || null,
+      adminEmail: adminEmail || null,
+      adminName: adminName || null,
     });
     setSubmitting(false);
     if (error) { toast.error(error); return; }
-    toast.success('Agency created');
-    setForm({
-      name: '', contactName: '', phone: '', email: '', city: '',
-      firstSalePct: '15', renewalPct: '7',
-      depositAmount: '0', liabilityThreshold: '0',
-      terms: '',
-    });
+    toast.success(adminEmailSent ? 'Agency created — welcome email sent' : 'Agency created');
+    setForm(emptyForm);
     onCreated();
     onClose();
   }
@@ -174,6 +186,10 @@ function NewAgencyDialog({ open, onClose, onCreated }: { open: boolean; onClose:
           <div className="grid grid-cols-2 gap-3">
             <div><Label>Email</Label><Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></div>
             <div><Label>City</Label><Input value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} /></div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div><Label>NIC / CNIC number</Label><Input value={form.nicNumber} onChange={(e) => setForm({ ...form, nicNumber: e.target.value })} placeholder="XXXXX-XXXXXXX-X" /></div>
+            <div><Label>Complete address</Label><Input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} placeholder="Street, area, city, postal code" /></div>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div><Label>First-sale %</Label><Input type="number" min="0" max="100" step="0.01" required value={form.firstSalePct} onChange={(e) => setForm({ ...form, firstSalePct: e.target.value })} /></div>
@@ -194,6 +210,36 @@ function NewAgencyDialog({ open, onClose, onCreated }: { open: boolean; onClose:
           <div>
             <Label>Terms &amp; conditions</Label>
             <Textarea rows={4} value={form.terms} onChange={(e) => setForm({ ...form, terms: e.target.value })} placeholder="Contract terms, commission rules, remittance cadence, etc." />
+          </div>
+          <div className="border-t pt-4 space-y-3">
+            <div className="flex items-start gap-2">
+              <input
+                type="checkbox"
+                id="send-welcome"
+                className="mt-1"
+                checked={form.sendWelcome}
+                onChange={(e) => setForm({ ...form, sendWelcome: e.target.checked })}
+              />
+              <label htmlFor="send-welcome" className="text-sm">
+                <span className="font-medium">Send welcome email to agency owner</span>
+                <span className="block text-[11px] text-muted-foreground">
+                  Creates their login account and sends a password-reset link so they can access the agency dashboard.
+                </span>
+              </label>
+            </div>
+            {form.sendWelcome && (
+              <div className="grid grid-cols-2 gap-3 pl-6">
+                <div>
+                  <Label>Owner email</Label>
+                  <Input type="email" value={form.adminEmail} onChange={(e) => setForm({ ...form, adminEmail: e.target.value })} placeholder={form.email || 'owner@agency.com'} />
+                  <p className="text-[11px] text-muted-foreground mt-0.5">Defaults to the agency email above.</p>
+                </div>
+                <div>
+                  <Label>Owner name</Label>
+                  <Input value={form.adminName} onChange={(e) => setForm({ ...form, adminName: e.target.value })} placeholder={form.contactName || form.name} />
+                </div>
+              </div>
+            )}
           </div>
           <div className="flex justify-end gap-2">
             <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
