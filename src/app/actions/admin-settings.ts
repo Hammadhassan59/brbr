@@ -3,6 +3,18 @@
 import { createServerClient } from '@/lib/supabase';
 import { requireAdminRole } from './auth';
 
+// Module-level memo for the public platform config. Every landing + paywall
+// + pricing render calls this with no per-user variance — a 5-minute TTL
+// cuts Postgres reads dramatically without making the super_admin's edits
+// feel delayed. Bust by calling invalidatePublicPlatformConfig() from the
+// write actions (setPlatformSetting / setPlan / setPaymentConfig).
+const PUBLIC_CONFIG_TTL_MS = 5 * 60_000;
+let _publicConfigCache: { value: PublicPlatformConfig; expires: number } | null = null;
+
+export async function invalidatePublicPlatformConfig(): Promise<void> {
+  _publicConfigCache = null;
+}
+
 export async function getPlatformSettings(): Promise<Record<string, Record<string, unknown>>> {
   await requireAdminRole(['super_admin', 'technical_support']);
   const supabase = createServerClient();
@@ -131,11 +143,21 @@ export interface PaymentConfig {
   easypaisaAccount: string;
 }
 
-export async function getPublicPlatformConfig(): Promise<{
+export type PublicPlatformConfig = {
   plans: Record<string, PublicPlan>;
   payment: PaymentConfig;
   supportWhatsApp: string;
-}> {
+};
+
+export async function getPublicPlatformConfig(): Promise<PublicPlatformConfig> {
+  // 5-min memo — landing, paywall, pricing all call this on every render.
+  // Writes (savePlatformSetting) bust the cache explicitly. Disabled in
+  // tests so per-test mocked DB state doesn't leak via the module-level
+  // cache (vitest doesn't re-import modules between tests by default).
+  const cacheEnabled = process.env.NODE_ENV !== 'test';
+  if (cacheEnabled && _publicConfigCache && _publicConfigCache.expires > Date.now()) {
+    return _publicConfigCache.value;
+  }
   const supabase = createServerClient();
   const { data } = await supabase
     .from('platform_settings')
@@ -175,7 +197,7 @@ export async function getPublicPlatformConfig(): Promise<{
   const bankAccount = String(pay.bankAccount ?? '');
   const jazzcashAccount = String(pay.jazzcashAccount ?? '');
   const easypaisaAccount = String(pay.easypaisaAccount ?? '');
-  return {
+  const result: PublicPlatformConfig = {
     plans,
     payment: {
       bankEnabled: pay.bankEnabled === undefined ? !!bankAccount : Boolean(pay.bankEnabled),
@@ -191,6 +213,10 @@ export async function getPublicPlatformConfig(): Promise<{
     },
     supportWhatsApp: String(gen.supportWhatsApp ?? ''),
   };
+  if (cacheEnabled) {
+    _publicConfigCache = { value: result, expires: Date.now() + PUBLIC_CONFIG_TTL_MS };
+  }
+  return result;
 }
 
 export async function savePlatformSetting(
@@ -205,5 +231,6 @@ export async function savePlatformSetting(
     .upsert({ key, value, updated_at: new Date().toISOString() }, { onConflict: 'key' });
 
   if (error) throw error;
+  _publicConfigCache = null;                                 // bust the memo
   return { success: true };
 }
