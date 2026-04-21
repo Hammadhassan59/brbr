@@ -659,7 +659,7 @@ export async function deleteSalonAndAllData(
     .maybeSingle();
   if (loadErr) return { success: false, deletedAuthUsers: 0, error: safeError(loadErr) };
   if (!salon) return { success: false, deletedAuthUsers: 0, error: 'Salon not found' };
-  if (confirmName.trim() !== salon.name) {
+  if (confirmName.trim() !== salon.name.trim()) {
     return { success: false, deletedAuthUsers: 0, error: 'Salon name confirmation does not match' };
   }
 

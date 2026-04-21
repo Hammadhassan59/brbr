@@ -335,7 +335,7 @@ export default function AdminSalonDetailPage({
       `DANGER — this permanently deletes "${salon.name}" and ALL of its data.\n\nType the salon name exactly to confirm:`,
     );
     if (typed === null) return;
-    if (typed.trim() !== salon.name) {
+    if (typed.trim() !== salon.name.trim()) {
       toast.error('Salon name did not match — deletion cancelled');
       return;
     }
