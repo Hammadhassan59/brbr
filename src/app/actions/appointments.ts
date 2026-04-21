@@ -69,6 +69,16 @@ function getTodayPKT(): string {
   return new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Karachi' });
 }
 
+/** Current PKT time in HH:MM 24h — same format as an HTML time input value. */
+function getNowTimePKT24(): string {
+  return new Date().toLocaleTimeString('en-GB', {
+    timeZone: 'Asia/Karachi',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  });
+}
+
 export async function createAppointment(data: {
   branchId: string;
   clientId?: string | null;
@@ -91,10 +101,15 @@ export async function createAppointment(data: {
     return { data: null, error: tenantErrorMessage(e) };
   }
 
-  // Block past-date bookings. Client-side UI already blocks via min= on the
-  // date input; this is the server-side defense-in-depth.
-  if (data.date < getTodayPKT()) {
+  // Block past-date AND past-time bookings. Client-side UI already blocks
+  // via min= on the date/time inputs; this is the server-side defense-in-
+  // depth.
+  const today = getTodayPKT();
+  if (data.date < today) {
     return { data: null, error: 'Bookings cannot be made for past dates' };
+  }
+  if (data.date === today && data.startTime < getNowTimePKT24()) {
+    return { data: null, error: 'Bookings cannot be made for times that have already passed' };
   }
 
   // Verify the branch belongs to this salon

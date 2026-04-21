@@ -5,7 +5,7 @@ import { Search, AlertTriangle, X, Plus, User, Scissors } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAppStore } from '@/store/app-store';
 import { formatPKR } from '@/lib/utils/currency';
-import { formatTime, getTodayPKT } from '@/lib/utils/dates';
+import { formatTime, getTodayPKT, getNowTimePKT24 } from '@/lib/utils/dates';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -206,12 +206,19 @@ export function NewAppointmentModal({
     if (!selectedStaffId) { toast.error('Select a stylist'); return; }
     if (selectedServices.length === 0) { toast.error('Select at least one service'); return; }
     if (!time) { toast.error('Select a time'); return; }
-    // Block past-date bookings. Editing an existing appointment is allowed —
-    // the owner may need to back-fill a completed visit — but NEW bookings
-    // in the past are almost always a mistake.
-    if (!isEditing && date < getTodayPKT()) {
-      toast.error('Bookings cannot be made for past dates');
-      return;
+    // Block past-date AND past-time bookings. Editing an existing
+    // appointment is allowed — the owner may need to back-fill a completed
+    // visit — but NEW bookings in the past are almost always a mistake.
+    if (!isEditing) {
+      const today = getTodayPKT();
+      if (date < today) {
+        toast.error('Bookings cannot be made for past dates');
+        return;
+      }
+      if (date === today && time < getNowTimePKT24()) {
+        toast.error('Bookings cannot be made for times that have already passed');
+        return;
+      }
     }
 
     setSaving(true);
@@ -393,7 +400,14 @@ export function NewAppointmentModal({
               <Label className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-3 block">Date & Time</Label>
               <div className="grid grid-cols-2 gap-2 mb-2">
                 <Input type="date" value={date} min={getTodayPKT()} onChange={(e) => setDate(e.target.value)} className="h-10 w-full" />
-                <Input type="time" value={time} onChange={(e) => setTime(e.target.value)} step={1800} className="h-10 w-full" />
+                <Input
+                  type="time"
+                  value={time}
+                  min={date === getTodayPKT() ? getNowTimePKT24() : undefined}
+                  onChange={(e) => setTime(e.target.value)}
+                  step={1800}
+                  className="h-10 w-full"
+                />
               </div>
               <div className="grid grid-cols-4 gap-1.5">
                 {TIME_SLOTS.map((slot) => {

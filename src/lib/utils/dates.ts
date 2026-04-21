@@ -30,6 +30,20 @@ export function getCurrentTimePKT(): string {
   });
 }
 
+/**
+ * Current PKT time in HH:MM 24h form — suitable for direct string
+ * comparison against an `<input type="time">` value. Used by the booking
+ * form to reject past times on today's date.
+ */
+export function getNowTimePKT24(): string {
+  return new Date().toLocaleTimeString('en-GB', {
+    timeZone: 'Asia/Karachi',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  });
+}
+
 export interface PrayerBlock {
   name: string;
   start: string;
