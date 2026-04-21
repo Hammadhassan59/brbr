@@ -90,6 +90,13 @@ export interface SessionPayload {
   permissions: Record<string, boolean>;
   name: string;
   agentId?: string;
+  /**
+   * For role='agency_admin' sessions — the agency the admin belongs to and
+   * the admin row id. Both required when role === 'agency_admin' and unused
+   * otherwise. The proxy gate on /agency/* reads these to confirm scope.
+   */
+  agencyId?: string;
+  agencyAdminId?: string;
   // True when this session belongs to a demo sales-agent identity. Used to
   // show the "demo mode" banner and to gate destructive actions.
   isDemo?: boolean;
@@ -792,6 +799,28 @@ export async function resolveUserRole(authUserId: string, authEmail: string) {
     return { type: 'sales_agent' as const, salon: null, branches: [], staff: null, partner: null, agent };
   }
 
+  // 5. Check if agency admin. Their login routes to /agency, not a salon
+  //    dashboard — agency admins manage their own sales team + see their
+  //    commissions from the platform, they never touch tenant data.
+  const { data: agencyAdmin } = await supabase
+    .from('agency_admins')
+    .select('*, agency:agencies(*)')
+    .eq('user_id', authUserId)
+    .eq('active', true)
+    .maybeSingle();
+
+  if (agencyAdmin) {
+    return {
+      type: 'agency_admin' as const,
+      salon: null,
+      branches: [],
+      staff: null,
+      partner: null,
+      agent: null,
+      agencyAdmin: agencyAdmin as { id: string; agency_id: string; name: string; email: string; agency: { id: string; name: string; status: string } | null },
+    };
+  }
+
   return { type: 'none' as const, salon: null, branches: [], staff: null, partner: null, agent: null };
 }
 
@@ -880,4 +909,18 @@ export async function requireAdminRole(allowed: string[]): Promise<SessionPayloa
     throw new Error('Unauthorized');
   }
   return session;
+}
+
+/**
+ * Server-side guard for agency admins. Returns the session + the scoped
+ * agency_id from the JWT claim. Actions that operate on agency-owned data
+ * (sales_agents where agency_id = X, agency commissions, etc.) should
+ * filter every query by this value — never trust a client-supplied id.
+ */
+export async function requireAgencyAdmin(): Promise<SessionPayload & { agencyId: string }> {
+  const session = await verifySession();
+  if (!session || session.role !== 'agency_admin' || !session.agencyId) {
+    throw new Error('Unauthorized');
+  }
+  return session as SessionPayload & { agencyId: string };
 }

@@ -184,6 +184,39 @@ export default function LoginPage() {
         return;
       }
 
+      if (result.type === 'agency_admin' && result.agencyAdmin) {
+        const agency = result.agencyAdmin.agency;
+        if (!agency) {
+          toast.error('Agency record is missing — contact the platform admin.');
+          return;
+        }
+        // Agency admins sit outside the owner/staff tree. Reset all tenant
+        // Zustand flags so no residual salon data leaks into the agency view.
+        const store = useAppStore.getState();
+        store.setIsSuperAdmin(false);
+        store.setIsOwner(false);
+        store.setIsPartner(false);
+        store.setIsSalesAgent(false);
+        store.setSalon(null);
+        store.setCurrentStaff(null);
+        store.setCurrentPartner(null);
+        setBranches([]);
+        setCurrentBranch(null);
+        await signSession({
+          salonId: '',
+          staffId: data.user.id,
+          role: 'agency_admin',
+          primaryBranchId: '',
+          branchIds: [],
+          permissions: { '*': true },
+          name: result.agencyAdmin.name,
+          agencyId: result.agencyAdmin.agency_id,
+          agencyAdminId: result.agencyAdmin.id,
+        });
+        router.push('/agency');
+        return;
+      }
+
       if (result.type === 'none') {
         if (superAdmin) {
           await signSession({ salonId: 'super-admin', staffId: data.user.id, role: 'super_admin', branchId: '', name: 'Super Admin' });

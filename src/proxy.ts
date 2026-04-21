@@ -64,6 +64,7 @@ export async function proxy(request: NextRequest) {
     pathname.startsWith('/dashboard') ||
     pathname.startsWith('/admin') ||
     pathname.startsWith('/agent') ||
+    pathname.startsWith('/agency') ||
     pathname.startsWith('/setup') ||
     pathname.startsWith('/paywall')
   ) {
@@ -86,17 +87,33 @@ export async function proxy(request: NextRequest) {
     }
   }
 
-  // Agent routes require sales_agent
-  if (pathname.startsWith('/agent')) {
+  // Agent routes require sales_agent. Disambiguates against /agency/* which
+  // starts with the same prefix — /agency must not match here.
+  if (pathname.startsWith('/agent') && !pathname.startsWith('/agency')) {
     if (role !== 'sales_agent') {
       const target = role === 'super_admin' ? '/admin' : '/dashboard';
       return NextResponse.redirect(new URL(target, request.url));
     }
   }
 
-  // Salon routes redirect sales agents to /agent/leads (their primary surface)
-  if (pathname.startsWith('/dashboard') && role === 'sales_agent') {
-    return NextResponse.redirect(new URL('/agent/leads', request.url));
+  // Agency routes require agency_admin. super_admin is allowed through so
+  // platform admins can view an agency's self-service screens for support.
+  if (pathname.startsWith('/agency')) {
+    if (role !== 'agency_admin' && role !== 'super_admin') {
+      const target = role === 'sales_agent' ? '/agent/leads' : '/dashboard';
+      return NextResponse.redirect(new URL(target, request.url));
+    }
+  }
+
+  // Salon routes redirect sales agents + agency admins off /dashboard to
+  // their own surface.
+  if (pathname.startsWith('/dashboard')) {
+    if (role === 'sales_agent') {
+      return NextResponse.redirect(new URL('/agent/leads', request.url));
+    }
+    if (role === 'agency_admin') {
+      return NextResponse.redirect(new URL('/agency', request.url));
+    }
   }
 
   // Hard paywall: owners/partners with non-active subscriptions can only see
@@ -113,7 +130,11 @@ export async function proxy(request: NextRequest) {
   // bounced to the dashboard (e.g. after admin approval, on the next nav).
   if (pathname.startsWith('/paywall')) {
     if (role !== 'owner' && role !== 'partner') {
-      const target = role === 'super_admin' ? '/admin' : role === 'sales_agent' ? '/agent/leads' : '/dashboard';
+      const target =
+        role === 'super_admin' ? '/admin'
+          : role === 'sales_agent' ? '/agent/leads'
+          : role === 'agency_admin' ? '/agency'
+          : '/dashboard';
       return NextResponse.redirect(new URL(target, request.url));
     }
     if (subActive) {
@@ -125,5 +146,5 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/dashboard/:path*', '/admin/:path*', '/agent/:path*', '/setup', '/paywall/:path*'],
+  matcher: ['/dashboard/:path*', '/admin/:path*', '/agent/:path*', '/agency/:path*', '/setup', '/paywall/:path*'],
 };
