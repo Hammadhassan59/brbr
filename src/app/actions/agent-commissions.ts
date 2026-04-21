@@ -18,9 +18,14 @@ export interface AccrueInput {
 
 /**
  * Called from approvePaymentRequest AFTER the payment is approved.
- * If the salon has sold_by_agent_id, inserts an agent_commissions row.
- * first_sale vs renewal is determined by whether this is the first approved
- * payment_request for that salon (count <= 1 means this is the first).
+ * If the salon has sold_by_agent_id, inserts a commission row. When the
+ * crediting agent is owned by an agency (sales_agents.agency_id IS NOT NULL),
+ * the commission is routed to agency_commissions at the agency's own rates
+ * — the platform pays the agency only, and the agency handles its agents
+ * internally per its own negotiated terms.
+ *
+ * first_sale vs renewal: whether this is the first approved payment_request
+ * for the salon (count <= 1 means this is the first).
  */
 export async function accrueCommissionForPaymentRequest(
   input: AccrueInput,
@@ -37,7 +42,7 @@ export async function accrueCommissionForPaymentRequest(
 
   const { data: agent, error: agentErr } = await supabase
     .from('sales_agents')
-    .select('first_sale_pct, renewal_pct')
+    .select('first_sale_pct, renewal_pct, agency_id')
     .eq('id', salon.sold_by_agent_id)
     .maybeSingle();
   if (agentErr) return { data: null, error: agentErr.message };
@@ -50,6 +55,32 @@ export async function accrueCommissionForPaymentRequest(
     .eq('status', 'approved');
 
   const kind: 'first_sale' | 'renewal' = (count ?? 0) <= 1 ? 'first_sale' : 'renewal';
+
+  // Route to agency_commissions when the agent is agency-owned.
+  if (agent.agency_id) {
+    const { data: agency } = await supabase
+      .from('agencies')
+      .select('first_sale_pct, renewal_pct')
+      .eq('id', agent.agency_id)
+      .maybeSingle();
+    if (!agency) return { data: null, error: null };
+    const pct = kind === 'first_sale' ? Number(agency.first_sale_pct) : Number(agency.renewal_pct);
+    const amount = Math.round((input.amount * pct) / 100 * 100) / 100;
+    const { error } = await supabase.from('agency_commissions').insert({
+      agency_id: agent.agency_id,
+      salon_id: input.salonId,
+      payment_request_id: input.paymentRequestId,
+      kind,
+      base_amount: input.amount,
+      pct,
+      amount,
+      status: 'approved',
+    });
+    if (error) return { data: null, error: error.message };
+    return { data: null, error: null };
+  }
+
+  // Platform-direct agent — existing path.
   const pct = kind === 'first_sale' ? Number(agent.first_sale_pct) : Number(agent.renewal_pct);
   const amount = Math.round((input.amount * pct) / 100 * 100) / 100;
 
