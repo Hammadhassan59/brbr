@@ -155,6 +155,7 @@ export interface CreateAgencyInput {
   city: string | null;
   nicNumber: string | null;
   address: string | null;
+  area: string | null;
   firstSalePct: number;
   renewalPct: number;
   depositAmount: number;
@@ -187,6 +188,7 @@ export async function createAgency(
       city: input.city,
       nic_number: input.nicNumber,
       address: input.address,
+      area: input.area,
       first_sale_pct: input.firstSalePct,
       renewal_pct: input.renewalPct,
       deposit_amount: input.depositAmount,
@@ -279,7 +281,7 @@ export async function provisionAgencyAdmin(
 export async function updateAgency(
   id: string,
   fields: Partial<Pick<Agency,
-    'name' | 'contact_name' | 'phone' | 'email' | 'city' | 'nic_number' | 'address' |
+    'name' | 'contact_name' | 'phone' | 'email' | 'city' | 'nic_number' | 'address' | 'area' |
     'first_sale_pct' | 'renewal_pct' | 'deposit_amount' | 'liability_threshold' | 'terms'
   >>,
 ): Promise<{ error: string | null }> {

@@ -133,7 +133,7 @@ export default function AgenciesPage() {
 function NewAgencyDialog({ open, onClose, onCreated }: { open: boolean; onClose: () => void; onCreated: () => void }) {
   const emptyForm = {
     name: '', contactName: '', phone: '', email: '', city: '',
-    nicNumber: '', address: '',
+    nicNumber: '', address: '', area: '',
     firstSalePct: '15', renewalPct: '7',
     depositAmount: '0', liabilityThreshold: '0',
     terms: '',
@@ -157,6 +157,7 @@ function NewAgencyDialog({ open, onClose, onCreated }: { open: boolean; onClose:
       city: form.city.trim() || null,
       nicNumber: form.nicNumber.trim() || null,
       address: form.address.trim() || null,
+      area: form.area.trim() || null,
       firstSalePct: Number(form.firstSalePct),
       renewalPct: Number(form.renewalPct),
       depositAmount: Number(form.depositAmount),
@@ -190,6 +191,11 @@ function NewAgencyDialog({ open, onClose, onCreated }: { open: boolean; onClose:
           <div className="grid grid-cols-2 gap-3">
             <div><Label>NIC / CNIC number</Label><Input value={form.nicNumber} onChange={(e) => setForm({ ...form, nicNumber: e.target.value })} placeholder="XXXXX-XXXXXXX-X" /></div>
             <div><Label>Complete address</Label><Input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} placeholder="Street, area, city, postal code" /></div>
+          </div>
+          <div>
+            <Label>Assigned area / territory</Label>
+            <Input value={form.area} onChange={(e) => setForm({ ...form, area: e.target.value })} placeholder="e.g. Lahore DHA + Johar Town, or Multan + Bahawalpur" />
+            <p className="text-[11px] text-muted-foreground mt-1">Where the agency is authorized to acquire tenants. Shown on their dashboard.</p>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div><Label>First-sale %</Label><Input type="number" min="0" max="100" step="0.01" required value={form.firstSalePct} onChange={(e) => setForm({ ...form, firstSalePct: e.target.value })} /></div>

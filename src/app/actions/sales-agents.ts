@@ -84,13 +84,18 @@ export async function createSalesAgent(
   return { data: data as SalesAgent, error: null };
 }
 
-export async function listSalesAgents(): Promise<{ data: SalesAgent[]; error: string | null }> {
+export async function listSalesAgents(
+  opts: { includeAgencyOwned?: boolean } = {},
+): Promise<{ data: SalesAgent[]; error: string | null }> {
   await requireAdminRole(['super_admin', 'leads_team']);
   const supabase = createServerClient();
-  const { data, error } = await supabase
-    .from('sales_agents')
-    .select('*')
-    .order('created_at', { ascending: false });
+  // Default excludes agency-owned agents — super_admin doesn't manage them
+  // directly. The /admin/agencies/[id] Agents tab opts in to view them.
+  let query = supabase.from('sales_agents').select('*').order('created_at', { ascending: false });
+  if (!opts.includeAgencyOwned) {
+    query = query.is('agency_id', null);
+  }
+  const { data, error } = await query;
   if (error) return { data: [], error: error.message };
   return { data: (data || []) as SalesAgent[], error: null };
 }

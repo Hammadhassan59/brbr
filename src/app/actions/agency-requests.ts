@@ -131,6 +131,7 @@ export async function approveAgencyRequest(
     city: r.city,
     nicNumber: r.nic_number,
     address: r.address,
+    area: null,                           // super_admin sets area on the detail page post-approval
     firstSalePct: input.firstSalePct ?? 15,
     renewalPct: input.renewalPct ?? 7,
     depositAmount: input.depositAmount ?? 0,

@@ -168,6 +168,7 @@ function ProfileTab({ agency, onChanged }: { agency: Agency; onChanged: () => vo
     city: agency.city ?? '',
     nic_number: agency.nic_number ?? '',
     address: agency.address ?? '',
+    area: agency.area ?? '',
     first_sale_pct: String(agency.first_sale_pct),
     renewal_pct: String(agency.renewal_pct),
     deposit_amount: String(agency.deposit_amount),
@@ -186,6 +187,7 @@ function ProfileTab({ agency, onChanged }: { agency: Agency; onChanged: () => vo
       city: form.city.trim() || null,
       nic_number: form.nic_number.trim() || null,
       address: form.address.trim() || null,
+      area: form.area.trim() || null,
       first_sale_pct: Number(form.first_sale_pct),
       renewal_pct: Number(form.renewal_pct),
       deposit_amount: Number(form.deposit_amount),
@@ -210,6 +212,11 @@ function ProfileTab({ agency, onChanged }: { agency: Agency; onChanged: () => vo
       <div className="grid grid-cols-2 gap-3">
         <div><Label>NIC / CNIC number</Label><Input value={form.nic_number} onChange={(e) => setForm({ ...form, nic_number: e.target.value })} placeholder="XXXXX-XXXXXXX-X" /></div>
         <div><Label>Complete address</Label><Input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} placeholder="Street, area, city, postal code" /></div>
+      </div>
+      <div>
+        <Label>Assigned area / territory</Label>
+        <Input value={form.area} onChange={(e) => setForm({ ...form, area: e.target.value })} placeholder="e.g. Lahore DHA + Johar Town" />
+        <p className="text-[11px] text-muted-foreground mt-1">Where the agency is authorized to acquire tenants. Shown on their dashboard.</p>
       </div>
       <h3 className="font-medium pt-2">Commission rates (platform → agency)</h3>
       <div className="grid grid-cols-2 gap-3">
@@ -532,7 +539,7 @@ function AgentsTab({ agencyId }: { agencyId: string }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    listSalesAgents().then(({ data }) => {
+    listSalesAgents({ includeAgencyOwned: true }).then(({ data }) => {
       setAgents(data.filter((a) => a.agency_id === agencyId));
       setLoading(false);
     });

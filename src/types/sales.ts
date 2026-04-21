@@ -98,6 +98,12 @@ export interface Agency {
   city: string | null;
   nic_number: string | null;
   address: string | null;
+  /**
+   * Migration 052 — territory assigned by super_admin (free-form, e.g.
+   * "Lahore DHA + Johar Town", "Karachi South"). Shown on both sides so
+   * the agency knows its scope and super_admin can route leads accordingly.
+   */
+  area: string | null;
   first_sale_pct: number;
   renewal_pct: number;
   deposit_amount: number;

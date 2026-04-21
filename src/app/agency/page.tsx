@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Building2, Wallet, AlertTriangle, Users, Receipt, Loader2 } from 'lucide-react';
+import { Building2, Wallet, AlertTriangle, Users, Receipt, Loader2, MapPin } from 'lucide-react';
 import { getMyAgency, listMyAgents } from '@/app/actions/agency-self';
 import type { Agency } from '@/types/sales';
 import { Card, CardContent } from '@/components/ui/card';
@@ -41,6 +41,11 @@ export default function AgencyOverviewPage() {
             <Building2 className="w-6 h-6 text-gold" /> {agency.name}
           </h1>
           <p className="text-xs text-muted-foreground mt-0.5 font-mono">{agency.code}</p>
+          {agency.area && (
+            <p className="text-xs text-muted-foreground mt-1 inline-flex items-center gap-1">
+              <MapPin className="w-3 h-3" /> {agency.area}
+            </p>
+          )}
         </div>
         <span className={`text-xs px-3 py-1 rounded-full capitalize ${STATUS_STYLE[agency.status] ?? 'bg-muted'}`}>{agency.status}</span>
       </div>
