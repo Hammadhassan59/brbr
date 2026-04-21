@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { Award, Users, TrendingDown } from 'lucide-react';
+import { Award, Users, TrendingDown, Power } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAppStore } from '@/store/app-store';
 import { usePermission } from '@/lib/permissions';
@@ -10,6 +10,7 @@ import { formatPKR } from '@/lib/utils/currency';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import toast from 'react-hot-toast';
@@ -36,6 +37,7 @@ export default function LoyaltyPage() {
   const [pointsPer100, setPointsPer100] = useState('10');
   const [pkrPerPoint, setPkrPerPoint] = useState('0.5');
   const [bdayMultiplier, setBdayMultiplier] = useState('2');
+  const [enabled, setEnabled] = useState(true);
 
   const fetch = useCallback(async () => {
     if (!salon || !currentBranch) return;
@@ -53,8 +55,10 @@ export default function LoyaltyPage() {
       setPointsPer100(String(r.points_per_100_pkr));
       setPkrPerPoint(String(r.pkr_per_point_redemption));
       setBdayMultiplier(String(r.birthday_bonus_multiplier));
+      setEnabled(r.enabled !== false);
     } else {
       setRules(null);
+      setEnabled(true);
     }
     if (clientsRes.data) setTopClients(clientsRes.data as Client[]);
     setLoading(false);
@@ -70,6 +74,7 @@ export default function LoyaltyPage() {
         pointsPer100Pkr: Number(pointsPer100) || 10,
         pkrPerPointRedemption: Number(pkrPerPoint) || 0.5,
         birthdayBonusMultiplier: Number(bdayMultiplier) || 2,
+        enabled,
       };
       const { error } = await saveLoyaltyRules(rules?.id ?? null, currentBranch.id, data);
       if (showActionError(error)) return;
@@ -82,6 +87,22 @@ export default function LoyaltyPage() {
     finally { setSaving(false); }
   }
 
+  async function toggleEnabled(next: boolean) {
+    setEnabled(next);
+    if (!salon || !currentBranch) return;
+    // Persist immediately so the POS reflects the change without a second
+    // "Save" click. Uses the current configuration values as-is.
+    const { error } = await saveLoyaltyRules(rules?.id ?? null, currentBranch.id, {
+      pointsPer100Pkr: Number(pointsPer100) || 10,
+      pkrPerPointRedemption: Number(pkrPerPoint) || 0.5,
+      birthdayBonusMultiplier: Number(bdayMultiplier) || 2,
+      enabled: next,
+    });
+    if (error) { toast.error(error); setEnabled(!next); return; }
+    toast.success(next ? 'Loyalty program enabled' : 'Loyalty program disabled');
+    fetch();
+  }
+
   const totalOutstanding = topClients.reduce((s, c) => s + c.loyalty_points, 0);
   const totalLiability = totalOutstanding * (Number(pkrPerPoint) || 0.5);
 
@@ -92,7 +113,24 @@ export default function LoyaltyPage() {
 
   return (
     <div className="space-y-4">
-      <h2 className="font-heading text-xl font-bold">Loyalty Program</h2>
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <h2 className="font-heading text-xl font-bold">Loyalty Program</h2>
+        <div className="flex items-center gap-3 border rounded-lg px-4 py-2 bg-card">
+          <Power className={`w-4 h-4 ${enabled ? 'text-green-600' : 'text-muted-foreground'}`} />
+          <div>
+            <p className="text-sm font-medium">{enabled ? 'Enabled' : 'Disabled'}</p>
+            <p className="text-[11px] text-muted-foreground">
+              {enabled ? 'POS awards + redeems points' : 'POS hides the points UI'}
+            </p>
+          </div>
+          <Switch checked={enabled} onCheckedChange={toggleEnabled} disabled={saving} />
+        </div>
+      </div>
+      {!enabled && (
+        <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-900">
+          Loyalty is off for this branch. Existing client balances are preserved but frozen — no points earned or redeemed on new bills until you re-enable.
+        </div>
+      )}
 
       {/* Overview stats */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">

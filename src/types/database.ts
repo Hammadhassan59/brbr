@@ -400,6 +400,12 @@ export interface LoyaltyRules {
   points_per_100_pkr: number;
   pkr_per_point_redemption: number;
   birthday_bonus_multiplier: number;
+  /**
+   * Migration 051 — per-branch on/off switch. When false, the POS hides the
+   * loyalty-points UI, bills don't award or redeem points, and no new
+   * liability accrues. Existing client balances are preserved.
+   */
+  enabled: boolean;
 }
 
 export interface CashDrawer {

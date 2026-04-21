@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { useAppStore } from '@/store/app-store';
 import { createStaff, updateStaff, updateStaffBranches } from '@/app/actions/staff';
-import { getPasswordError } from '@/lib/schemas/common';
+import { getAgentPasswordError, AGENT_MIN_PASSWORD_LENGTH } from '@/lib/schemas/common';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -81,13 +81,13 @@ export function StaffForm({ staff, onSaved }: StaffFormProps) {
       const hasPassword = password.length > 0;
       if (hasEmail !== hasPassword) { toast.error('Provide both email and password, or leave both blank'); return; }
       if (hasPassword) {
-        const pwErr = getPasswordError(password);
+        const pwErr = getAgentPasswordError(password);
         if (pwErr) { toast.error(pwErr); return; }
         if (password !== confirmPassword) { toast.error('Passwords do not match'); return; }
       }
     }
     if (isEditing && password) {
-      const pwErr = getPasswordError(password);
+      const pwErr = getAgentPasswordError(password);
       if (pwErr) { toast.error(pwErr); return; }
       if (password !== confirmPassword) { toast.error('Passwords do not match'); return; }
     }
@@ -166,8 +166,8 @@ export function StaffForm({ staff, onSaved }: StaffFormProps) {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <Label>{isEditing ? 'New Password (leave blank to keep)' : 'Password (optional)'}</Label>
-            <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} minLength={8} className="mt-1" />
-            {password && <p className="text-xs text-muted-foreground mt-1">Min 8 characters, with an uppercase letter, a number, and a special character.</p>}
+            <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} minLength={AGENT_MIN_PASSWORD_LENGTH} className="mt-1" />
+            {password && <p className="text-xs text-muted-foreground mt-1">Min {AGENT_MIN_PASSWORD_LENGTH} characters. Keep it simple and easy to remember.</p>}
           </div>
           <div>
             <Label>Confirm Password</Label>

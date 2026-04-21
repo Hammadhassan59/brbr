@@ -73,6 +73,11 @@ function POSContent() {
   const [draftsOpen, setDraftsOpen] = useState(false);
   const [loadedDraftId, setLoadedDraftId] = useState<string | null>(null);
 
+  // Loyalty per-branch enable flag (migration 051). When false, the POS
+  // hides the earn/redeem UI and skips pointsEarned/loyalty client updates.
+  // Null until loaded — treat as disabled in the meantime to avoid a flash.
+  const [loyaltyEnabled, setLoyaltyEnabled] = useState<boolean>(false);
+
   // Stylist selection
   const [selectedStaffId, setSelectedStaffId] = useState('');
 
@@ -109,7 +114,7 @@ function POSContent() {
     : discountType === 'percentage'
       ? subtotal * discountValue / 100
       : 0;
-  const loyaltyDiscount = loyaltyPointsUsed * 0.5;
+  const loyaltyDiscount = loyaltyEnabled ? loyaltyPointsUsed * 0.5 : 0;
   const totalDiscount = manualDiscount + promoDiscount + loyaltyDiscount;
   const gstRate = salon?.gst_enabled ? (salon.gst_rate || 0) : 0;
   const taxAmount = (subtotal - totalDiscount) * gstRate / 100;
@@ -162,6 +167,17 @@ function POSContent() {
       }
       if (pkgRes.data) setPackages(pkgRes.data as PkgType[]);
       if (staffRes.data) setStylists(staffRes.data as Staff[]);
+
+      // Loyalty on/off for this branch. Missing row (brand-new branch) =
+      // default to enabled so existing behavior is unchanged.
+      const { data: loyaltyRow } = await supabase
+        .from('loyalty_rules')
+        .select('enabled')
+        .eq('salon_id', salon!.id)
+        .eq('branch_id', currentBranch!.id)
+        .maybeSingle();
+      setLoyaltyEnabled(loyaltyRow ? Boolean((loyaltyRow as { enabled: boolean }).enabled) : true);
+
       setLoading(false);
     }
     load();
@@ -484,7 +500,7 @@ function POSContent() {
 
     try {
       const actualMethod = isSplit ? 'split' : paymentMethod;
-      const pointsEarned = Math.floor(total / 100) * 10; // 10 pts per Rs100
+      const pointsEarned = loyaltyEnabled ? Math.floor(total / 100) * 10 : 0; // 10 pts per Rs100 — gated by per-branch loyalty flag
 
       // Create bill (bill number generated server-side)
       const { data: bill, error: billErr } = await createBill({
@@ -611,7 +627,7 @@ function POSContent() {
     }
   }
 
-  const pointsEarned = Math.floor(total / 100) * 10;
+  const pointsEarned = loyaltyEnabled ? Math.floor(total / 100) * 10 : 0;
 
   return (
     <div className="h-[calc(100dvh-3.5rem)] flex flex-col md:flex-row gap-0 -m-4 md:-m-6">
@@ -784,8 +800,8 @@ function POSContent() {
             promoCode={promoCode}
             promoDiscount={promoDiscount}
             onApplyPromo={applyPromo}
-            loyaltyPointsAvailable={selectedClient?.loyalty_points || 0}
-            loyaltyPointsUsed={loyaltyPointsUsed}
+            loyaltyPointsAvailable={loyaltyEnabled ? (selectedClient?.loyalty_points || 0) : 0}
+            loyaltyPointsUsed={loyaltyEnabled ? loyaltyPointsUsed : 0}
             onSetLoyaltyPoints={setLoyaltyPointsUsed}
             subtotal={subtotal}
             totalDiscount={totalDiscount}

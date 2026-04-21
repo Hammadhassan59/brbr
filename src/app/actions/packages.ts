@@ -172,6 +172,7 @@ export async function saveLoyaltyRules(existingId: string | null, branchId: stri
   pointsPer100Pkr: number;
   pkrPerPointRedemption: number;
   birthdayBonusMultiplier: number;
+  enabled?: boolean;
 }) {
   const writeCheck = await checkWriteAccess();
   if (writeCheck.error !== null) return { error: writeCheck.error };
@@ -184,13 +185,14 @@ export async function saveLoyaltyRules(existingId: string | null, branchId: stri
     return { error: tenantErrorMessage(e) };
   }
 
-  const row = {
+  const row: Record<string, unknown> = {
     salon_id: session.salonId,
     branch_id: branchId,
     points_per_100_pkr: data.pointsPer100Pkr,
     pkr_per_point_redemption: data.pkrPerPointRedemption,
     birthday_bonus_multiplier: data.birthdayBonusMultiplier,
   };
+  if (data.enabled !== undefined) row.enabled = data.enabled;
 
   if (existingId) {
     // Verify the existing rules row is ours before updating.
