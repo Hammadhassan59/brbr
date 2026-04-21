@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
-import { Plus, Building2, Loader2, Inbox } from 'lucide-react';
+import { Plus, Building2, Loader2, Inbox, Trophy } from 'lucide-react';
 import { listAgencies, createAgency } from '@/app/actions/agencies';
 import type { Agency, AgencyStatus } from '@/types/sales';
 import { Button } from '@/components/ui/button';
@@ -49,6 +49,11 @@ export default function AgenciesPage() {
           <Link href="/admin/agencies/requests">
             <Button variant="outline">
               <Inbox className="w-4 h-4 mr-1" /> Signup requests
+            </Button>
+          </Link>
+          <Link href="/admin/agencies/bonus-tiers">
+            <Button variant="outline">
+              <Trophy className="w-4 h-4 mr-1" /> Bonus tiers
             </Button>
           </Link>
           <Button onClick={() => setOpen(true)}>
