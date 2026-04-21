@@ -37,7 +37,7 @@ export function SEOPage({
             href="/login"
             className="text-sm font-semibold bg-gold hover:bg-gold/90 text-black px-4 py-2 rounded-lg border border-gold"
           >
-            Start free trial
+            Get started
           </Link>
         </div>
       </header>
@@ -58,7 +58,7 @@ export function SEOPage({
             href="/login"
             className="bg-gold hover:bg-gold/90 text-black font-semibold px-6 py-3 rounded-lg border border-gold"
           >
-            Start 14-day free trial
+            Get started — 7-day money-back guarantee
           </Link>
           <a
             href="https://wa.me/923009402802"
@@ -153,7 +153,7 @@ export function SEOPage({
             href="/login"
             className="bg-gold hover:bg-gold/90 text-black font-bold px-8 py-3 rounded-lg border border-gold"
           >
-            Start free trial
+            Get started
           </Link>
           <a
             href="mailto:contact@icut.pk"

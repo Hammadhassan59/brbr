@@ -190,8 +190,8 @@ function buildFaqs(c: CityRecord, v: VerticalRecord): FAQ[] {
   }
 
   items.push({
-    q: `How do I start a free trial?`,
-    a: `Sign up at icut.pk/login and pick your plan. The first 14 days are free with no credit card required. For help, WhatsApp +92 300 9402802 or email contact@icut.pk.`,
+    q: `How do I get started?`,
+    a: `Sign up at icut.pk/login, pick a plan, and start billing same-day. Every paid plan is covered by a 7-day money-back guarantee — if iCut isn't the right fit, email contact@icut.pk for a full refund. For help, WhatsApp +92 300 9402802.`,
   });
 
   return items;

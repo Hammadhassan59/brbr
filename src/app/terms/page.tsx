@@ -28,16 +28,13 @@ export default function TermsPage() {
           </section>
 
           <section>
-            <h2 className="text-base font-bold text-[#1A1A1A] mb-3">Free Trial</h2>
+            <h2 className="text-base font-bold text-[#1A1A1A] mb-3">Billing &amp; Refunds</h2>
             <p>
-              New accounts get a <strong>14-day free trial</strong>. No credit card is required. At the end of the trial, your account will automatically expire and you will need to subscribe to continue using iCut. Your data is retained for 90 days after expiry.
-            </p>
-          </section>
-
-          <section>
-            <h2 className="text-base font-bold text-[#1A1A1A] mb-3">Billing</h2>
-            <p>
-              iCut is billed monthly in Pakistani Rupees (PKR). Prices are shown on our pricing page. We may update prices with 30 days&apos; notice. Your subscription renews automatically each month until you cancel.
+              iCut is billed monthly in Pakistani Rupees (PKR) and does not offer free trials. Every paid subscription is covered by a <strong>7-day refund window</strong> — if iCut is not the right fit, email{' '}
+              <a href="mailto:contact@icut.pk" className="text-gold hover:underline">contact@icut.pk</a>{' '}
+              within 7 days of your first payment for a full refund. Prices are shown on our pricing page. We may update prices with 30 days&apos; notice. Your subscription renews automatically each month until you cancel. See our{' '}
+              <a href="/refund" className="text-gold hover:underline">Refund Policy</a>{' '}
+              for full details.
             </p>
           </section>
 

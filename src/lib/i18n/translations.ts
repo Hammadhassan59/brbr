@@ -225,7 +225,7 @@ export const translations = {
     // Landing (marketing)
     landingHero: 'Run your salon like a business, not a guess',
     landingHeroSub: 'Bookings, billing, staff, inventory, and WhatsApp — one product built for Pakistani salons and barbershops.',
-    startFreeTrial: 'Start 14-day free trial',
+    startFreeTrial: 'Get started today',
     watchDemo: 'Watch demo',
     trustedBy: 'Trusted by salons across Pakistan',
     featureBookingsTitle: 'Bookings + Walk-ins',
@@ -590,7 +590,7 @@ export const translations = {
     // Landing (marketing)
     landingHero: 'اپنا سیلون اندازے سے نہیں، کاروبار کی طرح چلائیں',
     landingHeroSub: 'بکنگز، بلنگ، سٹاف، انوینٹری اور واٹس ایپ — ایک ہی پراڈکٹ، پاکستانی سیلونز اور باربر شاپس کے لیے',
-    startFreeTrial: '14 دن کا مفت ٹرائل شروع کریں',
+    startFreeTrial: 'آج ہی شروع کریں',
     watchDemo: 'ڈیمو دیکھیں',
     trustedBy: 'پاکستان بھر کے سیلونز کا اعتماد',
     featureBookingsTitle: 'بکنگز + واک انز',

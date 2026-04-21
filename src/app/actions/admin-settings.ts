@@ -66,7 +66,6 @@ const PLAN_MARKETING_DEFAULTS: Record<'basic' | 'growth' | 'pro', Omit<PublicPla
     popular: true,
     features: [
       { text: 'Everything in Starter', ok: true },
-      { text: 'WhatsApp birthdays + thank-yous', ok: true },
       { text: 'Up to 3 branches', ok: true },
       { text: 'Cross-branch reports', ok: true },
       { text: 'Staff schedules + shift planning', ok: true },

@@ -71,7 +71,7 @@ const FALLBACK_PLANS: DisplayPlan[] = [
     name: 'Business', price: '5,000', originalPrice: '12,000', pitch: 'For growing salons and small chains', popular: true,
     limits: '3 branches · 10 staff each',
     features: [
-      { text: 'Everything in Starter', ok: true }, { text: 'WhatsApp birthdays + thank-yous', ok: true },
+      { text: 'Everything in Starter', ok: true },
       { text: 'Up to 3 branches', ok: true }, { text: 'Cross-branch reports', ok: true },
       { text: 'Staff schedules + shift planning', ok: true }, { text: 'Client retention insights', ok: true },
     ],

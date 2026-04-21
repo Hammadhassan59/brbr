@@ -89,7 +89,7 @@ export function welcomeEmail(salonName: string, dashboardUrl: string): string {
       <li>Book your first appointment</li>
     </ol>
     ${emailButton('Open Your Dashboard', dashboardUrl)}
-    <p style="margin:24px 0 0 0;font-family:Inter,-apple-system,BlinkMacSystemFont,Arial,sans-serif;font-size:13px;color:#1A1A1A;opacity:0.5;">Your 14-day free trial has started. No card needed.</p>
+    <p style="margin:24px 0 0 0;font-family:Inter,-apple-system,BlinkMacSystemFont,Arial,sans-serif;font-size:13px;color:#1A1A1A;opacity:0.5;">Every paid plan is covered by a 7-day money-back guarantee. If iCut isn't the right fit, email contact@icut.pk for a full refund.</p>
   `;
   return wrapEmailHtml(body, previewText);
 }
