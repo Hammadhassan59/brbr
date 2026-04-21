@@ -35,6 +35,33 @@ services:
       - caddy_data:/data
       - caddy_config:/config
 
+  # Self-hosted visitor analytics. Pageviews, referrers, countries, devices,
+  # bounce rate, avg session. Data lives in umami-db (below) — never leaves
+  # this VPS. Dashboard served by Caddy same-origin at https://icut.pk/umami.
+  #
+  # BASE_PATH must match the Caddy handle block (/umami) so Umami generates
+  # correct asset URLs and its client-side router works under the prefix.
+  umami:
+    image: ghcr.io/umami-software/umami:postgresql-v2.14.0
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://umami:${UMAMI_DB_PASSWORD}@umami-db:5432/umami
+      DATABASE_TYPE: postgresql
+      APP_SECRET: ${UMAMI_APP_SECRET}
+      BASE_PATH: /umami
+    depends_on:
+      - umami-db
+
+  umami-db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: umami
+      POSTGRES_USER: umami
+      POSTGRES_PASSWORD: ${UMAMI_DB_PASSWORD}
+    volumes:
+      - umami_db_data:/var/lib/postgresql/data
+
 secrets:
   nextsa_key:
     # TODO(ops): create /opt/brbr/secrets/nextsa_key.txt on the VPS with
@@ -45,3 +72,4 @@ secrets:
 volumes:
   caddy_data:
   caddy_config:
+  umami_db_data:

@@ -33,5 +33,17 @@ icut.pk, www.icut.pk {
 	# Compression
 	encode gzip zstd
 
-	reverse_proxy app:3000
+	# Self-hosted Umami — visitor analytics. Served same-origin under
+	# /umami/* so we don't need a separate subdomain or DNS record.
+	# Umami is launched with BASE_PATH=/umami so it builds URLs correctly.
+	# Caddy forwards the path intact (no handle_path strip) because Umami
+	# expects the prefix in the request.
+	handle /umami* {
+		reverse_proxy umami:3000
+	}
+
+	# Everything else → Next app.
+	handle {
+		reverse_proxy app:3000
+	}
 }
