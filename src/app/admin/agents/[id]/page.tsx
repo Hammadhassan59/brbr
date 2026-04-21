@@ -3,16 +3,19 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
-import { Copy, TrendingUp, Wallet, Store, Banknote, Loader2 } from 'lucide-react';
+import { Copy, TrendingUp, Wallet, Store, Banknote, Loader2, Award, Target, Activity, Users, Clock, TrendingDown } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend } from 'recharts';
 import { getSalesAgent, updateAgentRates, setAgentActive, updateAgentProfile } from '@/app/actions/sales-agents';
 import { getAgentReport, type AgentReport } from '@/app/actions/agent-commissions';
+import { getAgentPerformance, type AgentPerformanceMetrics } from '@/app/actions/agent-performance';
+import { awardManualBonus } from '@/app/actions/bonus-tiers';
 import type { SalesAgent } from '@/types/sales';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Card, CardContent } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { formatPKR } from '@/lib/utils/currency';
 import { formatPKDate } from '@/lib/utils/dates';
@@ -71,11 +74,16 @@ export default function AgentDetailPage() {
       <Tabs defaultValue="reports">
         <TabsList>
           <TabsTrigger value="reports">Reports</TabsTrigger>
+          <TabsTrigger value="performance">Performance</TabsTrigger>
           <TabsTrigger value="profile">Profile &amp; Settings</TabsTrigger>
         </TabsList>
 
         <TabsContent value="reports">
           <ReportsTab agentId={agent.id} />
+        </TabsContent>
+
+        <TabsContent value="performance">
+          <PerformanceTab agentId={agent.id} />
         </TabsContent>
 
         <TabsContent value="profile">
@@ -303,5 +311,139 @@ function Mini({ label, value }: { label: string; value: string }) {
       <p className="text-[11px] text-muted-foreground uppercase tracking-wider">{label}</p>
       <p className="text-sm font-semibold mt-1">{value}</p>
     </div>
+  );
+}
+
+function PerformanceTab({ agentId }: { agentId: string }) {
+  const [from, setFrom] = useState(() => {
+    const d = new Date();
+    d.setDate(1);
+    return d.toISOString().slice(0, 10);
+  });
+  const [to, setTo] = useState(() => new Date().toISOString().slice(0, 10));
+  const [metrics, setMetrics] = useState<AgentPerformanceMetrics | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [awardOpen, setAwardOpen] = useState(false);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    const { data, error } = await getAgentPerformance({ agentId, from, to });
+    if (error) toast.error(error);
+    setMetrics(data);
+    setLoading(false);
+  }, [agentId, from, to]);
+
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => { load(); }, [load]);
+
+  if (loading || !metrics) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  const pct = (v: number | null) => (v === null ? '—' : `${Math.round(v * 100)}%`);
+
+  return (
+    <div className="space-y-5">
+      <div className="flex items-center gap-3 flex-wrap">
+        <Label className="text-xs">From</Label>
+        <Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="w-36 h-9" />
+        <Label className="text-xs">To</Label>
+        <Input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="w-36 h-9" />
+        <Button size="sm" variant="outline" className="ml-auto" onClick={() => setAwardOpen(true)}>
+          <Award className="w-4 h-4 mr-1.5" /> Award bonus
+        </Button>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        <KPI icon={Store} label="Onboarded (period)" value={String(metrics.onboarded_count)} sub={`${metrics.onboarded_lifetime} lifetime`} />
+        <KPI icon={Banknote} label="Revenue generated" value={formatPKR(metrics.revenue_generated)} sub="Period" />
+        <KPI icon={Target} label="Conversion rate" value={pct(metrics.conversion_rate)} sub={`${metrics.leads_converted}/${metrics.leads_total} leads`} />
+        <KPI icon={Clock} label="Avg days-to-close" value={metrics.avg_days_to_close === null ? '—' : `${metrics.avg_days_to_close}d`} sub="Converted in window" />
+        <KPI icon={TrendingDown} label="Churned (period)" value={String(metrics.churned_count)} sub="Salons now expired or suspended" />
+        <KPI icon={Users} label="Active lifetime" value={String(metrics.active_lifetime)} sub={`of ${metrics.onboarded_lifetime} onboarded`} />
+      </div>
+
+      <Card>
+        <CardContent className="p-4">
+          <p className="text-sm font-semibold mb-3 flex items-center gap-2">
+            <Activity className="w-4 h-4" /> Retention (lifetime cohort)
+          </p>
+          <div className="grid grid-cols-3 gap-3">
+            <div className="border rounded-lg p-4 text-center bg-muted/20">
+              <p className="text-[11px] text-muted-foreground uppercase tracking-wider">30-day</p>
+              <p className="text-2xl font-bold mt-1">{pct(metrics.retention_30d)}</p>
+            </div>
+            <div className="border rounded-lg p-4 text-center bg-muted/20">
+              <p className="text-[11px] text-muted-foreground uppercase tracking-wider">60-day</p>
+              <p className="text-2xl font-bold mt-1">{pct(metrics.retention_60d)}</p>
+            </div>
+            <div className="border rounded-lg p-4 text-center bg-muted/20">
+              <p className="text-[11px] text-muted-foreground uppercase tracking-wider">90-day</p>
+              <p className="text-2xl font-bold mt-1">{pct(metrics.retention_90d)}</p>
+            </div>
+          </div>
+          <p className="text-[11px] text-muted-foreground mt-2">
+            Of salons onboarded N+ days ago, % still subscription_status=active today.
+          </p>
+        </CardContent>
+      </Card>
+
+      <AwardBonusDialog
+        open={awardOpen}
+        agentId={agentId}
+        onClose={() => setAwardOpen(false)}
+        onAwarded={() => { setAwardOpen(false); load(); toast.success('Bonus awarded'); }}
+      />
+    </div>
+  );
+}
+
+function AwardBonusDialog({
+  open, agentId, onClose, onAwarded,
+}: { open: boolean; agentId: string; onClose: () => void; onAwarded: () => void }) {
+  const [amount, setAmount] = useState('');
+  const [notes, setNotes] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    const n = Number(amount);
+    if (!Number.isFinite(n) || n <= 0) { toast.error('Amount must be > 0'); return; }
+    if (!notes.trim()) { toast.error('Notes are required for audit'); return; }
+    setSubmitting(true);
+    const { error } = await awardManualBonus({ agentId, amount: n, notes: notes.trim() });
+    setSubmitting(false);
+    if (error) { toast.error(error); return; }
+    setAmount(''); setNotes('');
+    onAwarded();
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
+      <DialogContent>
+        <DialogHeader><DialogTitle>Award one-off bonus</DialogTitle></DialogHeader>
+        <form onSubmit={submit} className="space-y-4">
+          <div>
+            <Label>Amount (PKR)</Label>
+            <Input type="number" min="0" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} required />
+          </div>
+          <div>
+            <Label>Reason / notes *</Label>
+            <Input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="e.g. Q1 top-performer award" required />
+            <p className="text-[11px] text-muted-foreground mt-1">
+              Required. This is appended to the commission row as audit trail.
+            </p>
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
+            <Button type="submit" disabled={submitting}>{submitting ? 'Awarding…' : 'Award bonus'}</Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }

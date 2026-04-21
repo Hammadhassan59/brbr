@@ -43,11 +43,18 @@ export default function AgentsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-2">
         <h2 className="font-heading text-2xl font-semibold">Sales Agents</h2>
-        <Button onClick={() => setOpen(true)}>
-          <Plus className="w-4 h-4 mr-1" /> New agent
-        </Button>
+        <div className="flex gap-2">
+          <Link href="/admin/agents/bonus-tiers">
+            <Button variant="outline">
+              <Trophy className="w-4 h-4 mr-1" /> Bonus tiers
+            </Button>
+          </Link>
+          <Button onClick={() => setOpen(true)}>
+            <Plus className="w-4 h-4 mr-1" /> New agent
+          </Button>
+        </div>
       </div>
 
       {/* Top performers — cross-agent overview for the chosen window */}
