@@ -35,20 +35,3 @@ icut.pk, www.icut.pk {
 
 	reverse_proxy app:3000
 }
-
-# Self-hosted Umami — visitor analytics dashboard + tracker.
-# Browser reaches it for /script.js (tracker), /api/send (beacons), and
-# the admin UI. Data never leaves this VPS. Requires one DNS A record
-# pointing analytics.icut.pk at the same IP as icut.pk.
-analytics.icut.pk {
-	header {
-		Strict-Transport-Security "max-age=63072000; includeSubDomains; preload"
-		X-Content-Type-Options "nosniff"
-		Referrer-Policy "strict-origin-when-cross-origin"
-		-Server
-	}
-
-	encode gzip zstd
-
-	reverse_proxy umami:3000
-}

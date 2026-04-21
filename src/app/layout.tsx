@@ -3,7 +3,6 @@ import { Inter } from 'next/font/google';
 import { Toaster } from 'react-hot-toast';
 import { LanguageProvider } from '@/components/providers/language-provider';
 import { TooltipProvider } from '@/components/ui/tooltip';
-import { Umami } from '@/components/umami';
 import './globals.css';
 
 const inter = Inter({
@@ -52,7 +51,6 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning className={`${inter.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col font-body">
-        <Umami />
         <LanguageProvider>
           <TooltipProvider>
             {children}
