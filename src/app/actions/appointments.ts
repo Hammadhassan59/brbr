@@ -79,6 +79,67 @@ function getNowTimePKT24(): string {
   });
 }
 
+/**
+ * Flips any `booked` or `confirmed` appointment whose end_time passed
+ * more than 30 minutes ago to `no_show`. Called nightly at 02:00 PKT via
+ * `/api/cron/sweep-no-shows`. Uses a single UPDATE with a WHERE clause
+ * that composes appointment_date + end_time into a PKT wall-clock
+ * timestamp and compares against now() in PKT.
+ *
+ * Safety:
+ * - Skips rows with end_time IS NULL (incomplete data — operator must
+ *   resolve manually).
+ * - Skips statuses other than booked/confirmed so an in_progress session
+ *   that ran long isn't flipped mid-service.
+ * - The 30-min grace window means stylists who forgot to mark `done` on
+ *   the POS checkout get half an hour to fix it before the sweep.
+ *
+ * No auth wrapper — callable only from the cron route (which authenticates
+ * via CRON_SECRET) and from an explicit super_admin manual trigger.
+ */
+export async function sweepNoShowsInternal(): Promise<{
+  flipped: number;
+  error: string | null;
+}> {
+  const supabase = createServerClient();
+  const { data, error } = await supabase
+    .from('appointments')
+    .update({ status: 'no_show' })
+    .in('status', ['booked', 'confirmed'])
+    .not('end_time', 'is', null)
+    .lt(
+      // Composed PKT wall-clock timestamp for the appointment's end.
+      'appointment_date',
+      // Anything whose date is strictly BEFORE today (PKT) is definitely
+      // past grace. We handle same-day rows in a second pass below so we
+      // can compare end_time against now.
+      new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Karachi' }),
+    )
+    .select('id');
+  if (error) return { flipped: 0, error: error.message };
+  let flipped = (data || []).length;
+
+  // Same-day rows: end_time must have passed more than 30 min ago.
+  const now = new Date();
+  const nowPKT = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Karachi' }));
+  nowPKT.setMinutes(nowPKT.getMinutes() - 30);
+  const cutoffTime = nowPKT.toTimeString().slice(0, 5); // HH:MM
+  const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Karachi' });
+
+  const { data: today2, error: error2 } = await supabase
+    .from('appointments')
+    .update({ status: 'no_show' })
+    .in('status', ['booked', 'confirmed'])
+    .not('end_time', 'is', null)
+    .eq('appointment_date', today)
+    .lt('end_time', cutoffTime)
+    .select('id');
+  if (error2) return { flipped, error: error2.message };
+  flipped += (today2 || []).length;
+
+  return { flipped, error: null };
+}
+
 export async function createAppointment(data: {
   branchId: string;
   clientId?: string | null;

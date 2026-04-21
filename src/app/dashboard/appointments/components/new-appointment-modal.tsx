@@ -201,6 +201,25 @@ export function NewAppointmentModal({
     setTime(prefillTime || ''); setNotes('');
   }
 
+  // Mirror the POS "Add new client" UX: detect whether the query the user
+  // typed is phone-like (contains digits) and pre-fill the appropriate
+  // field so they don't have to re-type. A query like "0301 234 5678"
+  // lands in phone; "Ayesha" lands in name.
+  function openNewClientForm(prefill: string) {
+    const trimmed = prefill.trim();
+    const phoneLike = /\d/.test(trimmed);
+    if (phoneLike) {
+      setNewClientPhone(trimmed);
+      setNewClientName('');
+    } else {
+      setNewClientName(trimmed);
+      setNewClientPhone('');
+    }
+    setIsNewClient(true);
+    setClientSearch('');
+    setClientResults([]);
+  }
+
   async function handleSave() {
     if (!salon || !currentBranch) return;
     if (!selectedStaffId) { toast.error('Select a stylist'); return; }
@@ -225,8 +244,13 @@ export function NewAppointmentModal({
     try {
       let clientId: string | null = null;
 
-      if (isNewClient && newClientName) {
-        const { data: newClient, error } = await createClient({ branchId: currentBranch.id, name: newClientName, phone: newClientPhone || null });
+      if (isNewClient) {
+        if (!newClientName.trim()) { toast.error('Client name is required'); return; }
+        const { data: newClient, error } = await createClient({
+          branchId: currentBranch.id,
+          name: newClientName.trim(),
+          phone: newClientPhone.trim() || null,
+        });
         if (showActionError(error)) return;
         clientId = newClient!.id;
       } else if (selectedClient) {
@@ -349,9 +373,18 @@ export function NewAppointmentModal({
                       </button>
                     ))}
                     {clientResults.length === 0 && <p className="px-3 py-2 text-sm text-muted-foreground">No clients found</p>}
-                    <button onClick={() => { setIsNewClient(true); setClientSearch(''); setClientResults([]); }}
-                      className="w-full text-left px-3 py-2 hover:bg-background text-sm text-gold border-t flex items-center gap-2">
-                      <Plus className="w-3.5 h-3.5" /> Add new client
+                    <button
+                      onClick={() => openNewClientForm(clientSearch)}
+                      className="w-full text-left px-3 py-2 hover:bg-background text-sm text-gold border-t flex items-center gap-2"
+                    >
+                      <Plus className="w-3.5 h-3.5 shrink-0" />
+                      <span className="text-muted-foreground">
+                        {/\d/.test(clientSearch) ? (
+                          <>Add new client with phone <span className="text-foreground font-medium">{clientSearch}</span></>
+                        ) : (
+                          <>Add <span className="text-foreground font-medium">&quot;{clientSearch}&quot;</span> as new client</>
+                        )}
+                      </span>
                     </button>
                   </div>
                 )}
