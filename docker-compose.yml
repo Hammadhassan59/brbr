@@ -37,26 +37,19 @@ services:
 
   # Self-hosted visitor analytics. Pageviews, referrers, countries, devices,
   # bounce rate, avg session. Data lives in umami-db (below) — never leaves
-  # this VPS. Dashboard served by Caddy same-origin at https://icut.pk/umami.
+  # this VPS. Dashboard served by Caddy at https://analytics.icut.pk.
   #
-  # Built from source (not the published image) because BASE_PATH is a
-  # Next.js basePath, which Next bakes into the build at `next build` time.
-  # The published `ghcr.io/umami-software/umami:postgresql-*` image is
-  # compiled with an empty BASE_PATH, so setting it at runtime does nothing.
-  # Building locally with BASE_PATH=/umami bakes the prefix into every
-  # asset URL, router link, and API route.
+  # Same-origin /umami was attempted but requires building Umami from source
+  # with BASE_PATH as a build arg, which in turn hits a Prisma/Alpine
+  # libssl1.1 incompatibility. The published image works cleanly — pairing
+  # it with a subdomain (one DNS A record) is the shortest maintainable path.
   umami:
-    build:
-      context: https://github.com/umami-software/umami.git#v2.14.0
-      args:
-        BASE_PATH: /umami
-        DATABASE_TYPE: postgresql
+    image: ghcr.io/umami-software/umami:postgresql-v2.14.0
     restart: unless-stopped
     environment:
       DATABASE_URL: postgresql://umami:${UMAMI_DB_PASSWORD}@umami-db:5432/umami
       DATABASE_TYPE: postgresql
       APP_SECRET: ${UMAMI_APP_SECRET}
-      BASE_PATH: /umami
     depends_on:
       - umami-db
 

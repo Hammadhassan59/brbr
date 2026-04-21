@@ -33,17 +33,22 @@ icut.pk, www.icut.pk {
 	# Compression
 	encode gzip zstd
 
-	# Self-hosted Umami — visitor analytics. Served same-origin under
-	# /umami/* so we don't need a separate subdomain or DNS record.
-	# Umami is launched with BASE_PATH=/umami so it builds URLs correctly.
-	# Caddy forwards the path intact (no handle_path strip) because Umami
-	# expects the prefix in the request.
-	handle /umami* {
-		reverse_proxy umami:3000
+	reverse_proxy app:3000
+}
+
+# Self-hosted Umami — visitor analytics dashboard + tracker.
+# Browser reaches it for /script.js (tracker), /api/send (beacons), and
+# the admin UI. Data never leaves this VPS. Requires one DNS A record
+# pointing analytics.icut.pk at the same IP as icut.pk.
+analytics.icut.pk {
+	header {
+		Strict-Transport-Security "max-age=63072000; includeSubDomains; preload"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		-Server
 	}
 
-	# Everything else → Next app.
-	handle {
-		reverse_proxy app:3000
-	}
+	encode gzip zstd
+
+	reverse_proxy umami:3000
 }

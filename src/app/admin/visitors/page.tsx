@@ -2,11 +2,13 @@ import Link from 'next/link';
 import { Activity, ExternalLink, Eye, Globe, MapPin, Smartphone } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
-const DASHBOARD_PATH = '/umami';
+const DEFAULT_UMAMI_URL = 'https://analytics.icut.pk';
 
 export default function VisitorsPage() {
+  const url = process.env.NEXT_PUBLIC_UMAMI_URL ?? DEFAULT_UMAMI_URL;
   const websiteId = process.env.NEXT_PUBLIC_UMAMI_WEBSITE_ID;
   const configured = !!websiteId;
+  const dashboardUrl = url.replace(/\/$/, '');
 
   return (
     <div className="space-y-4 max-w-4xl">
@@ -15,7 +17,7 @@ export default function VisitorsPage() {
           <Activity className="w-5 h-5 text-[#FEBE10]" /> Website Visitors
         </h2>
         <p className="text-sm text-muted-foreground mt-1">
-          Self-hosted analytics via Umami, served same-origin at <span className="font-mono text-xs">icut.pk/umami</span>. Data never leaves your VPS.
+          Self-hosted analytics via Umami at <span className="font-mono text-xs">analytics.icut.pk</span>. Data never leaves the VPS.
         </p>
       </div>
 
@@ -28,7 +30,7 @@ export default function VisitorsPage() {
           </CardHeader>
           <CardContent className="space-y-3">
             <a
-              href={DASHBOARD_PATH}
+              href={dashboardUrl}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[#FEBE10] text-black text-sm font-medium hover:bg-[#e5aa0e] transition-colors"
@@ -48,39 +50,30 @@ export default function VisitorsPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4 text-sm">
-            <p className="text-muted-foreground">
-              Umami ships in docker-compose. No DNS change needed — it runs under <span className="font-mono">icut.pk/umami</span>.
-            </p>
-
             <div>
-              <p className="font-medium mb-1">1. Server env — add 3 values to <span className="font-mono text-xs bg-muted px-1 py-0.5 rounded">/opt/brbr/.env.local</span></p>
-              <pre className="bg-muted p-2 rounded text-xs font-mono overflow-x-auto">
-{`# Server-only — Umami container creds:
-UMAMI_DB_PASSWORD=<openssl rand -hex 24>
-UMAMI_APP_SECRET=<openssl rand -hex 32>
-
-# Public — filled in after step 3:
-NEXT_PUBLIC_UMAMI_WEBSITE_ID=`}
-              </pre>
-            </div>
-
-            <div>
-              <p className="font-medium mb-1">2. Deploy & start the new containers</p>
+              <p className="font-medium mb-1">1. DNS — one A record</p>
               <p className="text-muted-foreground text-xs">
-                Push to main. The deploy workflow runs <span className="font-mono">docker compose up -d</span> and starts <span className="font-mono">umami</span> + <span className="font-mono">umami-db</span>.
+                Point <span className="font-mono">analytics.icut.pk</span> at the same VPS IP as <span className="font-mono">icut.pk</span>. In Cloudflare: DNS → Add record → Type <span className="font-mono">A</span> → Name <span className="font-mono">analytics</span> → IP <span className="font-mono">91.99.117.168</span> → proxy status OK either way.
               </p>
             </div>
 
             <div>
-              <p className="font-medium mb-1">3. First-time Umami login</p>
+              <p className="font-medium mb-1">2. First-time Umami login</p>
               <p className="text-muted-foreground text-xs">
-                Visit <span className="font-mono">https://icut.pk/umami</span>. Default creds are <span className="font-mono">admin</span> / <span className="font-mono">umami</span> — Umami forces a password change on first login. Then <strong>Settings → Websites → Add Website</strong>, name it <em>iCut</em>, domain <span className="font-mono">icut.pk</span>. Copy the <strong>Website ID</strong>, paste into <span className="font-mono">NEXT_PUBLIC_UMAMI_WEBSITE_ID</span>, redeploy.
+                Once DNS propagates (~1 min on Cloudflare), open <span className="font-mono">https://analytics.icut.pk</span>. Default creds: <span className="font-mono">admin</span> / <span className="font-mono">umami</span> — Umami forces a password change on first login. Then <strong>Settings → Websites → Add Website</strong>, name it <em>iCut</em>, domain <span className="font-mono">icut.pk</span>. Copy the <strong>Website ID</strong>.
               </p>
             </div>
 
-            <p className="text-xs text-muted-foreground">
-              Pageviews start appearing on the dashboard in real time after step 3.
-            </p>
+            <div>
+              <p className="font-medium mb-1">3. Paste Website ID + redeploy</p>
+              <p className="text-muted-foreground text-xs">
+                On the VPS, edit <span className="font-mono">/opt/brbr/.env.local</span> and set:
+              </p>
+              <pre className="bg-muted p-2 rounded text-xs font-mono overflow-x-auto mt-1">NEXT_PUBLIC_UMAMI_WEBSITE_ID=&lt;paste-here&gt;</pre>
+              <p className="text-muted-foreground text-xs mt-1">
+                Then redeploy. Pageviews start showing up in real time.
+              </p>
+            </div>
           </CardContent>
         </Card>
       )}
