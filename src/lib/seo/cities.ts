@@ -148,7 +148,10 @@ export const GULF_CITIES: CityRecord[] = [
   { slug: 'sur',               city: 'Sur',             country: 'OM', countryName: 'Oman',         region: 'Ash Sharqiyah South',currency: 'OMR', currencySymbol: 'OMR', population: '80,000',      salonCount: '~60 licensed salons', languages: ['Arabic'], paymentMethods: ['Card', 'Cash'], peakHours: '4 PM – 9 PM', context: 'Historic dhow-building coastal town; small but loyal salon ecosystem.', priceTier: 'mid' },
 ];
 
-export const ALL_CITIES: CityRecord[] = [...PAKISTAN_CITIES, ...GULF_CITIES];
+// Gulf cities removed from routing + sitemap on 2026-04-21 to focus SEO on
+// Pakistan only. GULF_CITIES data preserved above for potential future
+// expansion; it is exported but intentionally not wired into ALL_CITIES.
+export const ALL_CITIES: CityRecord[] = [...PAKISTAN_CITIES];
 
 export function getCity(slug: string): CityRecord | null {
   return ALL_CITIES.find((c) => c.slug === slug) ?? null;
