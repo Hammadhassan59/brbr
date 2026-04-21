@@ -60,6 +60,15 @@ function toMinutes(time: string): number {
   return h * 60 + m;
 }
 
+/**
+ * Today's date in PKT (YYYY-MM-DD). Server-side guard uses this to reject
+ * appointment inserts for past dates — prevents a forged client from slipping
+ * a backdated booking past the UI min-date gate in new-appointment-modal.
+ */
+function getTodayPKT(): string {
+  return new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Karachi' });
+}
+
 export async function createAppointment(data: {
   branchId: string;
   clientId?: string | null;
@@ -80,6 +89,12 @@ export async function createAppointment(data: {
     assertBranchMembership(session, data.branchId);
   } catch (e) {
     return { data: null, error: tenantErrorMessage(e) };
+  }
+
+  // Block past-date bookings. Client-side UI already blocks via min= on the
+  // date input; this is the server-side defense-in-depth.
+  if (data.date < getTodayPKT()) {
+    return { data: null, error: 'Bookings cannot be made for past dates' };
   }
 
   // Verify the branch belongs to this salon
