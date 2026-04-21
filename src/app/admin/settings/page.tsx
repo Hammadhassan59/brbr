@@ -68,7 +68,7 @@ const DEFAULT_SETTINGS: PlatformSettings = {
       limits: '1 branch · up to 10 staff', popular: false,
       features: [
         'POS + billing',
-        'Bookings + walk-in queue',
+        'Appointment bookings',
         'Cash, mobile, card payments',
         'Basic daily report',
         'Commission tracking',
@@ -82,7 +82,7 @@ const DEFAULT_SETTINGS: PlatformSettings = {
       limits: '3 branches · 10 staff each', popular: true,
       features: [
         'POS + billing',
-        'Bookings + walk-in queue',
+        'Appointment bookings',
         'Cash, mobile, card payments',
         'Full daily reports',
         'Commission tracking',

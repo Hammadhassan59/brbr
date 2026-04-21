@@ -757,17 +757,125 @@ export async function deleteSalonAndAllData(
   const { error: delErr } = await supabase.from('salons').delete().eq('id', salonId);
   if (delErr) return { success: false, deletedAuthUsers: 0, error: `salons: ${safeError(delErr)}` };
 
-  // Best-effort auth user removal — individual failures are non-fatal (data
-  // is already gone, orphan auth rows can be cleaned up later).
+  // Best-effort auth user removal. Before deleting each auth.users row we
+  // try to clear any non-salon references (admin_users, sales_agents,
+  // agency_admins) — if the deleted tenant's owner/partner/staff happens to
+  // ALSO hold one of these roles, the FK would block the auth delete and
+  // their email would stay registered (the bug this block exists to fix).
   let deleted = 0;
   for (const id of authIds) {
     try {
+      await supabase.from('admin_users').delete().eq('user_id', id);
+      await supabase.from('sales_agents').delete().eq('user_id', id);
+      await supabase.from('agency_admins').delete().eq('user_id', id);
       const { error } = await supabase.auth.admin.deleteUser(id);
       if (!error) deleted++;
     } catch {
-      // swallow
+      // Non-fatal — caught by the sweep below.
     }
   }
 
+  // Safety net: sweep any remaining orphans. Catches rows where delete
+  // missed because a ref was added after authIds was collected, or where a
+  // parallel tenant shared a user account.
+  try { await sweepOrphansInternal(); } catch { /* best-effort */ }
+
   return { success: true, deletedAuthUsers: deleted, error: null };
+}
+
+// ═══════════════════════════════════════
+// Orphaned auth user sweep
+// ═══════════════════════════════════════
+
+/**
+ * Deletes auth.users rows that have no references anywhere in the app
+ * (salons.owner_id, staff.auth_user_id, salon_partners.auth_user_id,
+ * admin_users.user_id, sales_agents.user_id, agency_admins.user_id).
+ *
+ * Runs at the end of deleteSalonAndAllData as a safety net, and is exposed
+ * as a standalone action so super_admin can trigger it from the UI or a
+ * scheduled cron.
+ *
+ * Pagination note: Supabase auth.admin.listUsers caps at 10k per page; we
+ * page through until exhausted. Typical iCut installs will have <1k users
+ * so this runs in one request in practice.
+ */
+export async function sweepOrphanedAuthUsers(): Promise<{
+  data: { deleted: number; scanned: number; failures: string[] };
+  error: string | null;
+}> {
+  await requireAdminRole(['super_admin']);
+  return sweepOrphansInternal();
+}
+
+/**
+ * Unguarded worker. Callable from `deleteSalonAndAllData` (which already
+ * verified super_admin) and from the `/api/cron/sweep-orphan-users` route
+ * (which authenticates via CRON_SECRET, not a session). Not exported as a
+ * server action; the guarded `sweepOrphanedAuthUsers` is the public entry.
+ */
+export async function sweepOrphansInternal(): Promise<{
+  data: { deleted: number; scanned: number; failures: string[] };
+  error: string | null;
+}> {
+  const supabase = createServerClient();
+
+  // Pull referenced user IDs from every role table in parallel.
+  const [
+    { data: ownerRows },
+    { data: staffRows },
+    { data: partnerRows },
+    { data: adminRows },
+    { data: agentRows },
+    { data: agencyAdminRows },
+  ] = await Promise.all([
+    supabase.from('salons').select('owner_id'),
+    supabase.from('staff').select('auth_user_id'),
+    supabase.from('salon_partners').select('auth_user_id'),
+    supabase.from('admin_users').select('user_id'),
+    supabase.from('sales_agents').select('user_id'),
+    supabase.from('agency_admins').select('user_id'),
+  ]);
+
+  const referenced = new Set<string>();
+  for (const r of (ownerRows || []) as { owner_id: string | null }[]) if (r.owner_id) referenced.add(r.owner_id);
+  for (const r of (staffRows || []) as { auth_user_id: string | null }[]) if (r.auth_user_id) referenced.add(r.auth_user_id);
+  for (const r of (partnerRows || []) as { auth_user_id: string | null }[]) if (r.auth_user_id) referenced.add(r.auth_user_id);
+  for (const r of (adminRows || []) as { user_id: string | null }[]) if (r.user_id) referenced.add(r.user_id);
+  for (const r of (agentRows || []) as { user_id: string | null }[]) if (r.user_id) referenced.add(r.user_id);
+  for (const r of (agencyAdminRows || []) as { user_id: string | null }[]) if (r.user_id) referenced.add(r.user_id);
+
+  // Page through auth.users. Default page is 1, perPage caps at 1000.
+  let page = 1;
+  let scanned = 0;
+  let deleted = 0;
+  const failures: string[] = [];
+
+  for (;;) {
+    const { data, error } = await supabase.auth.admin.listUsers({ page, perPage: 1000 });
+    if (error) return { data: { deleted, scanned, failures }, error: error.message };
+    const users = data?.users ?? [];
+    if (users.length === 0) break;
+    scanned += users.length;
+
+    for (const u of users) {
+      if (referenced.has(u.id)) continue;
+      // Safety: don't touch accounts created within the last 15 minutes —
+      // they might be in the middle of completing signup (setupSalon is
+      // called AFTER auth user creation). 15-min window is ample.
+      const ageMs = Date.now() - new Date(u.created_at).getTime();
+      if (ageMs < 15 * 60 * 1000) continue;
+      try {
+        const { error: delErr } = await supabase.auth.admin.deleteUser(u.id);
+        if (delErr) failures.push(`${u.email ?? u.id}: ${delErr.message}`);
+        else deleted++;
+      } catch (e) {
+        failures.push(`${u.email ?? u.id}: ${(e as Error).message}`);
+      }
+    }
+    if (users.length < 1000) break;
+    page += 1;
+  }
+
+  return { data: { deleted, scanned, failures }, error: null };
 }

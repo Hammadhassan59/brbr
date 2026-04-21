@@ -59,7 +59,7 @@ const FALLBACK_PLANS: DisplayPlan[] = [
     name: 'Starter', price: '2,500', originalPrice: '5,000', pitch: 'For new and small salons', popular: false,
     limits: '1 branch · up to 10 staff',
     features: [
-      { text: 'POS + billing', ok: true }, { text: 'Bookings + walk-in queue', ok: true },
+      { text: 'POS + billing', ok: true }, { text: 'Appointment bookings', ok: true },
       { text: 'Cash, mobile, card payments', ok: true }, { text: 'Client database + udhaar ledger', ok: true },
       { text: 'WhatsApp receipts + reminders', ok: true }, { text: 'Inventory + low-stock alerts', ok: true },
       { text: 'Payroll + attendance + advances', ok: true }, { text: 'Commission tracking', ok: true },

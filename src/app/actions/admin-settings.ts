@@ -47,7 +47,7 @@ const PLAN_MARKETING_DEFAULTS: Record<'basic' | 'growth' | 'pro', Omit<PublicPla
     popular: false,
     features: [
       { text: 'POS + billing', ok: true },
-      { text: 'Bookings + walk-in queue', ok: true },
+      { text: 'Appointment bookings', ok: true },
       { text: 'Cash, mobile, card payments', ok: true },
       { text: 'Client database + udhaar ledger', ok: true },
       { text: 'WhatsApp receipts + reminders', ok: true },

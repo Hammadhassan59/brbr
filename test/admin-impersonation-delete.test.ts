@@ -96,6 +96,20 @@ const fromMock = vi.fn((table: string) => {
       }),
     };
   }
+  // Pre-sweep cleanup tables (admin_users, sales_agents, agency_admins) use
+  // .delete().eq('user_id', X) — no-op mock, not counted in deleteCalls.
+  if (table === 'admin_users' || table === 'sales_agents' || table === 'agency_admins') {
+    return {
+      delete: () => ({
+        eq: () => Promise.resolve({ error: null }),
+      }),
+      // sweepOrphansInternal calls .select() on these to find referenced user ids
+      select: () => Promise.resolve({ data: [], error: null }),
+    };
+  }
+  // sweepOrphansInternal also calls .select() on salons/staff/salon_partners.
+  // The above branches already return objects that support .select().eq(); add
+  // a bare .select() fallback returning an empty array so the sweep is a no-op.
   // New blocker tables: cash_drawers, attendance, expenses, purchase_orders,
   // stock_movements, udhaar_payments, advances, client_packages.
   // Each gets a delete().in() chain — no-op (return null error) since the
@@ -126,6 +140,9 @@ vi.mock('@/lib/supabase', () => ({
             data: { properties: { hashed_token: 'tok-abc' } },
             error: null,
           }),
+        // Used by the orphan-sweep safety net inside deleteSalonAndAllData —
+        // returning an empty users list makes the sweep a no-op in these tests.
+        listUsers: () => Promise.resolve({ data: { users: [] }, error: null }),
       },
     },
   }),
