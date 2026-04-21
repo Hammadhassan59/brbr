@@ -132,6 +132,7 @@ export default function PublicLayout({ children, showHomeNav = false }: PublicLa
               <ul className="space-y-0.5">
                 <li><Link href="/about" className="text-[13px] text-white/50 hover:text-white transition-colors block py-2">{t('navAbout')}</Link></li>
                 <li><Link href="/contact" className="text-[13px] text-white/50 hover:text-white transition-colors block py-2">{t('navContact')}</Link></li>
+                <li><Link href="/agency-signup" className="text-[13px] text-white/50 hover:text-white transition-colors block py-2">Become an agency</Link></li>
               </ul>
             </div>
 

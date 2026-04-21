@@ -569,3 +569,94 @@ export async function listAgencyCommissions(
   if (error) return { data: [], error: error.message };
   return { data: (data || []) as AgencyCommission[], error: null };
 }
+
+// ───────────────────────────────────────
+// Agency owner password generation (super_admin)
+// ───────────────────────────────────────
+
+/**
+ * Generates a fresh strong password for the agency's primary admin account.
+ * If no agency_admins row exists yet (agency was created without the
+ * "send welcome email" option), auto-creates one from agencies.email +
+ * agencies.contact_name so super_admin can hand off login creds to any
+ * agency regardless of how it was onboarded.
+ *
+ * Returns { email, password } in one shot; super_admin shares both with the
+ * agency owner via WhatsApp / phone / whatever channel they prefer. Mirrors
+ * the generateSalonOwnerPassword flow in admin-users.ts.
+ */
+export async function generateAgencyOwnerPassword(
+  agencyId: string,
+): Promise<{ success: true; email: string; password: string } | { success: false; error: string }> {
+  await requireAdminRole(['super_admin']);
+  const supabase = createServerClient();
+
+  const { data: agency, error: agencyErr } = await supabase
+    .from('agencies')
+    .select('id, name, email, contact_name, phone')
+    .eq('id', agencyId)
+    .maybeSingle();
+  if (agencyErr || !agency) return { success: false, error: 'Agency not found' };
+
+  // Prefer the existing admin row; fall back to agency.email for a self-heal
+  // path when super_admin skipped the welcome-email flow at creation.
+  const { data: existingAdmin } = await supabase
+    .from('agency_admins')
+    .select('user_id, email, name')
+    .eq('agency_id', agencyId)
+    .eq('active', true)
+    .order('created_at', { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  let userId: string | null = existingAdmin?.user_id ?? null;
+  let email: string | null = existingAdmin?.email ?? null;
+
+  if (!userId) {
+    if (!agency.email) {
+      return { success: false, error: 'Agency has no email on file — edit the Profile tab first' };
+    }
+    const result = await provisionAgencyAdmin(agencyId, {
+      email: agency.email,
+      name: agency.contact_name ?? agency.name,
+      phone: agency.phone,
+    });
+    if (result.error) return { success: false, error: result.error };
+    // Re-fetch to get the freshly-created user_id.
+    const { data: created } = await supabase
+      .from('agency_admins')
+      .select('user_id, email')
+      .eq('agency_id', agencyId)
+      .eq('active', true)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    userId = created?.user_id ?? null;
+    email = created?.email ?? agency.email;
+  }
+
+  if (!userId || !email) return { success: false, error: 'Could not resolve agency admin account' };
+
+  // Generate a 16-char unambiguous password — same alphabet + strength used
+  // for generateSalonOwnerPassword.
+  const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!@#$%*?';
+  const bytes = new Uint8Array(16);
+  crypto.getRandomValues(bytes);
+  const password = Array.from(bytes).map((b) => alphabet[b % alphabet.length]).join('');
+
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+  const updateRes = await fetch(`${supabaseUrl}/auth/v1/admin/users/${userId}`, {
+    method: 'PUT',
+    headers: {
+      Authorization: `Bearer ${serviceKey}`,
+      apikey: anonKey,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ password }),
+  });
+  if (!updateRes.ok) return { success: false, error: 'Failed to update password' };
+
+  return { success: true, email, password };
+}

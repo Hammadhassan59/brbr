@@ -6,7 +6,7 @@ import Link from 'next/link';
 import toast from 'react-hot-toast';
 import {
   ArrowLeft, Building2, Copy, Loader2, Wallet, AlertTriangle, ShieldOff, Ban,
-  PlusCircle, Banknote,
+  PlusCircle, Banknote, KeyRound, Check as CheckIcon,
 } from 'lucide-react';
 import {
   getAgency,
@@ -21,6 +21,7 @@ import {
   recordAgencyRemittance,
   listUnremittedPayments,
   listAgencyCommissions,
+  generateAgencyOwnerPassword,
   type AgencyBalance,
   type UnremittedPayment,
 } from '@/app/actions/agencies';
@@ -624,6 +625,9 @@ function CommissionsTab({ agencyId }: { agencyId: string }) {
 function ActionsTab({ agency, balance, onChanged }: { agency: Agency; balance: AgencyBalance; onChanged: () => void }) {
   const [freezeReason, setFreezeReason] = useState('');
   const [termReason, setTermReason] = useState('');
+  const [generating, setGenerating] = useState(false);
+  const [creds, setCreds] = useState<{ email: string; password: string } | null>(null);
+  const [copied, setCopied] = useState(false);
 
   async function doFreeze() {
     if (!freezeReason.trim()) { toast.error('Reason required'); return; }
@@ -640,9 +644,68 @@ function ActionsTab({ agency, balance, onChanged }: { agency: Agency; balance: A
     const { error, clawed, refunded } = await terminateAgency(agency.id, termReason.trim());
     if (error) toast.error(error); else { toast.success(`Terminated — ${formatPKR(clawed)} clawed, ${formatPKR(refunded)} refunded`); setTermReason(''); onChanged(); }
   }
+  async function doGeneratePassword() {
+    if (!confirm('Generate a fresh password for the agency owner? Any previous password becomes invalid.')) return;
+    setGenerating(true);
+    const result = await generateAgencyOwnerPassword(agency.id);
+    setGenerating(false);
+    if (!result.success) { toast.error(result.error); return; }
+    setCreds({ email: result.email, password: result.password });
+  }
 
   return (
     <div className="space-y-4">
+      {agency.status !== 'terminated' && (
+        <div className="border rounded-lg p-5 space-y-3">
+          <h3 className="font-medium flex items-center gap-2"><KeyRound className="w-4 h-4 text-gold" /> Agency owner login</h3>
+          <p className="text-sm text-muted-foreground">
+            Generate a fresh password for the agency&apos;s owner account. Share the credentials via WhatsApp so the agency can log in immediately — no password-reset email required.
+          </p>
+          {creds ? (
+            <div className="rounded-lg border border-gold/30 bg-gold/5 p-4 space-y-2">
+              <div>
+                <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Email</p>
+                <p className="font-mono text-sm">{creds.email}</p>
+              </div>
+              <div>
+                <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Password</p>
+                <div className="flex items-center gap-2">
+                  <code className="font-mono text-sm bg-background px-2 py-1 rounded border flex-1">{creds.password}</code>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      navigator.clipboard.writeText(`Email: ${creds.email}\nPassword: ${creds.password}\nLogin: https://icut.pk/login`)
+                        .then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); });
+                    }}
+                  >
+                    {copied ? <CheckIcon className="w-3.5 h-3.5 mr-1" /> : <Copy className="w-3.5 h-3.5 mr-1" />}
+                    {copied ? 'Copied' : 'Copy all'}
+                  </Button>
+                </div>
+              </div>
+              <p className="text-[11px] text-amber-700">
+                Copy now — this password will not be shown again. Share only through a secure channel.
+              </p>
+              <div className="flex gap-2 pt-1">
+                <Button size="sm" variant="outline" onClick={() => setCreds(null)}>Close</Button>
+                <a
+                  href={`https://wa.me/${(agency.phone ?? '').replace(/\D/g, '')}?text=${encodeURIComponent(`Your iCut agency login\nEmail: ${creds.email}\nPassword: ${creds.password}\nLogin: https://icut.pk/login`)}`}
+                  target="_blank" rel="noopener noreferrer"
+                >
+                  <Button size="sm" variant="outline">Send via WhatsApp</Button>
+                </a>
+              </div>
+            </div>
+          ) : (
+            <Button onClick={doGeneratePassword} disabled={generating}>
+              {generating ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> : <KeyRound className="w-4 h-4 mr-1.5" />}
+              {generating ? 'Generating…' : 'Generate password'}
+            </Button>
+          )}
+        </div>
+      )}
+
       {agency.status !== 'terminated' && (
         <div className="border rounded-lg p-5 space-y-3">
           <h3 className="font-medium flex items-center gap-2"><ShieldOff className="w-4 h-4 text-amber-600" /> Freeze / unfreeze</h3>

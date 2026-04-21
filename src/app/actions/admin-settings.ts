@@ -80,7 +80,6 @@ const PLAN_MARKETING_DEFAULTS: Record<'basic' | 'growth' | 'pro', Omit<PublicPla
     popular: false,
     features: [
       { text: 'Everything in Business', ok: true },
-      { text: 'WhatsApp blasts + bulk reminders', ok: true },
       { text: 'Up to 10 branches', ok: true },
       { text: 'Partner/co-owner logins', ok: true },
       { text: 'Priority support + onboarding', ok: true },
