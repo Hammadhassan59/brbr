@@ -1,12 +1,16 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Loader2 } from 'lucide-react';
+import Link from 'next/link';
+import { Loader2, UserCog, Building2, Trophy } from 'lucide-react';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
 import toast from 'react-hot-toast';
 import { getAdminAnalytics } from '@/app/actions/admin';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatPKR } from '@/lib/utils/currency';
+
+type SalesStats = Awaited<ReturnType<typeof getAdminAnalytics>>['agentStats'];
+type AgencyStats = Awaited<ReturnType<typeof getAdminAnalytics>>['agencyStats'];
 
 const COLORS = ['#FEBE10', '#60A5FA', '#4ADE80', '#FB923C'];
 
@@ -21,14 +25,18 @@ export default function AdminAnalyticsPage() {
   const [subscriptionMrr, setSubscriptionMrr] = useState(0);
   const [activeSubscribers, setActiveSubscribers] = useState(0);
   const [mrrByPlan, setMrrByPlan] = useState<Record<string, { count: number; revenue: number }>>({});
+  const [agentStats, setAgentStats] = useState<SalesStats | null>(null);
+  const [agencyStats, setAgencyStats] = useState<AgencyStats | null>(null);
 
   useEffect(() => {
     async function fetchAnalytics() {
       try {
-        const { salons, cityDist: liveCityDist, bills, salonNameMap, subscriptionMrr: mrr, activeSubscribers: subs, mrrByPlan: byPlan } = await getAdminAnalytics();
+        const { salons, cityDist: liveCityDist, bills, salonNameMap, subscriptionMrr: mrr, activeSubscribers: subs, mrrByPlan: byPlan, agentStats: ag, agencyStats: agc } = await getAdminAnalytics();
         setSubscriptionMrr(mrr ?? 0);
         setActiveSubscribers(subs ?? 0);
         setMrrByPlan(byPlan ?? {});
+        setAgentStats(ag);
+        setAgencyStats(agc);
 
         setCityDist(liveCityDist);
 
@@ -101,6 +109,79 @@ export default function AdminAnalyticsPage() {
   return (
     <div className="space-y-4">
       <h2 className="font-heading text-xl font-bold">Platform Analytics</h2>
+
+      {/* Sales agents + agency funnel */}
+      {agentStats && agencyStats && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4">
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <UserCog className="w-4 h-4 text-purple-600" /> Sales agents
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-3 gap-3 mb-3">
+                <Mini label="Active" value={String(agentStats.active)} sub={`${agentStats.total} total`} />
+                <Mini label="Platform-direct" value={String(agentStats.platformDirect)} sub="not agency-owned" />
+                <Mini label="Via agencies" value={String(agentStats.agencyOwned)} sub="agency-owned" />
+              </div>
+              <div className="grid grid-cols-2 gap-3 mb-3">
+                <Mini label="Commission earned" value={formatPKR(agentStats.commissionEarned)} sub="approved + paid" />
+                <Mini label="Commission paid out" value={formatPKR(agentStats.commissionPaid)} sub={`${agentStats.salonsOnboarded} salons onboarded`} />
+              </div>
+              {agentStats.topPerformers.length > 0 && (
+                <div className="mt-2">
+                  <p className="text-[11px] text-muted-foreground uppercase tracking-wider mb-1 flex items-center gap-1">
+                    <Trophy className="w-3 h-3" /> Top performers
+                  </p>
+                  <ul className="space-y-1">
+                    {agentStats.topPerformers.slice(0, 3).map((a) => (
+                      <li key={a.id} className="flex items-center justify-between text-sm">
+                        <Link href={`/admin/agents/${a.id}`} className="hover:underline">{a.name} <span className="text-[11px] text-muted-foreground font-mono">{a.code}</span></Link>
+                        <span className="font-medium">{formatPKR(a.earned)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <Building2 className="w-4 h-4 text-amber-600" /> Agencies
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-3 gap-3 mb-3">
+                <Mini label="Active" value={String(agencyStats.active)} sub={`${agencyStats.total} total`} />
+                <Mini label="Frozen" value={String(agencyStats.frozen)} sub="liability breach" />
+                <Mini label="Terminated" value={String(agencyStats.terminated)} sub="all-time" />
+              </div>
+              <div className="grid grid-cols-2 gap-3 mb-3">
+                <Mini label="Commission earned" value={formatPKR(agencyStats.commissionEarned)} sub="approved + paid" />
+                <Mini label="Commission paid out" value={formatPKR(agencyStats.commissionPaid)} sub={`${agencyStats.salonsByAgencies} salons via agencies`} />
+              </div>
+              {agencyStats.topPerformers.length > 0 && (
+                <div className="mt-2">
+                  <p className="text-[11px] text-muted-foreground uppercase tracking-wider mb-1 flex items-center gap-1">
+                    <Trophy className="w-3 h-3" /> Top performers
+                  </p>
+                  <ul className="space-y-1">
+                    {agencyStats.topPerformers.slice(0, 3).map((a) => (
+                      <li key={a.id} className="flex items-center justify-between text-sm">
+                        <Link href={`/admin/agencies/${a.id}`} className="hover:underline">{a.name} <span className="text-[11px] text-muted-foreground font-mono">{a.code}</span></Link>
+                        <span className="font-medium">{formatPKR(a.earned)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* Super admin subscription revenue (MRR) — separate from platform gross */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
@@ -208,6 +289,16 @@ export default function AdminAnalyticsPage() {
           </CardContent>
         </Card>
       </div>
+    </div>
+  );
+}
+
+function Mini({ label, value, sub }: { label: string; value: string; sub?: string }) {
+  return (
+    <div>
+      <p className="text-[10px] text-muted-foreground uppercase tracking-wider">{label}</p>
+      <p className="text-lg font-bold mt-0.5">{value}</p>
+      {sub && <p className="text-[10px] text-muted-foreground">{sub}</p>}
     </div>
   );
 }

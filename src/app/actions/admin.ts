@@ -227,6 +227,78 @@ export async function getAdminAnalytics() {
     }
   });
 
+  // Sales-agent + agency funnel stats. Summed totals power the cards at the
+  // top of the analytics page.
+  const [
+    { data: agents },
+    { data: agencies },
+    { data: agentCommsRaw },
+    { data: agencyCommsRaw },
+    { data: agencySalons },
+  ] = await Promise.all([
+    supabase.from('sales_agents').select('id, name, code, active, agency_id'),
+    supabase.from('agencies').select('id, name, code, status'),
+    supabase.from('agent_commissions').select('agent_id, amount, status, kind, created_at'),
+    supabase.from('agency_commissions').select('agency_id, amount, status, kind, created_at'),
+    supabase.from('salons').select('id, sold_by_agent_id'),
+  ]);
+
+  const activeAgents = (agents || []).filter((a) => (a as { active: boolean }).active).length;
+  const activeAgencies = (agencies || []).filter((a) => (a as { status: string }).status === 'active').length;
+  const frozenAgencies = (agencies || []).filter((a) => (a as { status: string }).status === 'frozen').length;
+
+  // Commissions roll-ups. Earned = approved + paid; paid = paid only.
+  let agentCommissionEarned = 0, agentCommissionPaid = 0;
+  const agentCommByAgent = new Map<string, number>();
+  for (const c of (agentCommsRaw || []) as { agent_id: string; amount: number; status: string }[]) {
+    const amt = Number(c.amount || 0);
+    if (c.status === 'approved' || c.status === 'paid') {
+      agentCommissionEarned += amt;
+      agentCommByAgent.set(c.agent_id, (agentCommByAgent.get(c.agent_id) ?? 0) + amt);
+    }
+    if (c.status === 'paid') agentCommissionPaid += amt;
+  }
+
+  let agencyCommissionEarned = 0, agencyCommissionPaid = 0;
+  const agencyCommByAgency = new Map<string, number>();
+  for (const c of (agencyCommsRaw || []) as { agency_id: string; amount: number; status: string }[]) {
+    const amt = Number(c.amount || 0);
+    if (c.status === 'approved' || c.status === 'paid') {
+      agencyCommissionEarned += amt;
+      agencyCommByAgency.set(c.agency_id, (agencyCommByAgency.get(c.agency_id) ?? 0) + amt);
+    }
+    if (c.status === 'paid') agencyCommissionPaid += amt;
+  }
+
+  // Salons onboarded by agents vs agencies (via sales_agents.agency_id link).
+  const agentAgencyIdMap = new Map<string, string | null>();
+  for (const a of (agents || []) as { id: string; agency_id: string | null }[]) {
+    agentAgencyIdMap.set(a.id, a.agency_id);
+  }
+  let salonsByPlatformAgents = 0;
+  let salonsByAgencyAgents = 0;
+  for (const s of (agencySalons || []) as { sold_by_agent_id: string | null }[]) {
+    if (!s.sold_by_agent_id) continue;
+    if (agentAgencyIdMap.get(s.sold_by_agent_id)) salonsByAgencyAgents += 1;
+    else salonsByPlatformAgents += 1;
+  }
+
+  // Top performers — top 5 by earned commission (agents and agencies, independent lists).
+  const topAgents = (agents || [])
+    .map((a) => {
+      const row = a as { id: string; name: string; code: string };
+      return { id: row.id, name: row.name, code: row.code, earned: agentCommByAgent.get(row.id) ?? 0 };
+    })
+    .sort((a, b) => b.earned - a.earned)
+    .slice(0, 5);
+  const topAgencies = (agencies || [])
+    .map((a) => {
+      const row = a as { id: string; name: string; code: string };
+      return { id: row.id, name: row.name, code: row.code, earned: agencyCommByAgency.get(row.id) ?? 0 };
+    })
+    .sort((a, b) => b.earned - a.earned)
+    .slice(0, 5);
+
   return {
     salons,
     cityDist,
@@ -235,6 +307,26 @@ export async function getAdminAnalytics() {
     subscriptionMrr,
     activeSubscribers,
     mrrByPlan,
+    agentStats: {
+      total: (agents || []).length,
+      active: activeAgents,
+      platformDirect: (agents || []).filter((a) => !(a as { agency_id: string | null }).agency_id).length,
+      agencyOwned: (agents || []).filter((a) => (a as { agency_id: string | null }).agency_id).length,
+      commissionEarned: agentCommissionEarned,
+      commissionPaid: agentCommissionPaid,
+      salonsOnboarded: salonsByPlatformAgents + salonsByAgencyAgents,
+      topPerformers: topAgents,
+    },
+    agencyStats: {
+      total: (agencies || []).length,
+      active: activeAgencies,
+      frozen: frozenAgencies,
+      terminated: (agencies || []).filter((a) => (a as { status: string }).status === 'terminated').length,
+      commissionEarned: agencyCommissionEarned,
+      commissionPaid: agencyCommissionPaid,
+      salonsByAgencies: salonsByAgencyAgents,
+      topPerformers: topAgencies,
+    },
   };
 }
 
