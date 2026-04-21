@@ -56,6 +56,24 @@ export function getPasswordError(pwd: string | null | undefined): string | null 
 }
 
 /**
+ * Relaxed password policy for sales agents. They are field-sales staff, not
+ * technical users, and pushing back with "needs uppercase + special" at the
+ * welcome-email reset page costs us activations. GoTrue enforces min 6
+ * server-side (default), so this matches the floor without demanding any
+ * character-class mix.
+ */
+export const AGENT_MIN_PASSWORD_LENGTH = 6;
+
+export function getAgentPasswordError(pwd: string | null | undefined): string | null {
+  const s = pwd ?? '';
+  if (s.length < AGENT_MIN_PASSWORD_LENGTH) {
+    return `Password must be at least ${AGENT_MIN_PASSWORD_LENGTH} characters`;
+  }
+  if (!/\S/.test(s)) return 'Password cannot be only whitespace';
+  return null;
+}
+
+/**
  * Email address. Lowercased and trimmed so downstream comparisons (rate
  * limiting, Supabase auth lookups) all see the same canonical form.
  *

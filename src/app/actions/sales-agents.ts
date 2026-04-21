@@ -178,3 +178,24 @@ export async function getMyAgentProfile(): Promise<{ data: SalesAgent | null; er
   if (error) return { data: null, error: error.message };
   return { data: (data as SalesAgent) || null, error: null };
 }
+
+/**
+ * Returns true if the given Supabase auth user id belongs to a sales agent.
+ * Used by the reset-password page to relax the password policy (agents are
+ * non-technical and the strict 8-char+complexity rule is too much friction
+ * at the welcome-email reset step). Service-role query so it works for any
+ * caller — no session required. No role guard: the client already holds a
+ * valid Supabase recovery session for the uid they're passing in, and the
+ * answer is just a boolean that leaks nothing.
+ */
+export async function isAuthUserSalesAgent(
+  authUserId: string,
+): Promise<{ isAgent: boolean }> {
+  if (!authUserId) return { isAgent: false };
+  const supabase = createServerClient();
+  const { count } = await supabase
+    .from('sales_agents')
+    .select('id', { count: 'exact', head: true })
+    .eq('user_id', authUserId);
+  return { isAgent: (count ?? 0) > 0 };
+}

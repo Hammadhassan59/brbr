@@ -6,16 +6,18 @@ import { Scissors } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { supabase } from '@/lib/supabase';
 import { destroySession } from '@/app/actions/auth';
+import { isAuthUserSalesAgent } from '@/app/actions/sales-agents';
 import { useAppStore } from '@/store/app-store';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { getPasswordError } from '@/lib/schemas/common';
+import { getPasswordError, getAgentPasswordError, AGENT_MIN_PASSWORD_LENGTH } from '@/lib/schemas/common';
 
 export default function ResetPasswordPage() {
   const router = useRouter();
   const [ready, setReady] = useState(false);
   const [validSession, setValidSession] = useState(false);
+  const [isAgent, setIsAgent] = useState(false);
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [saving, setSaving] = useState(false);
@@ -25,22 +27,35 @@ export default function ResetPasswordPage() {
   // that fragment for a session with PASSWORD_RECOVERY type. We wait for the
   // session to appear before showing the form.
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      setValidSession(!!data.session);
+    async function init() {
+      const { data } = await supabase.auth.getSession();
+      const has = !!data.session;
+      setValidSession(has);
+      if (has && data.session?.user.id) {
+        const { isAgent: agent } = await isAuthUserSalesAgent(data.session.user.id);
+        setIsAgent(agent);
+      }
       setReady(true);
-    });
-    const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
+    }
+    init();
+    const { data: sub } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === 'PASSWORD_RECOVERY' || session) {
         setValidSession(true);
+        if (session?.user.id) {
+          const { isAgent: agent } = await isAuthUserSalesAgent(session.user.id);
+          setIsAgent(agent);
+        }
         setReady(true);
       }
     });
     return () => sub.subscription.unsubscribe();
   }, []);
 
+  const validate = isAgent ? getAgentPasswordError : getPasswordError;
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const pwErr = getPasswordError(password);
+    const pwErr = validate(password);
     if (pwErr) { toast.error(pwErr); return; }
     if (password !== confirm) {
       toast.error('Passwords do not match');
@@ -101,10 +116,10 @@ export default function ResetPasswordPage() {
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                minLength={10}
+                minLength={isAgent ? AGENT_MIN_PASSWORD_LENGTH : 10}
                 required
                 className="mt-1.5"
-                placeholder="Min 10 characters"
+                placeholder={isAgent ? `Min ${AGENT_MIN_PASSWORD_LENGTH} characters` : 'Min 10 characters'}
               />
             </div>
             <div>
@@ -114,18 +129,22 @@ export default function ResetPasswordPage() {
                 type="password"
                 value={confirm}
                 onChange={(e) => setConfirm(e.target.value)}
-                minLength={8}
+                minLength={isAgent ? AGENT_MIN_PASSWORD_LENGTH : 8}
                 required
                 className="mt-1.5"
               />
-              <p className="text-xs text-muted-foreground mt-1">Min 8 characters, with an uppercase letter, a number, and a special character.</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                {isAgent
+                  ? `Min ${AGENT_MIN_PASSWORD_LENGTH} characters. Keep it simple and easy to remember.`
+                  : 'Min 8 characters, with an uppercase letter, a number, and a special character.'}
+              </p>
               {password && confirm && password !== confirm && (
                 <p className="text-xs text-destructive mt-1">Passwords do not match</p>
               )}
             </div>
             <Button
               type="submit"
-              disabled={saving || !!getPasswordError(password) || password !== confirm}
+              disabled={saving || !!validate(password) || password !== confirm}
               className="w-full bg-gold hover:bg-gold/90 text-black font-bold"
             >
               {saving ? 'Updating…' : 'Update password'}
