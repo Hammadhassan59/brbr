@@ -34,6 +34,14 @@ export async function getAdminDashboardData() {
   }
   const liveSalons = allSalons;
 
+  // Active sales-agent + agency counts for the admin-overview KPI tiles.
+  const [agentRes, agencyRes] = await Promise.all([
+    supabase.from('sales_agents').select('*', { count: 'exact', head: true }).eq('active', true),
+    supabase.from('agencies').select('*', { count: 'exact', head: true }).eq('status', 'active'),
+  ]);
+  const agentCount = agentRes.count ?? 0;
+  const agencyCount = agencyRes.count ?? 0;
+
   // Platform revenue = subscription MRR (what iCut earns from tenant plans),
   // not the combined tenant GMV (what tenants bill their own customers).
   // Mirrors the MRR calc in getAnalyticsData below.
@@ -79,6 +87,8 @@ export async function getAdminDashboardData() {
       pendingSetup,
       totalStaff: staffCount ?? 0,
       totalClients: clientCount ?? 0,
+      totalAgents: agentCount,
+      totalAgencies: agencyCount,
       monthlyRevenue,
       activeSubscribers,
       trialSalons,

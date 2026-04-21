@@ -3,8 +3,9 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import {
-  Store, Users, TrendingUp, DollarSign, AlertTriangle,
+  Store, DollarSign, AlertTriangle,
   CheckCircle, Clock, LogIn, Scissors, Loader2,
+  UserCog, Building2,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAppStore } from '@/store/app-store';
@@ -44,6 +45,8 @@ export default function AdminDashboard() {
     pendingSetup: 0,
     totalStaff: 0,
     totalClients: 0,
+    totalAgents: 0,
+    totalAgencies: 0,
     monthlyRevenue: 0,
     activeSubscribers: 0,
     trialSalons: 0,
@@ -114,8 +117,8 @@ export default function AdminDashboard() {
         {[
           { label: 'Total Salons', value: String(platformStats.totalSalons), sub: `${platformStats.activeSalons} active`, icon: Store, color: 'text-blue-600', bg: 'bg-blue-500/10' },
           { label: 'Platform Revenue', value: formatPKRShort(platformStats.monthlyRevenue), sub: `${platformStats.activeSubscribers} active ${platformStats.activeSubscribers === 1 ? 'subscriber' : 'subscribers'} · MRR`, icon: DollarSign, color: 'text-green-600', bg: 'bg-green-500/10' },
-          { label: 'Total Clients', value: String(platformStats.totalClients), sub: 'Across all salons', icon: Users, color: 'text-purple-600', bg: 'bg-purple-500/10' },
-          { label: 'Total Staff', value: String(platformStats.totalStaff), sub: `Top city: ${platformStats.topCity}`, icon: TrendingUp, color: 'text-amber-600', bg: 'bg-amber-500/10' },
+          { label: 'Total Agents', value: String(platformStats.totalAgents), sub: 'Active sales agents', icon: UserCog, color: 'text-purple-600', bg: 'bg-purple-500/10' },
+          { label: 'Total Agencies', value: String(platformStats.totalAgencies), sub: 'Active partner agencies', icon: Building2, color: 'text-amber-600', bg: 'bg-amber-500/10' },
         ].map((c) => (
           <Card key={c.label}>
             <CardContent className="p-4">
