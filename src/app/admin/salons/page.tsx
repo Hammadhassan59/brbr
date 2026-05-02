@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import { LogIn, Plus, Loader2, Settings, Search, LayoutGrid, List } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAppStore } from '@/store/app-store';
-import { supabase } from '@/lib/supabase';
 import { getAdminSalons, impersonateSalon } from '@/app/actions/admin';
 import { formatPKDate } from '@/lib/utils/dates';
 import { Card, CardContent } from '@/components/ui/card';
@@ -77,21 +76,9 @@ export default function AdminSalonsPage() {
       toast.error(error || 'Could not log in as this salon');
       return;
     }
-    // Redeem the owner's magic-link token so the browser's Supabase client
-    // carries the owner's auth.uid(). RLS policies on salon-scoped tables
-    // (via get_user_salon_id()) silently return zero rows without this.
-    const { error: otpErr } = await supabase.auth.verifyOtp({
-      type: 'magiclink',
-      token_hash: data.supabaseAuth.tokenHash,
-    });
-    if (otpErr) {
-      setEnteringName(null);
-      toast.error('Could not establish salon session: ' + otpErr.message);
-      return;
-    }
-    // impersonateSalon() already signed a new icut-token JWT server-side
-    // with role=owner. The proxy verifies that on the next navigation; we
-    // no longer mirror forgeable icut-session / icut-role cookies here.
+    // The iCut JWT swap (signSession) already happened server-side inside
+    // impersonateSalon(). Proxy.ts verifies the new icut-token on next nav.
+    // No client-side Supabase session swap to do anymore.
     // Mirror a normal owner login into Zustand so every {isOwner && ...} gate opens.
     setSalon(data.salon as unknown as Salon);
     setBranches((data.branches as unknown) as Branch[]);

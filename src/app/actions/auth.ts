@@ -655,11 +655,11 @@ export async function destroySession() {
  * simply register an unconfirmed auth.users row with a victim's email and
  * hijack their staff/partner record.
  *
- * Rate-limited: login happens client-side via supabase.auth.signInWithPassword
- * (outside our server action surface), but every successful client login is
- * followed by this server call. Gating here throttles automated credential
- * stuffing that makes it past Supabase's own rate limit. Keyed on IP + email
- * so one attacker can't mask their rate by rotating emails from a single IP.
+ * Rate-limited: signInWithPassword in @/app/actions/auth-credentials already
+ * rate-limits the credential check itself, but every successful login is
+ * followed by this resolve call. Gating here throttles automated credential
+ * stuffing one layer deeper. Keyed on IP + email so an attacker can't mask
+ * their rate by rotating emails from a single IP.
  */
 export async function resolveUserRole(authUserId: string, authEmail: string) {
   try {

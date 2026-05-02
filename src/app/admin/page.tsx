@@ -9,7 +9,6 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAppStore } from '@/store/app-store';
-import { supabase } from '@/lib/supabase';
 import { formatPKRShort } from '@/lib/utils/currency';
 import { getAdminDashboardData, impersonateSalon } from '@/app/actions/admin';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -78,18 +77,9 @@ export default function AdminDashboard() {
       setImpersonatingId(null);
       return;
     }
-    // Flip the browser's Supabase Auth session to the salon owner so RLS-gated
-    // client-side reads resolve against the right auth.uid() — same pattern as
-    // /admin/salons/[id] "Enter Dashboard".
-    const { error: otpErr } = await supabase.auth.verifyOtp({
-      type: 'magiclink',
-      token_hash: data.supabaseAuth.tokenHash,
-    });
-    if (otpErr) {
-      toast.error('Could not switch Supabase session — please log in as the owner instead');
-      setImpersonatingId(null);
-      return;
-    }
+    // The iCut JWT swap (signSession) already happened server-side inside
+    // impersonateSalon(). With Supabase removed there's no second client-side
+    // session to flip — proxy.ts verifies the new iCut token on next nav.
     // Mirror a normal owner login into Zustand so every {isOwner && ...} gate opens.
     setSalon(data.salon as unknown as Salon);
     setStoreBranches((data.branches as unknown) as Branch[]);

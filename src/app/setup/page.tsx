@@ -4,7 +4,6 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Scissors, ChevronRight, ChevronLeft, Check, Plus, X, Sparkles, Users } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { supabase } from '@/lib/supabase';
 import { setupSalon, checkEmailAvailable, lookupAgentByCode } from '@/app/actions/setup';
 import { getPasswordError } from '@/lib/schemas/common';
 import { useLanguage } from '@/components/providers/language-provider';
@@ -291,7 +290,8 @@ export default function SetupPage() {
   async function handleFinish() {
     setLoading(true);
     try {
-      const user = (await supabase.auth.getUser()).data.user;
+      // ownerId is derived server-side from the verified JWT inside setupSalon;
+      // client-supplied ownership was the IDOR fixed in the security pass.
       const slug = salonName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
 
       // Build working hours
@@ -315,7 +315,7 @@ export default function SetupPage() {
         phone,
         whatsapp: sameAsPhone ? phone : whatsapp,
         branchName: branchName.trim(),
-        ownerId: user?.id ?? '',
+        ownerId: '',
         agentCode: agentCode.trim() || undefined,
         prayerBlockEnabled: prayerBlocks,
         workingHours,
@@ -341,11 +341,15 @@ export default function SetupPage() {
       setCurrentBranch(newBranch);
       setIsOwner(true);
 
-      // Re-sign the JWT session with correct salon/branch IDs
-      const { signSession } = await import('@/app/actions/auth');
+      // Re-sign the JWT session with correct salon/branch IDs. staffId is
+      // the auth user id which setupSalon already validated server-side via
+      // the verified JWT, so passing empty here lets signSession resolve it
+      // from the existing session cookie.
+      const { signSession, verifySession } = await import('@/app/actions/auth');
+      const current = await verifySession().catch(() => null);
       await signSession({
         salonId: newSalon.id,
-        staffId: user?.id ?? '',
+        staffId: current?.staffId ?? '',
         role: 'owner',
         branchId: newBranch.id,
         name: 'Owner',

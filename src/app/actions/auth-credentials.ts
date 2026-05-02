@@ -348,6 +348,58 @@ export async function resetPasswordForEmail(email: string, opts?: { redirectTo?:
   return { error: null };
 }
 
+// --- 6. consume recovery token + update password (atomic) -----------------
+
+export async function consumeRecoveryToken(input: { email: string; token: string; newPassword: string }): Promise<{ error: { message: string; status?: number } | null }> {
+  const ip = await clientIp();
+  const rl = await checkRateLimit('recovery-consume', `${ip}:${input.email.toLowerCase()}`, BUCKETS.LOGIN_ATTEMPTS.max, BUCKETS.LOGIN_ATTEMPTS.windowMs);
+  if (!rl.ok) {
+    return { error: { message: rl.error ?? 'Too many attempts', status: 429 } };
+  }
+
+  const email = input.email.trim().toLowerCase();
+  if (input.newPassword.length < 8) {
+    return { error: { message: 'Password too short', status: 400 } };
+  }
+
+  // Single round-trip: validate token + update password + burn token. The
+  // RETURNING ensures we know whether any row matched (i.e. token was valid).
+  const { rows } = await pool.query<{ id: string }>(
+    `UPDATE auth.users
+        SET encrypted_password = crypt($3, gen_salt('bf', 10)),
+            recovery_token = '',
+            recovery_sent_at = NULL,
+            updated_at = now()
+      WHERE email = $1
+        AND recovery_token = $2
+        AND recovery_sent_at > now() - interval '1 hour'
+      RETURNING id`,
+    [email, input.token, input.newPassword],
+  );
+
+  if (rows.length === 0) {
+    return { error: { message: 'Invalid or expired reset link', status: 400 } };
+  }
+  return { error: null };
+}
+
+// --- 7. lookup whether email belongs to a sales-agent (for password rules) -
+
+export async function lookupUserKindByEmail(email: string): Promise<{ kind: 'sales_agent' | 'other' | 'unknown' }> {
+  const lower = email.trim().toLowerCase();
+  const { rows } = await pool.query<{ id: string }>(
+    `SELECT u.id
+       FROM auth.users u
+       JOIN public.sales_agents a ON a.auth_user_id = u.id
+      WHERE u.email = $1
+      LIMIT 1`,
+    [lower],
+  );
+  if (rows.length > 0) return { kind: 'sales_agent' };
+  const u = await pool.query<{ id: string }>(`SELECT id FROM auth.users WHERE email = $1 LIMIT 1`, [lower]);
+  return { kind: u.rows[0] ? 'other' : 'unknown' };
+}
+
 // --- email templates (will move to email-templates.ts later) ---------------
 
 function renderConfirmationEmail(otp: string): string {
