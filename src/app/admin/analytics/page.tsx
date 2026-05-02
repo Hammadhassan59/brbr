@@ -1,5 +1,10 @@
 'use client';
 
+/* eslint-disable @typescript-eslint/no-explicit-any -- pg-adapter typing leaves
+   data as `any`, so map/filter callbacks need explicit `: any` annotations
+   to satisfy noImplicitAny. Re-enabling the rule once Phase 2 finishes and
+   types tighten. */
+
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Loader2, UserCog, Building2, Trophy } from 'lucide-react';
@@ -135,7 +140,7 @@ export default function AdminAnalyticsPage() {
                     <Trophy className="w-3 h-3" /> Top performers
                   </p>
                   <ul className="space-y-1">
-                    {agentStats.topPerformers.slice(0, 3).map((a) => (
+                    {agentStats.topPerformers.slice(0, 3).map((a: any) => (
                       <li key={a.id} className="flex items-center justify-between text-sm">
                         <Link href={`/admin/agents/${a.id}`} className="hover:underline">{a.name} <span className="text-[11px] text-muted-foreground font-mono">{a.code}</span></Link>
                         <span className="font-medium">{formatPKR(a.earned)}</span>
@@ -169,7 +174,7 @@ export default function AdminAnalyticsPage() {
                     <Trophy className="w-3 h-3" /> Top performers
                   </p>
                   <ul className="space-y-1">
-                    {agencyStats.topPerformers.slice(0, 3).map((a) => (
+                    {agencyStats.topPerformers.slice(0, 3).map((a: any) => (
                       <li key={a.id} className="flex items-center justify-between text-sm">
                         <Link href={`/admin/agencies/${a.id}`} className="hover:underline">{a.name} <span className="text-[11px] text-muted-foreground font-mono">{a.code}</span></Link>
                         <span className="font-medium">{formatPKR(a.earned)}</span>

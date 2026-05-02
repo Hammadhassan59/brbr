@@ -17,7 +17,8 @@ export async function getAdminDashboardData() {
   if (salonErr) throw salonErr;
 
   const allSalons = salons || [];
-  const liveSalonIds = allSalons.map((s) => s.id);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const liveSalonIds = allSalons.map((s: any) => s.id);
 
   // Only count staff/clients whose salon_id points at a salon that still
   // exists. If FK cascades get bypassed (e.g. session_replication_role =
@@ -60,7 +61,8 @@ export async function getAdminDashboardData() {
   }
   let monthlyRevenue = 0;
   let activeSubscribers = 0;
-  liveSalons.forEach((s) => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  liveSalons.forEach((s: any) => {
     if (s.subscription_status === 'active' && s.subscription_plan && s.subscription_plan !== 'none') {
       monthlyRevenue += planPrices[s.subscription_plan] ?? 0;
       activeSubscribers += 1;
@@ -69,16 +71,21 @@ export async function getAdminDashboardData() {
 
   // Top city — real tenants only.
   const cityCounts: Record<string, number> = {};
-  liveSalons.forEach((s) => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  liveSalons.forEach((s: any) => {
     const city = s.city || 'Unknown';
     cityCounts[city] = (cityCounts[city] || 0) + 1;
   });
   const topCity = Object.entries(cityCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || '—';
 
-  const activeSalons = liveSalons.filter((s) => s.subscription_status === 'active').length;
-  const trialSalons = liveSalons.filter((s) => s.subscription_status === 'pending').length;
-  const expiredSalons = liveSalons.filter((s) => s.subscription_status === 'expired' || s.subscription_status === 'suspended').length;
-  const pendingSetup = liveSalons.filter((s) => !s.setup_complete).length;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const activeSalons = liveSalons.filter((s: any) => s.subscription_status === 'active').length;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const trialSalons = liveSalons.filter((s: any) => s.subscription_status === 'pending').length;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const expiredSalons = liveSalons.filter((s: any) => s.subscription_status === 'expired' || s.subscription_status === 'suspended').length;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const pendingSetup = liveSalons.filter((s: any) => !s.setup_complete).length;
 
   return {
     salons: allSalons,
@@ -177,7 +184,8 @@ export async function getAdminAnalytics() {
 
   // City distribution
   const cityCounts: Record<string, number> = {};
-  salons.forEach((s) => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  salons.forEach((s: any) => {
     const city = s.city || 'Unknown';
     cityCounts[city] = (cityCounts[city] || 0) + 1;
   });
@@ -196,7 +204,8 @@ export async function getAdminAnalytics() {
 
   // Build salon name map
   const salonNameMap: Record<string, string> = {};
-  salons.forEach((s) => { salonNameMap[s.id] = s.name; });
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  salons.forEach((s: any) => { salonNameMap[s.id] = s.name; });
 
   // Subscription MRR: sum of active salons' plan prices from platform_settings.plans
   const { data: plansSetting } = await supabase
@@ -216,7 +225,8 @@ export async function getAdminAnalytics() {
   let subscriptionMrr = 0;
   let activeSubscribers = 0;
   const mrrByPlan: Record<string, { count: number; revenue: number }> = {};
-  salons.forEach((s) => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  salons.forEach((s: any) => {
     if (s.subscription_status === 'active' && s.subscription_plan && s.subscription_plan !== 'none') {
       const price = planPrices[s.subscription_plan] ?? 0;
       subscriptionMrr += price;
@@ -244,9 +254,12 @@ export async function getAdminAnalytics() {
     supabase.from('salons').select('id, sold_by_agent_id'),
   ]);
 
-  const activeAgents = (agents || []).filter((a) => (a as { active: boolean }).active).length;
-  const activeAgencies = (agencies || []).filter((a) => (a as { status: string }).status === 'active').length;
-  const frozenAgencies = (agencies || []).filter((a) => (a as { status: string }).status === 'frozen').length;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const activeAgents = (agents || []).filter((a: any) => (a as { active: boolean }).active).length;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const activeAgencies = (agencies || []).filter((a: any) => (a as { status: string }).status === 'active').length;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const frozenAgencies = (agencies || []).filter((a: any) => (a as { status: string }).status === 'frozen').length;
 
   // Commissions roll-ups. Earned = approved + paid; paid = paid only.
   let agentCommissionEarned = 0, agentCommissionPaid = 0;
@@ -286,18 +299,22 @@ export async function getAdminAnalytics() {
 
   // Top performers — top 5 by earned commission (agents and agencies, independent lists).
   const topAgents = (agents || [])
-    .map((a) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    .map((a: any) => {
       const row = a as { id: string; name: string; code: string };
       return { id: row.id, name: row.name, code: row.code, earned: agentCommByAgent.get(row.id) ?? 0 };
     })
-    .sort((a, b) => b.earned - a.earned)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    .sort((a: any, b: any) => b.earned - a.earned)
     .slice(0, 5);
   const topAgencies = (agencies || [])
-    .map((a) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    .map((a: any) => {
       const row = a as { id: string; name: string; code: string };
       return { id: row.id, name: row.name, code: row.code, earned: agencyCommByAgency.get(row.id) ?? 0 };
     })
-    .sort((a, b) => b.earned - a.earned)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    .sort((a: any, b: any) => b.earned - a.earned)
     .slice(0, 5);
 
   return {
@@ -311,8 +328,10 @@ export async function getAdminAnalytics() {
     agentStats: {
       total: (agents || []).length,
       active: activeAgents,
-      platformDirect: (agents || []).filter((a) => !(a as { agency_id: string | null }).agency_id).length,
-      agencyOwned: (agents || []).filter((a) => (a as { agency_id: string | null }).agency_id).length,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      platformDirect: (agents || []).filter((a: any) => !(a as { agency_id: string | null }).agency_id).length,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      agencyOwned: (agents || []).filter((a: any) => (a as { agency_id: string | null }).agency_id).length,
       commissionEarned: agentCommissionEarned,
       commissionPaid: agentCommissionPaid,
       salonsOnboarded: salonsByPlatformAgents + salonsByAgencyAgents,
@@ -322,7 +341,8 @@ export async function getAdminAnalytics() {
       total: (agencies || []).length,
       active: activeAgencies,
       frozen: frozenAgencies,
-      terminated: (agencies || []).filter((a) => (a as { status: string }).status === 'terminated').length,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      terminated: (agencies || []).filter((a: any) => (a as { status: string }).status === 'terminated').length,
       commissionEarned: agencyCommissionEarned,
       commissionPaid: agencyCommissionPaid,
       salonsByAgencies: salonsByAgencyAgents,

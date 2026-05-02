@@ -405,7 +405,8 @@ export async function exportLeadsCSV(): Promise<{ data: string | null; error: st
     .order('created_at', { ascending: false });
   if (error) return { data: null, error: error.message };
 
-  const rows = (data || []).map((r) => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const rows = (data || []).map((r: any) => {
     const lead = r as unknown as {
       created_at: string;
       salon_name: string;

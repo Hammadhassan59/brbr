@@ -148,7 +148,8 @@ export async function listMySalons(): Promise<{ data: MySalonRow[]; error: strin
     totals[row.salon_id] = (totals[row.salon_id] || 0) + Number(row.amount);
   }
   return {
-    data: (salons || []).map(s => ({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    data: (salons || []).map((s: any) => ({
       id: (s as MySalonRow).id,
       name: (s as MySalonRow).name,
       subscription_plan: (s as MySalonRow).subscription_plan,
@@ -399,7 +400,8 @@ export async function getAgentReport(input: {
     status: s.subscription_status,
     expires_at: s.subscription_expires_at,
     lifetime_commission: salonCommissionMap.get(s.id) ?? 0,
-  })).sort((a, b) => b.lifetime_commission - a.lifetime_commission);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  })).sort((a: any, b: any) => b.lifetime_commission - a.lifetime_commission);
   const salonsSold = {
     total: salonsList.length,
     active: salonsList.filter((s) => s.status === 'active').length,
@@ -522,7 +524,8 @@ export async function getAgentsLeaderboard(input: {
     agent_code: a.code,
     earned: earnedByAgent.get(a.id) ?? 0,
     salons: salonsByAgent.get(a.id)?.size ?? 0,
-  })).sort((a, b) => b.earned - a.earned);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  })).sort((a: any, b: any) => b.earned - a.earned);
 
   // "Salons onboarded" = unique salon_ids that received first_sale commissions
   // in the window (a proxy for "new this period").

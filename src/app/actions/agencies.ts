@@ -534,7 +534,8 @@ export async function listUnremittedPayments(
     .order('created_at', { ascending: true });
   if (error) return { data: [], error: error.message };
   return {
-    data: (data || []).map((r) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    data: (data || []).map((r: any) => {
       const row = r as unknown as {
         id: string;
         amount: number;

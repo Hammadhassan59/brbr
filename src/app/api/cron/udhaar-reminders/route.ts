@@ -56,7 +56,8 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ processed: 0, sent: 0, message: 'No clients with udhaar' });
   }
 
-  const clientIds = clients.map((c) => c.id);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const clientIds = clients.map((c: any) => c.id);
   const { data: oldestBills } = await supabase
     .from('bills')
     .select('client_id, created_at')

@@ -24,7 +24,8 @@ export async function requestPayout(): Promise<{ data: AgentPayout | null; error
   if (selErr) return { data: null, error: selErr.message };
   if (!rows || rows.length === 0) return { data: null, error: 'No commissions available to request' };
 
-  const total = rows.reduce((s, r) => s + Number((r as { amount: number }).amount), 0);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const total = rows.reduce((s: any, r: any) => s + Number((r as { amount: number }).amount), 0);
 
   // 2. Create the payout row (partial unique index prevents duplicate open requests)
   const { data: payout, error: poErr } = await supabase
