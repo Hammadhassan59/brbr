@@ -4,7 +4,13 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Scissors, Eye, EyeOff } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { supabase } from '@/lib/supabase';
+import {
+  signInWithPassword as authSignIn,
+  signUp as authSignUp,
+  resendConfirmation as authResend,
+  verifyOtp as authVerifyOtp,
+  resetPasswordForEmail as authReset,
+} from '@/app/actions/auth-credentials';
 import { useLanguage } from '@/components/providers/language-provider';
 import { useAppStore } from '@/store/app-store';
 import { Button } from '@/components/ui/button';
@@ -119,7 +125,7 @@ export default function LoginPage() {
     e.preventDefault();
     setLoading(true);
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      const { data, error } = await authSignIn({ email, password });
       if (error) throw error;
 
       const [result, superAdmin, adminRole] = await Promise.all([
@@ -310,53 +316,12 @@ export default function LoginPage() {
     if (!agreedToTerms) { toast.error(t('mustAcceptTerms')); return; }
     setLoading(true);
     try {
-      const { data, error } = await supabase.auth.signUp({ email, password });
-      if (error) throw error;
-      if (!data.user) throw new Error('Signup failed. Please try again.');
-
-      // Supabase user-enumeration protection: when email confirmations are
-      // required AND the email already exists, signUp returns a fake user row
-      // with identities=[] and no session. The row might belong to either
-      // (a) a fully-confirmed user — really "already registered"
-      // (b) an UNCONFIRMED user who gave up mid-verify on a prior attempt
-      //
-      // We can't tell which from the signUp response, so we call resend:
-      // GoTrue resends the confirmation code for unconfirmed users and
-      // errors ('User already registered'/'email_exists') for confirmed
-      // ones. That lets abandoned signups resume seamlessly instead of
-      // getting stuck behind a misleading "already registered" toast.
-      if (Array.isArray(data.user.identities) && data.user.identities.length === 0) {
-        const { error: resendErr } = await supabase.auth.resend({ type: 'signup', email });
-        if (resendErr) {
-          toast.error(friendlyAuthError(resendErr.message));
-          return;
-        }
-        setAuthMode('verify');
-        setOtpCode('');
-        setResendCooldown(30);
-        toast.success(`We sent a 6-digit code to ${email}`);
-        return;
-      }
-
-      // Legacy path: if GoTrue still has GOTRUE_MAILER_AUTOCONFIRM=true, it
-      // returns a session immediately. Mint the iCut JWT and forward to
-      // /setup. This branch becomes dead once AUTOCONFIRM is flipped off.
-      if (data.session) {
-        setIsOwner(true);
-        await signSession({
-          salonId: '',
-          staffId: data.user.id,
-          role: 'owner',
-          branchId: '',
-          name: data.user.email || email,
-        });
-        toast.success('Account created!');
-        window.location.href = '/setup';
-        return;
-      }
-
-      // Normal path (confirmations required): flip to the OTP code-entry
-      // screen. GoTrue has already sent a 6-digit code via Resend SMTP.
+      const { data, error } = await authSignUp({ email, password });
+      if (error) throw new Error(error.message);
+      // Server handles both "fresh signup" and "abandoned-signup retry" by
+      // returning a user + sending the OTP. Confirmed users hit the error
+      // branch above with "User already registered".
+      void data;
       setAuthMode('verify');
       setOtpCode('');
       setResendCooldown(30);
@@ -378,15 +343,12 @@ export default function LoginPage() {
     }
     setLoading(true);
     try {
-      const { data, error } = await supabase.auth.verifyOtp({
+      const { data, error } = await authVerifyOtp({
         email,
         token: code,
         type: 'signup',
       });
-      if (error) throw error;
-      if (!data.session || !data.user) {
-        throw new Error('Verification did not return a session. Please try again.');
-      }
+      if (error) throw new Error(error.message);
       setIsOwner(true);
       await signSession({
         salonId: '',
@@ -408,7 +370,7 @@ export default function LoginPage() {
   async function handleResend() {
     if (resendCooldown > 0) return;
     try {
-      const { error } = await supabase.auth.resend({ type: 'signup', email });
+      const { error } = await authResend(email);
       if (error) throw error;
       setResendCooldown(30);
       toast.success('Sent a new code. Check your inbox.');
@@ -531,10 +493,10 @@ export default function LoginPage() {
                       }
                       try {
                         const origin = typeof window !== 'undefined' ? window.location.origin : 'https://icut.pk';
-                        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+                        const { error } = await authReset(email, {
                           redirectTo: `${origin}/reset-password`,
                         });
-                        if (error) throw error;
+                        if (error) throw new Error(error.message);
                         toast.success(t('passwordResetSent'));
                       } catch (err: unknown) {
                         toast.error(err instanceof Error ? err.message : t('somethingWentWrong'));
