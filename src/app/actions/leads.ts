@@ -4,6 +4,7 @@ import { createServerClient } from '@/lib/supabase';
 import { verifySession, requireAdminRole } from './auth';
 import { rowsToCSV } from '@/lib/csv-export';
 import { getSignedStorageUrl } from '@/lib/storage-url';
+import { uploadFile } from '@/lib/file-storage';
 import type { Lead, LeadStatus } from '@/types/sales';
 import * as authAdmin from '@/app/actions/auth-admin';
 
@@ -219,9 +220,13 @@ export async function createMyLead(
     if (photo.size > 5 * 1024 * 1024) return { data: null, error: 'Photo too large (5MB max)' };
     const ext = photo.name.split('.').pop()?.toLowerCase().replace(/[^a-z0-9]/g, '') || 'jpg';
     const path = `${session.agentId}/${crypto.randomUUID()}.${ext}`;
-    const { error: upErr } = await supabase.storage
-      .from('lead-photos')
-      .upload(path, photo, { contentType: photo.type || 'image/jpeg', upsert: false });
+    const { error: upErr } = await uploadFile({
+      bucket: 'lead-photos',
+      path,
+      data: photo,
+      contentType: photo.type || 'image/jpeg',
+      upsert: false,
+    });
     if (!upErr) {
       photo_path = path;
     }

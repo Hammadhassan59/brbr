@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabase';
 import { createClient as createClientAction, updateClient } from '@/app/actions/clients';
+import { findClientByPhone } from '@/app/actions/lists';
 import { useAppStore } from '@/store/app-store';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -64,16 +64,10 @@ export function ClientForm({ client, onSaved }: ClientFormProps) {
         if (showActionError(error)) return;
         toast.success('Client updated');
       } else {
-        // Check for duplicate phone within the current branch
+        // Check for duplicate phone within the current branch.
         if (phone) {
-          const { data: existing } = await supabase
-            .from('clients')
-            .select('id')
-            .eq('salon_id', salon.id)
-            .eq('branch_id', currentBranch.id)
-            .eq('phone', phone)
-            .limit(1);
-          if (existing && existing.length > 0) {
+          const { data: existing } = await findClientByPhone({ branchId: currentBranch.id, phone });
+          if (existing) {
             toast.error('A client with this phone number already exists');
             setSaving(false);
             return;

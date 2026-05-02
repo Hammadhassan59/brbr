@@ -4,12 +4,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, Shield, ShieldAlert, User } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { supabase } from '@/lib/supabase';
 import { useAppStore } from '@/store/app-store';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { showActionError, handleSubscriptionError } from '@/components/paywall-dialog';
+import { getStaffBranchIds } from '@/app/actions/lists';
 import {
   PERMISSION_GROUPS,
   PERMISSION_LABELS,
@@ -125,6 +125,7 @@ function PermissionsEditor({
   }, [salonId, currentBranch]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     refresh();
   }, [refresh]);
 
@@ -437,17 +438,14 @@ function StaffOverrideEditor({
     let cancelled = false;
     (async () => {
       setBranchesLoaded(false);
-      const { data, error } = await supabase
-        .from('staff_branches')
-        .select('branch_id')
-        .eq('staff_id', staff.id);
+      const { data, error } = await getStaffBranchIds(staff.id);
       if (cancelled) return;
       if (error) {
-        toast.error(error.message);
+        toast.error(error);
         setBranchesLoaded(true);
         return;
       }
-      setBranchIds(new Set((data ?? []).map((r: { branch_id: string }) => r.branch_id)));
+      setBranchIds(new Set(data));
       setBranchesLoaded(true);
     })();
     return () => {
@@ -465,11 +463,8 @@ function StaffOverrideEditor({
       if (ids.length === 0) {
         toast.error('At least one branch is required');
         // Re-fetch so UI snaps back.
-        const { data } = await supabase
-          .from('staff_branches')
-          .select('branch_id')
-          .eq('staff_id', staff.id);
-        setBranchIds(new Set((data ?? []).map((r: { branch_id: string }) => r.branch_id)));
+        const { data } = await getStaffBranchIds(staff.id);
+        setBranchIds(new Set(data));
         return;
       }
       const { error } = await updateStaffBranches(staff.id, ids);

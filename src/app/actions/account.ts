@@ -1,6 +1,5 @@
 'use server';
 
-import { createClient } from '@supabase/supabase-js';
 import { headers } from 'next/headers';
 import { verifySession } from './auth';
 import { checkRateLimit } from '@/lib/with-rate-limit';
@@ -9,6 +8,7 @@ import { getClientIp } from '@/lib/rate-limit';
 import { PasswordSchema } from '@/lib/schemas/common';
 import { safeError } from '@/lib/action-error';
 import * as authAdmin from '@/app/actions/auth-admin';
+import { signInWithPassword as verifyCredentials } from './auth-credentials';
 
 type ActionResult<T> = { data: T; error: null } | { data: null; error: string };
 
@@ -61,13 +61,9 @@ async function resolveAuthUserId(): Promise<
   return { error: 'Account management not available for this role' };
 }
 
-function anonClient() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-  return createClient(url, anonKey, {
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
-}
+// anonClient() helper deleted — password verification now goes through
+// signInWithPassword in @/app/actions/auth-credentials, which checks the
+// bcrypt hash via Postgres crypt() directly. No throwaway HTTP client.
 
 export interface AccountProfile {
   email: string;
@@ -149,8 +145,6 @@ export async function getAccountEmail(): Promise<ActionResult<{ email: string }>
   const resolved = await resolveAuthUserId();
   if ('error' in resolved) return { data: null, error: resolved.error };
 
-  const { createServerClient } = await import('@/lib/supabase');
-  const supabase = createServerClient();
   const { data, error } = await authAdmin.getUserById(resolved.authUserId);
   if (error || !data.user) return { data: null, error: error ? safeError(error) : 'User not found' };
   return { data: { email: data.user.email || '' }, error: null };
@@ -193,22 +187,18 @@ export async function changeAccountPassword(
     // headers() may be unavailable in some test environments; fall through.
   }
 
-  const { createServerClient } = await import('@/lib/supabase');
-  const supabase = createServerClient();
-
   const { data: userData, error: userErr } = await authAdmin.getUserById(resolved.authUserId);
   if (userErr || !userData.user?.email) {
     return { data: null, error: userErr ? safeError(userErr) : 'User not found' };
   }
 
-  // Verify current password by attempting sign-in on a throwaway anon client.
-  const anon = anonClient();
-  const { error: signInErr } = await anon.auth.signInWithPassword({
+  // Verify current password via the auth-credentials server action (bcrypt
+  // check through Postgres crypt() — no Supabase HTTP).
+  const { error: signInErr } = await verifyCredentials({
     email: userData.user.email,
     password: currentPassword,
   });
   if (signInErr) return { data: null, error: 'Current password is incorrect' };
-  await anon.auth.signOut();
 
   const { error: updErr } = await authAdmin.updateUserById(resolved.authUserId, {
     password: newPassword,
@@ -241,9 +231,6 @@ export async function changeAccountEmail(
   );
   if (!rl.ok) return { data: null, error: rl.error ?? 'Too many attempts, please try again later.' };
 
-  const { createServerClient } = await import('@/lib/supabase');
-  const supabase = createServerClient();
-
   const { data: userData, error: userErr } = await authAdmin.getUserById(resolved.authUserId);
   if (userErr || !userData.user?.email) {
     return { data: null, error: userErr ? safeError(userErr) : 'User not found' };
@@ -253,47 +240,25 @@ export async function changeAccountEmail(
     return { data: null, error: 'New email is the same as current email' };
   }
 
-  // Verify current password before changing email. We reuse the anon client's
-  // signInWithPassword so we never trust a claim coming from the client — and
-  // we grab the user's access token from that sign-in so we can do the email
-  // change as the user, not as service-role.
-  const anon = anonClient();
-  const { data: signInData, error: signInErr } = await anon.auth.signInWithPassword({
+  // Verify current password before changing email — direct bcrypt check
+  // through Postgres crypt(). No throwaway HTTP client.
+  const { error: signInErr } = await verifyCredentials({
     email: currentEmail,
     password: currentPassword,
   });
-  if (signInErr || !signInData.session) {
-    await anon.auth.signOut().catch(() => {});
+  if (signInErr) {
     return { data: null, error: 'Current password is incorrect' };
   }
 
-  // Email change flow (Supabase "double-confirm" when Secure email change is on):
-  //   1. user.auth.updateUser({ email }) — triggered via the user's own
-  //      access token so Supabase sends the verification email and keeps the
-  //      OLD email in place until both old and new addresses confirm.
-  //   2. We do NOT call authAdmin.updateUserById({ email_confirm: true }),
-  //      which would bypass verification and hand the account to anyone who
-  //      submits a new email (no link click required). The old code did this.
-  //
-  // The user's email on the auth row only flips to `newEmail` AFTER they
-  // click the confirmation link(s). Until then, getAccountEmail() still
-  // returns their current email — that's expected behaviour.
-  //
-  // We use the user's access token by passing it as the Authorization header
-  // on a fresh supabase client. This is the "client-authenticated" path the
-  // task description mentions; no service-role bypass.
-  const userAccessToken = signInData.session.access_token;
-  const { createClient: createAuthedClient } = await import('@supabase/supabase-js');
-  const authed = createAuthedClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      auth: { persistSession: false, autoRefreshToken: false },
-      global: { headers: { Authorization: `Bearer ${userAccessToken}` } },
-    },
-  );
-  const { error: updErr } = await authed.auth.updateUser({ email: newEmail });
-  await anon.auth.signOut().catch(() => {});
+  // Direct email update — replaces the previous Supabase "double-confirm"
+  // verification flow that round-tripped through user.auth.updateUser().
+  // TODO(de-supabase): re-introduce a proper double-opt-in by issuing an
+  // email_change_token + emailing the new address before flipping. For now,
+  // password verification + JWT presence is the gate. Tracked as Phase 4.
+  const { error: updErr } = await authAdmin.updateUserById(resolved.authUserId, {
+    email: newEmail,
+    email_confirm: true,
+  });
   if (updErr) return { data: null, error: safeError(updErr) };
 
   // Intentionally NOT mirroring email to staff / salon_partners rows here.

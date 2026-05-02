@@ -337,8 +337,169 @@ export async function getOpenCashDrawer(input: { branchId: string; date: string 
   }
 }
 
+// Staff list page bundle: branch-scoped active staff + today's attendance +
+// today's bill aggregations per staff. Replaces 4 .from() reads in the
+// /dashboard/staff page.
+export interface StaffListEntry extends Staff {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  todayAttendance?: any;
+  todayServices: number;
+  todayRevenue: number;
+}
+export async function getStaffListWithToday(input: {
+  branchId: string | null;
+}): Promise<{ data: StaffListEntry[]; error: string | null }> {
+  try {
+    const { session, supabase } = await ctx();
+    const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Karachi' });
+    let staffIds: string[] | null = null;
+    if (input.branchId) {
+      const memberRes = await supabase.from('staff_branches').select('staff_id').eq('branch_id', input.branchId);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      staffIds = ((memberRes.data ?? []) as any[]).map((r) => r.staff_id);
+      if (staffIds.length === 0) return { data: [], error: null };
+    }
+    const baseQuery = supabase
+      .from('staff')
+      .select('*')
+      .eq('salon_id', session.salonId)
+      .eq('is_active', true)
+      .order('name');
+    const staffRes = staffIds ? await baseQuery.in('id', staffIds) : await baseQuery;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const staffList = ((staffRes.data ?? []) as any[]) as Staff[];
+    const ids = staffList.map((s) => s.id);
+    if (ids.length === 0) return { data: [], error: null };
+
+    const [attRes, billsRes] = await Promise.all([
+      supabase.from('attendance').select('*').in('staff_id', ids).eq('date', today),
+      input.branchId
+        ? supabase.from('bills').select('staff_id, total_amount').in('staff_id', ids).eq('branch_id', input.branchId).eq('status', 'paid').gte('created_at', `${today}T00:00:00`).lte('created_at', `${today}T23:59:59`)
+        : Promise.resolve({ data: [], error: null }),
+    ]);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const attMap = new Map(((attRes.data ?? []) as any[]).map((a) => [a.staff_id, a]));
+    const billMap = new Map<string, { count: number; revenue: number }>();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    for (const b of ((billsRes.data ?? []) as any[])) {
+      const e = billMap.get(b.staff_id) ?? { count: 0, revenue: 0 };
+      billMap.set(b.staff_id, { count: e.count + 1, revenue: e.revenue + Number(b.total_amount ?? 0) });
+    }
+    const data = staffList.map((s) => ({
+      ...s,
+      todayAttendance: attMap.get(s.id),
+      todayServices: billMap.get(s.id)?.count ?? 0,
+      todayRevenue: billMap.get(s.id)?.revenue ?? 0,
+    })) as StaffListEntry[];
+    return { data, error: null };
+  } catch (e) {
+    return { data: [], error: e instanceof Error ? e.message : 'Failed' };
+  }
+}
+
+// Active staff in the salon (optionally branch-filtered) + a per-staff "did
+// they already get a salary expense this month" lookup. Used by /staff/payroll.
+export async function getPayrollStaff(input: { branchId: string | null }): Promise<{ data: Staff[]; error: string | null }> {
+  try {
+    const { session, supabase } = await ctx();
+    let staffIds: string[] | null = null;
+    if (input.branchId) {
+      const memberRes = await supabase.from('staff_branches').select('staff_id').eq('branch_id', input.branchId);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      staffIds = ((memberRes.data ?? []) as any[]).map((r) => r.staff_id);
+      if (staffIds.length === 0) return { data: [], error: null };
+    }
+    const baseQuery = supabase
+      .from('staff')
+      .select('*')
+      .eq('salon_id', session.salonId)
+      .eq('is_active', true)
+      .order('name');
+    const res = staffIds ? await baseQuery.in('id', staffIds) : await baseQuery;
+    return { data: (res.data ?? []) as Staff[], error: null };
+  } catch (e) {
+    return { data: [], error: e instanceof Error ? e.message : 'Failed' };
+  }
+}
+
+// Attendance status counts for one staff in a date range — used by payroll.
+export async function listAttendanceStatusOnly(input: {
+  staffId: string; startDate: string; endDate: string;
+}): Promise<{ data: Array<{ status: string }>; error: string | null }> {
+  try {
+    const { supabase } = await ctx();
+    const { data } = await supabase
+      .from('attendance')
+      .select('status')
+      .eq('staff_id', input.staffId)
+      .gte('date', input.startDate)
+      .lte('date', input.endDate)
+      .in('status', ['present', 'late', 'half_day']);
+    return { data: (data ?? []) as Array<{ status: string }>, error: null };
+  } catch (e) {
+    return { data: [], error: e instanceof Error ? e.message : 'Failed' };
+  }
+}
+
+// Distinct salary-expense descriptions for the month + branch scope. Used by
+// payroll to detect "already paid" rows so the UI doesn't double-pay.
+export async function listSalaryExpenseDescriptions(input: {
+  branchId: string; startDate: string; endDate: string;
+}): Promise<{ data: string[]; error: string | null }> {
+  try {
+    const { session, supabase } = await ctx();
+    const { data } = await supabase
+      .from('expenses')
+      .select('description')
+      .eq('salon_id', session.salonId)
+      .eq('branch_id', input.branchId)
+      .eq('category', 'salary')
+      .gte('date', input.startDate)
+      .lte('date', input.endDate);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return { data: ((data ?? []) as any[]).map((e) => e.description).filter(Boolean), error: null };
+  } catch (e) {
+    return { data: [], error: e instanceof Error ? e.message : 'Failed' };
+  }
+}
+
+// Branch IDs a staff member belongs to via staff_branches.
+export async function getStaffBranchIds(staffId: string): Promise<{ data: string[]; error: string | null }> {
+  try {
+    const { session, supabase } = await ctx();
+    // Defense-in-depth: ensure the staff row belongs to the caller's salon
+    // before exposing branch membership.
+    const owner = await supabase.from('staff').select('salon_id').eq('id', staffId).maybeSingle();
+    if (!owner.data || (owner.data as { salon_id: string }).salon_id !== session.salonId) {
+      return { data: [], error: 'Cross-tenant staff lookup' };
+    }
+    const { data } = await supabase.from('staff_branches').select('branch_id').eq('staff_id', staffId);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return { data: ((data ?? []) as any[]).map((r) => r.branch_id), error: null };
+  } catch (e) {
+    return { data: [], error: e instanceof Error ? e.message : 'Failed' };
+  }
+}
+
+// Find a client by phone (used by client-form to detect duplicates).
+export async function findClientByPhone(input: { branchId: string; phone: string }): Promise<{ data: Client | null; error: string | null }> {
+  try {
+    const { session, supabase } = await ctx();
+    const { data } = await supabase
+      .from('clients')
+      .select('*')
+      .eq('salon_id', session.salonId)
+      .eq('branch_id', input.branchId)
+      .eq('phone', input.phone)
+      .maybeSingle();
+    return { data: (data as Client) ?? null, error: null };
+  } catch (e) {
+    return { data: null, error: e instanceof Error ? e.message : 'Failed' };
+  }
+}
+
 // Single staff detail bundle (used by /dashboard/staff/[id]).
- 
+
 export async function getStaffDetail(input: { staffId: string; today: string; startDate: string; endDate: string }): Promise<{
   data: {
     staff: Staff | null;

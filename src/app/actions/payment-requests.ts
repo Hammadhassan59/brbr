@@ -9,6 +9,7 @@ import { checkRateLimit } from '@/lib/with-rate-limit';
 import { BUCKETS } from '@/lib/rate-limit-buckets';
 import { safeError } from '@/lib/action-error';
 import { getSignedStorageUrl } from '@/lib/storage-url';
+import { uploadFile, removeFiles } from '@/lib/file-storage';
 import * as authAdmin from '@/app/actions/auth-admin';
 
 type Plan = 'basic' | 'growth' | 'pro';
@@ -130,12 +131,13 @@ export async function submitPaymentRequest(
   const uuid = crypto.randomUUID();
   const path = `${session.salonId}/${uuid}.${ext}`;
 
-  const { error: uploadErr } = await supabase.storage
-    .from('payment-screenshots')
-    .upload(path, screenshot, {
-      contentType: screenshot.type || 'image/jpeg',
-      upsert: false,
-    });
+  const { error: uploadErr } = await uploadFile({
+    bucket: 'payment-screenshots',
+    path,
+    data: screenshot,
+    contentType: screenshot.type || 'image/jpeg',
+    upsert: false,
+  });
   if (uploadErr) return { data: null, error: `Upload failed: ${safeError(uploadErr)}` };
 
   const amount = await lookupPlanPrice(plan);
@@ -160,7 +162,7 @@ export async function submitPaymentRequest(
 
   if (error) {
     // Try to clean up the orphaned screenshot
-    await supabase.storage.from('payment-screenshots').remove([path]).catch(() => {});
+    await removeFiles('payment-screenshots', [path]).catch(() => {});
     return { data: null, error: safeError(error) };
   }
   return { data: data as PaymentRequest, error: null };

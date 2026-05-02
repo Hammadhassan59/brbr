@@ -2,8 +2,8 @@
 
 import { headers } from 'next/headers';
 import { createServerClient } from '@/lib/supabase';
-import { createServerClient as createSupabaseSSRClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
+// @supabase/auth-helpers-nextjs dropped — verifySession() is the sole
+// authenticated-user resolver now.
 import { sendEmail } from '@/lib/email-sender';
 import { welcomeEmail } from '@/lib/email-templates';
 import { checkRateLimit } from '@/lib/with-rate-limit';
@@ -14,35 +14,11 @@ import * as authAdmin from '@/app/actions/auth-admin';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-/**
- * Resolve the Supabase Auth user for the current request from cookies.
- * Returns null when there's no valid session. Used by setupSalon() — setup
- * is a pre-session flow (no iCut JWT yet) so we authenticate against the
- * Supabase Auth cookie the signup page wrote after createUser.
- */
-async function getAuthUserFromCookies(): Promise<{ id: string; email?: string } | null> {
-  try {
-    const cookieStore = await cookies();
-    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-    if (!url || !anonKey) return null;
-    const ssr = createSupabaseSSRClient(url, anonKey, {
-      cookies: {
-        getAll: () => cookieStore.getAll(),
-        setAll: () => {
-          // Server Actions during setup should never rewrite auth cookies —
-          // login already issued them. Silently no-op so we don't throw
-          // trying to mutate cookies outside a proper response context.
-        },
-      },
-    });
-    const { data, error } = await ssr.auth.getUser();
-    if (error || !data?.user) return null;
-    return { id: data.user.id, email: data.user.email };
-  } catch {
-    return null;
-  }
-}
+// Removed: getAuthUserFromCookies() used to read the Supabase Auth cookie as
+// a fallback for the setup flow. With Supabase gone the iCut JWT
+// (verifySession) is the only auth source; the fallback path was unreachable
+// dead code. Restored from history if a non-iCut session source is ever
+// needed.
 
 /**
  * Shared helper: read the client IP from the request headers. Wrapped in
@@ -211,11 +187,11 @@ export async function setupSalon(data: {
     const { verifySession } = await import('./auth');
     session = await verifySession();
   } catch {
-    // Fall back to the old Supabase-SSR cookie path so any session created
-    // by a non-default (cookie-backed) Supabase client still works.
-    const authUser = await getAuthUserFromCookies();
-    if (!authUser) return { data: null, error: 'Not authenticated' };
-    session = { staffId: authUser.id };
+    // Fallback path used to read a Supabase SSR auth cookie. With Supabase
+    // gone, that cookie no longer exists and signSession() is the sole writer
+    // of authenticated state. If verifySession() throws, the user genuinely
+    // has no session.
+    return { data: null, error: 'Not authenticated' };
   }
   if (!session.staffId) return { data: null, error: 'Invalid session' };
   if (data.ownerId && data.ownerId !== session.staffId) {

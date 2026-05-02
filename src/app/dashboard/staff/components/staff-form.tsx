@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabase';
 import { useAppStore } from '@/store/app-store';
 import { createStaff, updateStaff, updateStaffBranches } from '@/app/actions/staff';
+import { getStaffBranchIds } from '@/app/actions/lists';
 import { getAgentPasswordError, AGENT_MIN_PASSWORD_LENGTH } from '@/lib/schemas/common';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -56,13 +56,8 @@ export function StaffForm({ staff, onSaved }: StaffFormProps) {
   useEffect(() => {
     if (!staff) return;
     (async () => {
-      const { data } = await supabase
-        .from('staff_branches')
-        .select('branch_id')
-        .eq('staff_id', staff.id);
-      if (data) {
-        setBranchIds((data as Array<{ branch_id: string }>).map((r) => r.branch_id));
-      }
+      const { data } = await getStaffBranchIds(staff.id);
+      setBranchIds(data);
     })();
   }, [staff]);
 

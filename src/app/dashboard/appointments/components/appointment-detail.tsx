@@ -3,7 +3,6 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Phone, AlertTriangle, CreditCard, MessageCircle, Pencil } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
 import { formatPKR } from '@/lib/utils/currency';
 import { formatTime, formatPKDate } from '@/lib/utils/dates';
 import { useWhatsAppCompose } from '@/components/whatsapp-compose/provider';

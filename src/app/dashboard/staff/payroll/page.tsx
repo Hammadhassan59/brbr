@@ -3,9 +3,9 @@
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { Download, MessageCircle, ChevronRight } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
 import { createExpense, createExpenses, deleteSalaryExpenses } from '@/app/actions/expenses';
 import { getStaffMonthlyCommissionAction } from '@/app/actions/dashboard';
+import { getPayrollStaff, listAttendanceStatusOnly, listSalaryExpenseDescriptions } from '@/app/actions/lists';
 import { useAppStore } from '@/store/app-store';
 import { formatPKR } from '@/lib/utils/currency';
 import { useWhatsAppCompose } from '@/components/whatsapp-compose/provider';
@@ -46,66 +46,31 @@ export default function PayrollPage() {
     if (!salon) return;
     setLoading(true);
     try {
-      let staffQuery = supabase
-        .from('staff')
-        .select('*')
-        .eq('salon_id', salon.id)
-        .eq('is_active', true)
-        .order('name');
-      if (currentBranch) {
-        // Scope payroll to staff assigned to the current branch via
-        // staff_branches (migration 036 — staff are multi-branch).
-        const { data: memberRows } = await supabase
-          .from('staff_branches')
-          .select('staff_id')
-          .eq('branch_id', currentBranch.id);
-        const staffIds = (memberRows || []).map((r: { staff_id: string }) => r.staff_id);
-        if (staffIds.length === 0) {
-          setRows([]);
-          setLoading(false);
-          return;
-        }
-        staffQuery = staffQuery.in('id', staffIds);
-      }
-      const { data: staffData } = await staffQuery;
-      if (!staffData) { setLoading(false); return; }
+      const { data: staffList } = await getPayrollStaff({ branchId: currentBranch?.id ?? null });
+      if (staffList.length === 0) { setRows([]); setLoading(false); return; }
 
       const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
       const endDate = `${year}-${String(month).padStart(2, '0')}-${String(new Date(year, month, 0).getDate()).padStart(2, '0')}`;
       const monthLabel = new Date(year, month - 1).toLocaleString('default', { month: 'long' });
 
-      // Fetch commission + attendance for all staff in parallel (fixes N+1)
-      const staffList = staffData as Staff[];
+      // Fetch commission + attendance for all staff in parallel (still N+1 by
+      // design — commissions are per-staff RPC; collapsing into one server
+      // call would require a new RPC).
       const results = await Promise.all(
         staffList.map(async (s) => {
           const [commRes, attRes] = await Promise.all([
             getStaffMonthlyCommissionAction(s.id, month, year),
-            supabase
-              .from('attendance')
-              .select('status')
-              .eq('staff_id', s.id)
-              .gte('date', startDate)
-              .lte('date', endDate)
-              .in('status', ['present', 'late', 'half_day']),
+            listAttendanceStatusOnly({ staffId: s.id, startDate, endDate }),
           ]);
           return { staff: s, commData: commRes.data, attData: attRes.data };
         })
       );
 
-      // Check which staff already have a salary expense for this month
-      // (scoped to this salon + branch — without these filters, the query
-      // would leak across every salon in the DB).
-      const { data: existingExpenses } = await supabase
-        .from('expenses')
-        .select('description')
-        .eq('salon_id', salon.id)
-        .eq('branch_id', currentBranch!.id)
-        .eq('category', 'salary')
-        .gte('date', startDate)
-        .lte('date', endDate);
-      const paidDescriptions = new Set(
-        (existingExpenses || []).map((e: { description: string | null }) => e.description)
-      );
+      // Salary-expense "already paid" lookup, scoped to salon + branch.
+      const { data: paidDescs } = await listSalaryExpenseDescriptions({
+        branchId: currentBranch!.id, startDate, endDate,
+      });
+      const paidDescriptions = new Set(paidDescs);
 
       const payrollRows: PayrollRow[] = results.map(({ staff: s, commData, attData }) => {
         const comm = commData as {

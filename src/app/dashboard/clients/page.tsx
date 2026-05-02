@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Search, Plus, Download, Tag, UserRound, LayoutGrid, List } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { supabase } from '@/lib/supabase';
+import { listClients } from '@/app/actions/lists';
 import { useAppStore } from '@/store/app-store';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -47,14 +47,10 @@ function ClientsContent() {
     if (!salon || !currentBranch) return;
     setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('clients')
-        .select('*')
-        .eq('salon_id', salon.id)
-        .eq('branch_id', currentBranch.id)
-        .order('name');
-      if (error) throw error;
-      setClients((data || []) as Client[]);
+      const { data, error } = await listClients(currentBranch.id);
+      if (error) throw new Error(error);
+      // listClients orders by created_at desc; sort by name to preserve UX.
+      setClients([...data].sort((a, b) => a.name.localeCompare(b.name)));
     } catch {
       toast.error('Failed to load clients');
     } finally {

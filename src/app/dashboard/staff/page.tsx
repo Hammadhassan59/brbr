@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Plus, Search, DollarSign, Users, LayoutGrid, List } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { supabase } from '@/lib/supabase';
+import { getStaffListWithToday } from '@/app/actions/lists';
 import { useAppStore } from '@/store/app-store';
 import { formatPKR } from '@/lib/utils/currency';
 import { Button } from '@/components/ui/button';
@@ -44,62 +44,12 @@ export default function StaffListPage() {
     if (!salon) return;
     setLoading(true);
     try {
-      const today = new Date().toISOString().slice(0, 10);
-      let staffQuery = supabase
-        .from('staff')
-        .select('*')
-        .eq('salon_id', salon.id)
-        .eq('is_active', true)
-        .order('name');
-      if (currentBranch) {
-        // Filter to staff assigned to the current branch via staff_branches
-        // (migration 036 — staff can belong to multiple branches).
-        const { data: memberRows } = await supabase
-          .from('staff_branches')
-          .select('staff_id')
-          .eq('branch_id', currentBranch.id);
-        const staffIds = (memberRows || []).map((r: { staff_id: string }) => r.staff_id);
-        if (staffIds.length === 0) {
-          setStaff([]);
-          setLoading(false);
-          return;
-        }
-        staffQuery = staffQuery.in('id', staffIds);
-      }
-      const { data: staffData } = await staffQuery;
-      if (!staffData) { setLoading(false); return; }
-
-      const staffList = staffData as Staff[];
-      const ids = staffList.map((s) => s.id);
-
-      const { data: attData } = await supabase
-        .from('attendance')
-        .select('*')
-        .in('staff_id', ids)
-        .eq('date', today);
-
-      const { data: billsData } = await supabase
-        .from('bills')
-        .select('staff_id, total_amount')
-        .in('staff_id', ids)
-        .eq('branch_id', currentBranch!.id)
-        .eq('status', 'paid')
-        .gte('created_at', `${today}T00:00:00`)
-        .lte('created_at', `${today}T23:59:59`);
-
-      const attMap = new Map((attData || []).map((a: Attendance) => [a.staff_id, a]));
-      const billMap = new Map<string, { count: number; revenue: number }>();
-      (billsData || []).forEach((b: { staff_id: string; total_amount: number }) => {
-        const existing = billMap.get(b.staff_id) || { count: 0, revenue: 0 };
-        billMap.set(b.staff_id, { count: existing.count + 1, revenue: existing.revenue + b.total_amount });
+      // One server-action call replaces 4 client-side .from() reads
+      // (staff_branches → staff → attendance → bills aggregation).
+      const { data } = await getStaffListWithToday({
+        branchId: currentBranch?.id ?? null,
       });
-
-      setStaff(staffList.map((s) => ({
-        ...s,
-        todayAttendance: attMap.get(s.id) as Attendance | undefined,
-        todayServices: billMap.get(s.id)?.count || 0,
-        todayRevenue: billMap.get(s.id)?.revenue || 0,
-      })));
+      setStaff(data);
     } catch {
       toast.error('Failed to load staff');
     } finally {
