@@ -1,8 +1,102 @@
 'use server';
 
-import { checkWriteAccess } from './auth';
+import { checkWriteAccess, verifySession } from './auth';
 import { createServerClient } from '@/lib/supabase';
 import { assertBranchMembership, tenantErrorMessage } from '@/lib/tenant-guard';
+import type { AppointmentWithDetails, Staff } from '@/types/database';
+
+// ───────────────────────────────────────────────────────────────────────────
+// Calendar bootstrap for /dashboard/appointments. One server-action call
+// replaces 4 client-side .from() reads + 1 supabase.channel() subscription.
+// ───────────────────────────────────────────────────────────────────────────
+
+export interface AppointmentsCalendarData {
+  appointments: AppointmentWithDetails[];
+  stylists: Staff[];
+  workingHours: Record<string, unknown> | null;
+  prayerBlocks: Record<string, unknown> | null;
+}
+
+export async function getAppointmentsCalendar(input: {
+  branchId: string;
+  date: string;
+}): Promise<{ data: AppointmentsCalendarData | null; error: string | null }> {
+  try {
+    const session = await verifySession();
+    if (!session.salonId) return { data: null, error: 'No salon context' };
+    const supabase = createServerClient();
+
+    const [memberRows, branchRow] = await Promise.all([
+      supabase.from('staff_branches').select('staff_id').eq('branch_id', input.branchId),
+      supabase.from('branches').select('working_hours, prayer_blocks').eq('id', input.branchId).maybeSingle(),
+    ]);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const staffIds = ((memberRows.data ?? []) as any[]).map((r) => r.staff_id);
+
+    const [aptRes, staffRes] = await Promise.all([
+      supabase
+        .from('appointments')
+        .select('*')
+        .eq('branch_id', input.branchId)
+        .eq('appointment_date', input.date)
+        .order('start_time'),
+      staffIds.length
+        ? supabase
+            .from('staff')
+            .select('*')
+            .in('id', staffIds)
+            .eq('is_active', true)
+            .in('role', ['senior_stylist', 'junior_stylist', 'owner', 'manager'])
+            .order('name')
+        : Promise.resolve({ data: [] as Staff[], error: null }),
+    ]);
+
+    // Stitch the relations the page used to fetch via PostgREST embedded
+    // joins (client / staff / services).
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const aptRows = (aptRes.data ?? []) as any[];
+    const clientIds = Array.from(new Set(aptRows.map((a) => a.client_id).filter(Boolean)));
+    const aptStaffIds = Array.from(new Set(aptRows.map((a) => a.staff_id).filter(Boolean)));
+    const aptIds = aptRows.map((a) => a.id);
+
+    const [clientsRes, aptStaffRes, svcRes] = await Promise.all([
+      clientIds.length ? supabase.from('clients').select('*').in('id', clientIds) : Promise.resolve({ data: [], error: null }),
+      aptStaffIds.length ? supabase.from('staff').select('*').in('id', aptStaffIds) : Promise.resolve({ data: [], error: null }),
+      aptIds.length ? supabase.from('appointment_services').select('*').in('appointment_id', aptIds) : Promise.resolve({ data: [], error: null }),
+    ]);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const clientsById = new Map<string, any>(((clientsRes.data ?? []) as any[]).map((c) => [c.id, c]));
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const staffById = new Map<string, any>(((aptStaffRes.data ?? []) as any[]).map((s) => [s.id, s]));
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const svcsByApt = new Map<string, any[]>();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    for (const r of (svcRes.data ?? []) as any[]) {
+      const list = svcsByApt.get(r.appointment_id) ?? [];
+      list.push(r);
+      svcsByApt.set(r.appointment_id, list);
+    }
+    const appointments: AppointmentWithDetails[] = aptRows.map((a) => ({
+      ...a,
+      client: clientsById.get(a.client_id) ?? null,
+      staff: staffById.get(a.staff_id) ?? null,
+      services: svcsByApt.get(a.id) ?? [],
+    }));
+
+    const branch = branchRow.data as { working_hours?: unknown; prayer_blocks?: unknown } | null;
+    return {
+      data: {
+        appointments,
+        stylists: (staffRes.data ?? []) as Staff[],
+        workingHours: (branch?.working_hours ?? null) as Record<string, unknown> | null,
+        prayerBlocks: (branch?.prayer_blocks ?? null) as Record<string, unknown> | null,
+      },
+      error: null,
+    };
+  } catch (e) {
+    return { data: null, error: e instanceof Error ? e.message : 'Failed' };
+  }
+}
 
 /**
  * Verify a staff member is assigned to a given branch via the staff_branches

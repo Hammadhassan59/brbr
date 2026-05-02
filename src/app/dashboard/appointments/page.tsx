@@ -4,7 +4,7 @@ import { Suspense, useEffect, useState, useCallback } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { ChevronLeft, ChevronRight, CalendarIcon, RefreshCw, Filter, CalendarDays } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { supabase } from '@/lib/supabase';
+import { getAppointmentsCalendar } from '@/app/actions/appointments';
 import { useAppStore } from '@/store/app-store';
 import { getTodayPKT } from '@/lib/utils/dates';
 import { Button } from '@/components/ui/button';
@@ -90,44 +90,21 @@ function AppointmentsContent() {
     setLoading(true);
 
     try {
-      // Staff members at this branch via staff_branches (migration 036 —
-      // staff are multi-branch now, so filtering by staff.branch_id alone
-      // misses stylists who work across branches).
-      const { data: memberRows } = await supabase
-        .from('staff_branches')
-        .select('staff_id')
-        .eq('branch_id', currentBranch.id);
-      const staffIds = (memberRows || []).map((r: { staff_id: string }) => r.staff_id);
-
-      const [aptsRes, staffRes, branchRes] = await Promise.all([
-        supabase
-          .from('appointments')
-          .select('*, client:clients(*), staff:staff(*), services:appointment_services(*)')
-          .eq('branch_id', currentBranch.id)
-          .eq('appointment_date', date)
-          .order('start_time'),
-        staffIds.length > 0
-          ? supabase
-              .from('staff')
-              .select('*')
-              .in('id', staffIds)
-              .eq('is_active', true)
-              .in('role', ['senior_stylist', 'junior_stylist', 'owner', 'manager'])
-              .order('name')
-          : Promise.resolve({ data: [] as Staff[] }),
-        supabase
-          .from('branches')
-          .select('working_hours, prayer_blocks')
-          .eq('id', currentBranch.id)
-          .maybeSingle(),
-      ]);
-
-      if (aptsRes.data) setAppointments(aptsRes.data as AppointmentWithDetails[]);
-      if (staffRes.data) setStylists(staffRes.data as Staff[]);
-      if (branchRes.data) {
-        setWorkingHours(branchRes.data.working_hours as WorkingHours);
-        setPrayerBlocks(branchRes.data.prayer_blocks as PrayerBlocks);
+      // One server-action call replaces 4 client-side .from() reads (staff
+      // membership + appointments + stylists + branch hours/prayer blocks)
+      // and stitches the appointment relations server-side.
+      const { data, error } = await getAppointmentsCalendar({
+        branchId: currentBranch.id,
+        date,
+      });
+      if (error || !data) {
+        toast.error('Failed to load appointments');
+        return;
       }
+      setAppointments(data.appointments);
+      setStylists(data.stylists);
+      if (data.workingHours) setWorkingHours(data.workingHours as unknown as WorkingHours);
+      if (data.prayerBlocks) setPrayerBlocks(data.prayerBlocks as unknown as PrayerBlocks);
     } catch {
       toast.error('Failed to load appointments');
     } finally {
@@ -163,31 +140,13 @@ function AppointmentsContent() {
     }
   }, [searchParams, appointments]);
 
-  // Real-time subscription
+  // Realtime channel was dropped with Supabase. 30s poll while the tab is
+  // visible — paused when hidden so we don't burn server cycles for nobody.
   useEffect(() => {
     if (!currentBranch) return;
-
-    const channel = supabase
-      .channel('appointments-calendar')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'appointments',
-          filter: `branch_id=eq.${currentBranch.id}`,
-        },
-        (payload: { new: Record<string, unknown>; old: Record<string, unknown> }) => {
-          const changedDate = payload.new?.appointment_date
-            || payload.old?.appointment_date;
-          if (changedDate === date) {
-            fetchData();
-          }
-        }
-      )
-      .subscribe();
-
-    return () => { supabase.removeChannel(channel); };
+    const tick = () => { if (!document.hidden) fetchData(); };
+    const id = window.setInterval(tick, 30_000);
+    return () => window.clearInterval(id);
   }, [currentBranch, fetchData, date]);
 
   // Date navigation

@@ -1,8 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { supabase } from '@/lib/supabase';
-import { getDailySummaryAction } from '@/app/actions/dashboard';
+import { getDashboardSnapshot } from '@/app/actions/dashboard';
 import { useAppStore } from '@/store/app-store';
 import { usePermission } from '@/lib/permissions';
 import { getTodayPKT } from '@/lib/utils/dates';
@@ -132,96 +131,28 @@ export default function DashboardPage() {
       const startDate = selectedDate;
       const endDateFinal = computedEndDate;
       const multiDay = startDate !== endDateFinal;
+      const isStylistRole = currentStaff?.role === 'senior_stylist' || currentStaff?.role === 'junior_stylist';
 
-      const { data: summaryData } = await getDailySummaryAction(currentBranch.id, startDate);
-      if (summaryData) setSummary(summaryData);
+      // One server-action call replaces 13 client-side supabase.from() reads.
+      const { data: snap } = await getDashboardSnapshot({
+        branchId: currentBranch.id,
+        startDate,
+        endDate: endDateFinal,
+        stylistStaffId: isStylistRole && currentStaff ? currentStaff.id : undefined,
+      });
+      if (!snap) return;
 
-      const aptQuery = supabase
-        .from('appointments')
-        .select('*, client:clients(*), staff:staff(*), services:appointment_services(*)')
-        .eq('branch_id', currentBranch.id)
-        .order('start_time');
-      if (multiDay) {
-        aptQuery.gte('appointment_date', startDate).lte('appointment_date', endDateFinal);
-      } else {
-        aptQuery.eq('appointment_date', startDate);
-      }
-      const { data: aptsData } = await aptQuery;
-      if (aptsData) setAppointments(aptsData as AppointmentWithDetails[]);
+      setSummary(snap.summary);
+      setAppointments(snap.appointments);
+      setCashInDrawer(snap.cashInDrawer);
+      setLowStockCount(snap.lowStockCount);
+      setUdhaarInfo({ clients: snap.udhaarClients, total: snap.udhaarTotal });
+      setBranchStaff(snap.branchStaff);
+      setStylistTips(snap.stylistTips);
+      setPosWalkInCount(snap.posWalkInCount);
 
-      const { data: drawerData } = await supabase
-        .from('cash_drawers')
-        .select('*')
-        .eq('branch_id', currentBranch.id)
-        .eq('date', startDate)
-        .maybeSingle();
-      if (drawerData) {
-        setCashInDrawer(
-          (drawerData.opening_balance || 0) +
-          (drawerData.total_cash_sales || 0) -
-          (drawerData.total_expenses || 0)
-        );
-      }
-
-      // Low-stock count uses real per-branch stock (migration 035) + the
-      // per-branch catalog (migration 037). We read active products in the
-      // current branch, join their branch_products row client-side, and
-      // compare. Products pinned to another branch can't show "low stock"
-      // on this dashboard.
-      const [{ data: productsData }, { data: branchProductsData }] = await Promise.all([
-        supabase
-          .from('products')
-          .select('id')
-          .eq('salon_id', salon.id)
-          .eq('branch_id', currentBranch.id)
-          .eq('is_active', true),
-        supabase
-          .from('branch_products')
-          .select('product_id, current_stock, low_stock_threshold')
-          .eq('branch_id', currentBranch.id),
-      ]);
-      if (productsData && branchProductsData) {
-        const bpMap = new Map<string, { current_stock: number; low_stock_threshold: number }>();
-        for (const r of branchProductsData as Array<{ product_id: string; current_stock: number; low_stock_threshold: number }>) {
-          bpMap.set(r.product_id, { current_stock: r.current_stock, low_stock_threshold: r.low_stock_threshold });
-        }
-        const low = (productsData as Array<{ id: string }>).filter((p) => {
-          const bp = bpMap.get(p.id);
-          return bp != null && bp.current_stock <= bp.low_stock_threshold;
-        });
-        setLowStockCount(low.length);
-      }
-
-      const { data: udhaarData } = await supabase
-        .from('clients')
-        .select('udhaar_balance')
-        .eq('salon_id', salon.id)
-        .eq('branch_id', currentBranch.id)
-        .gt('udhaar_balance', 0);
-      if (udhaarData) {
-        setUdhaarInfo({
-          clients: udhaarData.length,
-          total: udhaarData.reduce((sum: number, c: { udhaar_balance: number }) => sum + c.udhaar_balance, 0),
-        });
-      }
-
-      // Pakistan is UTC+5 (no DST). Anchor day boundaries to PKT so bills rung
-      // in the evening/night are attributed to the right local day.
-      const { data: billsData } = await supabase
-        .from('bills')
-        .select('total_amount, created_at, payment_method, staff_id, appointment_id')
-        .eq('branch_id', currentBranch.id)
-        .eq('status', 'paid')
-        .gte('created_at', `${startDate}T00:00:00+05:00`)
-        .lte('created_at', `${endDateFinal}T23:59:59+05:00`);
-
-      // Count POS-direct walk-ins: paid bills with no linked appointment.
-      // Walk-in appointments are already counted via appointments.is_walkin,
-      // and those bills have appointment_id set, so this doesn't double count.
-      setPosWalkInCount(
-        (billsData || []).filter((b: { appointment_id: string | null }) => !b.appointment_id).length
-      );
-
+      // Chart + multi-day staff_performance derive from the bills slice.
+      const billsData = snap.bills;
       if (multiDay) {
         const dayMap: Record<string, { revenue: number; appointments: number }> = {};
         const d = new Date(startDate);
@@ -232,41 +163,25 @@ export default function DashboardPage() {
           dayMap[`${iso}|${short}`] = { revenue: 0, appointments: 0 };
           d.setDate(d.getDate() + 1);
         }
-
-        if (billsData) {
-          billsData.forEach((bill: { total_amount: number; created_at: string }) => {
-            // Bucket by Pakistan local date (bills.created_at is UTC)
-            const billDate = new Date(bill.created_at).toLocaleDateString('en-CA', { timeZone: 'Asia/Karachi' });
-            const key = Object.keys(dayMap).find(k => k.startsWith(billDate));
-            if (key) {
-              dayMap[key].revenue += bill.total_amount;
-              dayMap[key].appointments += 1;
-            }
-          });
-        }
-
+        billsData.forEach((bill) => {
+          // Bucket by Pakistan local date (bills.created_at is UTC).
+          const billDate = new Date(bill.created_at).toLocaleDateString('en-CA', { timeZone: 'Asia/Karachi' });
+          const key = Object.keys(dayMap).find(k => k.startsWith(billDate));
+          if (key) {
+            dayMap[key].revenue += bill.total_amount;
+            dayMap[key].appointments += 1;
+          }
+        });
         setChartData(
-          Object.entries(dayMap).map(([key, data]) => ({ label: key.split('|')[1], ...data }))
+          Object.entries(dayMap).map(([key, data]) => ({ label: key.split('|')[1], ...data })),
         );
 
-        if (billsData && billsData.length > 0) {
-          const totalRev = billsData.reduce((s: number, b: { total_amount: number }) => s + b.total_amount, 0);
-          const byMethod = (m: string) => billsData.filter((b: { payment_method: string }) => b.payment_method === m).reduce((s: number, b: { total_amount: number }) => s + b.total_amount, 0);
-          // Branch-members via staff_branches (migration 036 — staff are
-          // multi-branch; staff.primary_branch_id alone would miss cross-branch
-          // stylists).
-          const { data: memberRows } = await supabase
-            .from('staff_branches')
-            .select('staff_id')
-            .eq('branch_id', currentBranch.id);
-          const staffIds = (memberRows || []).map((r: { staff_id: string }) => r.staff_id);
-          const allStaffData = staffIds.length > 0
-            ? await supabase.from('staff').select('*').in('id', staffIds).eq('is_active', true)
-            : { data: [] as Staff[] };
-          const staffList = (allStaffData.data || []) as Staff[];
+        if (billsData.length > 0) {
+          const totalRev = billsData.reduce((s, b) => s + b.total_amount, 0);
+          const byMethod = (m: string) => billsData.filter((b) => b.payment_method === m).reduce((s, b) => s + b.total_amount, 0);
           const staffMap = new Map<string, { services_done: number; revenue: number }>();
           for (const bill of billsData) {
-            const st = staffList.find((s) => s.id === (bill as { staff_id: string }).staff_id);
+            const st = snap.branchStaff.find((s) => s.id === bill.staff_id);
             const name = st?.name || 'Unknown';
             const e = staffMap.get(name) || { services_done: 0, revenue: 0 };
             e.services_done += 1; e.revenue += bill.total_amount;
@@ -288,50 +203,17 @@ export default function DashboardPage() {
       } else {
         const hourLabel = (h: number) =>
           h === 0 ? '12AM' : h < 12 ? `${h}AM` : h === 12 ? '12PM' : `${h - 12}PM`;
-
         const hourBuckets: { label: string; revenue: number; appointments: number }[] =
-          Array.from({ length: 24 }, (_, h) => ({
-            label: hourLabel(h),
-            revenue: 0,
-            appointments: 0,
-          }));
-
-        if (billsData) {
-          const hourFmt = new Intl.DateTimeFormat('en-US', {
-            timeZone: 'Asia/Karachi', hour: '2-digit', hour12: false,
-          });
-          billsData.forEach((bill: { total_amount: number; created_at: string }) => {
-            const hour = Number(hourFmt.format(new Date(bill.created_at))) % 24;
-            hourBuckets[hour].revenue += bill.total_amount;
-            hourBuckets[hour].appointments += 1;
-          });
-        }
-
+          Array.from({ length: 24 }, (_, h) => ({ label: hourLabel(h), revenue: 0, appointments: 0 }));
+        const hourFmt = new Intl.DateTimeFormat('en-US', {
+          timeZone: 'Asia/Karachi', hour: '2-digit', hour12: false,
+        });
+        billsData.forEach((bill) => {
+          const hour = Number(hourFmt.format(new Date(bill.created_at))) % 24;
+          hourBuckets[hour].revenue += bill.total_amount;
+          hourBuckets[hour].appointments += 1;
+        });
         setChartData(hourBuckets);
-      }
-
-      // Branch-members via staff_branches (staff can belong to multiple
-      // branches post-036). The previous `.eq('branch_id', ...)` path only
-      // matched the renamed primary_branch_id column.
-      const { data: branchStaffRows } = await supabase
-        .from('staff_branches')
-        .select('staff_id')
-        .eq('branch_id', currentBranch.id);
-      const branchStaffIds = (branchStaffRows || []).map((r: { staff_id: string }) => r.staff_id);
-      const { data: staffData } = branchStaffIds.length > 0
-        ? await supabase.from('staff').select('*').in('id', branchStaffIds).eq('is_active', true)
-        : { data: [] as Staff[] };
-      if (staffData) setBranchStaff(staffData as Staff[]);
-
-      if (currentStaff && (currentStaff.role === 'senior_stylist' || currentStaff.role === 'junior_stylist')) {
-        const { data: tipsData } = await supabase
-          .from('tips')
-          .select('amount')
-          .eq('staff_id', currentStaff.id)
-          .eq('date', today);
-        if (tipsData) {
-          setStylistTips(tipsData.reduce((sum: number, t: { amount: number }) => sum + t.amount, 0));
-        }
       }
     } catch (err) {
       console.error('Dashboard fetch error:', err);
@@ -345,41 +227,15 @@ export default function DashboardPage() {
     fetchDashboardData();
   }, [fetchDashboardData]);
 
+  // Realtime channels (appointments-changes + bills-changes) were dropped
+  // with Supabase. Approximate the live-refresh feel with a 30s poll while
+  // the page is visible — paused when the tab is hidden to avoid wasted
+  // server work.
   useEffect(() => {
     if (!currentBranch) return;
-
-    const appointmentChannel = supabase
-      .channel('appointments-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'appointments',
-          filter: `branch_id=eq.${currentBranch.id}`,
-        },
-        () => { fetchDashboardData(); }
-      )
-      .subscribe();
-
-    const billsChannel = supabase
-      .channel('bills-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'bills',
-          filter: `branch_id=eq.${currentBranch.id}`,
-        },
-        () => { fetchDashboardData(); }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(appointmentChannel);
-      supabase.removeChannel(billsChannel);
-    };
+    const tick = () => { if (!document.hidden) fetchDashboardData(); };
+    const id = window.setInterval(tick, 30_000);
+    return () => window.clearInterval(id);
   }, [currentBranch, fetchDashboardData]);
 
   const isHelper = currentStaff?.role === 'helper';
