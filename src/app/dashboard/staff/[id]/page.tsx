@@ -7,7 +7,7 @@ import {
   Edit, Calendar, Clock, DollarSign, CreditCard, TrendingUp, ChevronRight,
   CheckCircle, XCircle, AlertCircle, MinusCircle,
 } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
+import { getStaffDetail } from '@/app/actions/lists';
 import { upsertAttendance, recordAdvance } from '@/app/actions/staff';
 import { getStaffMonthlyCommissionAction } from '@/app/actions/dashboard';
 import { formatPKR } from '@/lib/utils/currency';
@@ -77,13 +77,14 @@ export default function StaffProfilePage() {
       const endDay = new Date(year, month, 0).getDate();
       const endDate = `${year}-${String(month).padStart(2, '0')}-${String(endDay).padStart(2, '0')}`;
 
-      const [staffRes, aptsRes, attRes, advRes, commRes] = await Promise.all([
-        supabase.from('staff').select('*').eq('id', staffId).single(),
-        supabase.from('appointments').select('*, client:clients(*), services:appointment_services(*)').eq('staff_id', staffId).eq('appointment_date', today).order('start_time'),
-        supabase.from('attendance').select('*').eq('staff_id', staffId).gte('date', startDate).lte('date', endDate).order('date'),
-        supabase.from('advances').select('*').eq('staff_id', staffId).order('date', { ascending: false }).limit(50),
+      const [{ data: detail }, commRes] = await Promise.all([
+        getStaffDetail({ staffId, today, startDate, endDate }),
         getStaffMonthlyCommissionAction(staffId, month, year),
       ]);
+      const staffRes = { data: detail?.staff ?? null };
+      const aptsRes = { data: detail?.appointments ?? [] };
+      const attRes = { data: detail?.attendance ?? [] };
+      const advRes = { data: detail?.advances ?? [] };
 
       if (staffRes.data) setStaff(staffRes.data as Staff);
       if (aptsRes.data) setTodayAppointments(aptsRes.data as AppointmentWithDetails[]);

@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { useAppStore } from '@/store/app-store';
-import { supabase } from '@/lib/supabase';
+import { searchClientsCompact } from '@/app/actions/pos';
 import { generateWhatsAppLink } from '@/lib/utils/whatsapp';
 import { useWhatsAppCompose } from './provider';
 import { MESSAGE_TEMPLATES, fillTemplate } from './templates';
@@ -39,6 +39,8 @@ export function WhatsAppComposeSheet() {
 
   const searchRef = useRef<HTMLInputElement>(null);
 
+  /* eslint-disable react-hooks/set-state-in-effect -- both effects below sync
+     local state from props/store; these are pre-existing patterns. */
   // On open: reset state from options
   useEffect(() => {
     if (!isOpen) return;
@@ -65,17 +67,10 @@ export function WhatsAppComposeSheet() {
     }
 
     const timer = setTimeout(async () => {
-      // ISSUE-008: typed .ilike() calls, no .or() string templating
-      const trimmed = searchQuery.trim().slice(0, 100);
-      const pattern = `%${trimmed}%`;
-      const [nameRes, phoneRes] = await Promise.all([
-        supabase.from('clients').select('id, name, phone, whatsapp').eq('salon_id', salon.id).eq('branch_id', currentBranch.id).ilike('name', pattern).limit(5),
-        supabase.from('clients').select('id, name, phone, whatsapp').eq('salon_id', salon.id).eq('branch_id', currentBranch.id).ilike('phone', pattern).limit(5),
-      ]);
-      const merged = new Map<string, ClientResult>();
-      for (const row of (nameRes.data || []) as ClientResult[]) merged.set(row.id, row);
-      for (const row of (phoneRes.data || []) as ClientResult[]) merged.set(row.id, row);
-      const results = Array.from(merged.values())
+      // Server-action does the typed name+phone ILIKE merge (ISSUE-008
+      // intent preserved server-side: no .or() templating).
+      const { data } = await searchClientsCompact({ branchId: currentBranch.id, query: searchQuery });
+      const results = (data as ClientResult[])
         .filter((c) => c.phone || c.whatsapp)
         .slice(0, 5);
       setSearchResults(results);

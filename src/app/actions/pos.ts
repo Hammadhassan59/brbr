@@ -159,6 +159,34 @@ export async function getClientById(clientId: string): Promise<{ data: Client | 
   }
 }
 
+// Compact client search shape (id/name/phone/whatsapp) used by the WhatsApp
+// compose sheet. Limit 5 matches.
+export async function searchClientsCompact(input: {
+  branchId: string;
+  query: string;
+}): Promise<{ data: Array<{ id: string; name: string; phone: string | null; whatsapp: string | null }>; error: string | null }> {
+  try {
+    const session = await verifySession();
+    if (!session.salonId) return { data: [], error: 'No salon context' };
+    const trimmed = input.query.trim().slice(0, 100);
+    if (trimmed.length < 2) return { data: [], error: null };
+    const pattern = `%${trimmed}%`;
+    const supabase = createServerClient();
+    const [nameRes, phoneRes] = await Promise.all([
+      supabase.from('clients').select('id, name, phone, whatsapp').eq('salon_id', session.salonId).eq('branch_id', input.branchId).ilike('name', pattern).limit(5),
+      supabase.from('clients').select('id, name, phone, whatsapp').eq('salon_id', session.salonId).eq('branch_id', input.branchId).ilike('phone', pattern).limit(5),
+    ]);
+    const merged = new Map<string, { id: string; name: string; phone: string | null; whatsapp: string | null }>();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    for (const row of (nameRes.data ?? []) as any[]) merged.set(row.id, row);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    for (const row of (phoneRes.data ?? []) as any[]) merged.set(row.id, row);
+    return { data: Array.from(merged.values()).slice(0, 5), error: null };
+  } catch (e) {
+    return { data: [], error: e instanceof Error ? e.message : 'Failed' };
+  }
+}
+
 // Client search: ILIKE against name OR phone, salon-scoped, top 10 unique
 // matches. Pre-existing pattern (no SQL OR) merges name+phone results in JS
 // to avoid PostgREST .or() injection surface.

@@ -27,28 +27,10 @@ const MOCK_CLIENTS = [
   { id: 'c2', name: 'Ali Raza', phone: '0300-9876543', whatsapp: '0333-9876543' },
 ]
 
-vi.mock('@/lib/supabase', () => ({
-  supabase: {
-    from: () => ({
-      select: () => ({
-        eq: () => ({
-          // Post-branch-isolation: chain is .eq(salon_id).eq(branch_id).ilike().limit()
-          eq: () => ({
-            ilike: () => ({
-              limit: () => Promise.resolve({ data: MOCK_CLIENTS }),
-            }),
-          }),
-          // Legacy shape kept for any callers still using the single-eq chain.
-          ilike: () => ({
-            limit: () => Promise.resolve({ data: MOCK_CLIENTS }),
-          }),
-          or: () => ({
-            limit: () => Promise.resolve({ data: MOCK_CLIENTS }),
-          }),
-        }),
-      }),
-    }),
-  },
+// searchClientsCompact replaces the previous in-component supabase chain.
+// Mock just the server action; no need to keep the supabase fakes alive.
+vi.mock('@/app/actions/pos', () => ({
+  searchClientsCompact: vi.fn(() => Promise.resolve({ data: MOCK_CLIENTS, error: null })),
 }))
 
 // Mock Sheet to avoid base-ui portal issues in happy-dom

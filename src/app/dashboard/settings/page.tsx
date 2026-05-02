@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { Plus, X, Scissors, Sparkles, Users, MapPin, Pencil, Trash2, Copy, CreditCard, Check, Lock, ChevronRight, ShieldCheck } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
+import { listBranches, listActiveServices, getBranchesOverview } from '@/app/actions/lists';
 import { usePermission } from '@/lib/permissions';
 import { updateSalon, updateBranchWorkingHours, createService, updateService, deleteService, createBranch, updateBranch, deleteBranch } from '@/app/actions/settings';
 import { getPublicPlatformConfig } from '@/app/actions/admin-settings';
@@ -92,10 +92,10 @@ export default function SettingsPage() {
     // Services are per-branch (migration 036). If no branch is selected yet,
     // fall back to an empty services list rather than mixing branches.
     const svcPromise = currentBranch
-      ? supabase.from('services').select('*').eq('salon_id', salon.id).eq('branch_id', currentBranch.id).order('sort_order')
-      : Promise.resolve({ data: [] as Service[] });
+      ? listActiveServices(currentBranch.id)
+      : Promise.resolve({ data: [] as Service[], error: null });
     const [branchRes, svcRes] = await Promise.all([
-      supabase.from('branches').select('*').eq('salon_id', salon.id).order('is_main', { ascending: false }),
+      listBranches(),
       svcPromise,
     ]);
 
@@ -128,28 +128,8 @@ export default function SettingsPage() {
         setJummahBreak(!!(wh.fri as DayHours & { jummah_break?: boolean }).jummah_break);
       }
 
-      // Fetch per-branch stats. Staff counts come from staff_branches (each
-      // staff can appear under multiple branches post-036).
-      const today = new Date().toISOString().slice(0, 10);
-      const branchIds = branchList.map((b) => b.id);
-      const [staffRes, billsRes, aptsRes] = await Promise.all([
-        supabase
-          .from('staff_branches')
-          .select('branch_id, staff:staff!inner(id, is_active, salon_id)')
-          .in('branch_id', branchIds),
-        supabase.from('bills').select('branch_id, total_amount').eq('salon_id', salon.id).gte('created_at', today + 'T00:00:00').lt('created_at', today + 'T23:59:59'),
-        supabase.from('appointments').select('branch_id').eq('salon_id', salon.id).eq('appointment_date', today),
-      ]);
-      const stats: Record<string, { staffCount: number; todayRevenue: number; todayAppointments: number }> = {};
-      branchIds.forEach((id) => { stats[id] = { staffCount: 0, todayRevenue: 0, todayAppointments: 0 }; });
-      (staffRes.data || []).forEach((row: { branch_id: string; staff?: { is_active?: boolean; salon_id?: string } | { is_active?: boolean; salon_id?: string }[] }) => {
-        const s = Array.isArray(row.staff) ? row.staff[0] : row.staff;
-        if (s?.is_active && s.salon_id === salon.id && stats[row.branch_id]) {
-          stats[row.branch_id].staffCount++;
-        }
-      });
-      billsRes.data?.forEach((b: { branch_id: string | null; total_amount: number }) => { if (b.branch_id && stats[b.branch_id]) stats[b.branch_id].todayRevenue += b.total_amount; });
-      aptsRes.data?.forEach((a: { branch_id: string | null }) => { if (a.branch_id && stats[a.branch_id]) stats[a.branch_id].todayAppointments++; });
+      // Per-branch stats — server-side aggregation (replaces 3 client reads).
+      const { data: stats } = await getBranchesOverview();
       setBranchStats(stats);
     }
     if (svcRes.data) setServices(svcRes.data as Service[]);

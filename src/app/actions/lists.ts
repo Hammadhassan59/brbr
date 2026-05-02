@@ -104,6 +104,22 @@ export async function getBillsForRange(input: {
   }
 }
 
+// Branches list (full Branch rows) — used by /dashboard/settings.
+import type { Branch } from '@/types/database';
+export async function listBranches(): Promise<{ data: Branch[]; error: string | null }> {
+  try {
+    const { session, supabase } = await ctx();
+    const { data } = await supabase
+      .from('branches')
+      .select('*')
+      .eq('salon_id', session.salonId)
+      .order('is_main', { ascending: false });
+    return { data: (data ?? []) as Branch[], error: null };
+  } catch (e) {
+    return { data: [], error: e instanceof Error ? e.message : 'Failed' };
+  }
+}
+
 // Branches overview KPIs (used by /dashboard/branches). Returns per-branch
 // staff count, today's revenue, today's appointment count.
 export async function getBranchesOverview(): Promise<{
@@ -316,6 +332,71 @@ export async function getOpenCashDrawer(input: { branchId: string; date: string 
       .eq('status', 'open')
       .maybeSingle();
     return { data, error: null };
+  } catch (e) {
+    return { data: null, error: e instanceof Error ? e.message : 'Failed' };
+  }
+}
+
+// Single staff detail bundle (used by /dashboard/staff/[id]).
+ 
+export async function getStaffDetail(input: { staffId: string; today: string; startDate: string; endDate: string }): Promise<{
+  data: {
+    staff: Staff | null;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    appointments: any[];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    attendance: any[];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    advances: any[];
+  } | null;
+  error: string | null;
+}> {
+  try {
+    const { session, supabase } = await ctx();
+    const [staffRes, aptsRes, attRes, advRes] = await Promise.all([
+      supabase.from('staff').select('*').eq('id', input.staffId).maybeSingle(),
+      supabase.from('appointments').select('*').eq('staff_id', input.staffId).eq('appointment_date', input.today).order('start_time'),
+      supabase.from('attendance').select('*').eq('staff_id', input.staffId).gte('date', input.startDate).lte('date', input.endDate).order('date'),
+      supabase.from('advances').select('*').eq('staff_id', input.staffId).order('date', { ascending: false }).limit(50),
+    ]);
+    const staff = staffRes.data as Staff | null;
+    if (staff && (staff as { salon_id: string }).salon_id !== session.salonId) {
+      return { data: null, error: 'Cross-tenant staff lookup' };
+    }
+    // Stitch appointment relations (clients + services).
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const aptRows = (aptsRes.data ?? []) as any[];
+    const clientIds = Array.from(new Set(aptRows.map((a) => a.client_id).filter(Boolean)));
+    const aptIds = aptRows.map((a) => a.id);
+    const [clientsRes, svcRes] = await Promise.all([
+      clientIds.length ? supabase.from('clients').select('*').in('id', clientIds) : Promise.resolve({ data: [], error: null }),
+      aptIds.length ? supabase.from('appointment_services').select('*').in('appointment_id', aptIds) : Promise.resolve({ data: [], error: null }),
+    ]);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const clientsById = new Map<string, any>(((clientsRes.data ?? []) as any[]).map((c) => [c.id, c]));
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const svcsByApt = new Map<string, any[]>();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    for (const r of (svcRes.data ?? []) as any[]) {
+      const list = svcsByApt.get(r.appointment_id) ?? [];
+      list.push(r); svcsByApt.set(r.appointment_id, list);
+    }
+    const appointments = aptRows.map((a) => ({
+      ...a,
+      client: clientsById.get(a.client_id) ?? null,
+      services: svcsByApt.get(a.id) ?? [],
+    }));
+    return {
+      data: {
+        staff,
+        appointments,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        attendance: (attRes.data ?? []) as any[],
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        advances: (advRes.data ?? []) as any[],
+      },
+      error: null,
+    };
   } catch (e) {
     return { data: null, error: e instanceof Error ? e.message : 'Failed' };
   }

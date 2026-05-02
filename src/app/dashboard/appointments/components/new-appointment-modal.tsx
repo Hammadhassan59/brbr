@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { Search, AlertTriangle, X, Plus, User, Scissors } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
+import { searchPosClients } from '@/app/actions/pos';
+import { listActiveStaffAtBranch, listActiveServices } from '@/app/actions/lists';
 import { useAppStore } from '@/store/app-store';
 import { formatPKR } from '@/lib/utils/currency';
 import { formatTime, getTodayPKT, getNowTimePKT24 } from '@/lib/utils/dates';
@@ -81,35 +82,15 @@ export function NewAppointmentModal({
   useEffect(() => {
     if (!open || !salon || !currentBranch) return;
     async function load() {
-      // Staff members at this branch via the staff_branches join (migration
-      // 036 made staff multi-branch). primary_branch_id alone would miss
-      // stylists who split time across branches.
-      const { data: memberRows } = await supabase
-        .from('staff_branches')
-        .select('staff_id')
-        .eq('branch_id', currentBranch!.id);
-      const staffIds = (memberRows || []).map((r: { staff_id: string }) => r.staff_id);
-
+      // Server-action calls replace the staff_branches join + .eq filters.
       const [staffRes, svcRes] = await Promise.all([
-        staffIds.length > 0
-          ? supabase
-              .from('staff')
-              .select('*')
-              .in('id', staffIds)
-              .eq('is_active', true)
-              .in('role', ['senior_stylist', 'junior_stylist'])
-              .order('name')
-          : Promise.resolve({ data: [] as Staff[] }),
-        supabase
-          .from('services')
-          .select('*')
-          .eq('salon_id', salon!.id)
-          .eq('branch_id', currentBranch!.id)
-          .eq('is_active', true)
-          .order('sort_order'),
+        listActiveStaffAtBranch(currentBranch!.id),
+        listActiveServices(currentBranch!.id),
       ]);
-      if (staffRes.data) setStylists(staffRes.data as Staff[]);
-      if (svcRes.data) setServices(svcRes.data as Service[]);
+      // Filter to stylist roles client-side — small list, no need for a
+      // dedicated role-filtered server action.
+      setStylists(staffRes.data.filter((s) => s.role === 'senior_stylist' || s.role === 'junior_stylist'));
+      setServices(svcRes.data);
     }
     load();
   }, [open, salon, currentBranch]);
@@ -156,18 +137,9 @@ export function NewAppointmentModal({
     const trimmed = query.trim().slice(0, 100);
     if (!trimmed) { setClientResults([]); return; }
 
-    // Two typed queries rather than string-templated .or() — keeps user input
-    // as a parameter so commas/parens don't get interpreted as filter
-    // operators (ISSUE-008).
-    const pattern = `%${trimmed}%`;
-    const [nameRes, phoneRes] = await Promise.all([
-      supabase.from('clients').select('*').eq('salon_id', salon.id).eq('branch_id', currentBranch.id).ilike('name', pattern).limit(10),
-      supabase.from('clients').select('*').eq('salon_id', salon.id).eq('branch_id', currentBranch.id).ilike('phone', pattern).limit(10),
-    ]);
-    const merged = new Map<string, Client>();
-    for (const row of (nameRes.data || []) as Client[]) merged.set(row.id, row);
-    for (const row of (phoneRes.data || []) as Client[]) merged.set(row.id, row);
-    setClientResults(Array.from(merged.values()).slice(0, 10));
+    // Server action does the typed name+phone ILIKE merge server-side.
+    const { data } = await searchPosClients({ branchId: currentBranch.id, query: trimmed });
+    setClientResults(data);
   }, [salon, currentBranch]);
 
   useEffect(() => {
