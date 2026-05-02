@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Plus, Copy } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
+import { listPromoCodes } from '@/app/actions/lists';
 import { useAppStore } from '@/store/app-store';
 import { usePermission } from '@/lib/permissions';
 import { formatPKR } from '@/lib/utils/currency';
@@ -49,8 +49,8 @@ export default function PromosPage() {
   const fetch = useCallback(async () => {
     if (!salon || !currentBranch) return;
     setLoading(true);
-    const { data } = await supabase.from('promo_codes').select('*').eq('salon_id', salon.id).eq('branch_id', currentBranch.id).order('created_at', { ascending: false });
-    if (data) setPromos(data as PromoCode[]);
+    const { data } = await listPromoCodes(currentBranch.id);
+    setPromos(data);
     setLoading(false);
   }, [salon, currentBranch]);
 

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabase';
+import { getStaffById } from '@/app/actions/lists';
 import { StaffForm } from '../../components/staff-form';
 import type { Staff } from '@/types/database';
 
@@ -14,8 +14,8 @@ export default function EditStaffPage() {
 
   useEffect(() => {
     async function load() {
-      const { data } = await supabase.from('staff').select('*').eq('id', params.id as string).single();
-      if (data) setStaff(data as Staff);
+      const { data } = await getStaffById(params.id as string);
+      if (data) setStaff(data);
       setLoading(false);
     }
     load();

@@ -2,8 +2,8 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
-import { ChevronRight, Send, UserPlus, Clock, CreditCard, Copy, Loader2 } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
+import { ChevronRight, Send, UserPlus, CreditCard, Copy, Loader2 } from 'lucide-react';
+import { listClients } from '@/app/actions/lists';
 import { useAppStore } from '@/store/app-store';
 import { formatPKR } from '@/lib/utils/currency';
 import { formatPKDate } from '@/lib/utils/dates';
@@ -32,11 +32,12 @@ export default function ClientReportPage() {
   const fetch = useCallback(async () => {
     if (!salon || !currentBranch) return;
     setLoading(true);
-    const { data } = await supabase.from('clients').select('*').eq('salon_id', salon.id).eq('branch_id', currentBranch.id).order('created_at', { ascending: false });
-    if (data) setClients(data as Client[]);
+    const { data } = await listClients(currentBranch.id);
+    setClients(data);
     setLoading(false);
   }, [salon, currentBranch]);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { fetch(); }, [fetch]);
 
   const now = new Date();

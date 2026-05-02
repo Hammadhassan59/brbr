@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabase';
+import { getClientForEdit } from '@/app/actions/lists';
 import { useAppStore } from '@/store/app-store';
 import { ClientForm } from '../../components/client-form';
 import type { Client } from '@/types/database';
@@ -19,8 +19,8 @@ export default function EditClientPage() {
   useEffect(() => {
     async function load() {
       if (!salon || !currentBranch) return;
-      const { data } = await supabase.from('clients').select('*').eq('id', clientId).eq('salon_id', salon.id).eq('branch_id', currentBranch.id).maybeSingle();
-      if (data) setClient(data as Client);
+      const { data } = await getClientForEdit({ clientId, branchId: currentBranch.id });
+      if (data) setClient(data);
       setLoading(false);
     }
     load();

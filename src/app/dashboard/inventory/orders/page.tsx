@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Plus } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
+import { getPurchaseOrdersAndSuppliers } from '@/app/actions/lists';
 import { useAppStore } from '@/store/app-store';
 import { usePermission } from '@/lib/permissions';
 import { formatPKR } from '@/lib/utils/currency';
@@ -15,7 +15,6 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import toast from 'react-hot-toast';
 import { showActionError, handleSubscriptionError } from '@/components/paywall-dialog';
 import type { PurchaseOrder, Supplier, PurchaseOrderStatus } from '@/types/database';
@@ -52,12 +51,11 @@ export default function OrdersPage() {
   const fetch = useCallback(async () => {
     if (!salon || !currentBranch) return;
     setLoading(true);
-    const [ordRes, supRes] = await Promise.all([
-      supabase.from('purchase_orders').select('*, supplier:suppliers(*)').eq('branch_id', currentBranch.id).order('created_at', { ascending: false }),
-      supabase.from('suppliers').select('*').eq('salon_id', salon.id).eq('branch_id', currentBranch.id).order('name'),
-    ]);
-    if (ordRes.data) setOrders(ordRes.data as (PurchaseOrder & { supplier?: Supplier })[]);
-    if (supRes.data) setSuppliers(supRes.data as Supplier[]);
+    const { data } = await getPurchaseOrdersAndSuppliers(currentBranch.id);
+    if (data) {
+      setOrders(data.orders as unknown as (PurchaseOrder & { supplier?: Supplier })[]);
+      setSuppliers(data.suppliers);
+    }
     setLoading(false);
   }, [salon, currentBranch]);
 

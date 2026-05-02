@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Plus, Phone as PhoneIcon } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
+import { listSuppliers } from '@/app/actions/lists';
 import { useAppStore } from '@/store/app-store';
 import { usePermission } from '@/lib/permissions';
 import { formatPKR } from '@/lib/utils/currency';
@@ -48,8 +48,8 @@ export default function SuppliersPage() {
   const fetch = useCallback(async () => {
     if (!salon || !currentBranch) return;
     setLoading(true);
-    const { data } = await supabase.from('suppliers').select('*').eq('salon_id', salon.id).eq('branch_id', currentBranch.id).order('name');
-    if (data) setSuppliers(data as Supplier[]);
+    const { data } = await listSuppliers(currentBranch.id);
+    setSuppliers(data);
     setLoading(false);
   }, [salon, currentBranch]);
 

@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ChevronRight, ChevronDown, Loader2, Pencil, Save, X, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { supabase } from '@/lib/supabase';
+import { getInventoryReport } from '@/app/actions/lists';
 import { useAppStore } from '@/store/app-store';
 import { usePermission } from '@/lib/permissions';
 import { formatPKR } from '@/lib/utils/currency';
@@ -18,7 +18,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { getBackbarConsumptionReport, recordBackbarActual, type BackbarReportRow } from '@/app/actions/inventory';
-import { fetchProductsWithBranchStock, type ProductWithBranchStock } from '@/lib/db';
+import type { ProductWithBranchStock } from '@/lib/db';
 import type { StockMovement, Product, Staff } from '@/types/database';
 
 const MOVE_LABELS: Record<string, { label: string; color: string }> = {
@@ -63,22 +63,17 @@ export default function InventoryReportPage() {
   const fetchData = useCallback(async () => {
     if (!salon || !currentBranch) return;
     setLoading(true);
-    const [movRes, prods, staffRes] = await Promise.all([
-      supabase
-        .from('stock_movements')
-        .select('*, product:products!inner(*, salon_id)')
-        .eq('product.salon_id', salon.id)
-        .eq('branch_id', currentBranch.id)
-        .gte('created_at', `${dateFrom}T00:00:00`)
-        .lte('created_at', `${dateTo}T23:59:59`)
-        .order('created_at', { ascending: false })
-        .limit(200),
-      fetchProductsWithBranchStock(salon.id, currentBranch.id),
-      supabase.from('staff').select('*').eq('salon_id', salon.id).eq('is_active', true).order('name'),
-    ]);
-    if (movRes.data) setMovements(movRes.data as (StockMovement & { product?: Product })[]);
-    setProducts(prods);
-    if (staffRes.data) setStaffOptions(staffRes.data as Staff[]);
+    // One server-action call replaces stock_movements (with PostgREST inner
+    // join), products+stock, and the staff list — all branch-scoped.
+    const { data } = await getInventoryReport({
+      branchId: currentBranch.id,
+      dateFrom, dateTo,
+    });
+    if (data) {
+      setMovements(data.movements);
+      setProducts(data.products);
+      setStaffOptions(data.staffOptions);
+    }
     setLoading(false);
   }, [salon, currentBranch, dateFrom, dateTo]);
 

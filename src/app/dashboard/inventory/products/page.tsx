@@ -2,9 +2,14 @@
 
 import { Suspense, useEffect, useState, useCallback } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { Search, Plus, Package as PackageIcon, Minus, X, Check } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
-import { fetchProductsWithBranchStock, type ProductWithBranchStock } from '@/lib/db';
+import { Search, Plus, Package as PackageIcon, X, Check } from 'lucide-react';
+import {
+  getProductsWithBranchStock,
+  listActiveServices,
+  listProductServiceLinks,
+  updateBranchProductThreshold,
+} from '@/app/actions/lists';
+import type { ProductWithBranchStock } from '@/lib/db';
 import { useAppStore } from '@/store/app-store';
 import { usePermission } from '@/lib/permissions';
 import { formatPKR } from '@/lib/utils/currency';
@@ -15,13 +20,11 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Switch } from '@/components/ui/switch';
 import toast from 'react-hot-toast';
 import { showActionError, handleSubscriptionError } from '@/components/paywall-dialog';
 import { EmptyState } from '@/components/empty-state';
-import type { InventoryType, Service, ProductServiceLink } from '@/types/database';
+import type { InventoryType, Service } from '@/types/database';
 
 type Tab = 'all' | 'backbar' | 'retail' | 'low';
 
@@ -83,7 +86,7 @@ function ProductsContent() {
     if (!salon || !currentBranch) return;
     setLoading(true);
     try {
-      const rows = await fetchProductsWithBranchStock(salon.id, currentBranch.id);
+      const { data: rows } = await getProductsWithBranchStock({ branchId: currentBranch.id });
       setProducts(rows);
     } catch (err) {
       console.error(err);
@@ -114,8 +117,8 @@ function ProductsContent() {
   async function openForm(product?: ProductWithBranchStock) {
     // Load services for link picker (per-branch after migration 036).
     if (salon && currentBranch && services.length === 0) {
-      const { data } = await supabase.from('services').select('*').eq('salon_id', salon.id).eq('branch_id', currentBranch.id).eq('is_active', true).order('name');
-      if (data) setServices(data as Service[]);
+      const { data } = await listActiveServices(currentBranch.id);
+      setServices(data);
     }
 
     if (product) {
@@ -125,18 +128,16 @@ function ProductsContent() {
       setFormContentPerUnit(String(product.content_per_unit || 1)); setFormContentUnit(product.content_unit || 'ml');
       setFormPurchasePrice(String(product.purchase_price));
       setFormRetailPrice(String(product.retail_price)); setFormStock(String(product.current_stock)); setFormThreshold(String(product.low_stock_threshold));
-      // Load existing links
-      const { data: linkData } = await supabase.from('product_service_links').select('*').eq('product_id', product.id);
-      if (linkData) {
-        const svcRes = services.length > 0 ? services : (await supabase.from('services').select('*').eq('salon_id', salon!.id).eq('branch_id', currentBranch!.id).eq('is_active', true).order('name')).data as Service[] || [];
-        if (svcRes.length > 0 && services.length === 0) setServices(svcRes);
-        setFormLinks((linkData as ProductServiceLink[]).map(l => {
-          const svc = svcRes.find(s => s.id === l.service_id);
-          return { id: l.id, serviceId: l.service_id, serviceName: svc?.name || 'Unknown', qtyPerUse: l.quantity_per_use };
-        }));
-      } else {
-        setFormLinks([]);
-      }
+      // Load existing service links + ensure services list is populated.
+      const { data: linkData } = await listProductServiceLinks(product.id);
+      const svcRes = services.length > 0
+        ? services
+        : (await listActiveServices(currentBranch!.id)).data;
+      if (svcRes.length > 0 && services.length === 0) setServices(svcRes);
+      setFormLinks(linkData.map((l) => {
+        const svc = svcRes.find((s) => s.id === l.service_id);
+        return { id: l.id, serviceId: l.service_id, serviceName: svc?.name || 'Unknown', qtyPerUse: l.quantity_per_use };
+      }));
     } else {
       setEditProduct(null);
       setFormName(''); setFormBrand(''); setFormCategory(''); setFormType('backbar'); setFormUnit('bottle');
@@ -204,12 +205,12 @@ function ProductsContent() {
         // RLS allows salon members to update their own branch's rows.
         const newThreshold = Number(formThreshold) || 5;
         if (newThreshold !== (editProduct.low_stock_threshold || 5)) {
-          const { error: threshErr } = await supabase
-            .from('branch_products')
-            .update({ low_stock_threshold: newThreshold })
-            .eq('branch_id', currentBranch.id)
-            .eq('product_id', editProduct.id);
-          if (threshErr) { toast.error(threshErr.message); return; }
+          const { error: threshErr } = await updateBranchProductThreshold({
+            productId: editProduct.id,
+            branchId: currentBranch.id,
+            lowStockThreshold: newThreshold,
+          });
+          if (threshErr) { toast.error(threshErr); return; }
         }
 
         toast.success('Product updated');

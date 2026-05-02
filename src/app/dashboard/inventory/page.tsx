@@ -5,8 +5,8 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 import { Package, AlertTriangle, ShoppingBag, Beaker, ArrowRight } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
-import { fetchProductsWithBranchStock, type ProductWithBranchStock } from '@/lib/db';
+import { getProductsWithBranchStock, getInventoryOverview } from '@/app/actions/lists';
+import type { ProductWithBranchStock } from '@/lib/db';
 import { useAppStore } from '@/store/app-store';
 import { usePermission } from '@/lib/permissions';
 import { formatPKR } from '@/lib/utils/currency';
@@ -36,17 +36,14 @@ export default function InventoryDashboardPage() {
     if (!salon || !currentBranch) return;
     setLoading(true);
     try {
-      const [prods, movRes] = await Promise.all([
-        fetchProductsWithBranchStock(salon.id, currentBranch.id),
-        // stock_movements has no salon_id column — inner-join products and filter
-        // by product.salon_id so we never surface another tenant's movements.
-        // Scope to the current branch too — nothing crosses branch boundaries.
-        supabase.from('stock_movements').select('*, product:products!inner(name, salon_id)').eq('product.salon_id', salon.id).eq('branch_id', currentBranch.id).order('created_at', { ascending: false }).limit(10),
+      // Two server-action calls replace the old client wrapper +
+      // PostgREST embedded join (products!inner) for the recent movements.
+      const [prodsRes, movRes] = await Promise.all([
+        getProductsWithBranchStock({ branchId: currentBranch.id }),
+        getInventoryOverview(currentBranch.id),
       ]);
-      setProducts(prods);
-      if (movRes.data) setMovements(movRes.data.map((m: Record<string, unknown>) => ({
-        ...m, product_name: (m.product as { name: string } | null)?.name,
-      })) as (StockMovement & { product_name?: string })[]);
+      setProducts(prodsRes.data);
+      if (movRes.data) setMovements(movRes.data.movements);
     } catch (err) { console.error(err); }
     finally { setLoading(false); }
   }, [salon, currentBranch]);

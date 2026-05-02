@@ -3,7 +3,10 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeftRight, Plus, Search } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
+import {
+  listActiveBranchProducts,
+  getBranchProductsAndStock,
+} from '@/app/actions/lists';
 import { useAppStore } from '@/store/app-store';
 import { usePermission } from '@/lib/permissions';
 import { formatDateTime } from '@/lib/utils/dates';
@@ -19,7 +22,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import toast from 'react-hot-toast';
 import { showActionError, handleSubscriptionError } from '@/components/paywall-dialog';
-import type { Product, StockTransfer, BranchProduct } from '@/types/database';
+import type { Product, StockTransfer } from '@/types/database';
 
 export default function TransfersPage() {
   const router = useRouter();
@@ -56,20 +59,12 @@ export default function TransfersPage() {
     setLoading(true);
     try {
       const [txRes, prodRes] = await Promise.all([
-        // listStockTransfers is Agent 1's action. Contract: returns raw
-        // StockTransfer rows (no joins) for a given branch — the current
-        // branch, since transfers are how owners see what moved in/out of
-        // the branch they're operating today.
         listStockTransfers({ branchId: currentBranch.id, limit: 100 }),
-        // Migration 037: products are per-branch. The transfer picker only
-        // lists products that live in the source branch (fromBranchId); we
-        // default that to currentBranch on openForm(), so the initial fetch
-        // scopes there. When the user picks a different source branch, the
-        // separate stock-loading effect below refreshes the list.
-        supabase.from('products').select('*').eq('salon_id', salon.id).eq('branch_id', currentBranch.id).eq('is_active', true).order('name'),
+        // Server-action equivalent of the previous direct .from('products').
+        listActiveBranchProducts(currentBranch.id),
       ]);
       if (txRes.data) setTransfers(txRes.data as StockTransfer[]);
-      if (prodRes.data) setProducts(prodRes.data as Product[]);
+      setProducts(prodRes.data);
     } catch (err) {
       console.error(err);
     } finally {
@@ -89,26 +84,12 @@ export default function TransfersPage() {
     if (!showForm || !fromBranchId || !salon) { setFromBranchStock(new Map()); return; }
     let cancelled = false;
     (async () => {
-      const [stockRes, prodRes] = await Promise.all([
-        supabase
-          .from('branch_products')
-          .select('product_id,current_stock')
-          .eq('branch_id', fromBranchId),
-        supabase
-          .from('products')
-          .select('*')
-          .eq('salon_id', salon.id)
-          .eq('branch_id', fromBranchId)
-          .eq('is_active', true)
-          .order('name'),
-      ]);
-      if (cancelled) return;
+      const { data } = await getBranchProductsAndStock(fromBranchId);
+      if (cancelled || !data) return;
       const map = new Map<string, number>();
-      for (const row of (stockRes.data || []) as Array<Pick<BranchProduct, 'product_id' | 'current_stock'>>) {
-        map.set(row.product_id, Number(row.current_stock) || 0);
-      }
+      for (const [productId, qty] of Object.entries(data.stockByProduct)) map.set(productId, qty);
       setFromBranchStock(map);
-      if (prodRes.data) setProducts(prodRes.data as Product[]);
+      setProducts(data.products);
     })();
     return () => { cancelled = true; };
   }, [showForm, fromBranchId, salon]);
