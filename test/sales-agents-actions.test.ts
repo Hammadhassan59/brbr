@@ -47,6 +47,14 @@ vi.mock('@/lib/supabase', () => ({
 
 vi.mock('@/lib/email-sender', () => ({ sendEmail: vi.fn().mockResolvedValue(undefined) }));
 
+// auth-admin replaces supabase.auth.admin.* in production code; mirror the
+// fakes so the existing toHaveBeenCalled assertions still pass.
+vi.mock('@/app/actions/auth-admin', () => ({
+  createUser: adminCreateUser,
+  deleteUser: adminDeleteUser,
+  generateLink: adminGenerateLink,
+}));
+
 describe('sales-agents server actions', () => {
   beforeEach(() => {
     vi.clearAllMocks();

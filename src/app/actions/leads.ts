@@ -5,6 +5,7 @@ import { verifySession, requireAdminRole } from './auth';
 import { rowsToCSV } from '@/lib/csv-export';
 import { getSignedStorageUrl } from '@/lib/storage-url';
 import type { Lead, LeadStatus } from '@/types/sales';
+import * as authAdmin from '@/app/actions/auth-admin';
 
 async function requireSalesAgent() {
   const s = await verifySession();
@@ -477,7 +478,7 @@ export async function convertLeadToSalon(
 
   // 2. Create auth user
   const tmpPassword = crypto.randomUUID() + 'A1!';
-  const { data: authData, error: authErr } = await supabase.auth.admin.createUser({
+  const { data: authData, error: authErr } = await authAdmin.createUser({
     email: input.ownerEmail.trim().toLowerCase(),
     password: tmpPassword,
     email_confirm: true,
@@ -486,7 +487,7 @@ export async function convertLeadToSalon(
 
   const ownerId = authData.user.id;
   const rollback = async () => {
-    await supabase.auth.admin.deleteUser(ownerId).catch(() => {});
+    await authAdmin.deleteUser(ownerId).catch(() => {});
   };
 
   // 3. Create salon
@@ -541,7 +542,7 @@ export async function convertLeadToSalon(
   // 6. Send password-reset link to new owner (best-effort)
   try {
     const origin = process.env.NEXT_PUBLIC_APP_URL || 'https://icut.pk';
-    const { data: linkData } = await supabase.auth.admin.generateLink({
+    const { data: linkData } = await authAdmin.generateLink({
       type: 'recovery',
       email: input.ownerEmail.trim().toLowerCase(),
       options: { redirectTo: `${origin}/reset-password` },

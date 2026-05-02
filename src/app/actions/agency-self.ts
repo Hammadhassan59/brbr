@@ -4,6 +4,7 @@ import { createServerClient } from '@/lib/supabase';
 import { requireAgencyAdmin } from './auth';
 import { sendEmail } from '@/lib/email-sender';
 import type { Agency, SalesAgent, AgencyCommission, AgencyPayout } from '@/types/sales';
+import * as authAdmin from '@/app/actions/auth-admin';
 
 function validatePct(n: number): string | null {
   if (!Number.isFinite(n) || n < 0 || n > 100) return 'Percent must be between 0 and 100';
@@ -165,7 +166,7 @@ export async function createAgencyAgent(
   // Create Supabase auth user with a random temp password — the welcome
   // email below includes a reset link so the agent sets their own.
   const tmpPassword = crypto.randomUUID() + 'A1!';
-  const { data: authData, error: authErr } = await supabase.auth.admin.createUser({
+  const { data: authData, error: authErr } = await authAdmin.createUser({
     email,
     password: tmpPassword,
     email_confirm: true,
@@ -191,7 +192,7 @@ export async function createAgencyAgent(
 
   if (error) {
     // Rollback auth user on sales_agents insert failure.
-    await supabase.auth.admin.deleteUser(authData.user.id).catch(() => {});
+    await authAdmin.deleteUser(authData.user.id).catch(() => {});
     return { data: null, error: error.message };
   }
 
@@ -199,7 +200,7 @@ export async function createAgencyAgent(
   // agency admin can retry from the agents list.
   try {
     const origin = process.env.NEXT_PUBLIC_APP_URL || 'https://icut.pk';
-    const { data: linkData } = await supabase.auth.admin.generateLink({
+    const { data: linkData } = await authAdmin.generateLink({
       type: 'recovery',
       email,
       options: { redirectTo: `${origin}/reset-password` },

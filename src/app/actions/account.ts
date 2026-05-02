@@ -8,6 +8,7 @@ import { BUCKETS } from '@/lib/rate-limit-buckets';
 import { getClientIp } from '@/lib/rate-limit';
 import { PasswordSchema } from '@/lib/schemas/common';
 import { safeError } from '@/lib/action-error';
+import * as authAdmin from '@/app/actions/auth-admin';
 
 type ActionResult<T> = { data: T; error: null } | { data: null; error: string };
 
@@ -83,7 +84,7 @@ export async function getAccountProfile(): Promise<ActionResult<AccountProfile>>
 
   const { createServerClient } = await import('@/lib/supabase');
   const supabase = createServerClient();
-  const { data: userData, error: userErr } = await supabase.auth.admin.getUserById(resolved.authUserId);
+  const { data: userData, error: userErr } = await authAdmin.getUserById(resolved.authUserId);
   if (userErr || !userData.user) return { data: null, error: userErr ? safeError(userErr) : 'User not found' };
 
   const email = userData.user.email || '';
@@ -150,7 +151,7 @@ export async function getAccountEmail(): Promise<ActionResult<{ email: string }>
 
   const { createServerClient } = await import('@/lib/supabase');
   const supabase = createServerClient();
-  const { data, error } = await supabase.auth.admin.getUserById(resolved.authUserId);
+  const { data, error } = await authAdmin.getUserById(resolved.authUserId);
   if (error || !data.user) return { data: null, error: error ? safeError(error) : 'User not found' };
   return { data: { email: data.user.email || '' }, error: null };
 }
@@ -195,7 +196,7 @@ export async function changeAccountPassword(
   const { createServerClient } = await import('@/lib/supabase');
   const supabase = createServerClient();
 
-  const { data: userData, error: userErr } = await supabase.auth.admin.getUserById(resolved.authUserId);
+  const { data: userData, error: userErr } = await authAdmin.getUserById(resolved.authUserId);
   if (userErr || !userData.user?.email) {
     return { data: null, error: userErr ? safeError(userErr) : 'User not found' };
   }
@@ -209,7 +210,7 @@ export async function changeAccountPassword(
   if (signInErr) return { data: null, error: 'Current password is incorrect' };
   await anon.auth.signOut();
 
-  const { error: updErr } = await supabase.auth.admin.updateUserById(resolved.authUserId, {
+  const { error: updErr } = await authAdmin.updateUserById(resolved.authUserId, {
     password: newPassword,
   });
   if (updErr) return { data: null, error: safeError(updErr) };
@@ -243,7 +244,7 @@ export async function changeAccountEmail(
   const { createServerClient } = await import('@/lib/supabase');
   const supabase = createServerClient();
 
-  const { data: userData, error: userErr } = await supabase.auth.admin.getUserById(resolved.authUserId);
+  const { data: userData, error: userErr } = await authAdmin.getUserById(resolved.authUserId);
   if (userErr || !userData.user?.email) {
     return { data: null, error: userErr ? safeError(userErr) : 'User not found' };
   }
@@ -270,7 +271,7 @@ export async function changeAccountEmail(
   //   1. user.auth.updateUser({ email }) — triggered via the user's own
   //      access token so Supabase sends the verification email and keeps the
   //      OLD email in place until both old and new addresses confirm.
-  //   2. We do NOT call supabase.auth.admin.updateUserById({ email_confirm: true }),
+  //   2. We do NOT call authAdmin.updateUserById({ email_confirm: true }),
   //      which would bypass verification and hand the account to anyone who
   //      submits a new email (no link click required). The old code did this.
   //

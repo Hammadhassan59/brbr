@@ -9,6 +9,7 @@ import { checkRateLimit } from '@/lib/with-rate-limit';
 import { BUCKETS } from '@/lib/rate-limit-buckets';
 import { safeError } from '@/lib/action-error';
 import { getSignedStorageUrl } from '@/lib/storage-url';
+import * as authAdmin from '@/app/actions/auth-admin';
 
 type Plan = 'basic' | 'growth' | 'pro';
 type Method = 'bank' | 'jazzcash';
@@ -374,7 +375,7 @@ export async function approvePaymentRequest(
       .eq('id', request.salon_id)
       .single();
     if (salonRow?.owner_id) {
-      const { data: authData } = await supabase.auth.admin.getUserById(salonRow.owner_id);
+      const { data: authData } = await authAdmin.getUserById(salonRow.owner_id);
       const ownerEmail = authData?.user?.email;
       if (ownerEmail) {
         const dashboardUrl = process.env.NEXT_PUBLIC_APP_URL
@@ -440,7 +441,7 @@ export async function rejectPaymentRequest(
       .eq('id', request.salon_id)
       .single();
     if (salonRow?.owner_id) {
-      const { data: authData } = await supabase.auth.admin.getUserById(salonRow.owner_id);
+      const { data: authData } = await authAdmin.getUserById(salonRow.owner_id);
       const ownerEmail = authData?.user?.email;
       if (ownerEmail) {
         const retryUrl = process.env.NEXT_PUBLIC_APP_URL

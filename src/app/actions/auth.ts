@@ -6,6 +6,7 @@ import { randomUUID } from 'crypto';
 import { checkRateLimit } from '@/lib/with-rate-limit';
 import { BUCKETS } from '@/lib/rate-limit-buckets';
 import { getClientIp } from '@/lib/rate-limit';
+import * as authAdmin from '@/app/actions/auth-admin';
 
 // JWT issuer/audience — the proxy must verify these exactly. Anything signed
 // with different iss/aud values is treated as invalid.
@@ -686,7 +687,7 @@ export async function resolveUserRole(authUserId: string, authEmail: string) {
   // Gate email-based linking on Supabase email verification.
   let emailVerified = false;
   try {
-    const { data: userData } = await supabase.auth.admin.getUserById(authUserId);
+    const { data: userData } = await authAdmin.getUserById(authUserId);
     emailVerified = !!userData?.user?.email_confirmed_at;
   } catch {
     emailVerified = false;
@@ -886,7 +887,7 @@ export async function resolveAdminRoleByAuthId(authUserId: string): Promise<stri
   const allowed = process.env.SUPERADMIN_EMAILS || '';
   if (!allowed) return null;
   try {
-    const { data: userRes } = await supabase.auth.admin.getUserById(authUserId);
+    const { data: userRes } = await authAdmin.getUserById(authUserId);
     const email = userRes?.user?.email?.toLowerCase();
     if (!email) return null;
     const envList = allowed.split(',').map((e) => e.trim().toLowerCase()).filter(Boolean);

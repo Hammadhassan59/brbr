@@ -10,6 +10,7 @@ import { checkRateLimit } from '@/lib/with-rate-limit';
 import { BUCKETS } from '@/lib/rate-limit-buckets';
 import { getClientIp } from '@/lib/rate-limit';
 import { safeError } from '@/lib/action-error';
+import * as authAdmin from '@/app/actions/auth-admin';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -371,7 +372,7 @@ export async function setupSalon(data: {
 
   // Create partners — each gets a Supabase Auth account
   for (const p of data.partners) {
-    const { data: authUser, error: authErr } = await supabase.auth.admin.createUser({
+    const { data: authUser, error: authErr } = await authAdmin.createUser({
       email: p.email,
       password: p.password,
       email_confirm: true,
@@ -392,7 +393,7 @@ export async function setupSalon(data: {
 
   // Create staff — each gets a Supabase Auth account
   for (const s of data.staff) {
-    const { data: authUser, error: authErr } = await supabase.auth.admin.createUser({
+    const { data: authUser, error: authErr } = await authAdmin.createUser({
       email: s.email,
       password: s.password,
       email_confirm: true,
@@ -427,7 +428,7 @@ export async function setupSalon(data: {
 
   // Send welcome email — best-effort, failures don't block setup.
   try {
-    const { data: authData } = await supabase.auth.admin.getUserById(ownerId);
+    const { data: authData } = await authAdmin.getUserById(ownerId);
     const ownerEmail = authData?.user?.email;
     if (ownerEmail) {
       const dashboardUrl = process.env.NEXT_PUBLIC_APP_URL

@@ -3,6 +3,7 @@
 import { createServerClient } from '@/lib/supabase';
 import { requireAdminRole } from './auth';
 import { sendEmail } from '@/lib/email-sender';
+import * as authAdmin from '@/app/actions/auth-admin';
 import type {
   Agency,
   AgencyStatus,
@@ -227,7 +228,7 @@ export async function provisionAgencyAdmin(
 
   // 1. Find or create the auth user.
   let userId: string | null = null;
-  const { data: authCreate } = await supabase.auth.admin.createUser({
+  const { data: authCreate } = await authAdmin.createUser({
     email,
     password: crypto.randomUUID() + 'A1!',
     email_confirm: true,
@@ -236,7 +237,7 @@ export async function provisionAgencyAdmin(
     userId = authCreate.user.id;
   } else {
     // Likely already exists — look it up.
-    const { data: listed } = await supabase.auth.admin.listUsers({ page: 1, perPage: 200 });
+    const { data: listed } = await authAdmin.listUsers({ page: 1, perPage: 200 });
     userId = listed?.users.find((u) => u.email?.toLowerCase() === email)?.id ?? null;
   }
   if (!userId) return { emailSent: false, error: 'Could not resolve auth user' };
@@ -253,7 +254,7 @@ export async function provisionAgencyAdmin(
   // 3. Send welcome email with recovery link.
   try {
     const origin = process.env.NEXT_PUBLIC_APP_URL || 'https://icut.pk';
-    const { data: linkData } = await supabase.auth.admin.generateLink({
+    const { data: linkData } = await authAdmin.generateLink({
       type: 'recovery',
       email,
       options: { redirectTo: `${origin}/reset-password` },

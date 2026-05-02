@@ -19,6 +19,7 @@ import { verifySession } from '@/app/actions/auth';
 import { createServerClient } from '@/lib/supabase';
 import { hasPermission } from '@/lib/tenant-guard';
 import { ReportPDF } from '@/lib/pdf-export';
+import * as authAdmin from '@/app/actions/auth-admin';
 
 // pdfkit needs Node.js runtime (filesystem font loading), not edge.
 export const runtime = 'nodejs';
@@ -105,7 +106,7 @@ export async function GET() {
   // Try to fetch the owner's email for the cover page.
   let ownerEmail = '';
   if (salon.owner_id) {
-    const { data: owner } = await supabase.auth.admin.getUserById(salon.owner_id);
+    const { data: owner } = await authAdmin.getUserById(salon.owner_id);
     ownerEmail = owner?.user?.email ?? '';
   }
 
@@ -225,7 +226,7 @@ export async function GET() {
   // in branch_products. Merge so the PDF shows real per-branch stock next
   // to the branch name instead of the deprecated salon-wide column.
   const productIds = (products || []).map((p: { id: string }) => p.id);
-  let branchProductStock = new Map<string, number>();
+  const branchProductStock = new Map<string, number>();
   if (productIds.length > 0) {
     const { data: bp } = await supabase
       .from('branch_products')

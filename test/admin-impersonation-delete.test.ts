@@ -140,12 +140,27 @@ vi.mock('@/lib/supabase', () => ({
             data: { properties: { hashed_token: 'tok-abc' } },
             error: null,
           }),
-        // Used by the orphan-sweep safety net inside deleteSalonAndAllData —
-        // returning an empty users list makes the sweep a no-op in these tests.
         listUsers: () => Promise.resolve({ data: { users: [] }, error: null }),
       },
     },
   }),
+}));
+
+// auth-admin replaces supabase.auth.admin.* in production code; mirror the
+// same mocks so admin-action assertions keep working unchanged.
+vi.mock('@/app/actions/auth-admin', () => ({
+  deleteUser: (id: string) => adminDeleteUser(id),
+  getUserById: (id: string) =>
+    Promise.resolve({
+      data: { user: { id, email: `user-${id}@example.com` } },
+      error: null,
+    }),
+  generateLink: () =>
+    Promise.resolve({
+      data: { properties: { hashed_token: 'tok-abc' } },
+      error: null,
+    }),
+  listUsers: () => Promise.resolve({ data: { users: [] }, error: null }),
 }));
 
 vi.mock('@/app/actions/auth', () => ({

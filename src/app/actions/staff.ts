@@ -3,6 +3,7 @@
 import { checkWriteAccess, getPlanLimits, verifySession } from './auth';
 import { createServerClient } from '@/lib/supabase';
 import { staffUpdateSchema } from '@/lib/schemas';
+import * as authAdmin from '@/app/actions/auth-admin';
 import {
   assertStaffOwned,
   assertBranchOwned,
@@ -83,7 +84,7 @@ export async function createStaff(data: {
   // both nullable, so this is a supported state.
   let authUserId: string | null = null;
   if (emailProvided && passwordProvided) {
-    const { data: authUser, error: authError } = await supabase.auth.admin.createUser({
+    const { data: authUser, error: authError } = await authAdmin.createUser({
       email: data.email!.trim(),
       password: data.password!,
       email_confirm: true,

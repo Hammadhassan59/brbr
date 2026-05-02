@@ -7,6 +7,7 @@ import { ADMIN_ROLES, type AdminRole } from '@/lib/admin-roles';
 import { checkRateLimit } from '@/lib/with-rate-limit';
 import { BUCKETS } from '@/lib/rate-limit-buckets';
 import { safeError } from '@/lib/action-error';
+import * as authAdmin from '@/app/actions/auth-admin';
 
 export interface AdminUserRow {
   id: string;
@@ -62,7 +63,7 @@ export async function inviteAdmin(input: {
 
   // 1. Create auth user with random password.
   const tmpPassword = crypto.randomUUID() + 'A1!';
-  const { data: authData, error: authErr } = await supabase.auth.admin.createUser({
+  const { data: authData, error: authErr } = await authAdmin.createUser({
     email,
     password: tmpPassword,
     email_confirm: true,
@@ -85,14 +86,14 @@ export async function inviteAdmin(input: {
     .single();
 
   if (error) {
-    await supabase.auth.admin.deleteUser(authData.user.id).catch(() => {});
+    await authAdmin.deleteUser(authData.user.id).catch(() => {});
     return { data: null, error: safeError(error) };
   }
 
   // 3. Send password-reset link so the new admin can set their own password.
   try {
     const origin = process.env.NEXT_PUBLIC_APP_URL || 'https://icut.pk';
-    const { data: linkData } = await supabase.auth.admin.generateLink({
+    const { data: linkData } = await authAdmin.generateLink({
       type: 'recovery',
       email,
       options: { redirectTo: `${origin}/reset-password` },

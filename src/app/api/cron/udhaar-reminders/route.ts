@@ -3,6 +3,7 @@ import { timingSafeEqual } from 'node:crypto';
 import { createServerClient } from '@/lib/supabase';
 import { sendEmail } from '@/lib/email-sender';
 import { udhaarOwnerSummaryEmail, type UdhaarClient } from '@/lib/email-templates';
+import * as authAdmin from '@/app/actions/auth-admin';
 
 // Weekly cron (Mondays). Systemd timer on the VPS calls:
 //   curl -H "X-Cron-Secret: $CRON_SECRET" https://icut.pk/api/cron/udhaar-reminders
@@ -114,7 +115,7 @@ export async function GET(req: NextRequest) {
     const totalBalance = list.reduce((n, c) => n + c.balance, 0);
 
     try {
-      const { data: authData } = await supabase.auth.admin.getUserById(salon.owner_id);
+      const { data: authData } = await authAdmin.getUserById(salon.owner_id);
       const ownerEmail = authData?.user?.email;
       if (!ownerEmail) {
         results.push({ salonId: salon.id, sent: false, error: 'No owner email', clientCount: list.length });

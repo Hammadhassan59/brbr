@@ -5,6 +5,7 @@ import { createServerClient } from '@/lib/supabase';
 import { requireAdminRole } from './auth';
 import { checkRateLimit } from '@/lib/with-rate-limit';
 import { BUCKETS } from '@/lib/rate-limit-buckets';
+import * as authAdmin from '@/app/actions/auth-admin';
 
 /**
  * 16-char password from an alphabet that avoids visually-ambiguous characters
@@ -129,7 +130,7 @@ export async function generateSalonOwnerPassword(
   if (salonErr || !salon) return { success: false, error: 'Salon not found' };
   if (!salon.owner_id) return { success: false, error: 'Salon has no owner account linked' };
 
-  const { data: userRes, error: userErr } = await supabase.auth.admin.getUserById(salon.owner_id);
+  const { data: userRes, error: userErr } = await authAdmin.getUserById(salon.owner_id);
   const email = userRes?.user?.email;
   if (userErr || !email) return { success: false, error: 'Could not resolve owner email' };
 

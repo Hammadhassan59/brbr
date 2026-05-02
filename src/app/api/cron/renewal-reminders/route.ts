@@ -3,6 +3,7 @@ import { timingSafeEqual } from 'node:crypto';
 import { createServerClient } from '@/lib/supabase';
 import { sendEmail } from '@/lib/email-sender';
 import { planRenewalReminderEmail } from '@/lib/email-templates';
+import * as authAdmin from '@/app/actions/auth-admin';
 
 // Constant-time comparison so the secret can't be recovered by measuring
 // how fast the naive `!==` check bails out on the first differing byte.
@@ -101,7 +102,7 @@ export async function GET(req: NextRequest) {
     if (!stage) continue;
 
     try {
-      const { data: authData } = await supabase.auth.admin.getUserById(salon.owner_id);
+      const { data: authData } = await authAdmin.getUserById(salon.owner_id);
       const ownerEmail = authData?.user?.email;
       if (!ownerEmail) {
         results.push({ salonId: salon.id, stage, sent: false, error: 'No owner email' });

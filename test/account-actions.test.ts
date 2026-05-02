@@ -56,6 +56,14 @@ vi.mock('@/lib/supabase', () => ({
   }),
 }));
 
+// auth-admin replaces supabase.auth.admin.* in production code; route the
+// same mocks through it so existing assertions (toHaveBeenCalledWith) still
+// match without rewriting every test.
+vi.mock('@/app/actions/auth-admin', () => ({
+  getUserById: (id: string) => adminGetUserById(id),
+  updateUserById: (id: string, body: Record<string, unknown>) => adminUpdateUserById(id, body),
+}));
+
 // Two distinct createClient shapes: the anonymous client (used for the
 // password-verification sign-in) and the user-authed client (used for the
 // email-change call, which now runs as the user, not service-role, so

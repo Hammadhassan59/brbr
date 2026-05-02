@@ -3,6 +3,7 @@ import { timingSafeEqual } from 'node:crypto';
 import { createServerClient } from '@/lib/supabase';
 import { sendEmail } from '@/lib/email-sender';
 import { lowStockAlertEmail, type LowStockBranch } from '@/lib/email-templates';
+import * as authAdmin from '@/app/actions/auth-admin';
 
 // Daily cron. Systemd timer on the VPS calls:
 //   curl -H "X-Cron-Secret: $CRON_SECRET" https://icut.pk/api/cron/low-stock-alerts
@@ -111,7 +112,7 @@ export async function GET(req: NextRequest) {
     const totalCount = branches.reduce((n, b) => n + b.products.length, 0);
 
     try {
-      const { data: authData } = await supabase.auth.admin.getUserById(salon.owner_id);
+      const { data: authData } = await authAdmin.getUserById(salon.owner_id);
       const ownerEmail = authData?.user?.email;
       if (!ownerEmail) {
         results.push({ salonId: salon.id, sent: false, error: 'No owner email', productCount: totalCount });

@@ -4,6 +4,7 @@ import { createServerClient } from '@/lib/supabase';
 import { verifySession, requireAdminRole } from './auth';
 import { sendEmail } from '@/lib/email-sender';
 import type { SalesAgent } from '@/types/sales';
+import * as authAdmin from '@/app/actions/auth-admin';
 
 export interface CreateAgentInput {
   email: string;
@@ -32,7 +33,7 @@ export async function createSalesAgent(
   const supabase = createServerClient();
 
   const tmpPassword = crypto.randomUUID() + 'A1!';
-  const { data: authData, error: authErr } = await supabase.auth.admin.createUser({
+  const { data: authData, error: authErr } = await authAdmin.createUser({
     email: input.email,
     password: tmpPassword,
     email_confirm: true,
@@ -55,13 +56,13 @@ export async function createSalesAgent(
     .single();
 
   if (error) {
-    await supabase.auth.admin.deleteUser(authData.user.id).catch(() => {});
+    await authAdmin.deleteUser(authData.user.id).catch(() => {});
     return { data: null, error: error.message };
   }
 
   try {
     const origin = process.env.NEXT_PUBLIC_APP_URL || 'https://icut.pk';
-    const { data: linkData } = await supabase.auth.admin.generateLink({
+    const { data: linkData } = await authAdmin.generateLink({
       type: 'recovery',
       email: input.email,
       options: { redirectTo: `${origin}/reset-password` },

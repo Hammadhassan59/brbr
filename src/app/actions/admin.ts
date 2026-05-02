@@ -4,6 +4,7 @@ import { createServerClient } from '@/lib/supabase';
 import { verifySession, signSession, resolveAdminRoleByAuthId, requireAdminRole } from './auth';
 import { safeError } from '@/lib/action-error';
 import type { SubscriptionPlan, SubscriptionStatus } from '@/types/database';
+import * as authAdmin from '@/app/actions/auth-admin';
 
 export async function getAdminDashboardData() {
   await requireAdminRole(['super_admin', 'technical_support', 'customer_support', 'leads_team']);
@@ -608,13 +609,13 @@ export async function impersonateSalon(salonId: string): Promise<{
   // to this salon's owner, get_user_salon_id() returns NULL and every query
   // returns zero rows. The magic-link hashed_token is redeemed on the client
   // via supabase.auth.verifyOtp, which sets the browser session.
-  const { data: ownerUser, error: ownerErr } = await supabase.auth.admin.getUserById(salon.owner_id);
+  const { data: ownerUser, error: ownerErr } = await authAdmin.getUserById(salon.owner_id);
   if (ownerErr || !ownerUser?.user?.email) {
     return { data: null, error: 'Could not resolve owner auth user' };
   }
   const ownerEmail = ownerUser.user.email;
 
-  const { data: linkData, error: linkErr } = await supabase.auth.admin.generateLink({
+  const { data: linkData, error: linkErr } = await authAdmin.generateLink({
     type: 'magiclink',
     email: ownerEmail,
   });
@@ -703,10 +704,10 @@ export async function exitImpersonation(): Promise<{
   let supabaseAuth: { tokenHash: string; email: string } | null = null;
   try {
     const supabase = createServerClient();
-    const { data: adminUser } = await supabase.auth.admin.getUserById(adminAuthUserId);
+    const { data: adminUser } = await authAdmin.getUserById(adminAuthUserId);
     const adminEmail = adminUser?.user?.email;
     if (adminEmail) {
-      const { data: linkData } = await supabase.auth.admin.generateLink({
+      const { data: linkData } = await authAdmin.generateLink({
         type: 'magiclink',
         email: adminEmail,
       });
@@ -870,7 +871,7 @@ export async function deleteSalonAndAllData(
       await supabase.from('admin_users').delete().eq('user_id', id);
       await supabase.from('sales_agents').delete().eq('user_id', id);
       await supabase.from('agency_admins').delete().eq('user_id', id);
-      const { error } = await supabase.auth.admin.deleteUser(id);
+      const { error } = await authAdmin.deleteUser(id);
       if (!error) deleted++;
     } catch {
       // Non-fatal — caught by the sweep below.
@@ -954,7 +955,7 @@ export async function sweepOrphansInternal(): Promise<{
   const failures: string[] = [];
 
   for (;;) {
-    const { data, error } = await supabase.auth.admin.listUsers({ page, perPage: 1000 });
+    const { data, error } = await authAdmin.listUsers({ page, perPage: 1000 });
     if (error) return { data: { deleted, scanned, failures }, error: error.message };
     const users = data?.users ?? [];
     if (users.length === 0) break;
@@ -968,7 +969,7 @@ export async function sweepOrphansInternal(): Promise<{
       const ageMs = Date.now() - new Date(u.created_at).getTime();
       if (ageMs < 15 * 60 * 1000) continue;
       try {
-        const { error: delErr } = await supabase.auth.admin.deleteUser(u.id);
+        const { error: delErr } = await authAdmin.deleteUser(u.id);
         if (delErr) failures.push(`${u.email ?? u.id}: ${delErr.message}`);
         else deleted++;
       } catch (e) {
