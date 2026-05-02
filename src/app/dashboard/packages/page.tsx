@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Plus, Package, Tag, Award, Users, Gift } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
+import { getPackagesAndServices } from '@/app/actions/lists';
 import { useAppStore } from '@/store/app-store';
 import { usePermission } from '@/lib/permissions';
 import { formatPKR } from '@/lib/utils/currency';
@@ -62,12 +62,9 @@ export default function PackagesPage() {
   const fetch = useCallback(async () => {
     if (!salon || !currentBranch) return;
     setLoading(true);
-    const [pkgRes, svcRes] = await Promise.all([
-      supabase.from('packages').select('*').eq('salon_id', salon.id).eq('branch_id', currentBranch.id).order('name'),
-      supabase.from('services').select('*').eq('salon_id', salon.id).eq('branch_id', currentBranch.id).eq('is_active', true).order('sort_order'),
-    ]);
-    if (pkgRes.data) setPackages(pkgRes.data as PkgType[]);
-    if (svcRes.data) setServices(svcRes.data as Service[]);
+    const { data } = await getPackagesAndServices(currentBranch.id);
+    setPackages(data.packages);
+    setServices(data.services);
     setLoading(false);
   }, [salon, currentBranch]);
 

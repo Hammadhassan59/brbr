@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 import { ChevronRight as ChevronRightIcon } from 'lucide-react';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, PieChart, Pie, Cell } from 'recharts';
-import { supabase } from '@/lib/supabase';
+import { getBillsForRange, listActiveStaff } from '@/app/actions/lists';
 import { useAppStore } from '@/store/app-store';
 import { usePermission } from '@/lib/permissions';
 import { formatPKR } from '@/lib/utils/currency';
@@ -53,46 +53,32 @@ export default function MonthlyReportPage() {
     const prevDays = new Date(prevYear, prevMonth, 0).getDate();
     const prevEnd = `${prevYear}-${String(prevMonth).padStart(2, '0')}-${prevDays}`;
 
-    // Build query based on scope. All-branches mode scopes to the session's
-    // member branches (not just salon_id) so a manager with partial branch
-    // access doesn't see rows from branches they can't otherwise read. If
-    // memberBranches is empty (unlikely for a salon user) fall back to
-    // salon_id so we still fetch something — RLS / tenant-guard downstream
-    // is the safety net.
-    let curQuery = supabase.from('bills').select('*').eq('status', 'paid').gte('created_at', `${startDate}T00:00:00`).lte('created_at', `${endDate}T23:59:59`);
-    let prevQuery = supabase.from('bills').select('*').eq('status', 'paid').gte('created_at', `${prevStart}T00:00:00`).lte('created_at', `${prevEnd}T23:59:59`);
-
+    // Resolve branch scope to an array of branch ids.
+    let branchIds: string[];
     if (branchScope === 'all') {
-      const memberBranchIds = memberBranches.map((b) => b.id);
-      if (memberBranchIds.length > 0) {
-        curQuery = curQuery.in('branch_id', memberBranchIds);
-        prevQuery = prevQuery.in('branch_id', memberBranchIds);
-      } else {
-        curQuery = curQuery.eq('salon_id', salon.id);
-        prevQuery = prevQuery.eq('salon_id', salon.id);
-      }
+      branchIds = memberBranches.map((b) => b.id);
     } else {
       const bid = branchScope === 'current' ? currentBranch?.id : branchScope;
       if (!bid) { setLoading(false); return; }
-      curQuery = curQuery.eq('branch_id', bid);
-      prevQuery = prevQuery.eq('branch_id', bid);
+      branchIds = [bid];
     }
 
     const [curRes, prevRes, staffRes] = await Promise.all([
-      curQuery,
-      prevQuery,
-      supabase.from('staff').select('*').eq('salon_id', salon.id),
+      getBillsForRange({ branchIds, startDate, endDate }),
+      getBillsForRange({ branchIds, startDate: prevStart, endDate: prevEnd }),
+      listActiveStaff(),
     ]);
-    if (curRes.data) setBills(curRes.data as Bill[]);
-    if (prevRes.data) setPrevBills(prevRes.data as Bill[]);
-    if (staffRes.data) {
+    setBills(curRes.data);
+    setPrevBills(prevRes.data);
+    {
       const map: Record<string, string> = {};
-      (staffRes.data as Staff[]).forEach((s) => { map[s.id] = s.name; });
+      staffRes.data.forEach((s) => { map[s.id] = s.name; });
       setStaffNameMap(map);
     }
     setLoading(false);
   }, [currentBranch, salon, month, year, branchScope, memberBranches]);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { fetchData(); }, [fetchData]);
 
   const totalRevenue = bills.reduce((s, b) => s + b.total_amount, 0);

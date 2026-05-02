@@ -7,7 +7,7 @@ import {
   Star, Phone, Edit, Calendar, CreditCard, ChevronRight,
   Package, StickyNote, Award, MessageCircle,
 } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
+import { getClientDetail } from '@/app/actions/lists';
 import { useAppStore } from '@/store/app-store';
 import { updateClientNotes, recordUdhaarPayment } from '@/app/actions/clients';
 import { getClientStatsAction } from '@/app/actions/dashboard';
@@ -70,32 +70,20 @@ export default function ClientProfilePage() {
 
   const fetchData = useCallback(async () => {
     setLoading(true);
+    if (!currentBranch) { setLoading(false); return; }
     try {
-      const [clientRes, billsRes, udhaarRes, pkgRes, statsRes] = await Promise.all([
-        supabase.from('clients').select('*').eq('id', clientId).eq('salon_id', salon?.id || '').eq('branch_id', currentBranch?.id || '').maybeSingle(),
-        supabase
-          .from('bills')
-          .select('*, items:bill_items(*), staff:staff(name)')
-          .eq('client_id', clientId)
-          .eq('status', 'paid')
-          .order('created_at', { ascending: false })
-          .limit(50),
-        supabase
-          .from('udhaar_payments')
-          .select('*')
-          .eq('client_id', clientId)
-          .order('created_at', { ascending: false }),
-        supabase
-          .from('client_packages')
-          .select('*, package:packages(*)')
-          .eq('client_id', clientId),
+      // One server-action call replaces 4 client-side .from() reads + the
+      // PostgREST embedded joins (bills.staff, client_packages.package).
+      const [{ data }, statsRes] = await Promise.all([
+        getClientDetail({ clientId, branchId: currentBranch.id }),
         getClientStatsAction(clientId),
       ]);
-
-      if (clientRes.data) setClient(clientRes.data as Client);
-      if (billsRes.data) setBills(billsRes.data as (Bill & { items?: BillItem[]; staff_name?: string })[]);
-      if (udhaarRes.data) setUdhaarPayments(udhaarRes.data as UdhaarPayment[]);
-      if (pkgRes.data) setClientPackages(pkgRes.data as (ClientPackage & { package?: PkgType })[]);
+      if (data) {
+        setClient(data.client);
+        setBills(data.bills as (Bill & { items?: BillItem[]; staff_name?: string })[]);
+        setUdhaarPayments(data.udhaarPayments as UdhaarPayment[]);
+        setClientPackages(data.packages as (ClientPackage & { package?: PkgType })[]);
+      }
       if (statsRes.error) {
         toast.error('Could not load client stats');
         setStats({ favourite_service: null, favourite_stylist: null, last_visit_date: null });

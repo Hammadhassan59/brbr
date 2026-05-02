@@ -6,7 +6,12 @@ import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 import { ChevronRight, TrendingUp, TrendingDown, Minus, Download } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
-import { supabase } from '@/lib/supabase';
+import {
+  getBillsForRange,
+  getExpensesForRange,
+  listActiveStaff,
+  listServiceBillItemsForBills,
+} from '@/app/actions/lists';
 import { useAppStore } from '@/store/app-store';
 import { usePermission } from '@/lib/permissions';
 import { formatPKR } from '@/lib/utils/currency';
@@ -49,68 +54,31 @@ export default function ProfitLossPage() {
     const daysInMonth = new Date(year, month, 0).getDate();
     const endDate = `${year}-${String(month).padStart(2, '0')}-${daysInMonth}`;
 
-    let billQuery = supabase.from('bills').select('*').eq('status', 'paid')
-      .gte('created_at', `${startDate}T00:00:00`).lte('created_at', `${endDate}T23:59:59`);
-    // Migration 036 added expenses.salon_id, so tenant-scope by salon_id and
-    // let the per-branch filter layer on top.
-    let expQuery = supabase.from('expenses').select('*').eq('salon_id', salon.id)
-      .gte('date', startDate).lte('date', endDate);
-
+    // Resolve branch scope to an array of branch ids.
+    let branchIds: string[];
     if (branchScope === 'all') {
-      // Cross-branch: scope bills + expenses to the session's member branches
-      // so partial-access roles don't leak rows from branches they can't read.
-      const memberBranchIds = memberBranches.map((b) => b.id);
-      if (memberBranchIds.length > 0) {
-        billQuery = billQuery.in('branch_id', memberBranchIds);
-        expQuery = expQuery.in('branch_id', memberBranchIds);
-      } else {
-        billQuery = billQuery.eq('salon_id', salon.id);
-        // expQuery already salon-scoped above.
-      }
+      branchIds = memberBranches.map((b) => b.id);
     } else {
       const bid = branchScope === 'current' ? currentBranch?.id : branchScope;
-      if (bid) {
-        billQuery = billQuery.eq('branch_id', bid);
-        expQuery = expQuery.eq('branch_id', bid);
-      }
+      branchIds = bid ? [bid] : [];
     }
 
     const [billRes, expRes, staffRes] = await Promise.all([
-      billQuery,
-      expQuery,
-      supabase.from('staff').select('*').eq('salon_id', salon.id),
+      getBillsForRange({ branchIds, startDate, endDate }),
+      getExpensesForRange({ branchIds, startDate, endDate }),
+      listActiveStaff(),
     ]);
 
-    if (billRes.data) {
-      setBills(billRes.data as Bill[]);
-      // Fetch bill_items for service count (needed for flat commission calculation)
-      const billIds = (billRes.data as Bill[]).map(b => b.id);
-      if (billIds.length > 0) {
-        const { data: itemsData } = await supabase
-          .from('bill_items')
-          .select('*')
-          .in('bill_id', billIds)
-          .eq('item_type', 'service');
-        setBillItems((itemsData || []) as BillItem[]);
-      } else {
-        setBillItems([]);
-      }
-    }
-    if (expRes.data) {
-      if (branchScope === 'all' && memberBranches.length > 0) {
-        // Defense-in-depth: even though the query already filters, drop any
-        // rows that slipped through (RLS misses, NULL branch_id, etc.) so
-        // the P&L doesn't silently count non-member-branch expenses.
-        const memberBranchIdSet = new Set(memberBranches.map(b => b.id));
-        setExpenses((expRes.data as Expense[]).filter(e => e.branch_id && memberBranchIdSet.has(e.branch_id)));
-      } else {
-        setExpenses(expRes.data as Expense[]);
-      }
-    }
+    setBills(billRes.data);
+    const billIds = billRes.data.map((b) => b.id);
+    const itemsRes = await listServiceBillItemsForBills(billIds);
+    setBillItems(itemsRes.data);
+    setExpenses(expRes.data);
     if (staffRes.data) setStaff(staffRes.data as Staff[]);
     setLoading(false);
   }, [salon, currentBranch, memberBranches, month, year, branchScope]);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { fetchData(); }, [fetchData]);
 
   // ── Revenue breakdown ──

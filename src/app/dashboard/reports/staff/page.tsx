@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 import { ChevronRight } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
+import { listActiveStaffForBranch, listAttendanceForStaff } from '@/app/actions/lists';
 import { getStaffMonthlyCommissionAction } from '@/app/actions/dashboard';
 import { useAppStore } from '@/store/app-store';
 import { usePermission } from '@/lib/permissions';
@@ -53,18 +53,11 @@ export default function StaffReportPage() {
     // primary branch — the secondary-branch membership (staff_branches)
     // isn't surfaced in this picker because the commission RPC aggregates
     // by staff_id alone.
-    let query = supabase.from('staff').select('*').eq('salon_id', salon.id).eq('is_active', true);
-    if (branchScope === 'current' && currentBranch) {
-      query = query.eq('primary_branch_id', currentBranch.id);
-    }
-    query.order('name').then(({ data }: { data: Staff[] | null }) => {
-      if (data) {
-        setStaffList(data);
-        // Preserve the current selection if still in the filtered list;
-        // otherwise pick the first row.
-        if (!data.some((s) => s.id === selectedStaffId)) {
-          setSelectedStaffId(data.length > 0 ? data[0].id : '');
-        }
+    const primaryBranchId = branchScope === 'current' && currentBranch ? currentBranch.id : null;
+    listActiveStaffForBranch(primaryBranchId).then(({ data }) => {
+      setStaffList(data);
+      if (!data.some((s) => s.id === selectedStaffId)) {
+        setSelectedStaffId(data.length > 0 ? data[0].id : '');
       }
     });
     // selectedStaffId deliberately omitted — we only want to refetch when
@@ -80,11 +73,11 @@ export default function StaffReportPage() {
 
     const [commRes, attRes] = await Promise.all([
       getStaffMonthlyCommissionAction(selectedStaffId, month, year),
-      supabase.from('attendance').select('status').eq('staff_id', selectedStaffId).gte('date', startDate).lte('date', endDate),
+      listAttendanceForStaff({ staffId: selectedStaffId, startDate, endDate }),
     ]);
     if (commRes.data) setCommData(commRes.data as typeof commData);
-    if (attRes.data) {
-      const atts = attRes.data as { status: string }[];
+    {
+      const atts = attRes.data;
       setAttendance({
         present: atts.filter((a) => a.status === 'present').length,
         absent: atts.filter((a) => a.status === 'absent').length,

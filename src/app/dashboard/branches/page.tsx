@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { Plus, X, MapPin, Pencil, Trash2, Users, CalendarDays, DollarSign } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
+import { getBranchesOverview } from '@/app/actions/lists';
 import { createBranch, updateBranch, deleteBranch, getBranchUsage } from '@/app/actions/settings';
 import { useAppStore } from '@/store/app-store';
 import { formatPKR } from '@/lib/utils/currency';
@@ -37,28 +37,9 @@ export default function BranchesPage() {
     if (!salon) return;
     setLoading(true);
     try {
-      const today = new Date().toISOString().slice(0, 10);
-      const branchIds = branches.map((b) => b.id);
-      // Staff counts come from staff_branches (migration 036 — each staff row
-      // may appear in multiple branches).
-      const [staffRes, billsRes, aptsRes] = await Promise.all([
-        supabase
-          .from('staff_branches')
-          .select('branch_id, staff:staff!inner(id, is_active, salon_id)')
-          .in('branch_id', branchIds),
-        supabase.from('bills').select('branch_id, total_amount').eq('salon_id', salon.id).gte('created_at', today + 'T00:00:00').lt('created_at', today + 'T23:59:59'),
-        supabase.from('appointments').select('branch_id').eq('salon_id', salon.id).eq('appointment_date', today),
-      ]);
-      const stats: Record<string, { staffCount: number; todayRevenue: number; todayAppointments: number }> = {};
-      branchIds.forEach((id) => { stats[id] = { staffCount: 0, todayRevenue: 0, todayAppointments: 0 }; });
-      (staffRes.data || []).forEach((row: { branch_id: string; staff?: { is_active?: boolean; salon_id?: string } | { is_active?: boolean; salon_id?: string }[] }) => {
-        const s = Array.isArray(row.staff) ? row.staff[0] : row.staff;
-        if (s?.is_active && s.salon_id === salon.id && stats[row.branch_id]) {
-          stats[row.branch_id].staffCount++;
-        }
-      });
-      billsRes.data?.forEach((b: { branch_id: string | null; total_amount: number }) => { if (b.branch_id && stats[b.branch_id]) stats[b.branch_id].todayRevenue += b.total_amount; });
-      aptsRes.data?.forEach((a: { branch_id: string | null }) => { if (a.branch_id && stats[a.branch_id]) stats[a.branch_id].todayAppointments++; });
+      // Server-action equivalent — does the same staff_branches !inner join,
+      // bills + appointments aggregation, returns per-branch stat tuples.
+      const { data: stats } = await getBranchesOverview();
       setBranchStats(stats);
     } finally {
       setLoading(false);

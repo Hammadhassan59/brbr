@@ -3,7 +3,15 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Plus, Trash2, Wallet, Banknote, Pencil } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
+import {
+  getExpensesAndIncome,
+  listActiveSalonPartners,
+  listAdvancesForStaff,
+  listActiveStaffAtBranch,
+  listActiveStaff,
+  updateAdvance,
+  getOpenCashDrawer,
+} from '@/app/actions/lists';
 import { useAppStore } from '@/store/app-store';
 import { usePermission } from '@/lib/permissions';
 import { formatPKR } from '@/lib/utils/currency';
@@ -106,38 +114,19 @@ export default function ExpensesPage() {
 
     const { start, end } = dateRange;
 
-    const [expenseRes, billsRes] = await Promise.all([
-      supabase.from('expenses').select('*').eq('branch_id', currentBranch.id).gte('date', start).lte('date', end).order('date', { ascending: false }),
-      supabase.from('bills').select('total_amount').eq('branch_id', currentBranch.id).eq('status', 'paid').gte('created_at', `${start}T00:00:00`).lte('created_at', `${end}T23:59:59`),
-    ]);
+    const { data } = await getExpensesAndIncome({ branchId: currentBranch.id, startDate: start, endDate: end });
+    setExpenses(data.expenses);
+    setIncome(data.income);
 
-    if (expenseRes.data) setExpenses(expenseRes.data as Expense[]);
-    setIncome(billsRes.data?.reduce((s: number, b: { total_amount: number }) => s + b.total_amount, 0) || 0);
-
-    // Fetch advances for the same period
+    // Fetch advances + partners for the same period.
     if (salon) {
-      const { data: staffData } = await supabase
-        .from('staff').select('id, name').eq('salon_id', salon.id);
-      const staffMap = new Map((staffData || []).map((s: { id: string; name: string }) => [s.id, s.name]));
+      const staffRes = await listActiveStaff();
+      const staffIds = staffRes.data.map((s) => s.id);
+      const advRes = await listAdvancesForStaff({ staffIds, startDate: start, endDate: end });
+      setRecentAdvances(advRes.data as Advance[]);
 
-      const { data: advData } = await supabase
-        .from('advances').select('*')
-        .in('staff_id', Array.from(staffMap.keys()))
-        .gte('date', start)
-        .lte('date', end)
-        .order('date', { ascending: false });
-
-      if (advData) {
-        setRecentAdvances(advData.map((a: Advance) => ({ ...a, staff_name: staffMap.get(a.staff_id) || 'Unknown' })));
-      }
-
-      const { data: partnerData } = await supabase
-        .from('salon_partners')
-        .select('*')
-        .eq('salon_id', salon.id)
-        .eq('is_active', true)
-        .order('name');
-      if (partnerData) setPartners(partnerData as SalonPartner[]);
+      const partnersRes = await listActiveSalonPartners();
+      setPartners(partnersRes.data as SalonPartner[]);
     }
 
     setLoading(false);
@@ -151,19 +140,8 @@ export default function ExpensesPage() {
   useEffect(() => {
     if (!currentBranch) return;
     (async () => {
-      const { data: memberRows } = await supabase
-        .from('staff_branches')
-        .select('staff_id')
-        .eq('branch_id', currentBranch.id);
-      const staffIds = (memberRows || []).map((r: { staff_id: string }) => r.staff_id);
-      if (staffIds.length === 0) { setStaffList([]); return; }
-      const { data } = await supabase
-        .from('staff')
-        .select('*')
-        .in('id', staffIds)
-        .eq('is_active', true)
-        .order('name');
-      if (data) setStaffList(data as Staff[]);
+      const { data } = await listActiveStaffAtBranch(currentBranch.id);
+      setStaffList(data);
     })();
   }, [currentBranch]);
 
@@ -173,11 +151,12 @@ export default function ExpensesPage() {
     setSavingAdv(true);
     try {
       if (editingAdvanceId) {
-        const { error } = await supabase
-          .from('advances')
-          .update({ amount: Number(advAmount), reason: advReason || null })
-          .eq('id', editingAdvanceId);
-        if (error) throw new Error(error.message);
+        const { error } = await updateAdvance({
+          advanceId: editingAdvanceId,
+          amount: Number(advAmount),
+          reason: advReason || null,
+        });
+        if (error) throw new Error(error);
         toast.success('Advance updated');
       } else {
         const { error } = await recordAdvance(advStaffId, Number(advAmount), advReason || null);
@@ -227,14 +206,7 @@ export default function ExpensesPage() {
 
         if (oldAmount !== newAmount) {
           try {
-            const { data: drawer } = await supabase
-              .from('cash_drawers')
-              .select('*')
-              .eq('branch_id', currentBranch.id)
-              .eq('date', editingExpense.date)
-              .eq('status', 'open')
-              .maybeSingle();
-
+            const { data: drawer } = await getOpenCashDrawer({ branchId: currentBranch.id, date: editingExpense.date });
             if (drawer) {
               const newTotal = (drawer.total_expenses || 0) - oldAmount + newAmount;
               const { error: drawerError } = await updateCashDrawerExpenses(currentBranch.id, editingExpense.date, newTotal);
@@ -259,14 +231,7 @@ export default function ExpensesPage() {
         if (showActionError(createError)) return;
 
         try {
-          const { data: drawer } = await supabase
-            .from('cash_drawers')
-            .select('*')
-            .eq('branch_id', currentBranch.id)
-            .eq('date', todayPKT)
-            .eq('status', 'open')
-            .maybeSingle();
-
+          const { data: drawer } = await getOpenCashDrawer({ branchId: currentBranch.id, date: todayPKT });
           if (drawer) {
             const newTotal = (drawer.total_expenses || 0) + Number(amount);
             const { error: drawerError } = await updateCashDrawerExpenses(currentBranch.id, todayPKT, newTotal);

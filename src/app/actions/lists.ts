@@ -11,6 +11,9 @@ import type {
   StockTransfer,
   StockMovement,
   Service,
+  Bill,
+  BillItem,
+  Expense,
 } from '@/types/database';
 
 interface ProductServiceLink {
@@ -72,6 +75,317 @@ export async function listClients(branchId: string): Promise<{ data: Client[]; e
       .eq('branch_id', branchId)
       .order('created_at', { ascending: false });
     return { data: (data ?? []) as Client[], error: null };
+  } catch (e) {
+    return { data: [], error: e instanceof Error ? e.message : 'Failed' };
+  }
+}
+
+// Bill + expense aggregation for the monthly + profit-loss reports.
+// Branch scope: array of branch ids (single-branch mode = [bid], all-branches
+// mode = memberBranchIds).
+export async function getBillsForRange(input: {
+  branchIds: string[];
+  startDate: string;
+  endDate: string;
+}): Promise<{ data: Bill[]; error: string | null }> {
+  try {
+    const { supabase } = await ctx();
+    if (input.branchIds.length === 0) return { data: [], error: null };
+    const { data } = await supabase
+      .from('bills')
+      .select('*')
+      .eq('status', 'paid')
+      .in('branch_id', input.branchIds)
+      .gte('created_at', `${input.startDate}T00:00:00`)
+      .lte('created_at', `${input.endDate}T23:59:59`);
+    return { data: (data ?? []) as Bill[], error: null };
+  } catch (e) {
+    return { data: [], error: e instanceof Error ? e.message : 'Failed' };
+  }
+}
+
+// Branches overview KPIs (used by /dashboard/branches). Returns per-branch
+// staff count, today's revenue, today's appointment count.
+export async function getBranchesOverview(): Promise<{
+  data: Record<string, { staffCount: number; todayRevenue: number; todayAppointments: number }>;
+  error: string | null;
+}> {
+  try {
+    const { session, supabase } = await ctx();
+    const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Karachi' });
+    const branchesRes = await supabase.from('branches').select('id').eq('salon_id', session.salonId);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const branchIds = ((branchesRes.data ?? []) as any[]).map((b) => b.id);
+    if (branchIds.length === 0) return { data: {}, error: null };
+    const [staffRes, billsRes, aptsRes] = await Promise.all([
+      supabase.from('staff_branches').select('staff_id, branch_id').in('branch_id', branchIds),
+      supabase.from('bills').select('branch_id, total_amount').eq('salon_id', session.salonId).gte('created_at', today + 'T00:00:00').lt('created_at', today + 'T23:59:59'),
+      supabase.from('appointments').select('branch_id').eq('salon_id', session.salonId).eq('appointment_date', today),
+    ]);
+    // staff filter: drop any whose staff row isn't active. Need to query staff to check.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const sbRows = ((staffRes.data ?? []) as any[]);
+    const staffIds = Array.from(new Set(sbRows.map((r) => r.staff_id)));
+    const activeStaff = staffIds.length
+      ? await supabase.from('staff').select('id, is_active').in('id', staffIds).eq('is_active', true)
+      : { data: [] as Array<{ id: string }>, error: null };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const activeIds = new Set<string>(((activeStaff.data ?? []) as any[]).map((s) => s.id));
+
+    const stats: Record<string, { staffCount: number; todayRevenue: number; todayAppointments: number }> = {};
+    branchIds.forEach((id) => { stats[id] = { staffCount: 0, todayRevenue: 0, todayAppointments: 0 }; });
+    for (const r of sbRows) {
+      if (activeIds.has(r.staff_id) && stats[r.branch_id]) stats[r.branch_id].staffCount++;
+    }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    for (const b of (billsRes.data ?? []) as any[]) {
+      if (stats[b.branch_id]) stats[b.branch_id].todayRevenue += Number(b.total_amount ?? 0);
+    }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    for (const a of (aptsRes.data ?? []) as any[]) {
+      if (stats[a.branch_id]) stats[a.branch_id].todayAppointments++;
+    }
+    return { data: stats, error: null };
+  } catch (e) {
+    return { data: {}, error: e instanceof Error ? e.message : 'Failed' };
+  }
+}
+
+// Loyalty rules + top loyalty clients (used by /dashboard/packages/loyalty).
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function getLoyaltyOverview(branchId: string): Promise<{ data: { rules: any | null; topClients: Client[] }; error: string | null }> {
+  try {
+    const { session, supabase } = await ctx();
+    const [rulesRes, clientsRes] = await Promise.all([
+      supabase.from('loyalty_rules').select('*').eq('salon_id', session.salonId).eq('branch_id', branchId).maybeSingle(),
+      supabase
+        .from('clients')
+        .select('*')
+        .eq('salon_id', session.salonId)
+        .eq('branch_id', branchId)
+        .gt('loyalty_points', 0)
+        .order('loyalty_points', { ascending: false })
+        .limit(10),
+    ]);
+    return {
+      data: {
+        rules: rulesRes.data ?? null,
+        topClients: (clientsRes.data ?? []) as Client[],
+      },
+      error: null,
+    };
+  } catch (e) {
+    return { data: { rules: null, topClients: [] }, error: e instanceof Error ? e.message : 'Failed' };
+  }
+}
+
+// Packages + services for /dashboard/packages.
+import type { Package as PkgType } from '@/types/database';
+export async function getPackagesAndServices(branchId: string): Promise<{
+  data: { packages: PkgType[]; services: Service[] };
+  error: string | null;
+}> {
+  try {
+    const { session, supabase } = await ctx();
+    const [pkgRes, svcRes] = await Promise.all([
+      supabase.from('packages').select('*').eq('salon_id', session.salonId).eq('branch_id', branchId).order('name'),
+      supabase.from('services').select('*').eq('salon_id', session.salonId).eq('branch_id', branchId).eq('is_active', true).order('sort_order'),
+    ]);
+    return {
+      data: { packages: (pkgRes.data ?? []) as PkgType[], services: (svcRes.data ?? []) as Service[] },
+      error: null,
+    };
+  } catch (e) {
+    return { data: { packages: [], services: [] }, error: e instanceof Error ? e.message : 'Failed' };
+  }
+}
+
+// Expenses + bills total income for /dashboard/expenses.
+export async function getExpensesAndIncome(input: {
+  branchId: string; startDate: string; endDate: string;
+}): Promise<{ data: { expenses: Expense[]; income: number }; error: string | null }> {
+  try {
+    const { supabase } = await ctx();
+    const [expRes, billsRes] = await Promise.all([
+      supabase.from('expenses').select('*').eq('branch_id', input.branchId).gte('date', input.startDate).lte('date', input.endDate).order('date', { ascending: false }),
+      supabase.from('bills').select('total_amount').eq('branch_id', input.branchId).eq('status', 'paid').gte('created_at', `${input.startDate}T00:00:00`).lte('created_at', `${input.endDate}T23:59:59`),
+    ]);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const income = ((billsRes.data ?? []) as any[]).reduce((s, b) => s + Number(b.total_amount ?? 0), 0);
+    return { data: { expenses: (expRes.data ?? []) as Expense[], income }, error: null };
+  } catch (e) {
+    return { data: { expenses: [], income: 0 }, error: e instanceof Error ? e.message : 'Failed' };
+  }
+}
+
+// Active salon partners (used by /dashboard/expenses for the advances dialog).
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function listActiveSalonPartners(): Promise<{ data: any[]; error: string | null }> {
+  try {
+    const { session, supabase } = await ctx();
+    const { data } = await supabase
+      .from('salon_partners')
+      .select('*')
+      .eq('salon_id', session.salonId)
+      .eq('is_active', true)
+      .order('name');
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return { data: (data ?? []) as any[], error: null };
+  } catch (e) {
+    return { data: [], error: e instanceof Error ? e.message : 'Failed' };
+  }
+}
+
+// Advances for a list of staff in a date range, with staff names joined in.
+export async function listAdvancesForStaff(input: {
+  staffIds: string[]; startDate: string; endDate: string;
+}): Promise<{
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  data: Array<any & { staff_name: string }>;
+  error: string | null;
+}> {
+  try {
+    const { session, supabase } = await ctx();
+    if (input.staffIds.length === 0) return { data: [], error: null };
+    const [advRes, staffRes] = await Promise.all([
+      supabase.from('advances').select('*').in('staff_id', input.staffIds).gte('date', input.startDate).lte('date', input.endDate).order('date', { ascending: false }),
+      supabase.from('staff').select('id, name, salon_id').in('id', input.staffIds),
+    ]);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const staffById = new Map<string, string>(((staffRes.data ?? []) as any[])
+      .filter((s) => s.salon_id === session.salonId)
+      .map((s) => [s.id, s.name]));
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const data = ((advRes.data ?? []) as any[])
+      .filter((a) => staffById.has(a.staff_id))
+      .map((a) => ({ ...a, staff_name: staffById.get(a.staff_id) ?? 'Unknown' }));
+    return { data, error: null };
+  } catch (e) {
+    return { data: [], error: e instanceof Error ? e.message : 'Failed' };
+  }
+}
+
+// Active staff at a branch (uses staff_branches join). Replaces the
+// inline staff_branches → staff lookup pattern in /dashboard/expenses.
+export async function listActiveStaffAtBranch(branchId: string): Promise<{ data: Staff[]; error: string | null }> {
+  try {
+    const { session, supabase } = await ctx();
+    const memberRes = await supabase.from('staff_branches').select('staff_id').eq('branch_id', branchId);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const staffIds = ((memberRes.data ?? []) as any[]).map((r) => r.staff_id);
+    if (staffIds.length === 0) return { data: [], error: null };
+    const { data } = await supabase
+      .from('staff')
+      .select('*')
+      .in('id', staffIds)
+      .eq('is_active', true)
+      .eq('salon_id', session.salonId)
+      .order('name');
+    return { data: (data ?? []) as Staff[], error: null };
+  } catch (e) {
+    return { data: [], error: e instanceof Error ? e.message : 'Failed' };
+  }
+}
+
+// Update an advance row (small write that the expenses page does inline).
+export async function updateAdvance(input: {
+  advanceId: string; amount: number; reason: string | null;
+}): Promise<{ error: string | null }> {
+  try {
+    const { supabase } = await ctx();
+    const { error } = await supabase
+      .from('advances')
+      .update({ amount: input.amount, reason: input.reason })
+      .eq('id', input.advanceId);
+    return { error: error?.message ?? null };
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : 'Failed' };
+  }
+}
+
+// Get the currently-open cash drawer (if any) for a branch+date.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function getOpenCashDrawer(input: { branchId: string; date: string }): Promise<{ data: any | null; error: string | null }> {
+  try {
+    const { supabase } = await ctx();
+    const { data } = await supabase
+      .from('cash_drawers')
+      .select('*')
+      .eq('branch_id', input.branchId)
+      .eq('date', input.date)
+      .eq('status', 'open')
+      .maybeSingle();
+    return { data, error: null };
+  } catch (e) {
+    return { data: null, error: e instanceof Error ? e.message : 'Failed' };
+  }
+}
+
+// Bill items of type='service' for a list of bill ids — used by the profit-loss
+// flat-commission calc.
+export async function listServiceBillItemsForBills(billIds: string[]): Promise<{ data: BillItem[]; error: string | null }> {
+  try {
+    const { supabase } = await ctx();
+    if (billIds.length === 0) return { data: [], error: null };
+    const { data } = await supabase
+      .from('bill_items')
+      .select('*')
+      .in('bill_id', billIds)
+      .eq('item_type', 'service');
+    return { data: (data ?? []) as BillItem[], error: null };
+  } catch (e) {
+    return { data: [], error: e instanceof Error ? e.message : 'Failed' };
+  }
+}
+
+export async function getExpensesForRange(input: {
+  branchIds: string[];
+  startDate: string;
+  endDate: string;
+}): Promise<{ data: Expense[]; error: string | null }> {
+  try {
+    const { session, supabase } = await ctx();
+    if (input.branchIds.length === 0) return { data: [], error: null };
+    const { data } = await supabase
+      .from('expenses')
+      .select('*')
+      .eq('salon_id', session.salonId)
+      .in('branch_id', input.branchIds)
+      .gte('date', input.startDate)
+      .lte('date', input.endDate);
+    return { data: (data ?? []) as Expense[], error: null };
+  } catch (e) {
+    return { data: [], error: e instanceof Error ? e.message : 'Failed' };
+  }
+}
+
+// Active staff filtered by primary branch (used by the staff-commissions
+// report's branch scope picker). Pass null to get all active salon staff.
+export async function listActiveStaffForBranch(primaryBranchId: string | null): Promise<{ data: Staff[]; error: string | null }> {
+  try {
+    const { session, supabase } = await ctx();
+    let q = supabase.from('staff').select('*').eq('salon_id', session.salonId).eq('is_active', true);
+    if (primaryBranchId) q = q.eq('primary_branch_id', primaryBranchId);
+    const { data } = await q.order('name');
+    return { data: (data ?? []) as Staff[], error: null };
+  } catch (e) {
+    return { data: [], error: e instanceof Error ? e.message : 'Failed' };
+  }
+}
+
+// Attendance counts (status only) for a staff in a date range.
+export async function listAttendanceForStaff(input: {
+  staffId: string; startDate: string; endDate: string;
+}): Promise<{ data: Array<{ status: string }>; error: string | null }> {
+  try {
+    const { supabase } = await ctx();
+    const { data } = await supabase
+      .from('attendance')
+      .select('status')
+      .eq('staff_id', input.staffId)
+      .gte('date', input.startDate)
+      .lte('date', input.endDate);
+    return { data: (data ?? []) as Array<{ status: string }>, error: null };
   } catch (e) {
     return { data: [], error: e instanceof Error ? e.message : 'Failed' };
   }
@@ -201,18 +515,21 @@ export async function getClientDetail(input: { clientId: string; branchId: strin
     const { session, supabase } = await ctx();
     const [clientRes, billsRes, udhaarRes, pkgRes] = await Promise.all([
       supabase.from('clients').select('*').eq('id', input.clientId).eq('salon_id', session.salonId).eq('branch_id', input.branchId).maybeSingle(),
-      // bills with bill_items + staff name — embedded join replaced with two follow-ups
-      supabase.from('bills').select('*').eq('client_id', input.clientId).eq('status', 'paid').order('created_at', { ascending: false }),
+      supabase.from('bills').select('*').eq('client_id', input.clientId).eq('status', 'paid').order('created_at', { ascending: false }).limit(50),
       supabase.from('udhaar_payments').select('*').eq('client_id', input.clientId).order('created_at', { ascending: false }),
-      supabase.from('client_packages').select('*').eq('client_id', input.clientId).order('purchased_at', { ascending: false }),
+      supabase.from('client_packages').select('*').eq('client_id', input.clientId),
     ]);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const billsRows = (billsRes.data ?? []) as any[];
     const billIds = billsRows.map((b) => b.id);
     const staffIds = Array.from(new Set(billsRows.map((b) => b.staff_id).filter(Boolean)));
-    const [itemsRes, staffRes] = await Promise.all([
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const pkgRows = (pkgRes.data ?? []) as any[];
+    const packageIds = Array.from(new Set(pkgRows.map((p) => p.package_id).filter(Boolean)));
+    const [itemsRes, staffRes, packagesRes] = await Promise.all([
       billIds.length ? supabase.from('bill_items').select('*').in('bill_id', billIds) : Promise.resolve({ data: [], error: null }),
       staffIds.length ? supabase.from('staff').select('id, name').in('id', staffIds) : Promise.resolve({ data: [], error: null }),
+      packageIds.length ? supabase.from('packages').select('*').in('id', packageIds) : Promise.resolve({ data: [], error: null }),
     ]);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const itemsByBill = new Map<string, any[]>();
@@ -224,7 +541,10 @@ export async function getClientDetail(input: { clientId: string; branchId: strin
     }
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const staffById = new Map<string, any>(((staffRes.data ?? []) as any[]).map((s) => [s.id, s]));
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const packageById = new Map<string, any>(((packagesRes.data ?? []) as any[]).map((p) => [p.id, p]));
     const bills = billsRows.map((b) => ({ ...b, items: itemsByBill.get(b.id) ?? [], staff: staffById.get(b.staff_id) ?? null }));
+    const clientPackages = pkgRows.map((p) => ({ ...p, package: packageById.get(p.package_id) ?? null }));
 
     // Cheap stats — total spent, last visit.
     const totalSpent = bills.reduce((s, b) => s + Number(b.total_amount ?? 0), 0);
@@ -238,8 +558,7 @@ export async function getClientDetail(input: { clientId: string; branchId: strin
         bills,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         udhaarPayments: (udhaarRes.data ?? []) as any[],
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        packages: (pkgRes.data ?? []) as any[],
+        packages: clientPackages,
         stats,
       },
       error: null,

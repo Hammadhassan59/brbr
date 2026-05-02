@@ -41,6 +41,100 @@ export interface DashboardSnapshot {
   }>;
 }
 
+// Daily report bootstrap — handles both "single branch" and "all member
+// branches" modes. Replaces 4 client-side .from() reads in /dashboard/reports/daily.
+import type { Bill, BillItem, CashDrawer, Expense } from '@/types/database';
+
+export async function getDailyReport(input: {
+  branchId: string | null;     // null = aggregate across memberBranchIds
+  memberBranchIds: string[];
+  date: string;
+}): Promise<{
+  data: {
+    summary: DailySummary | null;
+    bills: Array<Bill & { items?: BillItem[] }>;
+    drawer: CashDrawer | null;
+    expenses: Expense[];
+  } | null;
+  error: string | null;
+}> {
+  try {
+    const session = await verifySession();
+    if (!session.salonId) return { data: null, error: 'No salon context' };
+    const supabase = createServerClient();
+    const { branchId, memberBranchIds, date } = input;
+
+    // Summary RPC: salon-level (all branches) or branch-level via existing RPC.
+    let summary: DailySummary | null = null;
+    if (branchId === null) {
+      const r = await supabase.rpc('get_salon_daily_summary', { p_salon_id: session.salonId, p_date: date });
+      summary = (r.data as DailySummary) ?? null;
+    } else {
+      const r = await supabase.rpc('get_daily_summary', { p_branch_id: branchId, p_date: date, p_salon_id: session.salonId });
+      summary = (r.data as DailySummary) ?? null;
+    }
+
+    // Bills + cash drawer + expenses scope.
+    const branchIdsForRead = branchId === null ? memberBranchIds : [branchId];
+    if (branchIdsForRead.length === 0) {
+      return { data: { summary, bills: [], drawer: null, expenses: [] }, error: null };
+    }
+
+    const [billsRes, drawerRes, expRes] = await Promise.all([
+      branchIdsForRead.length === 1
+        ? supabase
+            .from('bills')
+            .select('*')
+            .eq('branch_id', branchIdsForRead[0])
+            .gte('created_at', `${date}T00:00:00`)
+            .lte('created_at', `${date}T23:59:59`)
+            .order('created_at', { ascending: false })
+        : supabase
+            .from('bills')
+            .select('*')
+            .in('branch_id', branchIdsForRead)
+            .gte('created_at', `${date}T00:00:00`)
+            .lte('created_at', `${date}T23:59:59`)
+            .order('created_at', { ascending: false }),
+      // Single cash drawer only makes sense per-branch.
+      branchId !== null
+        ? supabase.from('cash_drawers').select('*').eq('branch_id', branchId).eq('date', date).maybeSingle()
+        : Promise.resolve({ data: null, error: null }),
+      branchIdsForRead.length === 1
+        ? supabase.from('expenses').select('*').eq('salon_id', session.salonId).eq('branch_id', branchIdsForRead[0]).eq('date', date).order('created_at', { ascending: false })
+        : supabase.from('expenses').select('*').eq('salon_id', session.salonId).in('branch_id', branchIdsForRead).eq('date', date).order('created_at', { ascending: false }),
+    ]);
+
+    // Stitch bill_items via a follow-up read (PostgREST embedded join repl).
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const billsRows = (billsRes.data ?? []) as any[];
+    const billIds = billsRows.map((b) => b.id);
+    const itemsRes = billIds.length
+      ? await supabase.from('bill_items').select('*').in('bill_id', billIds)
+      : { data: [] as BillItem[], error: null };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const itemsByBill = new Map<string, any[]>();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    for (const i of (itemsRes.data ?? []) as any[]) {
+      const list = itemsByBill.get(i.bill_id) ?? [];
+      list.push(i); itemsByBill.set(i.bill_id, list);
+    }
+    const bills = billsRows.map((b) => ({ ...b, items: itemsByBill.get(b.id) ?? [] })) as Array<Bill & { items?: BillItem[] }>;
+
+    return {
+      data: {
+        summary,
+        bills,
+        drawer: (drawerRes.data as CashDrawer) ?? null,
+        expenses: (expRes.data ?? []) as Expense[],
+      },
+      error: null,
+    };
+  } catch (e) {
+    return { data: null, error: e instanceof Error ? e.message : 'Failed' };
+  }
+}
+
 // Single bootstrap for /dashboard/reports — does the aggregation server-side.
 export interface ReportsOverview {
   daily: { revenue: number; bills: number };

@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Award, Users, TrendingDown, Power } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
+import { getLoyaltyOverview } from '@/app/actions/lists';
 import { useAppStore } from '@/store/app-store';
 import { usePermission } from '@/lib/permissions';
 import { formatPKR } from '@/lib/utils/currency';
@@ -45,12 +45,9 @@ export default function LoyaltyPage() {
     // Migration 037 scopes loyalty_rules per-branch: (salon_id, branch_id)
     // is the new unique. Use maybeSingle() so a branch without rules yet
     // (common right after 037 ran) doesn't 404 the whole page.
-    const [rulesRes, clientsRes] = await Promise.all([
-      supabase.from('loyalty_rules').select('*').eq('salon_id', salon.id).eq('branch_id', currentBranch.id).maybeSingle(),
-      supabase.from('clients').select('*').eq('salon_id', salon.id).eq('branch_id', currentBranch.id).gt('loyalty_points', 0).order('loyalty_points', { ascending: false }).limit(10),
-    ]);
-    if (rulesRes.data) {
-      const r = rulesRes.data as LoyaltyRules;
+    const { data } = await getLoyaltyOverview(currentBranch.id);
+    if (data.rules) {
+      const r = data.rules as LoyaltyRules;
       setRules(r);
       setPointsPer100(String(r.points_per_100_pkr));
       setPkrPerPoint(String(r.pkr_per_point_redemption));
@@ -60,7 +57,7 @@ export default function LoyaltyPage() {
       setRules(null);
       setEnabled(true);
     }
-    if (clientsRes.data) setTopClients(clientsRes.data as Client[]);
+    setTopClients(data.topClients);
     setLoading(false);
   }, [salon, currentBranch]);
 

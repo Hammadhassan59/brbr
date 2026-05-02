@@ -5,8 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ChevronLeft, ChevronRight as ChevronRightIcon, Printer, Wallet, Plus, Lock } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
-import { supabase } from '@/lib/supabase';
-import { getDailySummaryAction } from '@/app/actions/dashboard';
+import { getDailyReport } from '@/app/actions/dashboard';
 import { useAppStore } from '@/store/app-store';
 import { usePermission } from '@/lib/permissions';
 import { formatPKR } from '@/lib/utils/currency';
@@ -74,45 +73,25 @@ export default function DailyReportPage() {
     if (!effectiveBranchId && branchScope !== 'all') return;
     setLoading(true);
     try {
-      if (branchScope === 'all') {
-        // Cross-branch: aggregate across all member branches. Migration 036
-        // added expenses.salon_id, so the tenant filter is now a straight
-        // .eq('salon_id', ...) — this was the bug previously (#4 in the
-        // known-unfixed list) where a bogus .eq('salon_id', ...) silently
-        // returned empty. Now it works. For bills we also scope by member
-        // branches so a manager with partial branch access doesn't leak
-        // rows from branches they can't read.
-        const memberBranchIds = memberBranches.map((b) => b.id);
-        const [sumRes, billsRes, expRes] = await Promise.all([
-          supabase.rpc('get_salon_daily_summary', { p_salon_id: salon.id, p_date: date }),
-          memberBranchIds.length
-            ? supabase.from('bills').select('*, items:bill_items(*)').in('branch_id', memberBranchIds).gte('created_at', `${date}T00:00:00`).lte('created_at', `${date}T23:59:59`).order('created_at', { ascending: false })
-            : Promise.resolve({ data: [], error: null }),
-          memberBranchIds.length
-            ? supabase.from('expenses').select('*').eq('salon_id', salon.id).in('branch_id', memberBranchIds).eq('date', date).order('created_at', { ascending: false })
-            : Promise.resolve({ data: [], error: null }),
-        ]);
-        if (sumRes.data) setSummary(sumRes.data as DailySummary);
-        if (billsRes.data) setBills(billsRes.data as (Bill & { items?: BillItem[] })[]);
-        setDrawer(null); // No single cash drawer for all branches
-        if (expRes.data) setExpenses(expRes.data as Expense[]);
-      } else {
-        const bid = effectiveBranchId || currentBranch?.id;
-        if (!bid) return;
-        const [sumRes, billsRes, drawerRes, expRes] = await Promise.all([
-          getDailySummaryAction(bid, date),
-          supabase.from('bills').select('*, items:bill_items(*)').eq('branch_id', bid).gte('created_at', `${date}T00:00:00`).lte('created_at', `${date}T23:59:59`).order('created_at', { ascending: false }),
-          supabase.from('cash_drawers').select('*').eq('branch_id', bid).eq('date', date).maybeSingle(),
-          // Single-branch mode: scope by both salon_id (tenant) and branch_id
-          // (per-branch filter from migration 036).
-          supabase.from('expenses').select('*').eq('salon_id', salon.id).eq('branch_id', bid).eq('date', date).order('created_at', { ascending: false }),
-        ]);
-        if (sumRes.data) setSummary(sumRes.data);
-        if (billsRes.data) setBills(billsRes.data as (Bill & { items?: BillItem[] })[]);
-        if (drawerRes.data) setDrawer(drawerRes.data as CashDrawer);
-        else setDrawer(null);
-        if (expRes.data) setExpenses(expRes.data as Expense[]);
+      // One server-action call covers both modes (single-branch and
+      // cross-branch all-branches). 4 client-side reads collapsed into one.
+      const memberBranchIds = memberBranches.map((b) => b.id);
+      const branchIdForRead = branchScope === 'all'
+        ? null
+        : (effectiveBranchId || currentBranch?.id || null);
+      const { data } = await getDailyReport({
+        branchId: branchIdForRead,
+        memberBranchIds,
+        date,
+      });
+      if (data) {
+        setSummary(data.summary);
+        setBills(data.bills);
+        setDrawer(data.drawer);
+        setExpenses(data.expenses);
       }
+      // For all-branches mode, drawer is always null.
+      if (branchScope === 'all') setDrawer(null);
     } catch (err) { console.error(err); }
     finally { setLoading(false); }
   }, [currentBranch, salon, date, branchScope, effectiveBranchId, memberBranches]);
