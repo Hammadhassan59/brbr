@@ -41,6 +41,123 @@ export interface DashboardSnapshot {
   }>;
 }
 
+// Single bootstrap for /dashboard/reports — does the aggregation server-side.
+export interface ReportsOverview {
+  daily: { revenue: number; bills: number };
+  monthly: { revenue: number; trend: number };
+  staff: { activeCount: number; topEarner: string };
+  inventory: { lowStock: number; totalProducts: number };
+  clients: { total: number; udhaarTotal: number };
+  profitLoss: { revenue: number; expenses: number };
+}
+
+export async function getReportsOverview(input: {
+  branchId: string;
+}): Promise<{ data: ReportsOverview | null; error: string | null }> {
+  try {
+    const session = await verifySession();
+    if (!session.salonId) return { data: null, error: 'No salon context' };
+    const supabase = createServerClient();
+    const { branchId } = input;
+
+    const [bills, memberRows, products, branchProducts, clients, expenses, staffBills] = await Promise.all([
+      supabase.from('bills').select('total_amount, created_at').eq('branch_id', branchId).eq('status', 'paid'),
+      supabase.from('staff_branches').select('staff_id').eq('branch_id', branchId),
+      supabase.from('products').select('id').eq('salon_id', session.salonId).eq('branch_id', branchId).eq('is_active', true),
+      supabase.from('branch_products').select('product_id, current_stock, low_stock_threshold').eq('branch_id', branchId),
+      supabase.from('clients').select('udhaar_balance').eq('salon_id', session.salonId).eq('branch_id', branchId),
+      supabase.from('expenses').select('amount').eq('branch_id', branchId),
+      supabase.from('bills').select('staff_id, total_amount').eq('branch_id', branchId).eq('status', 'paid'),
+    ]);
+
+    // Staff list (resolves the previous PostgREST embedded join
+    // staff.staff_branches!inner(branch_id))
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const staffIds = ((memberRows.data ?? []) as any[]).map((r) => r.staff_id);
+    const staffRes = staffIds.length
+      ? await supabase
+          .from('staff')
+          .select('id, name')
+          .in('id', staffIds)
+          .eq('salon_id', session.salonId)
+          .eq('is_active', true)
+      : { data: [] as Array<{ id: string; name: string }>, error: null };
+
+    // Aggregations.
+    const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Karachi' });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const billsRows = (bills.data ?? []) as any[];
+    const todayBills = billsRows.filter((b) => String(b.created_at ?? '').startsWith(today));
+    const todayRevenue = todayBills.reduce((s, b) => s + Number(b.total_amount ?? 0), 0);
+    const totalRevenue = billsRows.reduce((s, b) => s + Number(b.total_amount ?? 0), 0);
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const productIds = new Set<string>(((products.data ?? []) as any[]).map((p) => p.id));
+    const bpMap = new Map<string, { current_stock: number; low_stock_threshold: number }>();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    for (const r of (branchProducts.data ?? []) as any[]) {
+      bpMap.set(r.product_id, { current_stock: r.current_stock, low_stock_threshold: r.low_stock_threshold });
+    }
+    let lowStock = 0;
+    for (const id of productIds) {
+      const bp = bpMap.get(id);
+      if (bp && bp.current_stock <= bp.low_stock_threshold) lowStock++;
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const clientsRows = (clients.data ?? []) as any[];
+    const udhaarTotal = clientsRows.reduce((s, c) => s + Number(c.udhaar_balance ?? 0), 0);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const totalExpenses = ((expenses.data ?? []) as any[]).reduce((s, e) => s + Number(e.amount ?? 0), 0);
+
+    // Top earner by revenue.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const staffBillsRows = (staffBills.data ?? []) as any[];
+    const revByStaff: Record<string, number> = {};
+    for (const b of staffBillsRows) {
+      if (b.staff_id) revByStaff[b.staff_id] = (revByStaff[b.staff_id] ?? 0) + Number(b.total_amount ?? 0);
+    }
+    let topEarner = '—';
+    let topRevenue = 0;
+    for (const s of (staffRes.data ?? []) as Array<{ id: string; name: string }>) {
+      const rev = revByStaff[s.id] ?? 0;
+      if (rev > topRevenue) { topRevenue = rev; topEarner = s.name; }
+    }
+
+    // Month-over-month trend.
+    const now = new Date();
+    const curMonth = now.getMonth();
+    const curYear = now.getFullYear();
+    const prevMonthDate = new Date(curYear, curMonth - 1, 1);
+    const prevMonthEnd = new Date(curYear, curMonth, 0);
+    const curMonthStart = new Date(curYear, curMonth, 1);
+    const curMonthBills = billsRows.filter((b) => new Date(b.created_at) >= curMonthStart);
+    const prevMonthBills = billsRows.filter((b) => {
+      const d = new Date(b.created_at);
+      return d >= prevMonthDate && d <= prevMonthEnd;
+    });
+    const curMonthRevenue = curMonthBills.reduce((s, b) => s + Number(b.total_amount ?? 0), 0);
+    const prevMonthRevenue = prevMonthBills.reduce((s, b) => s + Number(b.total_amount ?? 0), 0);
+    const monthTrend = prevMonthRevenue > 0
+      ? Math.round(((curMonthRevenue - prevMonthRevenue) / prevMonthRevenue) * 100)
+      : 0;
+
+    return {
+      data: {
+        daily: { revenue: todayRevenue, bills: todayBills.length },
+        monthly: { revenue: totalRevenue, trend: monthTrend },
+        staff: { activeCount: (staffRes.data ?? []).length, topEarner },
+        inventory: { lowStock, totalProducts: productIds.size },
+        clients: { total: clientsRows.length, udhaarTotal },
+        profitLoss: { revenue: totalRevenue, expenses: totalExpenses },
+      },
+      error: null,
+    };
+  } catch (e) {
+    return { data: null, error: e instanceof Error ? e.message : 'Failed' };
+  }
+}
+
 export async function getDashboardSnapshot(input: {
   branchId: string;
   startDate: string;

@@ -5,10 +5,9 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 import { Calendar, CalendarRange, UserCog, Package, Users, TrendingUp, ArrowRight, ArrowUpRight, ArrowDownRight, BarChart3 } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
+import { getReportsOverview } from '@/app/actions/dashboard';
 import { useAppStore } from '@/store/app-store';
 import { usePermission } from '@/lib/permissions';
-import { getTodayPKT } from '@/lib/utils/dates';
 import { formatPKR, formatPKRShort } from '@/lib/utils/currency';
 import { EmptyState } from '@/components/empty-state';
 
@@ -37,88 +36,12 @@ export default function ReportsPage() {
 
   const fetchPreviews = useCallback(async () => {
     if (!salon || !currentBranch) { setLoading(false); return; }
-    const today = getTodayPKT();
-
     try {
-      const [billsRes, staffRes, productsRes, branchProductsRes, clientsRes, expensesRes, staffBillsRes] = await Promise.all([
-        supabase.from('bills').select('total_amount, created_at, status').eq('branch_id', currentBranch.id).eq('status', 'paid'),
-        // Staff at this branch via staff_branches join (supports multi-branch stylists).
-        supabase.from('staff').select('name, id, staff_branches!inner(branch_id)').eq('salon_id', salon.id).eq('staff_branches.branch_id', currentBranch.id).eq('is_active', true),
-        // Products are per-branch post-037; the stock numbers live in
-        // branch_products. Both need the current branch so the low-stock
-        // count matches what the inventory page shows.
-        supabase.from('products').select('id').eq('salon_id', salon.id).eq('branch_id', currentBranch.id).eq('is_active', true),
-        supabase.from('branch_products').select('product_id, current_stock, low_stock_threshold').eq('branch_id', currentBranch.id),
-        supabase.from('clients').select('udhaar_balance').eq('salon_id', salon.id).eq('branch_id', currentBranch.id),
-        supabase.from('expenses').select('amount').eq('branch_id', currentBranch.id),
-        supabase.from('bills').select('staff_id, total_amount').eq('branch_id', currentBranch.id).eq('status', 'paid'),
-      ]);
-
-      const bills = (billsRes.data || []) as { total_amount: number; created_at: string; status: string }[];
-      const todayBills = bills.filter(b => b.created_at?.startsWith(today));
-      const todayRevenue = todayBills.reduce((s, b) => s + b.total_amount, 0);
-      const totalRevenue = bills.reduce((s, b) => s + b.total_amount, 0);
-
-      const staffList = (staffRes.data || []) as { name: string; id: string }[];
-      const products = (productsRes.data || []) as { id: string }[];
-      const bpMap = new Map<string, { current_stock: number; low_stock_threshold: number }>();
-      for (const r of (branchProductsRes.data || []) as Array<{ product_id: string; current_stock: number; low_stock_threshold: number }>) {
-        bpMap.set(r.product_id, { current_stock: r.current_stock, low_stock_threshold: r.low_stock_threshold });
-      }
-      const lowStock = products.filter((p) => {
-        const bp = bpMap.get(p.id);
-        return bp != null && bp.current_stock <= bp.low_stock_threshold;
-      }).length;
-
-      const clients = (clientsRes.data || []) as { udhaar_balance: number }[];
-      const udhaarTotal = clients.reduce((s, c) => s + (c.udhaar_balance || 0), 0);
-
-      const expenses = (expensesRes.data || []) as { amount: number }[];
-      const totalExpenses = expenses.reduce((s, e) => s + e.amount, 0);
-
-      // Find actual top earner by aggregating revenue per staff
-      const staffBills = (staffBillsRes.data || []) as { staff_id: string; total_amount: number }[];
-      const revenueByStaff: Record<string, number> = {};
-      staffBills.forEach((b) => {
-        if (b.staff_id) {
-          revenueByStaff[b.staff_id] = (revenueByStaff[b.staff_id] || 0) + b.total_amount;
-        }
-      });
-      let topEarner = '—';
-      let topRevenue = 0;
-      staffList.forEach((s) => {
-        const rev = revenueByStaff[s.id] || 0;
-        if (rev > topRevenue) {
-          topRevenue = rev;
-          topEarner = s.name;
-        }
-      });
-
-      const now = new Date();
-      const curMonth = now.getMonth();
-      const curYear = now.getFullYear();
-      const prevMonthDate = new Date(curYear, curMonth - 1, 1);
-      const prevMonthEnd = new Date(curYear, curMonth, 0);
-      const curMonthStart = new Date(curYear, curMonth, 1);
-      const curMonthBills = bills.filter(b => new Date(b.created_at) >= curMonthStart);
-      const prevMonthBills = bills.filter(b => {
-        const d = new Date(b.created_at);
-        return d >= prevMonthDate && d <= prevMonthEnd;
-      });
-      const curMonthRevenue = curMonthBills.reduce((s, b) => s + b.total_amount, 0);
-      const prevMonthRevenue = prevMonthBills.reduce((s, b) => s + b.total_amount, 0);
-      const monthTrend = prevMonthRevenue > 0
-        ? Math.round(((curMonthRevenue - prevMonthRevenue) / prevMonthRevenue) * 100)
-        : 0;
-
-      setData({
-        daily: { revenue: todayRevenue, bills: todayBills.length },
-        monthly: { revenue: totalRevenue, trend: monthTrend },
-        staff: { activeCount: staffList.length, topEarner },
-        inventory: { lowStock, totalProducts: products.length },
-        clients: { total: clients.length, udhaarTotal },
-        profitLoss: { revenue: totalRevenue, expenses: totalExpenses },
-      });
+      // One server-action call replaces 7 client-side .from() reads + the
+      // PostgREST embedded join (staff_branches!inner) the page used to
+      // resolve branch-membership client-side.
+      const { data: overview } = await getReportsOverview({ branchId: currentBranch.id });
+      if (overview) setData(overview);
     } catch (err) {
       console.error('Reports preview fetch error:', err);
     } finally {

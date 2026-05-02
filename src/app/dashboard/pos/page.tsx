@@ -4,7 +4,7 @@ import { Suspense, useEffect, useState, useCallback } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { ArrowLeft, Search, UserPlus, UserRound, Save, FolderOpen, Trash2, X } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { supabase } from '@/lib/supabase';
+import { getPosCatalog, getAppointmentForPos, searchPosClients, getPromoCode, getClientById } from '@/app/actions/pos';
 import { createClient, updateClientStats } from '@/app/actions/clients';
 import { createBill, createBillItems, recordTip, updateCashDrawer, updatePromoCodeUsage, rollbackBill } from '@/app/actions/bills';
 import { saveDraft, listDrafts, loadDraft, deleteDraft, type BillDraft, type DraftState } from '@/app/actions/bill-drafts';
@@ -124,60 +124,16 @@ function POSContent() {
   useEffect(() => {
     if (!salon || !currentBranch) return;
     async function load() {
-      // Staff at this branch via staff_branches (migration 036 — staff can
-      // belong to multiple branches, so primary_branch_id alone is wrong).
-      const { data: memberRows } = await supabase
-        .from('staff_branches')
-        .select('staff_id')
-        .eq('branch_id', currentBranch!.id);
-      const staffIds = (memberRows || []).map((r: { staff_id: string }) => r.staff_id);
-
-      const [svcRes, prodRes, branchProdRes, pkgRes, staffRes] = await Promise.all([
-        supabase.from('services').select('*').eq('salon_id', salon!.id).eq('branch_id', currentBranch!.id).eq('is_active', true).order('sort_order'),
-        // Products are per-branch after migration 037 — the POS only rings
-        // up products that belong to the branch the cashier is working in.
-        supabase.from('products').select('*').eq('salon_id', salon!.id).eq('branch_id', currentBranch!.id).eq('is_active', true).order('name'),
-        // Per-branch inventory (migration 035). The salon-level
-        // products.current_stock / .low_stock_threshold are tombstones —
-        // always merge these in for display + checkout warnings.
-        supabase.from('branch_products').select('product_id,current_stock,low_stock_threshold').eq('branch_id', currentBranch!.id),
-        supabase.from('packages').select('*').eq('salon_id', salon!.id).eq('branch_id', currentBranch!.id).eq('is_active', true).order('name'),
-        staffIds.length > 0
-          ? supabase.from('staff').select('*').in('id', staffIds).eq('is_active', true).in('role', ['senior_stylist', 'junior_stylist']).order('name')
-          : Promise.resolve({ data: [] as Staff[] }),
-      ]);
-      if (svcRes.data) setServices(svcRes.data as Service[]);
-      if (prodRes.data) {
-        const bpMap = new Map<string, Pick<BranchProduct, 'current_stock' | 'low_stock_threshold'>>();
-        for (const row of (branchProdRes.data || []) as Array<Pick<BranchProduct, 'product_id' | 'current_stock' | 'low_stock_threshold'>>) {
-          bpMap.set(row.product_id, { current_stock: row.current_stock, low_stock_threshold: row.low_stock_threshold });
-        }
-        // Overwrite the deprecated salon-level stock fields on each Product
-        // with the branch-specific values so downstream UI (BillBuilder,
-        // low-stock warnings) just works.
-        const merged = (prodRes.data as Product[]).map((p) => {
-          const bp = bpMap.get(p.id);
-          return {
-            ...p,
-            current_stock: bp ? Number(bp.current_stock) : 0,
-            low_stock_threshold: bp ? Number(bp.low_stock_threshold) : 0,
-          };
-        });
-        setProducts(merged);
+      // One server-action call replaces 6 client-side .from() reads (services,
+      // products, branch_products, packages, staff_branches, staff, loyalty_rules).
+      const { data } = await getPosCatalog({ branchId: currentBranch!.id });
+      if (data) {
+        setServices(data.services);
+        setProducts(data.products);
+        setPackages(data.packages);
+        setStylists(data.stylists);
+        setLoyaltyEnabled(data.loyaltyEnabled);
       }
-      if (pkgRes.data) setPackages(pkgRes.data as PkgType[]);
-      if (staffRes.data) setStylists(staffRes.data as Staff[]);
-
-      // Loyalty on/off for this branch. Missing row (brand-new branch) =
-      // default to enabled so existing behavior is unchanged.
-      const { data: loyaltyRow } = await supabase
-        .from('loyalty_rules')
-        .select('enabled')
-        .eq('salon_id', salon!.id)
-        .eq('branch_id', currentBranch!.id)
-        .maybeSingle();
-      setLoyaltyEnabled(loyaltyRow ? Boolean((loyaltyRow as { enabled: boolean }).enabled) : true);
-
       setLoading(false);
     }
     load();
@@ -196,13 +152,9 @@ function POSContent() {
     setAppointmentId(aptId);
 
     async function loadAppointment() {
-      const { data } = await supabase
-        .from('appointments')
-        .select('*, client:clients(*), staff:staff(*), services:appointment_services(*)')
-        .eq('id', aptId)
-        .single();
+      const { data } = await getAppointmentForPos(aptId as string);
       if (!data) return;
-      const apt = data as AppointmentWithDetails;
+      const apt = data;
 
       if (apt.client) setSelectedClient(apt.client);
       if (apt.staff_id) setSelectedStaffId(apt.staff_id);
@@ -226,17 +178,8 @@ function POSContent() {
   // Client search (ISSUE-008: typed .ilike() calls, no .or() string templating)
   const searchClients = useCallback(async (query: string) => {
     if (!salon || !currentBranch || query.length < 2) { setClientResults([]); return; }
-    const trimmed = query.trim().slice(0, 100);
-    if (!trimmed) { setClientResults([]); return; }
-    const pattern = `%${trimmed}%`;
-    const [nameRes, phoneRes] = await Promise.all([
-      supabase.from('clients').select('*').eq('salon_id', salon.id).eq('branch_id', currentBranch.id).ilike('name', pattern).limit(10),
-      supabase.from('clients').select('*').eq('salon_id', salon.id).eq('branch_id', currentBranch.id).ilike('phone', pattern).limit(10),
-    ]);
-    const merged = new Map<string, Client>();
-    for (const row of (nameRes.data || []) as Client[]) merged.set(row.id, row);
-    for (const row of (phoneRes.data || []) as Client[]) merged.set(row.id, row);
-    setClientResults(Array.from(merged.values()).slice(0, 10));
+    const { data } = await searchPosClients({ branchId: currentBranch.id, query });
+    setClientResults(data);
   }, [salon, currentBranch]);
 
   function openNewClientForm(prefill: string) {
@@ -371,16 +314,8 @@ function POSContent() {
 
   async function applyPromo(code: string) {
     if (!salon || !currentBranch || !code) return;
-    const { data } = await supabase
-      .from('promo_codes')
-      .select('*')
-      .eq('salon_id', salon.id)
-      .eq('branch_id', currentBranch.id)
-      .eq('code', code)
-      .eq('is_active', true)
-      .single();
-
-    if (!data) { toast.error('Invalid promo code'); return; }
+    const { data } = await getPromoCode({ branchId: currentBranch.id, code });
+    if (!data || !data.is_active) { toast.error('Invalid promo code'); return; }
     if (data.expiry_date && new Date(data.expiry_date) < new Date()) { toast.error('Promo expired'); return; }
     if (data.max_uses && data.used_count >= data.max_uses) { toast.error('Promo exhausted'); return; }
     if (data.min_bill_amount && subtotal < data.min_bill_amount) { toast.error(`Min bill: ${formatPKR(data.min_bill_amount)}`); return; }
@@ -472,12 +407,8 @@ function POSContent() {
     setTipAmount(s.tipAmount ?? 0);
     // Re-hydrate the client from the persisted id (in case name/udhaar changed since).
     if (s.selectedClientId) {
-      const { data: client } = await supabase
-        .from('clients')
-        .select('*')
-        .eq('id', s.selectedClientId)
-        .maybeSingle();
-      if (client) setSelectedClient(client as Client);
+      const { data: client } = await getClientById(s.selectedClientId);
+      if (client) setSelectedClient(client);
     } else {
       setSelectedClient(null);
     }
